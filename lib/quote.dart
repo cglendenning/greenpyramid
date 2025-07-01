@@ -1,5 +1,6 @@
 import "dart:math";
 import 'package:dart_openai/dart_openai.dart';
+import 'package:life_ops/secrets.dart';
 
 class Quote {
 
@@ -10,7 +11,7 @@ class Quote {
       '"Relentlessly chase excellence."',
       '"Do today what other''s won''t, so tomorrow you can do what others can''t"',
       '"Fail Forward Fast."',
-      '"We don’t see things as they are; we see them as we are." - Anaïs Nin',
+      '"We don't see things as they are; we see them as we are." - Anaïs Nin',
       '"Winners never quit and quitters never win" - Vince Lombardi',
       '"You can not be brave if you are not afraid. There is no courage without fear." - Tony Blauer',
       '"Whether you believe you can do a thing or not, you are right." - Henry Ford',
@@ -24,7 +25,7 @@ class Quote {
   }
 
   Future<String> getCommentary(String quote, String cType) async {
-    OpenAI.apiKey = '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';
+    OpenAI.apiKey = openAIApiKey;
 
     String system = '';
     String prompt = '';

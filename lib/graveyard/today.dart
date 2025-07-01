@@ -5,6 +5,7 @@ import 'package:life_ops/paywall.dart';
 import 'package:life_ops/quote.dart';
 import 'package:life_ops/navbar.dart';
 import 'package:life_ops/utils.dart' as utils;
+import 'package:life_ops/secrets.dart';
 // import 'package:purchases_flutter/purchases_flutter.dart';
 // import 'package:timezone/timezone.dart' as tz;
 // import 'package:flutter/gestures.dart';
@@ -214,7 +215,7 @@ class _TodayState extends State<Today> {
             '"~~')
         .toList();
 
-    OpenAI.apiKey = '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';
+    OpenAI.apiKey = openAIApiKey;
 
     String system = '';
 

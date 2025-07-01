@@ -8,6 +8,7 @@ import 'package:life_ops/navbar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/rendering.dart';
+import 'package:life_ops/secrets.dart';
 
 // add some additional behind-the-scenes directives to openAI...
 String suffix = " Do not answer with a list.";
@@ -333,7 +334,7 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
             '"~~')
         .toList();
 
-    OpenAI.apiKey = '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';
+    OpenAI.apiKey = openAIApiKey;
 
     String system =
         // "You are a seasoned, wise life coach with decades of experience helping people transform their lives through the Green Pyramid methodology. "
@@ -567,7 +568,7 @@ class ChatApi {
   static const _model = 'ft:gpt-3.5-turbo-0125:personal::BoK7vout';
 
   ChatApi() {
-    OpenAI.apiKey = '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';
+    OpenAI.apiKey = openAIApiKey;
   }
 
   Future<String> completeChat(List<CoachMessage> messages) async {

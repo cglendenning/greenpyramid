@@ -7,6 +7,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/setup/setup1.dart';
 import 'package:life_ops/setup/setup2.dart';
 import 'package:life_ops/setup/setup4.dart';
+import 'package:life_ops/secrets.dart';
 
 // add some additional behind-the-scenes directives to openAI...
 String suffix = " Do not answer with a list.";
@@ -138,7 +139,7 @@ class _Setup3State extends State<Setup3> {
         categories[5] +
         '"~~';
 
-    OpenAI.apiKey = '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';
+    OpenAI.apiKey = openAIApiKey;
 
     String system = '';
 
@@ -333,7 +334,7 @@ class ChatApi {
   static const _model = 'gpt-4o';
 
   ChatApi() {
-    OpenAI.apiKey = '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';
+    OpenAI.apiKey = openAIApiKey;
   }
 
   Future<String> completeChat(List<ChatMessage> messages) async {

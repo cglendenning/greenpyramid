@@ -9,6 +9,7 @@ import 'package:life_ops/navbar.dart';
 import 'package:life_ops/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/setup/setup1.dart';
+import 'package:life_ops/secrets.dart';
 
 String defaultText = 'Generating ideas...';
 List<String> cat6TaskChoices = <String>[defaultText];
@@ -358,7 +359,7 @@ class _Cat6TasksState extends State<Cat6Tasks> {
       cat6TasksGenerating = true;
     });
 
-    OpenAI.apiKey = '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';
+    OpenAI.apiKey = openAIApiKey;
 
     var prompt = utils.Utils().taskPrompt(cat);
     const int timeout = 20;
