@@ -5,13 +5,13 @@ import 'package:life_ops/secrets.dart';
 class Quote {
 
   String randomQuote() {
-    List quotes = [
+    List<String> quotes = [
       '"The best way to predict the future is to create it." - Peter Drucker',
       '"Trust the process."',
       '"Relentlessly chase excellence."',
-      '"Do today what other''s won''t, so tomorrow you can do what others can''t"',
+      '"Do today what others won\'t, so tomorrow you can do what others can\'t."',
       '"Fail Forward Fast."',
-      '"We don't see things as they are; we see them as we are." - Anaïs Nin',
+      '"We don\'t see things as they are; we see them as we are." - Anaïs Nin',
       '"Winners never quit and quitters never win" - Vince Lombardi',
       '"You can not be brave if you are not afraid. There is no courage without fear." - Tony Blauer',
       '"Whether you believe you can do a thing or not, you are right." - Henry Ford',
