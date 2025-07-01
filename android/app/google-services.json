@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "240516747661",
+    "project_id": "life-ops",
+    "storage_bucket": "life-ops.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:240516747661:android:924d4e04235e4d1bb8edc4",
+        "android_client_info": {
+          "package_name": "com.cglendenning.life_ops"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "240516747661-es5ehopa4jkii4m1l3l88gb61njg60lr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyApK3GhsgPbPl3IU8AC9bfBen4hZ_hF0LI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "240516747661-es5ehopa4jkii4m1l3l88gb61njg60lr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "240516747661-gujolp1q1bdm9351kj53mh89h0ba2t1u.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.lifeOps"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:240516747661:android:95cd2744f2f14716b8edc4",
+        "android_client_info": {
+          "package_name": "com.example.life_ops"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "240516747661-es5ehopa4jkii4m1l3l88gb61njg60lr.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyApK3GhsgPbPl3IU8AC9bfBen4hZ_hF0LI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "240516747661-es5ehopa4jkii4m1l3l88gb61njg60lr.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "240516747661-gujolp1q1bdm9351kj53mh89h0ba2t1u.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.lifeOps"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

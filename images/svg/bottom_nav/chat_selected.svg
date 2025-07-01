@@ -1,0 +1,6 @@
+<svg width="39" height="53" viewBox="0 0 39 53" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Chat bubble, scaled up to match chat.svg visual size -->
+  <path d="M7.5 15.2C7.5 12.9909 9.29086 11.2 11 11.2H28C29.7091 11.2 31.5 12.9909 31.5 15.2V24.8C31.5 27.0091 29.7091 28.8 28 28.8H16.5L10.5 32.4C9.5 33.0667 7.5 32.3333 7.5 30.9V15.2Z" fill="#1782FF"/>
+  <!-- Blue dot indicator, centered horizontally, at standard vertical position -->
+  <path d="M19.5 40.7031C20.8379 40.7031 21.9219 41.7871 21.9219 43.125C21.9219 44.4629 20.8379 45.5469 19.5 45.5469C18.1621 45.5469 17.0781 44.4629 17.0781 43.125C17.0781 41.7871 18.1621 40.7031 19.5 40.7031Z" fill="#1782FF"/>
+</svg>

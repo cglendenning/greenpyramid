@@ -1,0 +1,83 @@
+import 'package:flutter/material.dart';
+import 'package:life_ops/homescreen.dart';
+import 'package:life_ops/notification.dart';
+import 'package:timezone/data/latest.dart' as tz;
+import 'package:life_ops/db.dart';
+import 'package:flutter/services.dart';
+import 'dart:io';
+import 'package:life_ops/ads.dart';
+import 'package:app_install_date/app_install_date.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'firebase_options.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+
+final GlobalKey<NavigatorState> navigatorKey =
+    GlobalKey(debugLabel: "Main Navigator");
+
+String routeToGo = '/';
+String payload = '';
+bool populateGap = true;
+DateTime installDate = DateTime.now();
+bool interventionShown = false;
+
+final adInstance = Ads();
+
+Future<void> main() async {
+
+  WidgetsFlutterBinding.ensureInitialized();
+  MobileAds.instance.initialize();
+  MobileAds.instance.updateRequestConfiguration(
+      RequestConfiguration(testDeviceIds: [adInstance.testDevice]));
+  initPlatformState();
+
+  try {
+    installDate = await AppInstallDate().installDate;
+  } catch (e, st) {
+    debugPrint('Failed to load install date due to $e\n$st');
+  }
+
+  // Only allow portrait.
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
+  LocalNotificationService().intialize();
+  tz.initializeTimeZones();
+  final dbHelper = DatabaseHelper.instance;
+  dbHelper.populateQuote();
+  dbHelper.populateCategory();
+  // hack to prevent getCategory() from returning nothing on first
+  // app launch.
+  await Future.delayed(const Duration(seconds: 1));
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+
+  int defaultCats = await dbHelper.queryLaunchSetup();
+
+  if (defaultCats == 6) {
+    routeToGo = '/setup';
+  }
+  runApp(HomeScreen());
+}
+
+Future<void> initPlatformState() async {
+  await Purchases.setLogLevel(LogLevel.debug);
+  var configuration;
+  if (Platform.isAndroid) {
+    configuration = PurchasesConfiguration('goog_vghfDYUMYMIQWVQSXmmSEUnvRJP');
+  } else if (Platform.isIOS) {
+    configuration = PurchasesConfiguration('appl_QKKaUAQcMOlmpopwAJTKzmpaNEt');
+  }
+  await Purchases.configure(configuration);
+
+  bool config = await Purchases.isConfigured;
+  CustomerInfo ci = await Purchases.getCustomerInfo();
+
+  print('Purchase configured: $config');
+  print('Customer Info: $ci');
+  print('Active Subscriptions: ${ci.activeSubscriptions}');
+
+}

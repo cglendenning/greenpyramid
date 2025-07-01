@@ -1,0 +1,225 @@
+import 'package:flutter/material.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
+import 'dart:io';
+import 'package:flutter/gestures.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:life_ops/navbar.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
+
+class Paywall extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    FirebaseAnalytics analytics = FirebaseAnalytics.instance;
+    analytics.logEvent(name: 'paywall');
+    var tsTiny = const TextStyle(
+        fontSize: 12, fontStyle: FontStyle.normal);
+
+    return SafeArea(
+        child: Scaffold(
+      appBar: const NavBar(),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'Unlock Premium Features',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text(
+              '\$14.95/month',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.blue,
+              ),
+            ),
+            const SizedBox(height: 20),
+            FeatureList(),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                subscribe(context);
+              },
+              child: const Text(
+                'Subscribe Now',
+                style: TextStyle(
+                  fontSize: 20,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(legal(), style: tsTiny),
+            const SizedBox(height: 20),
+            Terms(),
+          ],
+        ),
+      ),
+    ));
+  }
+
+  String legal() {
+    String legal = '';
+    if (Platform.isAndroid) {
+      legal = "A \$14.95 monthly purchase will be applied "
+          "to your Google account upon subscribing. "
+          "Subscriptions will automatically renew monthly "
+          "unless canceled within 24-hours before the end of the "
+          "current period. You can cancel anytime in your Google play "
+          "account settings.";
+    } else if (Platform.isIOS) {
+      legal = "A \$14.95 monthly purchase will be applied "
+          "to your iTunes account upon subscribing. "
+          "Subscriptions will automatically renew "
+          "unless canceled within 24-hours before the end of the "
+          "current period. You can cancel anytime with your iTunes "
+          "account settings. For more information, see our Terms of Use (EULA) "
+          "and Privacy Policy links below.";
+    }
+    return legal;
+  }
+
+  void subscribe(BuildContext context) async {
+
+    List<String> productIDs = [];
+
+    if (Platform.isAndroid) {
+      productIDs = ['lifeops_premium_v1'];
+    } else if (Platform.isIOS) {
+      productIDs = ['lifeops_premium_monthly_1495'];
+    } else {
+      return;
+    }
+    showLoaderDialog(context);
+    List<StoreProduct> storeProduct = await Purchases.getProducts(productIDs);
+    await Purchases.purchaseStoreProduct(storeProduct.first);
+    Navigator.pop(context); // pop the dialog box
+    Navigator.pop(context); // pop back to the subscription-only feature
+  }
+
+  showLoaderDialog(BuildContext context){
+    AlertDialog alert=AlertDialog(
+      content: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(),
+          Container(margin: const EdgeInsets.only(left: 7),child:const Text("Subscribing..." )),
+        ],),
+    );
+    showDialog(barrierDismissible: false,
+      context:context,
+      builder:(BuildContext context){
+        return alert;
+      },
+    );
+  }
+
+}
+
+class Terms extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    var row;
+    if (Platform.isAndroid) {
+      row = const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: <Widget>[]);
+    } else if (Platform.isIOS) {
+      row = Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: <Widget>[
+            RichText(
+              text: TextSpan(
+                  text: 'Terms Of Service',
+                  style: const TextStyle(
+                      color: Colors.blue,
+                      decoration: TextDecoration.underline,
+                      fontSize: 12),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      // https://www.apple.com/legal/internet-services/itunes/dev/stdeula/
+                      final Uri eula = Uri(
+                          scheme: 'https',
+                          host: 'www.apple.com',
+                          path: 'legal/internet-services/itunes/dev/stdeula/');
+                      launchInBrowser(eula);
+                    }),
+            ),
+            RichText(
+              text: TextSpan(
+                  text: 'Privacy Policy',
+                  style: const TextStyle(
+                      color: Colors.blue,
+                      decoration: TextDecoration.underline,
+                      fontSize: 12),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      // https://cglendenning123.wixsite.com/growingconcerns
+                      final Uri eula = Uri(
+                          scheme: 'https',
+                          host: 'cglendenning123.wixsite.com',
+                          path: 'growingconcerns');
+                      launchInBrowser(eula);
+                    }),
+            ),
+          ]);
+    }
+    return row;
+  }
+}
+
+Future<void> launchInBrowser(Uri url) async {
+  if (!await launchUrl(
+    url,
+    mode: LaunchMode.externalApplication,
+  )) {
+    throw Exception('Could not launch $url');
+  }
+}
+
+class FeatureList extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final features = [
+      'On-Demand Motivation',
+      'Notifications To Keep You On Track',
+      'Intelligent Analysis Of Your Progress',
+      'Priority Customer Support',
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Premium Features:',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: features.map((feature) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.check,
+                    color: Colors.green,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(feature),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+}
