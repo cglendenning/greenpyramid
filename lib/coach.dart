@@ -182,13 +182,13 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
       // Check if categories and tasks have been set up
       final categoriesList = await dbHelper.queryCategories();
       final tasksList = await dbHelper.queryAllTasks();
-      if (categoriesList.isNotEmpty && tasksList.isNotEmpty) {
+      if (categoriesList.isNotEmpty && tasksList.isEmpty) {
         _messages.add(CoachMessage(
-          "I see you haven't tracked any habits yet. Once you start tracking, I can give you much more personalized and helpful coaching! But let's get a conversation started anyway—what's on your mind today?",
+          "I see you've set up your categories, but you haven't added any habits to track yet. Once you add and start tracking habits, I can give you much more personalized and helpful coaching! But let's get a conversation started anyway—what's on your mind today?",
           OpenAIChatMessageRole.assistant,
         ));
         await _saveMessage(
-          "I see you haven't tracked any habits yet. Once you start tracking, I can give you much more personalized and helpful coaching! But let's get a conversation started anyway—what's on your mind today?",
+          "I see you've set up your categories, but you haven't added any habits to track yet. Once you add and start tracking habits, I can give you much more personalized and helpful coaching! But let's get a conversation started anyway—what's on your mind today?",
           'assistant',
         );
         setState(() {

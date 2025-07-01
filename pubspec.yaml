@@ -101,6 +101,8 @@ flutter:
     - images/svg/bottom_nav/triangle_selected.svg
     - images/svg/bottom_nav/chat_selected.svg
     - videos/bora.mov
+    - images/previews1.jpg
+    - images/previews2.jpg
   fonts:
     - family: SourceSans3
       fonts:

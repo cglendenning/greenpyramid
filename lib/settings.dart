@@ -33,7 +33,7 @@ Future<void> showPreviewWarningDialog(BuildContext context) async {
               ),
               const SizedBox(height: 4),
               Image.asset(
-                'images/previews1.JPEG',
+                'images/previews1.jpg',
                 fit: BoxFit.contain,
                 width: 320,
                 height: 220,
@@ -50,7 +50,7 @@ Future<void> showPreviewWarningDialog(BuildContext context) async {
               ),
               const SizedBox(height: 4),
               Image.asset(
-                'images/previews2.JPEG',
+                'images/previews2.jpg',
                 fit: BoxFit.contain,
                 width: 320,
                 height: 220,
@@ -273,34 +273,6 @@ class _SettingsState extends State<Settings> {
                 foregroundColor: Colors.white,
               ),
               child: const Text('Cancel Test Notifications'),
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  await lns.testIOSNotification();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('✅ iOS test notification sent'),
-                      duration: Duration(seconds: 2),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('❌ Error: $e'),
-                      duration: const Duration(seconds: 3),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.purple,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Test iOS Notification'),
             ),
           ],
         ),
