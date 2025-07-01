@@ -179,6 +179,23 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   Future<void> chatSetup() async {
     // Only call if there's no existing chat history
     if (_chatHistory.isEmpty) {
+      // Check if categories and tasks have been set up
+      final categoriesList = await dbHelper.queryCategories();
+      final tasksList = await dbHelper.queryAllTasks();
+      if (categoriesList.isNotEmpty && tasksList.isNotEmpty) {
+        _messages.add(CoachMessage(
+          "I see you haven't tracked any habits yet. Once you start tracking, I can give you much more personalized and helpful coaching! But let's get a conversation started anyway—what's on your mind today?",
+          OpenAIChatMessageRole.assistant,
+        ));
+        await _saveMessage(
+          "I see you haven't tracked any habits yet. Once you start tracking, I can give you much more personalized and helpful coaching! But let's get a conversation started anyway—what's on your mind today?",
+          'assistant',
+        );
+        setState(() {
+          _awaitingResponse = false;
+        });
+        return;
+      }
       String result = await firstCompletion();
       _messages.add(CoachMessage(result, OpenAIChatMessageRole.assistant));
       // Save the initial assistant message to database
@@ -348,6 +365,7 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
         "column is true or false, indicating whether or not the client "
         "performed the activity on that day. Some days will not have entries. "
         "That is ok. Those days were scheduled days off."
+        "Answer with extreme empathy, vary the length of your responses, and be conversational."
         "Do not use exclamation points or emojis, except in response to emojis from a prompt.";
 
     const int timeout = 25;

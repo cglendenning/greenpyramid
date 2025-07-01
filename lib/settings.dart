@@ -16,9 +16,58 @@ Future<void> showPreviewWarningDialog(BuildContext context) async {
   return showDialog(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('Show Notification Previews'),
-      content: const Text(
-        'To see the full content of notifications, set "Show Previews" to "Always" in your iPhone notification settings for Green Pyramid.',
+      title: const Text('How to Show Notification Previews'),
+      content: SizedBox(
+        width: 350,
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'To see the full content of notifications, you must set "Show Previews" to "Always" for Green Pyramid notifications.\n',
+                style: TextStyle(fontSize: 16),
+              ),
+              const Text(
+                'Step 1:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              const SizedBox(height: 4),
+              Image.asset(
+                'images/previews1.JPEG',
+                fit: BoxFit.contain,
+                width: 320,
+                height: 220,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Open your iPhone Settings, scroll down and tap on "Green Pyramid", then tap "Notifications".',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Step 2:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+              ),
+              const SizedBox(height: 4),
+              Image.asset(
+                'images/previews2.JPEG',
+                fit: BoxFit.contain,
+                width: 320,
+                height: 220,
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Scroll down to "Show Previews" and set it to "Always". This will allow notification content to be visible.',
+                style: TextStyle(fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'After making this change, return to the app and test notifications again.',
+                style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+              ),
+            ],
+          ),
+        ),
       ),
       actions: [
         TextButton(
@@ -348,8 +397,7 @@ class _NotificationSwitchState extends State<NotificationSwitch> {
     );
   }
 
-  turnOnAllNotifications() async {
-    await showPreviewWarningDialog(context);
+  turnOnAllNotifications() {
     lns.scheduleDailyNotification(
         id: 0,
         title: 'Morning Review',
