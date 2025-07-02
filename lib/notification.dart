@@ -367,9 +367,6 @@ class LocalNotificationService {
     
     // Request notification permissions for Android
     await _requestNotificationPermissions();
-    
-    // TEMPORARILY DISABLED: Start foreground service for better notification reliability
-    // await _startForegroundService();
   }
 
   Future<void> _requestNotificationPermissions() async {
@@ -437,63 +434,6 @@ class LocalNotificationService {
       print('Using exact scheduling mode (fallback)');
       return AndroidScheduleMode.exact;
     }
-  }
-
-  Future<void> _startForegroundService() async {
-    try {
-      // Start a foreground service to keep the app active
-      final details = await _notificationDetails();
-      await _localNotificationService
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.startForegroundService(
-            1000,
-            'Green Pyramid Service',
-            'Keeping app active for notifications',
-            notificationDetails: details.android,
-          );
-      print('✅ Foreground service started');
-    } catch (e) {
-      print('❌ Error starting foreground service: $e');
-    }
-  }
-
-  Future<NotificationDetails> _notificationDetails() async {
-    const AndroidNotificationDetails androidNotificationDetails =
-        AndroidNotificationDetails(
-          'green_pyramid_channel', // More specific channel ID
-          'Green Pyramid Notifications', // Channel name
-          channelDescription: 'Notifications for Green Pyramid app',
-          importance: Importance.max,
-          priority: Priority.max,
-          sound: RawResourceAndroidNotificationSound('doublebeep'),
-          playSound: true,
-          enableVibration: true,
-          enableLights: true,
-          showWhen: true,
-          autoCancel: false,
-          ongoing: false,
-          channelShowBadge: true,
-          icon: '@mipmap/launcher_icon',
-          largeIcon: DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
-          category: AndroidNotificationCategory.reminder,
-          visibility: NotificationVisibility.public,
-          timeoutAfter: 30000, // 30 seconds
-        );
-
-    // Remove the const from DarwinNotificationDetails so we can pass dynamic values
-    final DarwinNotificationDetails iosNotificationDetails = DarwinNotificationDetails(
-      sound: 'doublebeep.aiff',
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-      // No title/body here, as they are set per notification in zonedSchedule
-    );
-
-    return NotificationDetails(
-      android: androidNotificationDetails,
-      iOS: iosNotificationDetails,
-    );
   }
 
   Future<void> scheduleDailyNotification(
