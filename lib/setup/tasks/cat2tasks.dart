@@ -372,10 +372,7 @@ class _Cat2TasksState extends State<Cat2Tasks> {
     try {
       OpenAIChatCompletionModel chatCompletion =
       await OpenAI.instance.chat.create(
-        model: "gpt-4",
-        // Note! I tried using gpt-3.5-turbo here, and it sucked. Switch with
-        // caution.
-        // model: "gpt-3.5-turbo",
+        model: "gpt-4.1-2025-04-14",
         // My understanding of top_p and temperature:
         // https://community.openai.com/t/a-better-explanation-of-top-p/2426/10
         topP: 1,

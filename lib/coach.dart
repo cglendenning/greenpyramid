@@ -377,7 +377,7 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
     try {
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
-        model: "ft:gpt-4.1-2025-04-14:personal::BoiqflVE",
+        model: "gpt-4.1-2025-04-14",
         messages: [
           OpenAIChatCompletionChoiceMessageModel(
             role: OpenAIChatMessageRole.system,
@@ -582,7 +582,7 @@ class CoachMessage {
 }
 
 class ChatApi {
-  static const _model = 'ft:gpt-4.1-2025-04-14:personal::BoiqflVE';
+  static const _model = 'gpt-4.1-2025-04-14';
 
   ChatApi() {
     OpenAI.apiKey = openAIApiKey;

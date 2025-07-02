@@ -544,8 +544,7 @@ class ChatMessage {
 }
 
 class ChatApi {
-  // static const _model = 'gpt-3.5-turbo';
-  static const _model = 'gpt-4o';
+  static const _model = 'gpt-4.1-2025-04-14';
 
   ChatApi() {
     OpenAI.apiKey = openAIApiKey;
