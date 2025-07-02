@@ -354,19 +354,18 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
     OpenAI.apiKey = openAIApiKey;
 
     String system =
-        // "You are a seasoned, wise life coach with decades of experience helping people transform their lives through the Green Pyramid methodology. "
-        "The Green Pyramid is a hierarchical habit tracking system based on the principle that foundational habits have exponentially greater impact on a client's life than non-foundational ones. "
-        "The system consists of 6 categories (values), each containing one or more habits. "
-        "Categories 1, 2, and 3 are the foundational categories - these are the bedrock of life success and well-being. "
-        "Any gaps in tracking these foundational habits carry significantly more weight in coaching urgency than gaps in higher categories. "
-        "When a user completes every habit in every category, their pyramid becomes completely green, representing optimal habit execution. ";
+        "You are an empathetic life coach with a deep background in health, "
+        "mindset and finances. You help entrepreneurs to fix problems in these "
+        "domains in their lives. You are well versed in the work of Dr. David "
+        "Burns and TEAM-CBT, Dan Sullivan, Simon Sinek, James Clear, Greg "
+        "Glassman and other deep thinkers in the areas of mindset, "
+        "self-improvement, fitness and entrepreneurship. You have an informal "
+        "style and are genuinely inquisitive about your client's needs.";
 
     String prompt = "Your client provided this data: $categories.  The third "
         "column is true or false, indicating whether or not the client "
         "performed the activity on that day. Some days will not have entries. "
-        "That is ok. Those days were scheduled days off."
-        "Answer with extreme empathy, vary the length of your responses, and be conversational."
-        "Do not use exclamation points or emojis, except in response to emojis from a prompt.";
+        "That is ok. Those days were scheduled days off.";
 
     const int timeout = 25;
 
@@ -378,7 +377,7 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
     try {
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
-        model: "ft:gpt-3.5-turbo-0125:personal::BofzKM0v",
+        model: "ft:gpt-4.1-2025-04-14:personal::BoiqflVE",
         messages: [
           OpenAIChatCompletionChoiceMessageModel(
             role: OpenAIChatMessageRole.system,
@@ -583,7 +582,7 @@ class CoachMessage {
 }
 
 class ChatApi {
-  static const _model = 'ft:gpt-3.5-turbo-0125:personal::BofzKM0v';
+  static const _model = 'ft:gpt-4.1-2025-04-14:personal::BoiqflVE';
 
   ChatApi() {
     OpenAI.apiKey = openAIApiKey;
