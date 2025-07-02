@@ -197,23 +197,24 @@ class _SettingsState extends State<Settings> {
                       },
                     );
                   }))),
-      // Adjust Previews link
-      Padding(
-        padding: const EdgeInsets.only(bottom: 10.0),
-        child: TextButton(
-          onPressed: () async {
-            await showPreviewWarningDialog(context);
-          },
-          child: const Text(
-            'Adjust Previews',
-            style: TextStyle(
-              fontSize: 16,
-              decoration: TextDecoration.underline,
-              color: Colors.blue,
+      // Adjust Previews link - only show on iOS
+      if (Platform.isIOS)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 10.0),
+          child: TextButton(
+            onPressed: () async {
+              await showPreviewWarningDialog(context);
+            },
+            child: const Text(
+              'Adjust Previews',
+              style: TextStyle(
+                fontSize: 16,
+                decoration: TextDecoration.underline,
+                color: Colors.blue,
+              ),
             ),
           ),
         ),
-      ),
       // Test notification buttons
       Padding(
         padding: const EdgeInsets.all(20.0),
