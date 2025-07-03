@@ -9,6 +9,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/rendering.dart';
 import 'package:life_ops/secrets.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 // add some additional behind-the-scenes directives to openAI...
 String suffix = " Do not answer with a list.";
@@ -33,6 +34,8 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   List<ChatMessage> _chatHistory = [];
   bool _hasLoadedHistory = false;
   late FocusNode _focusNode;
+  int freeMessageLimit = 10;
+  bool isSubscribed = false;
 
   final _messages = <CoachMessage>[
     CoachMessage('Give me just a moment...', OpenAIChatMessageRole.assistant),
@@ -47,6 +50,7 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    _checkSubscriptionStatus();
     WidgetsBinding.instance.addObserver(this);
     _focusNode = FocusNode();
     _focusNode.addListener(_onFocusChange);
@@ -156,12 +160,42 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
     analytics.logEvent(name: 'chat');
 
     return SafeArea(
-        child: Focus(
-          focusNode: _focusNode,
-          child: Scaffold(
-              appBar: widget.showAppBar ? const NavBar() : null,
-              body: chatScreen()),
-        ));
+      child: Focus(
+        focusNode: _focusNode,
+        child: Scaffold(
+          appBar: widget.showAppBar ? const NavBar() : null,
+          body: Stack(
+            children: [
+              chatScreen(),
+              if (!isSubscribed)
+                Positioned(
+                  left: -30,
+                  top: 20,
+                  child: Transform.rotate(
+                    angle: -0.785398, // -45 degrees in radians
+                    child: Container(
+                      width: 140,
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      color: Colors.redAccent,
+                      child: const Center(
+                        child: Text(
+                          'FREE TIER',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Column chatScreen() {
@@ -189,7 +223,11 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
           ),
         ),
         MessageComposer(
-          onSubmitted: _onSubmitted,
+          onSubmitted: paywalled
+              ? (msg) {}
+              : (msg) {
+                  _onSubmitted(msg);
+                },
           awaitingResponse: _awaitingResponse,
         ),
       ],
@@ -232,14 +270,34 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   }
 
   Future<void> _onSubmitted(String message) async {
+    // Count user messages (excluding assistant messages)
+    int userMessageCount = _messages.where((m) => m.msgType == OpenAIChatMessageRole.user).length;
+    if (!paywalled && userMessageCount >= freeMessageLimit) {
+      // Show paywall before allowing the 11th message
+      await navigateToPaywall();
+      return;
+    }
     setState(() {
       _messages.add(CoachMessage(message + suffix, OpenAIChatMessageRole.user));
       _awaitingResponse = true;
     });
-    
-    // Save user message to database
     await _saveMessage(message + suffix, 'user');
-    
+    await _sendAssistantResponse();
+  }
+
+  Future<void> navigateToPaywall() async {
+    utils.Utils().changeSystemColor(Brightness.dark);
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => Paywall()),
+    );
+    paywalled = true;
+    setState(() {
+      utils.Utils().changeSystemColor(Brightness.light);
+    });
+  }
+
+  Future<void> _sendAssistantResponse() async {
     // Get current habit data to include in context
     final List<Map<String, dynamic>> maps = await dbHelper.queryTaskLogs(60);
     List<TaskLog> allTaskLogs = List.generate(maps.length, (i) {
@@ -285,66 +343,6 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
     // Save assistant response to database
     await _saveMessage(response, 'assistant');
   }
-
-  void navigateToPaywall() async {
-    utils.Utils().changeSystemColor(Brightness.dark);
-
-    await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => Paywall()));
-    // This will ensure that when someone goes back from the paywall
-    // screen, the chat screen gets popped immediately.
-    paywalled = true;
-    setState(() {
-      utils.Utils().changeSystemColor(Brightness.light);
-    });
-  }
-
-  /*
-  Future<Widget> subscribeLink() async {
-    // Purchases.invalidateCustomerInfoCache();
-
-    var link;
-
-    CustomerInfo ci = await Purchases.getCustomerInfo();
-
-    var daysRemaining = installDate
-        .add(const Duration(days: 7))
-        .difference(tz.TZDateTime.now(tz.local))
-        .inDays;
-
-    String dayString = 'days remaining';
-
-    if (daysRemaining == 1) {
-      dayString = 'day remaining!!';
-    }
-
-    // FT: No subscription and free trial days remaining > 0
-    if (ci.activeSubscriptions.isEmpty && daysRemaining > 0) {
-      link = RichText(
-        text: TextSpan(
-            text: 'Subscribe. $daysRemaining $dayString',
-            style: const TextStyle(
-                color: Colors.blue,
-                decoration: TextDecoration.underline,
-                fontSize: 16),
-            recognizer: TapGestureRecognizer()
-              ..onTap = () {
-                navigateToPaywall();
-                setState(() {});
-              }),
-      );
-      // S: Active subscription found.
-    } else if (ci.activeSubscriptions.isNotEmpty) {
-      link = const Text('');
-      // U: No active subscription found, and daysRemaining is 0 or less.
-    } else if (paywalled == false) {
-      navigateToPaywall();
-    } else {
-      Navigator.pop(context);
-    }
-    return link;
-  }
-   */
 
   Future<String> firstCompletion() async {
     final List<Map<String, dynamic>> maps = await dbHelper.queryTaskLogs(60);
@@ -426,6 +424,20 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
     }
 
     return chatResult;
+  }
+
+  Future<void> _checkSubscriptionStatus() async {
+    try {
+      CustomerInfo ci = await Purchases.getCustomerInfo();
+      setState(() {
+        isSubscribed = ci.activeSubscriptions.isNotEmpty;
+      });
+    } catch (e) {
+      // If error, default to not subscribed
+      setState(() {
+        isSubscribed = false;
+      });
+    }
   }
 }
 
