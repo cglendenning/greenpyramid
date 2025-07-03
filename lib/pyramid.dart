@@ -6,6 +6,8 @@ import 'package:intl/intl.dart' as intl;
 import 'package:life_ops/chat.dart';
 import 'package:life_ops/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:life_ops/coach.dart';
+import 'package:life_ops/mindset_select.dart';
 // import 'package:life_ops/main.dart';
 
 enum Calendar { day, week, month, year }
@@ -55,6 +57,9 @@ class _Pyramid extends State<Pyramid> {
       _dynamic4LGColor,
       _dynamic5LGColor,
       _dynamic6LGColor;
+
+  String? selectedMood;
+  String? selectedCategory;
 
   @override
   void initState() {
@@ -551,54 +556,49 @@ class _Pyramid extends State<Pyramid> {
             padding: const EdgeInsets.all(10.0),
             child: const Text("Need to work on your mindset?")),
 
-        // I do not know why this Row is needed to keep the stack centered,
-        // but it is.
+        // Mindset button instead of dropdowns
         Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-          const SizedBox(width: 10), // give it width
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            height: 40.0,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(30.0),
-              color: Colors.grey[350]!,
+          ElevatedButton.icon(
+            icon: const Icon(Icons.psychology, color: Colors.white),
+            label: const Text(
+              'Mindset',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
             ),
-            child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-              value: emotionChoices.first,
-              menuMaxHeight: pyramidHeight * .8,
-              borderRadius: BorderRadius.circular(30.0),
-              icon: const Icon(Icons.arrow_drop_down),
-              elevation: 16,
-              style: const TextStyle(color: Colors.black),
-              onChanged: (String? value) {
-                // This is called when the user selects an item.
-                setState(() {
-                  if (value != emotionChoices.first) {
-                    navigateToChat(context, value!);
-                  }
-                });
-              },
-              items: emotionChoices.map<DropdownMenuItem<String>>((String value) {
-                return DropdownMenuItem<String>(
-                  value: value,
-                  child: Text(value),
-                );
-              }).toList(),
-            ) // your Dropdown Widget here
-                ),
-          )
-        ])
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Color(0xFF66CC5D), // #66CC5D
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12.8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30.0),
+              ),
+              elevation: 4,
+            ),
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => MindsetSelect(
+                  categories: [cat1String, cat2String, cat3String, cat4String, cat5String, cat6String]
+                      .where((cat) => cat.isNotEmpty)
+                      .toList(),
+                )),
+              );
+              if (result != null && result is List && result.length == 2) {
+                final mood = result[0] as String;
+                final category = result[1] as String;
+                navigateToChat(context, mood, category);
+              }
+            },
+          ),
+        ]),
       ]),
     );
   }
 
-  void navigateToChat(BuildContext context, String mood) async {
+  void navigateToChat(BuildContext context, String mood, String category) async {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(
         context,
         MaterialPageRoute(
-            builder: (context) => Chat(mood, cat1String, cat2String, cat3String,
-                cat4String, cat5String, cat6String))).then((_) {
+            builder: (context) => Coach(mood: mood, category: category, showAppBar: true))).then((_) {
       setState(() {
         utils.Utils().changeSystemColor(Brightness.light);
         setFutures();

@@ -15,8 +15,10 @@ String suffix = " Do not answer with a list.";
 
 class Coach extends StatefulWidget {
   final bool showAppBar;
+  final String? mood;
+  final String? category;
   
-  Coach({super.key, this.showAppBar = true});
+  Coach({super.key, this.showAppBar = true, this.mood, this.category});
 
   final ChatApi chatApi = ChatApi();
 
@@ -39,19 +41,37 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   var _awaitingResponse = false;
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
+  // Track if we've injected a mood/category message for this navigation
+  bool _injectedMoodCategory = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _focusNode = FocusNode();
     _focusNode.addListener(_onFocusChange);
-    _loadChatHistory().then((_) {
-      // Only call chatSetup if there's no existing history
-      if (_chatHistory.isEmpty) {
-        _awaitingResponse = true; // Set to true only when waiting for initial response
+    _loadChatHistory().then((_) async {
+      // Always inject a new message if mood and category are provided, but only once per navigation
+      if (!_injectedMoodCategory && widget.mood != null && widget.category != null && widget.mood!.isNotEmpty && widget.category!.isNotEmpty) {
+        _injectedMoodCategory = true;
+        String prompt = "The area of my life I am most ${widget.mood} about is: ${widget.category}.";
+        _messages.add(CoachMessage(prompt, OpenAIChatMessageRole.user));
+        await _saveMessage(prompt, 'user');
+        setState(() {
+          _awaitingResponse = true;
+        });
+        final response = await widget.chatApi.completeChat(_messages);
+        _messages.add(CoachMessage(response, OpenAIChatMessageRole.assistant));
+        await _saveMessage(response, 'assistant');
+        setState(() {
+          _awaitingResponse = false;
+        });
+      } else if (_chatHistory.isEmpty) {
+        // Only call chatSetup if there's no existing history and no mood/category injection
+        _awaitingResponse = true;
         chatSetup();
       } else {
-        _awaitingResponse = false; // Set to false when there's existing history
+        _awaitingResponse = false;
       }
     });
   }
@@ -196,9 +216,14 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
         });
         return;
       }
+      // If mood and category are provided, use them to build the initial prompt
+      if (widget.mood != null && widget.category != null && widget.mood!.isNotEmpty && widget.category!.isNotEmpty) {
+        String prompt = "The area of my life I am most ${widget.mood} about is: ${widget.category}.";
+        _messages.add(CoachMessage(prompt, OpenAIChatMessageRole.user));
+        await _saveMessage(prompt, 'user');
+      }
       String result = await firstCompletion();
       _messages.add(CoachMessage(result, OpenAIChatMessageRole.assistant));
-      // Save the initial assistant message to database
       await _saveMessage(result, 'assistant');
       setState(() {
         _awaitingResponse = false;
