@@ -27,15 +27,12 @@ class _Setup1State extends State<Setup1> {
   void initState() {
     super.initState();
 
-    _controller = VideoPlayerController.asset("videos/bora.mov");
-
-    _controller.addListener(() {
-      setState(() {
+    _controller = VideoPlayerController.asset('videos/bora.mov')
+      ..setLooping(true)
+      ..initialize().then((_) {
+        setState(() {});
+        _controller.play();
       });
-    });
-    _controller.setLooping(true);
-    _controller.initialize().then((_) => setState(() {}));
-    _controller.play();
   }
 
   @override
