@@ -17,48 +17,294 @@ class Paywall extends StatelessWidget {
     return SafeArea(
         child: Scaffold(
       appBar: const NavBar(),
-      body: Center(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            const SizedBox(height: 20),
+            // Hero section
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xff66cc5d).withOpacity(0.1),
+                    const Color(0xffC35DCC).withOpacity(0.1),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  const Icon(
+                    Icons.psychology,
+                    size: 48,
+                    color: Color(0xff66cc5d),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Unlock Unlimited Coaching',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Get personalized guidance from your AI life coach',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black54,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // Price section
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'Only',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black54,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    '\$14.95',
+                    style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xff66cc5d),
+                    ),
+                  ),
+                  const Text(
+                    'per month',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 32),
+            
+            // Coaching methodology section
             const Text(
-              'Unlock Premium Features',
+              'Your Personal AI Life Coach',
               style: TextStyle(
-                fontSize: 24,
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
+                color: Colors.black87,
               ),
+              textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             const Text(
-              '\$14.95/month',
+              'Powered by the Green Pyramid methodology and decades of coaching wisdom',
               style: TextStyle(
-                fontSize: 18,
-                color: Colors.blue,
+                fontSize: 16,
+                color: Colors.black54,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            
+            const SizedBox(height: 24),
+            
+            // Features section
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'What You Get:',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildFeatureItem(
+                    Icons.chat_bubble_outline,
+                    'Unlimited Coaching Sessions',
+                    'Chat as much as you want with your AI coach',
+                  ),
+                  _buildFeatureItem(
+                    Icons.psychology,
+                    'Personalized Insights',
+                    'Get advice based on your actual habit tracking data',
+                  ),
+                  _buildFeatureItem(
+                    Icons.trending_up,
+                    'Progress Analysis',
+                    'Deep analysis of your 60-day habit patterns',
+                  ),
+                  _buildFeatureItem(
+                    Icons.lightbulb_outline,
+                    'Expert Methodology',
+                    'Based on proven coaching techniques from world-class experts',
+                  ),
+                  _buildFeatureItem(
+                    Icons.schedule,
+                    '24/7 Availability',
+                    'Get coaching whenever you need it, day or night',
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
-            FeatureList(),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                subscribe(context);
-              },
-              child: const Text(
-                'Subscribe Now',
-                style: TextStyle(
-                  fontSize: 20,
-                  color: Colors.black,
+            
+            const SizedBox(height: 32),
+            
+            // CTA button
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () {
+                  subscribe(context);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xff66cc5d),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 4,
+                ),
+                child: const Text(
+                  'Start Unlimited Coaching',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
-            const SizedBox(height: 20),
+            
+            const SizedBox(height: 16),
+            
+            // Guarantee
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xff66cc5d).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.verified,
+                    color: Color(0xff66cc5d),
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: const Text(
+                      'Cancel anytime • No commitment required',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            
+            const SizedBox(height: 24),
+            
             Text(legal(), style: tsTiny),
-            const SizedBox(height: 20),
+            const SizedBox(height: 16),
             Terms(),
           ],
         ),
       ),
     ));
+  }
+
+  Widget _buildFeatureItem(IconData icon, String title, String description) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xff66cc5d).withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: const Color(0xff66cc5d),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  description,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Colors.black54,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   String legal() {
@@ -177,49 +423,5 @@ Future<void> launchInBrowser(Uri url) async {
     mode: LaunchMode.externalApplication,
   )) {
     throw Exception('Could not launch $url');
-  }
-}
-
-class FeatureList extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final features = [
-      'On-Demand Motivation',
-      'Notifications To Keep You On Track',
-      'Intelligent Analysis Of Your Progress',
-      'Priority Customer Support',
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Premium Features:',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 10),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: features.map((feature) {
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4.0),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.check,
-                    color: Colors.green,
-                  ),
-                  const SizedBox(width: 10),
-                  Text(feature),
-                ],
-              ),
-            );
-          }).toList(),
-        ),
-      ],
-    );
   }
 }

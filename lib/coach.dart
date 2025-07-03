@@ -35,7 +35,7 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   bool _hasLoadedHistory = false;
   late FocusNode _focusNode;
   int freeMessageLimit = 10;
-  bool isSubscribed = false;
+  bool isSubscribed = true; // Start as true to prevent banner flash
 
   final _messages = <CoachMessage>[
     CoachMessage('Give me just a moment...', OpenAIChatMessageRole.assistant),
@@ -50,6 +50,7 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    print('🚀 [COACH SCREEN] initState() - Triggering initial subscription check');
     _checkSubscriptionStatus();
     WidgetsBinding.instance.addObserver(this);
     _focusNode = FocusNode();
@@ -90,16 +91,20 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
 
   void _onFocusChange() {
     if (_focusNode.hasFocus) {
-      // Reload chat history when screen gains focus
+      // Reload chat history and check subscription when screen gains focus
+      print('🎯 [COACH SCREEN] Screen gained focus - Triggering subscription check');
       _loadChatHistory();
+      _checkSubscriptionStatus();
     }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Reload chat history when app becomes visible
+      // Reload chat history and check subscription when app becomes visible
+      print('📱 [COACH SCREEN] App resumed - Triggering subscription check');
       _loadChatHistory();
+      _checkSubscriptionStatus();
     }
   }
 
@@ -158,6 +163,7 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     analytics.logEvent(name: 'chat');
+    print('🏗️ [COACH SCREEN] Building UI - isSubscribed: $isSubscribed');
 
     return SafeArea(
       child: Focus(
@@ -223,11 +229,9 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
           ),
         ),
         MessageComposer(
-          onSubmitted: paywalled
-              ? (msg) {}
-              : (msg) {
-                  _onSubmitted(msg);
-                },
+          onSubmitted: (msg) {
+            _onSubmitted(msg);
+          },
           awaitingResponse: _awaitingResponse,
         ),
       ],
@@ -270,9 +274,13 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   }
 
   Future<void> _onSubmitted(String message) async {
+    // Check subscription status before processing message
+    print('💬 [COACH SCREEN] Message submitted - Triggering subscription check');
+    await _checkSubscriptionStatus();
+    
     // Count user messages (excluding assistant messages)
     int userMessageCount = _messages.where((m) => m.msgType == OpenAIChatMessageRole.user).length;
-    if (!paywalled && userMessageCount >= freeMessageLimit) {
+    if (!isSubscribed && userMessageCount >= freeMessageLimit) {
       // Show paywall before allowing the 11th message
       await navigateToPaywall();
       return;
@@ -291,7 +299,9 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
       context,
       MaterialPageRoute(builder: (context) => Paywall()),
     );
-    paywalled = true;
+    // Check subscription status after returning from paywall
+    print('💰 [COACH SCREEN] Returning from paywall - Triggering subscription check');
+    await _checkSubscriptionStatus();
     setState(() {
       utils.Utils().changeSystemColor(Brightness.light);
     });
@@ -427,17 +437,38 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   }
 
   Future<void> _checkSubscriptionStatus() async {
+    print('🔄 [SUBSCRIPTION CHECK] Starting RevenueCat verification...');
     try {
       CustomerInfo ci = await Purchases.getCustomerInfo();
-      setState(() {
-        isSubscribed = ci.activeSubscriptions.isNotEmpty;
-      });
+      
+      // Log detailed subscription information
+      print('📱 [SUBSCRIPTION CHECK] Customer ID: ${ci.originalAppUserId}');
+      print('📱 [SUBSCRIPTION CHECK] Active Subscriptions: ${ci.activeSubscriptions}');
+      print('📱 [SUBSCRIPTION CHECK] All Purchased Product IDs: ${ci.allPurchasedProductIdentifiers}');
+      print('📱 [SUBSCRIPTION CHECK] Latest Expiration Date: ${ci.latestExpirationDate}');
+      
+      bool newSubscriptionStatus = ci.activeSubscriptions.isNotEmpty;
+      print('📱 [SUBSCRIPTION CHECK] Subscription Status: ${newSubscriptionStatus ? "SUBSCRIBED" : "NOT SUBSCRIBED"}');
+      
+      if (mounted) {
+        setState(() {
+          isSubscribed = newSubscriptionStatus;
+        });
+        print('📱 [SUBSCRIPTION CHECK] UI updated - isSubscribed: $isSubscribed');
+      } else {
+        print('📱 [SUBSCRIPTION CHECK] Widget not mounted, skipping UI update');
+      }
     } catch (e) {
+      print('❌ [SUBSCRIPTION CHECK] Error checking subscription: $e');
       // If error, default to not subscribed
-      setState(() {
-        isSubscribed = false;
-      });
+      if (mounted) {
+        setState(() {
+          isSubscribed = false;
+        });
+        print('📱 [SUBSCRIPTION CHECK] Error fallback - isSubscribed set to false');
+      }
     }
+    print('🔄 [SUBSCRIPTION CHECK] Verification complete');
   }
 }
 
