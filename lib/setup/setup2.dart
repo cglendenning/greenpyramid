@@ -133,13 +133,22 @@ class ValueList extends StatefulWidget {
 }
 
 class _ValueListState extends State<ValueList> {
-
   var descStyle = const TextStyle(
     fontFamily: 'Raleway',
     fontSize: 16,
     fontWeight: FontWeight.bold,
     color: Colors.black,
   );
+
+  bool _showHint = true;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) setState(() => _showHint = false);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -168,9 +177,28 @@ class _ValueListState extends State<ValueList> {
                         style: descStyle)),
                     Padding(
                         padding: const EdgeInsets.all(16.0),
-                        child: ReorderableDragStartListener(
-                          index: index,
-                          child: const Icon(Icons.drag_handle),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            if (_showHint && index == 0)
+                              AnimatedOpacity(
+                                opacity: 1.0,
+                                duration: const Duration(milliseconds: 500),
+                                child: Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    border: Border.all(color: Colors.red, width: 4),
+                                  ),
+                                  child: const Icon(Icons.drag_handle, color: Colors.red, size: 28),
+                                ),
+                              ),
+                            ReorderableDragStartListener(
+                              index: index,
+                              child: const Icon(Icons.drag_handle),
+                            ),
+                          ],
                         ))
                   ])),
         ),
@@ -186,8 +214,6 @@ class _ValueListState extends State<ValueList> {
           final double scale = lerpDouble(1, 1.02, animValue)!;
           return Transform.scale(
             scale: scale,
-            // Create a Card based on the color and the content of the dragged one
-            // and set its elevation to the animated value.
             child: Card(
               elevation: elevation,
               color: cards[index].color,
@@ -199,19 +225,60 @@ class _ValueListState extends State<ValueList> {
       );
     }
 
-    return ReorderableListView(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
-      proxyDecorator: proxyDecorator,
-      onReorder: (int oldIndex, int newIndex) {
-        setState(() {
-          if (oldIndex < newIndex) {
-            newIndex -= 1;
-          }
-          final String item = categories.removeAt(oldIndex);
-          categories.insert(newIndex, item);
-        });
-      },
-      children: cards,
+    return Stack(
+      children: [
+        // Add a more visible Scrollbar for the list using ScrollbarTheme
+        ScrollbarTheme(
+          data: ScrollbarThemeData(
+            thumbColor: MaterialStateProperty.all(Colors.grey),
+            thickness: MaterialStateProperty.all(12),
+            radius: const Radius.circular(8),
+          ),
+          child: Scrollbar(
+            thumbVisibility: true,
+            child: ReorderableListView(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              proxyDecorator: proxyDecorator,
+              onReorder: (int oldIndex, int newIndex) {
+                setState(() {
+                  if (oldIndex < newIndex) {
+                    newIndex -= 1;
+                  }
+                  final String item = categories.removeAt(oldIndex);
+                  categories.insert(newIndex, item);
+                });
+              },
+              children: cards,
+            ),
+          ),
+        ),
+        if (_showHint)
+          Positioned(
+            left: 0,
+            right: 0,
+            top: (MediaQuery.of(context).size.height / 15) + 16,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black12,
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: const Text(
+                  'Tap, hold and drag to re-order the list',
+                  style: TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
