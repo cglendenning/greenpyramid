@@ -6,6 +6,8 @@ import 'package:life_ops/paywall.dart';
 import 'package:life_ops/navbar.dart';
 import 'package:life_ops/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:life_ops/coach.dart';
 // import 'package:flutter/gestures.dart';
 // import 'package:purchases_flutter/purchases_flutter.dart';
 // import 'package:timezone/timezone.dart' as tz;
@@ -47,6 +49,23 @@ class _Afternoon extends State<Afternoon> {
     return SafeArea(
         child: Scaffold(
           appBar: const NavBar(),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => Coach(showAppBar: true)),
+              );
+            },
+            backgroundColor: Colors.white,
+            child: SvgPicture.asset(
+              'images/svg/bottom_nav/chat.svg',
+              height: 26,
+              width: 26,
+              fit: BoxFit.contain,
+              colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+              semanticsLabel: 'Chat',
+            ),
+          ),
             body: Container(
                 decoration: BoxDecoration(
                     image: DecorationImage(
