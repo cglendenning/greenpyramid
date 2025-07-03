@@ -464,17 +464,36 @@ class TaskLog {
   }
 }
 
-class MessageComposer extends StatelessWidget {
+class MessageComposer extends StatefulWidget {
   MessageComposer({
     required this.onSubmitted,
     required this.awaitingResponse,
     super.key,
   });
 
-  final TextEditingController _messageController = TextEditingController();
-
   final void Function(String) onSubmitted;
   final bool awaitingResponse;
+
+  @override
+  State<MessageComposer> createState() => _MessageComposerState();
+}
+
+class _MessageComposerState extends State<MessageComposer> {
+  final TextEditingController _messageController = TextEditingController();
+  late FocusNode _focusNode;
+
+  @override
+  void initState() {
+    super.initState();
+    _focusNode = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    _messageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -489,15 +508,16 @@ class MessageComposer extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: !awaitingResponse
+              child: !widget.awaitingResponse
                   ? Container(
                       constraints: const BoxConstraints(
                         maxHeight: 200, // Limit maximum height of text field
                       ),
                       child: TextField(
+                        focusNode: _focusNode,
                         maxLines: null,
                         controller: _messageController,
-                        onSubmitted: onSubmitted,
+                        onSubmitted: widget.onSubmitted,
                         decoration: const InputDecoration(
                           hintText: 'Write your message here...',
                           border: InputBorder.none,
@@ -520,8 +540,8 @@ class MessageComposer extends StatelessWidget {
                     ),
             ),
             IconButton(
-              onPressed: !awaitingResponse
-                  ? () => onSubmitted(_messageController.text)
+              onPressed: !widget.awaitingResponse
+                  ? () => widget.onSubmitted(_messageController.text)
                   : null,
               icon: svgForward,
             ),
