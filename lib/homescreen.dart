@@ -311,6 +311,10 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
 
   Future<void> _checkSubscriptionStatus() async {
     try {
+      // Invalidate cache to force fresh data from RevenueCat
+      await Purchases.invalidateCustomerInfoCache();
+      print('🏠 [HOME SCREEN] Cache invalidated, fetching fresh data...');
+      
       CustomerInfo ci = await Purchases.getCustomerInfo();
       bool newSubscriptionStatus = ci.activeSubscriptions.isNotEmpty;
       print('🏠 [HOME SCREEN] Subscription check - isSubscribed: $newSubscriptionStatus');

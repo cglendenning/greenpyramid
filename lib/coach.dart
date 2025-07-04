@@ -36,6 +36,7 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   late FocusNode _focusNode;
   int freeMessageLimit = 10;
   bool isSubscribed = true; // Start as true to prevent banner flash
+  final GlobalKey<_MessageComposerState> _messageComposerKey = GlobalKey<_MessageComposerState>();
 
   final _messages = <CoachMessage>[
     CoachMessage('Give me just a moment...', OpenAIChatMessageRole.assistant),
@@ -229,6 +230,7 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
           ),
         ),
         MessageComposer(
+          key: _messageComposerKey,
           onSubmitted: (msg) {
             _onSubmitted(msg);
           },
@@ -285,6 +287,10 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
       await navigateToPaywall();
       return;
     }
+    
+    // Clear the text field immediately after submission
+    _messageComposerKey.currentState?.clearText();
+    
     setState(() {
       _messages.add(CoachMessage(message + suffix, OpenAIChatMessageRole.user));
       _awaitingResponse = true;
@@ -439,6 +445,10 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   Future<void> _checkSubscriptionStatus() async {
     print('🔄 [SUBSCRIPTION CHECK] Starting RevenueCat verification...');
     try {
+      // Invalidate cache to force fresh data from RevenueCat
+      await Purchases.invalidateCustomerInfoCache();
+      print('🔄 [SUBSCRIPTION CHECK] Cache invalidated, fetching fresh data...');
+      
       CustomerInfo ci = await Purchases.getCustomerInfo();
       
       // Log detailed subscription information
@@ -524,6 +534,10 @@ class _MessageComposerState extends State<MessageComposer> {
     _focusNode.dispose();
     _messageController.dispose();
     super.dispose();
+  }
+
+  void clearText() {
+    _messageController.clear();
   }
 
   @override

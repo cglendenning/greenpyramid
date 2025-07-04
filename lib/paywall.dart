@@ -56,7 +56,7 @@ class Paywall extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Get personalized guidance from your AI life coach',
+                    'Get personalized guidance from your AI Green Pyramid coach',
                     style: TextStyle(
                       fontSize: 16,
                       color: Colors.black54,
@@ -116,7 +116,7 @@ class Paywall extends StatelessWidget {
             
             // Coaching methodology section
             const Text(
-              'Your Personal AI Life Coach',
+              'Your Personal AI Green Pyramid Coach',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -175,7 +175,7 @@ class Paywall extends StatelessWidget {
                   _buildFeatureItem(
                     Icons.trending_up,
                     'Progress Analysis',
-                    'Deep analysis of your 60-day habit patterns',
+                    'Deep analysis of your habit patterns',
                   ),
                   _buildFeatureItem(
                     Icons.lightbulb_outline,
@@ -185,7 +185,7 @@ class Paywall extends StatelessWidget {
                   _buildFeatureItem(
                     Icons.schedule,
                     '24/7 Availability',
-                    'Get coaching whenever you need it, day or night',
+                    'Get coaching and inspiration whenever you need it',
                   ),
                 ],
               ),
