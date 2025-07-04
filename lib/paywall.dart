@@ -348,8 +348,81 @@ class Paywall extends StatelessWidget {
     } catch (e) {
       // Always pop the dialog if it is open
       Navigator.pop(context); // pop the dialog box
-      // Optionally, show a message or do nothing
+      
+      // Handle specific Android billing error
+      if (Platform.isAndroid && e.toString().contains('Billing is not available')) {
+        _showAndroidBillingError(context);
+      } else {
+        // Handle other errors silently or show a generic message
+        print('Purchase error: $e');
+      }
     }
+  }
+
+  void _showAndroidBillingError(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(
+                Icons.error_outline,
+                color: Colors.orange,
+                size: 24,
+              ),
+              SizedBox(width: 8),
+              Text(
+                'Google Play Store Issue',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: const Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Unable to access Google Play billing. This usually happens when:',
+                style: TextStyle(fontSize: 16),
+              ),
+              SizedBox(height: 12),
+              Text(
+                '• You\'re not signed into your Google account\n'
+                '• Google Play Store needs to be updated\n'
+                '• Google Play Store cache needs to be cleared',
+                style: TextStyle(fontSize: 14, color: Colors.black54),
+              ),
+              SizedBox(height: 12),
+              Text(
+                'Please try:\n'
+                '1. Sign into your Google account in Play Store\n'
+                '2. Update Google Play Store\n'
+                '3. Clear Play Store cache in Settings > Apps > Google Play Store > Storage > Clear Cache',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text(
+                'OK',
+                style: TextStyle(
+                  color: Color(0xff66cc5d),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   showLoaderDialog(BuildContext context){
