@@ -329,7 +329,6 @@ class Paywall extends StatelessWidget {
   }
 
   void subscribe(BuildContext context) async {
-
     List<String> productIDs = [];
 
     if (Platform.isAndroid) {
@@ -340,10 +339,17 @@ class Paywall extends StatelessWidget {
       return;
     }
     showLoaderDialog(context);
-    List<StoreProduct> storeProduct = await Purchases.getProducts(productIDs);
-    await Purchases.purchaseStoreProduct(storeProduct.first);
-    Navigator.pop(context); // pop the dialog box
-    Navigator.pop(context); // pop back to the subscription-only feature
+    try {
+      List<StoreProduct> storeProduct = await Purchases.getProducts(productIDs);
+      await Purchases.purchaseStoreProduct(storeProduct.first);
+      // Only pop the dialog and the paywall if the purchase is successful
+      Navigator.pop(context); // pop the dialog box
+      Navigator.pop(context); // pop back to the subscription-only feature
+    } catch (e) {
+      // Always pop the dialog if it is open
+      Navigator.pop(context); // pop the dialog box
+      // Optionally, show a message or do nothing
+    }
   }
 
   showLoaderDialog(BuildContext context){
