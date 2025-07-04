@@ -21,6 +21,7 @@ import 'package:life_ops/ads.dart';
 import 'package:life_ops/faq.dart';
 import 'package:life_ops/cancel.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:life_ops/subscription_status.dart';
 
 int currentScreenIndex = 0;
 
@@ -386,6 +387,9 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
               navigateToFAQ(context);
             }
             break;
+          case 'subscriptionStatus':
+            navigateToSubscriptionStatus(context);
+            break;
           case 'cancel':
             navigateToCancel(context);
             break;
@@ -414,18 +418,11 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
             value: 'faq',
             child: Text('FAQ'),
           ),
+          const PopupMenuItem<String>(
+            value: 'subscriptionStatus',
+            child: Text('Subscription Status'),
+          ),
         ];
-
-        // Only show cancel option if user has an active subscription
-        if (isSubscribed) {
-          items.add(
-            const PopupMenuItem<String>(
-              value: 'cancel',
-              child: Text('Cancel Subscription'),
-            ),
-          );
-        }
-
         return items;
       },
     );
@@ -503,6 +500,14 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
     await Navigator.push(
         context, MaterialPageRoute(builder: (context) => const FAQ()))
         .then((value) {});
+    utils.Utils().changeSystemColor(Brightness.light);
+    setState(() {});
+  }
+
+  void navigateToSubscriptionStatus(BuildContext context) async {
+    utils.Utils().changeSystemColor(Brightness.dark);
+    await Navigator.push(
+        context, MaterialPageRoute(builder: (context) => SubscriptionStatus()));
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
   }
