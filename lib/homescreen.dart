@@ -19,6 +19,8 @@ import 'package:life_ops/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/ads.dart';
 import 'package:life_ops/faq.dart';
+import 'package:life_ops/cancel.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 int currentScreenIndex = 0;
 
@@ -279,11 +281,53 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
-class CustomAppBarState extends State<CustomAppBar> {
+class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver {
   final String currentScreen;
   final double elevation;
+  bool isSubscribed = false;
 
   CustomAppBarState(this.currentScreen, this.elevation);
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _checkSubscriptionStatus();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // Check subscription when app becomes visible
+      _checkSubscriptionStatus();
+    }
+  }
+
+  Future<void> _checkSubscriptionStatus() async {
+    try {
+      CustomerInfo ci = await Purchases.getCustomerInfo();
+      bool newSubscriptionStatus = ci.activeSubscriptions.isNotEmpty;
+      print('🏠 [HOME SCREEN] Subscription check - isSubscribed: $newSubscriptionStatus');
+      if (mounted) {
+        setState(() {
+          isSubscribed = newSubscriptionStatus;
+        });
+      }
+    } catch (e) {
+      print('🏠 [HOME SCREEN] Error checking subscription: $e');
+      if (mounted) {
+        setState(() {
+          isSubscribed = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -338,31 +382,48 @@ class CustomAppBarState extends State<CustomAppBar> {
               navigateToFAQ(context);
             }
             break;
+          case 'cancel':
+            navigateToCancel(context);
+            break;
           default:
         }
       },
-      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-        const PopupMenuItem<String>(
-          value: 'learnMore',
-          child: Text('Learn More'),
-        ),
-        const PopupMenuItem<String>(
-          value: 'motivation',
-          child: Text('Motivation'),
-        ),
-        const PopupMenuItem<String>(
-          value: 'feedback',
-          child: Text('App Feedback'),
-        ),
-        const PopupMenuItem<String>(
-          value: 'setup',
-          child: Text('Setup'),
-        ),
-        const PopupMenuItem<String>(
-          value: 'faq',
-          child: Text('FAQ'),
-        ),
-      ],
+      itemBuilder: (BuildContext context) {
+        List<PopupMenuEntry<String>> items = [
+          const PopupMenuItem<String>(
+            value: 'learnMore',
+            child: Text('Learn More'),
+          ),
+          const PopupMenuItem<String>(
+            value: 'motivation',
+            child: Text('Motivation'),
+          ),
+          const PopupMenuItem<String>(
+            value: 'feedback',
+            child: Text('App Feedback'),
+          ),
+          const PopupMenuItem<String>(
+            value: 'setup',
+            child: Text('Setup'),
+          ),
+          const PopupMenuItem<String>(
+            value: 'faq',
+            child: Text('FAQ'),
+          ),
+        ];
+
+        // Only show cancel option if user has an active subscription
+        if (isSubscribed) {
+          items.add(
+            const PopupMenuItem<String>(
+              value: 'cancel',
+              child: Text('Cancel Subscription'),
+            ),
+          );
+        }
+
+        return items;
+      },
     );
 
     List<Widget> actions = [menu];
@@ -438,6 +499,19 @@ class CustomAppBarState extends State<CustomAppBar> {
     await Navigator.push(
         context, MaterialPageRoute(builder: (context) => const FAQ()))
         .then((value) {});
+    utils.Utils().changeSystemColor(Brightness.light);
+    setState(() {});
+  }
+
+  void navigateToCancel(BuildContext context) async {
+    utils.Utils().changeSystemColor(Brightness.dark);
+    await Navigator.push(
+        context, MaterialPageRoute(builder: (context) => Cancel()))
+        .then((value) {
+      // Refresh subscription status when returning from cancel screen
+      print('🏠 [HOME SCREEN] Returning from cancel screen - checking subscription');
+      _checkSubscriptionStatus();
+    });
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
   }
