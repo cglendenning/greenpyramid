@@ -5,6 +5,7 @@ import 'package:timezone/timezone.dart' as tz;
 import 'package:life_ops/main.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'dart:math';
+import 'dart:io';
 import 'package:permission_handler/permission_handler.dart';
 
 class LocalNotificationService {
@@ -371,27 +372,33 @@ class LocalNotificationService {
 
   Future<void> _requestNotificationPermissions() async {
     try {
-      // Request permissions for Android
-      final bool? granted = await _localNotificationService
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.requestNotificationsPermission();
-      
-      print('Notification permission granted: $granted');
-      
-      // Check if notifications are enabled
-      final bool? areNotificationsEnabled = await _localNotificationService
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.areNotificationsEnabled();
-      
-      print('Notifications enabled: $areNotificationsEnabled');
-      
-      // Request battery optimization exemption
-      await _requestBatteryOptimizationExemption();
-      
-      // USE_EXACT_ALARM is handled via manifest, no runtime request needed
-      print('USE_EXACT_ALARM permission handled via manifest');
+      // Platform-specific permission requests
+      if (Platform.isAndroid) {
+        // Request permissions for Android
+        final bool? granted = await _localNotificationService
+            .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>()
+            ?.requestNotificationsPermission();
+        
+        print('Android notification permission granted: $granted');
+        
+        // Check if notifications are enabled
+        final bool? areNotificationsEnabled = await _localNotificationService
+            .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>()
+            ?.areNotificationsEnabled();
+        
+        print('Android notifications enabled: $areNotificationsEnabled');
+        
+        // Request battery optimization exemption (Android only)
+        await _requestBatteryOptimizationExemption();
+        
+        // USE_EXACT_ALARM is handled via manifest, no runtime request needed
+        print('USE_EXACT_ALARM permission handled via manifest');
+      } else if (Platform.isIOS) {
+        // iOS permissions are handled during initialization
+        print('iOS notification permissions handled during initialization');
+      }
       
     } catch (e) {
       print('Error requesting notification permissions: $e');
@@ -400,13 +407,15 @@ class LocalNotificationService {
 
   Future<void> _requestBatteryOptimizationExemption() async {
     try {
-      // Import the permission_handler package
-      final status = await Permission.ignoreBatteryOptimizations.status;
-      if (status.isDenied) {
-        final result = await Permission.ignoreBatteryOptimizations.request();
-        print('Battery optimization exemption result: $result');
-      } else {
-        print('Battery optimization exemption already granted: $status');
+      // Only request battery optimization exemption on Android
+      if (Platform.isAndroid) {
+        final status = await Permission.ignoreBatteryOptimizations.status;
+        if (status.isDenied) {
+          final result = await Permission.ignoreBatteryOptimizations.request();
+          print('Android battery optimization exemption result: $result');
+        } else {
+          print('Android battery optimization exemption already granted: $status');
+        }
       }
     } catch (e) {
       print('Error requesting battery optimization exemption: $e');
@@ -415,10 +424,16 @@ class LocalNotificationService {
 
   Future<bool> _canScheduleExactAlarms() async {
     try {
-      // For Android 12+, we assume exact alarms are available if the permission is in manifest
-      // The system will handle the permission automatically
-      print('Assuming exact alarms are available (permission in manifest)');
-      return true;
+      // Only check exact alarms on Android
+      if (Platform.isAndroid) {
+        // For Android 12+, we assume exact alarms are available if the permission is in manifest
+        // The system will handle the permission automatically
+        print('Android: Assuming exact alarms are available (permission in manifest)');
+        return true;
+      } else {
+        // iOS doesn't have exact alarm restrictions like Android
+        return true;
+      }
     } catch (e) {
       print('Error checking exact alarm permission: $e');
       return false;
@@ -426,12 +441,18 @@ class LocalNotificationService {
   }
 
   Future<AndroidScheduleMode> _getOptimalScheduleMode() async {
-    final canScheduleExact = await _canScheduleExactAlarms();
-    if (canScheduleExact) {
-      print('Using exactAllowWhileIdle scheduling mode');
-      return AndroidScheduleMode.exactAllowWhileIdle;
+    if (Platform.isAndroid) {
+      final canScheduleExact = await _canScheduleExactAlarms();
+      if (canScheduleExact) {
+        print('Android: Using exactAllowWhileIdle scheduling mode');
+        return AndroidScheduleMode.exactAllowWhileIdle;
+      } else {
+        print('Android: Using exact scheduling mode (fallback)');
+        return AndroidScheduleMode.exact;
+      }
     } else {
-      print('Using exact scheduling mode (fallback)');
+      // iOS doesn't use AndroidScheduleMode, but we need to return something
+      // This will be ignored for iOS scheduling
       return AndroidScheduleMode.exact;
     }
   }
@@ -448,7 +469,7 @@ class LocalNotificationService {
     for (var i = 0; i < pending.length; i++) {
       if (pending[i].id == id) {
         idFound = true;
-        print('Pending notification with id $id found');
+        print('${Platform.isAndroid ? 'Android' : 'iOS'}: Pending notification with id $id found');
       }
     }
     if (!idFound) {
