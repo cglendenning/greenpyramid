@@ -10,14 +10,26 @@ class SubscriptionStatus extends StatefulWidget {
   State<SubscriptionStatus> createState() => _SubscriptionStatusState();
 }
 
-class _SubscriptionStatusState extends State<SubscriptionStatus> {
+class _SubscriptionStatusState extends State<SubscriptionStatus> with TickerProviderStateMixin {
   CustomerInfo? _customerInfo;
   bool _loading = true;
   String? _error;
+  late AnimationController _pulseController;
+  late Animation<double> _pulseAnimation;
 
   @override
   void initState() {
     super.initState();
+    
+    // Initialize pulse animation for the resubscribe button
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.05).animate(
+      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
+    );
+    
     _fetchSubscriptionStatus();
   }
 
@@ -28,6 +40,11 @@ class _SubscriptionStatusState extends State<SubscriptionStatus> {
     });
     try {
       await Purchases.invalidateCustomerInfoCache();
+      
+      // Force a sync with the store to get the latest subscription status
+      print('[DEBUG] Forcing sync with store...');
+      await Purchases.syncPurchases();
+      
       CustomerInfo info = await Purchases.getCustomerInfo();
       print('[DEBUG] CustomerInfo: ' + info.toString());
       setState(() {
@@ -112,6 +129,106 @@ class _SubscriptionStatusState extends State<SubscriptionStatus> {
     DateTime? planPurchaseDate = planPurchaseDateStr != null ? DateTime.tryParse(planPurchaseDateStr) : null;
     String purchased = planPurchaseDate != null ? DateFormat.yMMMMd().add_jm().format(planPurchaseDate.toLocal()) : 'Unknown';
 
+    // Check if subscription is cancelled but not expired yet
+    bool isCancelledButNotExpired = false;
+    
+    // Debug logging to help understand the subscription state
+    print('[DEBUG] Subscription Status Debug:');
+    print('[DEBUG] - isActive: $isActive');
+    print('[DEBUG] - activeSubs: $activeSubs');
+    print('[DEBUG] - allEntitlements: ${allEntitlements.keys}');
+    print('[DEBUG] - allProductIds: $allProductIds');
+    print('[DEBUG] - parsedExpiration: $parsedExpiration');
+    
+    // Let's explore more CustomerInfo properties to find cancellation status
+    print('[DEBUG] - CustomerInfo toString: ${_customerInfo.toString()}');
+    print('[DEBUG] - All entitlements (including inactive): ${_customerInfo?.entitlements.all.keys}');
+    print('[DEBUG] - Latest expiration date: ${_customerInfo?.latestExpirationDate}');
+    print('[DEBUG] - All purchase dates: ${_customerInfo?.allPurchaseDates}');
+    print('[DEBUG] - Non subscription transactions: ${_customerInfo?.nonSubscriptionTransactions}');
+    
+    // Try to access unsubscribeAt field if available in CustomerInfo
+    try {
+      // Check if CustomerInfo has an unsubscribeAt field
+      final customerInfoString = _customerInfo.toString();
+      print('[DEBUG] - CustomerInfo full string: $customerInfoString');
+      
+      // Look for unsubscribeAt in the string representation
+      if (customerInfoString.contains('unsubscribeAt')) {
+        print('[DEBUG] - Found unsubscribeAt in CustomerInfo!');
+      }
+    } catch (e) {
+      print('[DEBUG] - Error checking CustomerInfo for unsubscribeAt: $e');
+    }
+    
+    // Check if there are any inactive entitlements that might indicate cancelled subscriptions
+    final allEntitlementsMap = _customerInfo?.entitlements.all ?? {};
+    print('[DEBUG] - All entitlements map: $allEntitlementsMap');
+    
+    // Look for any entitlement that has a future expiration but is not active
+    // Also check for unsubscribeAt field if available
+    for (final entry in allEntitlementsMap.entries) {
+      final entitlement = entry.value;
+      print('[DEBUG] - Entitlement ${entry.key}: ${entitlement.toString()}');
+      print('[DEBUG] -   - isActive: ${entitlement.isActive}');
+      print('[DEBUG] -   - expirationDate: ${entitlement.expirationDate}');
+      print('[DEBUG] -   - willRenew: ${entitlement.willRenew}');
+      
+      // Try to access unsubscribeAt field (might be available in newer RevenueCat versions)
+      try {
+        // Use reflection or dynamic access to check for unsubscribeAt
+        final entitlementMap = entitlement.toString();
+        print('[DEBUG] -   - Full entitlement data: $entitlementMap');
+        
+                 // Check if willRenew is false and we have a future expiration
+         if (entitlement.willRenew == false && entitlement.expirationDate != null) {
+           final expDate = DateTime.tryParse(entitlement.expirationDate!);
+           if (expDate != null && expDate.isAfter(DateTime.now())) {
+             print('[DEBUG] -   - FOUND CANCELLED BUT NOT EXPIRED! (willRenew = false)');
+             isCancelledButNotExpired = true;
+             break;
+           }
+         }
+         
+         // Additional check: if we have active subscriptions but the entitlement shows as inactive
+         // This might indicate a cancelled subscription that hasn't been synced yet
+         if (activeSubs.isNotEmpty && !entitlement.isActive && entitlement.expirationDate != null) {
+           final expDate = DateTime.tryParse(entitlement.expirationDate!);
+           if (expDate != null && expDate.isAfter(DateTime.now())) {
+             print('[DEBUG] -   - FOUND CANCELLED BUT NOT EXPIRED! (active subs but inactive entitlement)');
+             isCancelledButNotExpired = true;
+             break;
+           }
+         }
+        
+        // Also check the old logic as fallback
+        if (!entitlement.isActive && entitlement.expirationDate != null) {
+          final expDate = DateTime.tryParse(entitlement.expirationDate!);
+          if (expDate != null && expDate.isAfter(DateTime.now())) {
+            print('[DEBUG] -   - FOUND CANCELLED BUT NOT EXPIRED! (inactive entitlement)');
+            isCancelledButNotExpired = true;
+            break;
+          }
+        }
+      } catch (e) {
+        print('[DEBUG] -   - Error accessing entitlement properties: $e');
+      }
+    }
+    
+    // Fallback to original logic if no entitlements found
+    if (!isCancelledButNotExpired) {
+      isCancelledButNotExpired = !isActive && parsedExpiration != null && parsedExpiration.isAfter(DateTime.now());
+    }
+    
+    print('[DEBUG] - Final isCancelledButNotExpired: $isCancelledButNotExpired');
+
+    // Start pulse animation if subscription is cancelled but not expired
+    if (isCancelledButNotExpired && !_pulseController.isAnimating) {
+      _pulseController.repeat(reverse: true);
+    } else if (!isCancelledButNotExpired && _pulseController.isAnimating) {
+      _pulseController.stop();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -133,7 +250,7 @@ class _SubscriptionStatusState extends State<SubscriptionStatus> {
         const SizedBox(height: 32),
         _infoRow('Plan', plan),
         _infoRow('Status', status),
-        _infoRow(isActive ? 'Next Renewal' : 'Access Until', renewal),
+        _infoRow(isCancelledButNotExpired ? 'Expires On' : (isActive ? 'Next Renewal' : 'Access Until'), renewal),
         _infoRow('Last Renewal', purchased),
         const SizedBox(height: 32),
         Center(
@@ -143,7 +260,7 @@ class _SubscriptionStatusState extends State<SubscriptionStatus> {
             label: const Text('Refresh'),
           ),
         ),
-        if (isActive) ...[
+        if (isActive && !isCancelledButNotExpired) ...[
           const SizedBox(height: 32),
           Center(
             child: ElevatedButton.icon(
@@ -164,12 +281,117 @@ class _SubscriptionStatusState extends State<SubscriptionStatus> {
             ),
           ),
         ],
-        if (!isActive && parsedExpiration != null && parsedExpiration.isAfter(DateTime.now()))
+        if (isCancelledButNotExpired)
           Padding(
             padding: const EdgeInsets.only(top: 24.0),
-            child: Text(
-              'Your subscription is cancelled but you will have access until $renewal.',
-              style: const TextStyle(color: Colors.orange, fontWeight: FontWeight.w500),
+            child: Column(
+              children: [
+                // Humorous message about the cancellation
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.orange.withOpacity(0.1),
+                        Colors.red.withOpacity(0.1),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.orange.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.sentiment_dissatisfied, color: Colors.orange, size: 24),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'Oh no! You\'re leaving us? 😢',
+                              style: const TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.orange,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Your subscription is cancelled but you\'ll have access until $renewal. We\'ll miss you! 💔',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                
+                // Resubscribe button with humor and pulse animation
+                AnimatedBuilder(
+                  animation: _pulseAnimation,
+                  builder: (context, child) {
+                    return Transform.scale(
+                      scale: _pulseAnimation.value,
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 56,
+                        child: ElevatedButton.icon(
+                          onPressed: () async {
+                            // Navigate to paywall to resubscribe
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (context) => Paywall()),
+                            );
+                            // Refresh status after returning
+                            _fetchSubscriptionStatus();
+                            
+                            // Show celebration if user resubscribed
+                            if (result == true) {
+                              _showResubscriptionCelebration();
+                            }
+                          },
+                          icon: const Icon(Icons.favorite, color: Colors.white),
+                          label: const Text(
+                            'Actually, I\'ll Stay! 💚',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xff66cc5d),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 4,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+                
+                const SizedBox(height: 12),
+                
+                // Small print about uncancelling
+                const Text(
+                  'Tap above to resubscribe and continue your journey!',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.black54,
+                    fontStyle: FontStyle.italic,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
             ),
           ),
       ],
@@ -186,5 +408,63 @@ class _SubscriptionStatusState extends State<SubscriptionStatus> {
         ],
       ),
     );
+  }
+
+  void _showResubscriptionCelebration() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.celebration,
+                size: 64,
+                color: Color(0xff66cc5d),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Welcome Back! 🎉',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xff66cc5d),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'We\'re so glad you decided to stay! Your subscription is now active again.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text(
+                'Awesome! 💚',
+                style: TextStyle(
+                  color: Color(0xff66cc5d),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulseController.dispose();
+    super.dispose();
   }
 } 

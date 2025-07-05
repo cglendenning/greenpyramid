@@ -8,11 +8,11 @@ PODS:
     - FirebaseAnalytics (~> 11.15.0)
   - Firebase/CoreOnly (11.15.0):
     - FirebaseCore (~> 11.15.0)
-  - firebase_analytics (11.5.1):
+  - firebase_analytics (11.5.2):
     - Firebase/Analytics (= 11.15.0)
     - firebase_core
     - Flutter
-  - firebase_core (3.15.0):
+  - firebase_core (3.15.1):
     - Firebase/CoreOnly (= 11.15.0)
     - Flutter
   - FirebaseAnalytics (11.15.0):
@@ -124,12 +124,12 @@ PODS:
   - permission_handler_apple (9.3.0):
     - Flutter
   - PromisesObjC (2.4.0)
-  - purchases_flutter (8.10.4):
+  - purchases_flutter (8.10.5):
     - Flutter
-    - PurchasesHybridCommon (= 13.38.1)
-  - PurchasesHybridCommon (13.38.1):
-    - RevenueCat (= 5.29.0)
-  - RevenueCat (5.29.0)
+    - PurchasesHybridCommon (= 14.0.2)
+  - PurchasesHybridCommon (14.0.2):
+    - RevenueCat (= 5.30.0)
+  - RevenueCat (5.30.0)
   - sqflite_darwin (0.0.4):
     - Flutter
     - FlutterMacOS
@@ -214,8 +214,8 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   app_install_date: 8d9e98cd5329ec376d38012a1cb82f37810de359
   Firebase: d99ac19b909cd2c548339c2241ecd0d1599ab02e
-  firebase_analytics: 51b2f864bd775346e4da81ea17fd319e9e3638cb
-  firebase_core: d4cf851433d9aa90e6071aea763460566c02db16
+  firebase_analytics: bceda3c1d0f70368de04b2dfdde58e00e37ad4e4
+  firebase_core: cf4d42a8ac915e51c0c2dc103442f3036d941a2d
   FirebaseAnalytics: 6433dfd311ba78084fc93bdfc145e8cb75740eae
   FirebaseCore: efb3893e5b94f32b86e331e3bd6dadf18b66568e
   FirebaseCoreInternal: 9afa45b1159304c963da48addb78275ef701c6b4
@@ -235,9 +235,9 @@ SPEC CHECKSUMS:
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
   permission_handler_apple: 9878588469a2b0d0fc1e048d9f43605f92e6cec2
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
-  purchases_flutter: 9aaa7456914f0de0812d14ffc03a56f58c56960f
-  PurchasesHybridCommon: 5a46c67f78680dee9289783edbcebd983ff7bd9c
-  RevenueCat: 5fa12c42c14b390dd2423897e925f407f474b8fa
+  purchases_flutter: bc57bbcda3f0cb21f893cb601a41370b42ae2c9d
+  PurchasesHybridCommon: e1dbc7e7105c0845444cf82cf9d7c85eb9dbf918
+  RevenueCat: 16058ecaa0b868e04cc7cf53a5de3fe0b96ca7d1
   sqflite_darwin: 5a7236e3b501866c1c9befc6771dfd73ffb8702d
   url_launcher_ios: 5334b05cef931de560670eeae103fd3e431ac3fe
   video_player_avfoundation: 7c6c11d8470e1675df7397027218274b6d2360b3
