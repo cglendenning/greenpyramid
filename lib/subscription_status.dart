@@ -124,9 +124,44 @@ class _SubscriptionStatusState extends State<SubscriptionStatus> with TickerProv
     String plan = planId;
     String renewal = parsedExpiration != null ? DateFormat.yMMMMd().add_jm().format(parsedExpiration.toLocal()) : 'Unknown';
 
-    // Use allPurchaseDates[planId] for Last Renewal
+    // Use allPurchaseDates[planId] for Last Renewal with fallback for Android
+    // NOTE: For accurate purchase dates on Android, set up Google Real-Time Developer Notifications
+    // in RevenueCat dashboard: https://www.revenuecat.com/docs/platform-resources/server-notifications
     String? planPurchaseDateStr = _customerInfo?.allPurchaseDates[planId];
     DateTime? planPurchaseDate = planPurchaseDateStr != null ? DateTime.tryParse(planPurchaseDateStr) : null;
+    
+    // Fallback for Android: try to get purchase date from entitlement
+    if (planPurchaseDate == null && entitlement != null) {
+      try {
+        // Use entitlement's latestPurchaseDate as primary fallback (most accurate)
+        if (entitlement.latestPurchaseDate != null) {
+          planPurchaseDate = DateTime.tryParse(entitlement.latestPurchaseDate!);
+          print('[DEBUG] - Using entitlement latestPurchaseDate as fallback: $planPurchaseDate');
+        } else {
+          // Use entitlement's originalPurchaseDate as secondary fallback
+          planPurchaseDate = DateTime.tryParse(entitlement.originalPurchaseDate);
+          print('[DEBUG] - Using entitlement originalPurchaseDate as fallback: $planPurchaseDate');
+        }
+      } catch (e) {
+        print('[DEBUG] - Error parsing entitlement purchase dates: $e');
+      }
+    }
+    
+    // Additional fallback: try to get from latest expiration date minus subscription period
+    if (planPurchaseDate == null && parsedExpiration != null) {
+      try {
+        // For monthly subscriptions, subtract 1 month from expiration
+        // This is a rough estimate but better than "Unknown"
+        final estimatedPurchaseDate = parsedExpiration.subtract(const Duration(days: 30));
+        if (estimatedPurchaseDate.isBefore(DateTime.now())) {
+          planPurchaseDate = estimatedPurchaseDate;
+          print('[DEBUG] - Using estimated purchase date (expiration - 30 days): $planPurchaseDate');
+        }
+      } catch (e) {
+        print('[DEBUG] - Error calculating estimated purchase date: $e');
+      }
+    }
+    
     String purchased = planPurchaseDate != null ? DateFormat.yMMMMd().add_jm().format(planPurchaseDate.toLocal()) : 'Unknown';
 
     // Check if subscription is cancelled but not expired yet
@@ -146,6 +181,9 @@ class _SubscriptionStatusState extends State<SubscriptionStatus> with TickerProv
     print('[DEBUG] - Latest expiration date: ${_customerInfo?.latestExpirationDate}');
     print('[DEBUG] - All purchase dates: ${_customerInfo?.allPurchaseDates}');
     print('[DEBUG] - Non subscription transactions: ${_customerInfo?.nonSubscriptionTransactions}');
+    print('[DEBUG] - Plan ID for purchase date lookup: $planId');
+    print('[DEBUG] - Purchase date from allPurchaseDates: $planPurchaseDateStr');
+    print('[DEBUG] - Parsed purchase date: $planPurchaseDate');
     
     // Try to access unsubscribeAt field if available in CustomerInfo
     try {
@@ -173,6 +211,8 @@ class _SubscriptionStatusState extends State<SubscriptionStatus> with TickerProv
       print('[DEBUG] -   - isActive: ${entitlement.isActive}');
       print('[DEBUG] -   - expirationDate: ${entitlement.expirationDate}');
       print('[DEBUG] -   - willRenew: ${entitlement.willRenew}');
+      print('[DEBUG] -   - latestPurchaseDate: ${entitlement.latestPurchaseDate}');
+      print('[DEBUG] -   - originalPurchaseDate: ${entitlement.originalPurchaseDate}');
       
       // Try to access unsubscribeAt field (might be available in newer RevenueCat versions)
       try {
