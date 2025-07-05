@@ -249,9 +249,12 @@ class LocalNotificationService {
       List<String> routes = ['/morning', '/afternoon', '/evening'];
       // Schedule multiple notifications at 1-minute intervals
       for (int i = 0; i < 5; i++) {
-        String randomRoute = routes[random.nextInt(routes.length)]; // Randomly select route
-        // Use a random question from the full pool
-        String timeAppropriateQuestion = _generateRandomQuestion();
+        // Select route and corresponding question pool
+        int routeIndex = random.nextInt(routes.length);
+        String selectedRoute = routes[routeIndex];
+        
+        // Get appropriate question based on route
+        String timeAppropriateQuestion = _generateNotificationMessage(routeIndex);
         // Use 1-minute intervals
         final scheduledTime = tz.TZDateTime.now(tz.local).add(Duration(minutes: i + 1));
         // Create iOS details with the question as the body
@@ -293,11 +296,11 @@ class LocalNotificationService {
               scheduledTime,
               details,
               androidScheduleMode: AndroidScheduleMode.exact,
-              payload: randomRoute, // Randomly route to morning, afternoon, or evening
+              payload: selectedRoute, // Route to morning, afternoon, or evening based on question
               matchDateTimeComponents: null,
           );
           print('✅ Test notification  \\${999 - i} scheduled for \\${scheduledTime.toString()}');
-          print('  Route: \\${randomRoute}');
+          print('  Route: \\${selectedRoute}');
           print('  Question: \\${timeAppropriateQuestion}');
           print('  ---');
         } catch (e) {
