@@ -215,69 +215,7 @@ class _SettingsState extends State<Settings> {
             ),
           ),
         ),
-      // Test notification buttons
-      Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  await lns.scheduleTestNotification();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('✅ Test notifications scheduled for every 1 minute'),
-                      duration: Duration(seconds: 3),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('❌ Error: $e'),
-                      duration: const Duration(seconds: 3),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Start Test Notifications (Every 1 min)'),
-            ),
-            const SizedBox(height: 10),
-            ElevatedButton(
-              onPressed: () async {
-                try {
-                  await lns.cancelTestNotification();
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('✅ Test notifications cancelled'),
-                      duration: Duration(seconds: 2),
-                      backgroundColor: Colors.blue,
-                    ),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('❌ Error: $e'),
-                      duration: const Duration(seconds: 3),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Cancel Test Notifications'),
-            ),
-          ],
-        ),
-      ),
+
     ]))));
   }
 
