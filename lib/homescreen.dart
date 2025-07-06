@@ -22,6 +22,7 @@ import 'package:life_ops/faq.dart';
 import 'package:life_ops/cancel.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:life_ops/subscription_status.dart';
+import 'package:life_ops/coaching.dart';
 
 int currentScreenIndex = 0;
 
@@ -393,6 +394,9 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
           case 'cancel':
             navigateToCancel(context);
             break;
+          case 'coaching':
+            navigateToCoaching(context);
+            break;
           default:
         }
       },
@@ -421,6 +425,10 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
           const PopupMenuItem<String>(
             value: 'subscriptionStatus',
             child: Text('Subscription Status'),
+          ),
+          const PopupMenuItem<String>(
+            value: 'coaching',
+            child: Text('Coaching'),
           ),
         ];
         return items;
@@ -521,6 +529,15 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
       print('🏠 [HOME SCREEN] Returning from cancel screen - checking subscription');
       _checkSubscriptionStatus();
     });
+    utils.Utils().changeSystemColor(Brightness.light);
+    setState(() {});
+  }
+
+  void navigateToCoaching(BuildContext context) async {
+    utils.Utils().changeSystemColor(Brightness.dark);
+    await Navigator.push(
+        context, MaterialPageRoute(builder: (context) => const Coaching()))
+        .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
   }
