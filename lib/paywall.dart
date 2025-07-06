@@ -33,6 +33,7 @@ class _PaywallState extends State<Paywall> {
       _webViewController = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setBackgroundColor(Colors.black)
+        ..enableZoom(false)
         ..setNavigationDelegate(
           NavigationDelegate(
             onPageStarted: (String url) {
