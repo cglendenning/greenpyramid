@@ -5,8 +5,127 @@ import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:life_ops/navbar.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:webview_flutter/webview_flutter.dart';
 
-class Paywall extends StatelessWidget {
+class Paywall extends StatefulWidget {
+  @override
+  State<Paywall> createState() => _PaywallState();
+}
+
+class _PaywallState extends State<Paywall> {
+  WebViewController? _webViewController;
+  bool _isMuted = true;
+  bool _hasError = false;
+  bool _isWebViewReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializeWebView();
+  }
+
+  void _initializeWebView() {
+    try {
+      print('🌐 [PAYWALL VIDEO] Initializing WebView');
+      print('🌐 [PAYWALL VIDEO] Loading URL: https://www.stillwatersretreats.com/greenpyramid/paywall-video');
+      
+      // Load the redirect URL directly - it will redirect to YouTube video after 250ms
+      _webViewController = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setBackgroundColor(Colors.black)
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onPageStarted: (String url) {
+              print('🌐 [PAYWALL VIDEO] Page started loading: $url');
+            },
+            onProgress: (int progress) {
+              print('🌐 [PAYWALL VIDEO] Loading progress: $progress%');
+            },
+            onPageFinished: (String url) {
+              print('✅ [PAYWALL VIDEO] Page finished loading: $url');
+              setState(() {
+                _isWebViewReady = true;
+              });
+            },
+            onNavigationRequest: (NavigationRequest request) {
+              print('🌐 [PAYWALL VIDEO] Navigation request: ${request.url}');
+              return NavigationDecision.navigate;
+            },
+            onWebResourceError: (WebResourceError error) {
+              print('❌ [PAYWALL VIDEO] WebView error: ${error.description}');
+              print('❌ [PAYWALL VIDEO] Error code: ${error.errorCode}');
+              setState(() {
+                _hasError = true;
+              });
+            },
+          ),
+        )
+        ..loadRequest(Uri.parse('https://www.stillwatersretreats.com/greenpyramid/paywall-video'));
+    } catch (e) {
+      print('❌ [PAYWALL VIDEO] Error initializing WebView: $e');
+      setState(() {
+        _hasError = true;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  Widget _buildEmbeddedVideo(BuildContext context) {
+    final double aspectRatio = 9 / 16; // Portrait
+    final double width = MediaQuery.of(context).size.width;
+    final double height = width / aspectRatio;
+    if (_hasError) {
+      return Container(
+        color: Colors.black,
+        height: height,
+        child: const Center(
+          child: Icon(Icons.error_outline, color: Colors.white, size: 48),
+        ),
+      );
+    }
+    if (_webViewController == null) {
+      return Container(
+        color: Colors.black,
+        height: height,
+        child: const Center(child: CircularProgressIndicator()),
+      );
+    }
+    return Stack(
+      children: [
+        GestureDetector(
+          onTap: () {
+            try {
+              if (_isMuted && _webViewController != null) {
+                _webViewController!.runJavaScript('setMute(false);');
+                setState(() {
+                  _isMuted = false;
+                });
+              }
+            } catch (e) {}
+          },
+          child: Container(
+            width: width,
+            height: height,
+            decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: Colors.black),
+            clipBehavior: Clip.hardEdge,
+            child: WebViewWidget(controller: _webViewController!),
+          ),
+        ),
+        if (!_isWebViewReady)
+          Container(
+            width: width,
+            height: height,
+            color: Colors.black,
+            child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     FirebaseAnalytics analytics = FirebaseAnalytics.instance;
@@ -135,6 +254,8 @@ class Paywall extends StatelessWidget {
             ),
             
             const SizedBox(height: 24),
+            
+            _buildEmbeddedVideo(context),
             
             // Features section
             Container(
