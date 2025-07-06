@@ -4,6 +4,7 @@ import 'package:life_ops/setup/setup2.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:video_player/video_player.dart';
+import 'package:life_ops/setup/video_preloader.dart';
 
 String setupVersion = 'v1';
 
@@ -33,6 +34,16 @@ class _Setup1State extends State<Setup1> {
         setState(() {});
         _controller.play();
       });
+    
+    // Start preloading the YouTube video in the background
+    _startVideoPreloading();
+  }
+  
+  void _startVideoPreloading() {
+    // Start preloading in the background without blocking the UI
+    Future.microtask(() async {
+      await VideoPreloader.instance.startPreloading();
+    });
   }
 
   @override

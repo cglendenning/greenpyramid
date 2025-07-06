@@ -6,8 +6,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/setup/setup1.dart';
 import 'package:life_ops/setup/setup2.dart';
-import 'package:life_ops/setup/setup4.dart';
+import 'package:life_ops/setup/setup_video.dart';
 import 'package:life_ops/secrets.dart';
+import 'package:life_ops/utils.dart' as utils;
 
 // add some additional behind-the-scenes directives to openAI...
 String suffix = " Do not answer with a list.";
@@ -261,7 +262,7 @@ class MessageComposer extends StatelessWidget {
   void navigateToSetup4() async {
     await Navigator.push(
       ctx,
-      MaterialPageRoute(builder: (context) => Setup4(categories)),
+      MaterialPageRoute(builder: (context) => SetupVideo(categories: categories)),
     );
   }
 }
