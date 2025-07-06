@@ -1,4 +1,5 @@
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'dart:io' show Platform;
 
 class VideoPreloader {
   static VideoPreloader? _instance;
@@ -17,6 +18,12 @@ class VideoPreloader {
   
   /// Start preloading the video in the background
   Future<void> startPreloading() async {
+    // Only preload on iOS since Android uses WebView
+    if (Platform.isAndroid) {
+      print('🌐 [VIDEO PRELOADER] Android detected - WebView will handle video loading');
+      return;
+    }
+    
     if (_isPreloading || _isPreloaded) return;
     
     _isPreloading = true;
@@ -29,8 +36,8 @@ class VideoPreloader {
           autoPlay: false, // Don't auto-play during preloading
           mute: true, // Mute during preloading to avoid audio issues
           isLive: false,
-          forceHD: true,
-          enableCaption: true,
+          forceHD: false, // Disable forceHD to prevent Android crashes
+          enableCaption: false, // Disable captions to prevent Android crashes
           showLiveFullscreenButton: false,
         ),
       );
@@ -50,6 +57,12 @@ class VideoPreloader {
   
   /// Get the preloaded controller and reset for next use
   YoutubePlayerController? getPreloadedController() {
+    // Return null on Android since we use WebView
+    if (Platform.isAndroid) {
+      print('🌐 [VIDEO PRELOADER] Android detected - using WebView instead of preloaded controller');
+      return null;
+    }
+    
     if (!_isPreloaded || _preloadedController == null) {
       print('⚠️ [VIDEO PRELOADER] No preloaded controller available, creating new one');
       return null;
@@ -64,17 +77,21 @@ class VideoPreloader {
   }
   
   /// Check if video is preloaded
-  bool get isPreloaded => _isPreloaded;
+  bool get isPreloaded => Platform.isAndroid ? false : _isPreloaded;
   
   /// Check if video is currently preloading
-  bool get isPreloading => _isPreloading;
+  bool get isPreloading => Platform.isAndroid ? false : _isPreloading;
   
   /// Get the video ID
   String get videoId => _videoId;
   
   /// Dispose of any preloaded controller
   void dispose() {
-    _preloadedController?.dispose();
+    try {
+      _preloadedController?.dispose();
+    } catch (e) {
+      print('❌ [VIDEO PRELOADER] Error disposing preloaded controller: $e');
+    }
     _preloadedController = null;
     _isPreloaded = false;
     _isPreloading = false;

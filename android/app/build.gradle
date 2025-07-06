@@ -32,6 +32,14 @@ android {
     namespace "com.example.life_ops"
     compileSdkVersion flutter.compileSdkVersion
     ndkVersion flutter.ndkVersion
+    
+    // Fix for flutter_inappwebview namespace issue
+    configurations.all {
+        resolutionStrategy {
+            force 'androidx.core:core-ktx:1.12.0'
+            force 'androidx.appcompat:appcompat:1.6.1'
+        }
+    }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
