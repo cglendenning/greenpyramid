@@ -29,8 +29,8 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace "com.example.life_ops"
-    compileSdkVersion flutter.compileSdkVersion
+    namespace "com.cglendenning.life_ops"
+    compileSdkVersion 36
     ndkVersion flutter.ndkVersion
     
     // Fix for flutter_inappwebview namespace issue
@@ -58,7 +58,7 @@ android {
     defaultConfig {
         applicationId "com.cglendenning.life_ops"
         minSdkVersion 23
-        targetSdkVersion flutter.targetSdkVersion
+        targetSdkVersion 36
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName
         multiDexEnabled true
