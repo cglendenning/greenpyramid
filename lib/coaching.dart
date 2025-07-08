@@ -162,10 +162,6 @@ class _CoachingState extends State<Coaching> {
         _buildHeroSection(),
         const SizedBox(height: 32),
         
-        // First CTA - AI Coaching
-        _buildAICoachingCTA(),
-        const SizedBox(height: 32),
-        
         // All Videos with interspersed CTAs
         ..._buildAllVideosWithCTAs(),
         
@@ -184,28 +180,17 @@ class _CoachingState extends State<Coaching> {
       widgets.add(const SizedBox(height: 24));
       
       // Add CTA after every 2-3 videos
-      if (i == 0) {
-        // After first video - Personal Coaching CTA
+      if (i == 4) {
         widgets.add(_buildPersonalCoachingCTA());
         widgets.add(const SizedBox(height: 32));
-      } else if (i == 2) {
-        // After third video - AI Coaching CTA
-        widgets.add(_buildAICoachingCTA2());
-        widgets.add(const SizedBox(height: 32));
-      } else if (i == 4) {
-        // After fifth video - Personal Coaching CTA again
+      } else if (i == 8) {
         widgets.add(_buildPersonalCoachingCTA2());
         widgets.add(const SizedBox(height: 32));
-      } else if (i == 6) {
-        // After seventh video - AI Coaching CTA again
+      } else if (i == 12) {
         widgets.add(_buildAICoachingCTA3());
         widgets.add(const SizedBox(height: 32));
-      } else if (i == 8) {
-        // After ninth video - Personal Coaching CTA again
-        widgets.add(_buildPersonalCoachingCTA3());
-        widgets.add(const SizedBox(height: 32));
-      } else if (i % 3 == 0 && i > 8) {
-        // Every 3 videos after the 9th - alternating CTAs
+      } else if (i % 5 == 0 && i > 8) {
+        // Every 5 videos - alternating CTAs
         if ((i / 3) % 2 == 0) {
           widgets.add(_buildAICoachingCTA4());
         } else {
@@ -352,7 +337,7 @@ class _CoachingState extends State<Coaching> {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Coach with Craig',
+            'Coaching by Craig',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.bold,
@@ -369,68 +354,6 @@ class _CoachingState extends State<Coaching> {
               height: 1.4,
             ),
             textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAICoachingCTA() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xffF8F9FA),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xffE9ECEF)),
-      ),
-      child: Column(
-        children: [
-          const Icon(
-            Icons.smart_toy,
-            size: 40,
-            color: Color(0xff1782FF),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Get AI-Powered Coaching',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xff1782FF),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Unlock unlimited AI coaching conversations to get personalized guidance anytime, anywhere.',
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xff666666),
-              height: 1.4,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _navigateToPaywall(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xff1782FF),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                'Unlock AI Coaching',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
           ),
         ],
       ),
@@ -487,68 +410,6 @@ class _CoachingState extends State<Coaching> {
               ),
               child: const Text(
                 'Contact Craig',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAICoachingCTA2() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xffE8F5E8),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xffC8E6C9)),
-      ),
-      child: Column(
-        children: [
-          const Icon(
-            Icons.auto_awesome,
-            size: 40,
-            color: Color(0xff4CAF50),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            '24/7 AI Support',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xff4CAF50),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Never feel stuck again. Get instant coaching support whenever you need motivation, advice, or accountability.',
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xff666666),
-              height: 1.4,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _navigateToPaywall(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xff4CAF50),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                'Get Unlimited Access',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
@@ -673,68 +534,6 @@ class _CoachingState extends State<Coaching> {
               ),
               child: const Text(
                 'Master Your Mindset',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPersonalCoachingCTA3() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xffFFF8E1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xffFFECB3)),
-      ),
-      child: Column(
-        children: [
-          const Icon(
-            Icons.star,
-            size: 40,
-            color: Color(0xffFFC107),
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'VIP Coaching Experience',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xffFFC107),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          const Text(
-            'Join an exclusive group of high-achievers getting personalized coaching from Craig. Limited spots available.',
-            style: TextStyle(
-              fontSize: 14,
-              color: Color(0xff666666),
-              height: 1.4,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => _navigateToPersonalCoaching(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xffFFC107),
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: const Text(
-                'Apply for VIP Coaching',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,

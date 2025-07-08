@@ -5,12 +5,10 @@ import 'package:timezone/data/latest.dart' as tz;
 import 'package:life_ops/db.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
-import 'package:life_ops/ads.dart';
 import 'package:app_install_date/app_install_date.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 final GlobalKey<NavigatorState> navigatorKey =
     GlobalKey(debugLabel: "Main Navigator");
@@ -21,14 +19,10 @@ bool populateGap = true;
 DateTime installDate = DateTime.now();
 bool interventionShown = false;
 
-final adInstance = Ads();
 
 Future<void> main() async {
 
   WidgetsFlutterBinding.ensureInitialized();
-  MobileAds.instance.initialize();
-  MobileAds.instance.updateRequestConfiguration(
-      RequestConfiguration(testDeviceIds: [adInstance.testDevice]));
   initPlatformState();
 
   try {

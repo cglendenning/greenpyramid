@@ -17,12 +17,12 @@ import 'package:life_ops/email.dart';
 import 'package:life_ops/editpyramid.dart';
 import 'package:life_ops/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:life_ops/ads.dart';
 import 'package:life_ops/faq.dart';
 import 'package:life_ops/cancel.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:life_ops/subscription_status.dart';
 import 'package:life_ops/coaching.dart';
+import 'package:life_ops/you_and_me.dart';
 
 int currentScreenIndex = 0;
 
@@ -397,6 +397,9 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
           case 'coaching':
             navigateToCoaching(context);
             break;
+          case 'youAndMe':
+            navigateToYouAndMe(context);
+            break;
           default:
         }
       },
@@ -429,6 +432,10 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
           const PopupMenuItem<String>(
             value: 'coaching',
             child: Text('Coaching'),
+          ),
+          const PopupMenuItem<String>(
+            value: 'youAndMe',
+            child: Text('You & Me'),
           ),
         ];
         return items;
@@ -537,6 +544,15 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(
         context, MaterialPageRoute(builder: (context) => const Coaching()))
+        .then((value) {});
+    utils.Utils().changeSystemColor(Brightness.light);
+    setState(() {});
+  }
+
+  void navigateToYouAndMe(BuildContext context) async {
+    utils.Utils().changeSystemColor(Brightness.dark);
+    await Navigator.push(
+        context, MaterialPageRoute(builder: (context) => const YouAndMeScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});

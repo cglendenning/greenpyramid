@@ -36,7 +36,7 @@ Best regards,
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Personal Coaching'),
+        title: const Text('Get Coached by Craig'),
         actions: <Widget>[
           IconButton(
             onPressed: send,
