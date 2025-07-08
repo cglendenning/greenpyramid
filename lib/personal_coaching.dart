@@ -51,7 +51,7 @@ Best regards,
           children: [
             const SizedBox(height: 20),
             const Text(
-              'Personal Coaching with Craig',
+              'Get Coached by Craig',
               style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
@@ -60,7 +60,7 @@ Best regards,
             ),
             const SizedBox(height: 16),
             const Text(
-              'Ready to accelerate your transformation?',
+              'Work directly with Craig as your personal coach to accelerate your transformation.',
               style: TextStyle(
                 fontSize: 18,
                 color: Color(0xff555555),
