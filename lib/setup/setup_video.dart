@@ -4,6 +4,9 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:life_ops/setup/setup4.dart';
 import 'package:life_ops/utils.dart' as utils;
 import 'dart:io' show Platform;
+import 'package:http/http.dart' as http;
+import 'package:life_ops/you_and_me_video_player.dart';
+import 'package:html/parser.dart' as html_parser;
 
 class SetupVideo extends StatefulWidget {
   final List<String>? categories;
@@ -23,13 +26,12 @@ class _SetupVideoState extends State<SetupVideo> {
   @override
   void initState() {
     super.initState();
-    
-    // Force portrait orientation
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-    ]);
-    
+    // Force portrait orientation after first frame for reliability on iOS
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
+    });
     _initializeWebView();
   }
 
@@ -81,23 +83,20 @@ class _SetupVideoState extends State<SetupVideo> {
 
   @override
   void dispose() {
-    // Reset orientation to allow all orientations when leaving
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-      DeviceOrientation.portraitDown,
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-    
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
     if (_hasError) {
       return _buildErrorUI();
     }
-    
+    if (Platform.isIOS) {
+      return _IOSSetupVideoPlayer(categories: widget.categories);
+    }
     if (_webViewController == null) {
       return _buildErrorUI();
     }
@@ -106,34 +105,25 @@ class _SetupVideoState extends State<SetupVideo> {
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          // Video player - full screen on iOS, slightly smaller on Android
-          if (Platform.isAndroid) ...[
-            // Android: Smaller video size to fix touch event issues
-            Builder(
-              builder: (context) {
-                final screenWidth = MediaQuery.of(context).size.width;
-                final screenHeight = MediaQuery.of(context).size.height;
-                final videoWidth = screenWidth * 0.9; // 90% of screen width
-                final videoHeight = videoWidth * 16 / 9; // 16:9 aspect ratio
-                final topMargin = (screenHeight - videoHeight) / 2; // Center vertically
-                
-                return Positioned(
-                  top: topMargin,
-                  left: (screenWidth - videoWidth) / 2,
-                  child: Container(
-                    width: videoWidth,
-                    height: videoHeight,
-                    child: WebViewWidget(controller: _webViewController!),
-                  ),
-                );
-              },
-            ),
-          ] else ...[
-            // iOS: Full screen video (working fine)
-            SizedBox.expand(
-              child: WebViewWidget(controller: _webViewController!),
-            ),
-          ],
+          // Android: Smaller video size to fix touch event issues (restore 16:9 aspect ratio)
+          Builder(
+            builder: (context) {
+              final screenWidth = MediaQuery.of(context).size.width;
+              final screenHeight = MediaQuery.of(context).size.height;
+              final videoWidth = screenWidth * 0.9; // 90% of screen width
+              final videoHeight = videoWidth * 16 / 9; // 16:9 aspect ratio
+              final topMargin = (screenHeight - videoHeight) / 2; // Center vertically
+              return Positioned(
+                top: topMargin,
+                left: (screenWidth - videoWidth) / 2,
+                child: Container(
+                  width: videoWidth,
+                  height: videoHeight,
+                  child: WebViewWidget(controller: _webViewController!),
+                ),
+              );
+            },
+          ),
           
           // Loading indicator
           if (!_isWebViewReady)
@@ -298,5 +288,278 @@ class _SetupVideoState extends State<SetupVideo> {
         utils.Utils().changeSystemColor(Brightness.light);
       });
     });
+  }
+} 
+
+// --- iOS dynamic video player widget ---
+class _IOSSetupVideoPlayer extends StatefulWidget {
+  final List<String>? categories;
+  const _IOSSetupVideoPlayer({this.categories});
+  @override
+  State<_IOSSetupVideoPlayer> createState() => _IOSSetupVideoPlayerState();
+}
+
+class _IOSSetupVideoPlayerState extends State<_IOSSetupVideoPlayer> {
+  String? _videoId;
+  bool _loading = true;
+  bool _error = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveVideoId();
+  }
+
+  Future<void> _resolveVideoId() async {
+    setState(() {
+      _loading = true;
+      _error = false;
+    });
+    try {
+      final response = await http.get(Uri.parse('https://www.stillwatersretreats.com/greenpyramid/setup-video'));
+      print('Status: ${response.statusCode}, Headers: ${response.headers}');
+      print('Request URL: ${response.request?.url}');
+      print('Body: ${response.body}');
+      String? youtubeUrl;
+      final document = html_parser.parse(response.body);
+      final iframe = document.querySelector('iframe');
+      if (iframe != null) {
+        youtubeUrl = iframe.attributes['src'];
+        print('Found iframe src: $youtubeUrl');
+      }
+      final id = youtubeUrl != null ? _extractYouTubeId(youtubeUrl) : null;
+      print('Extracted YouTube ID: $id');
+      if (id != null && id.isNotEmpty) {
+        setState(() {
+          _videoId = id;
+          _loading = false;
+        });
+      } else {
+        setState(() {
+          _error = true;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _error = true;
+        _loading = false;
+      });
+    }
+  }
+
+  String? _extractYouTubeId(String url) {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return null;
+    // Handles both youtu.be and youtube.com URLs
+    if (uri.host.contains('youtu.be')) {
+      return uri.pathSegments.isNotEmpty ? uri.pathSegments[0] : null;
+    }
+    if (uri.host.contains('youtube.com')) {
+      if (uri.path == '/watch') {
+        return uri.queryParameters['v'];
+      }
+      // /embed/VIDEOID
+      if (uri.pathSegments.isNotEmpty && uri.pathSegments[0] == 'embed') {
+        return uri.pathSegments.length > 1 ? uri.pathSegments[1] : null;
+      }
+    }
+    return null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator(color: Colors.white)),
+      );
+    }
+    if (_error || _videoId == null) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 64),
+              const SizedBox(height: 16),
+              const Text('Could not load video', style: TextStyle(color: Colors.white)),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _resolveVideoId,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    // Use overlays for navigation
+    return _IOSSetupVideoWithOverlays(
+      videoId: _videoId!,
+      categories: widget.categories ?? [],
+    );
+  }
+} 
+
+class _IOSSetupVideoWithOverlays extends StatefulWidget {
+  final String videoId;
+  final List<String> categories;
+  const _IOSSetupVideoWithOverlays({required this.videoId, required this.categories});
+
+  @override
+  State<_IOSSetupVideoWithOverlays> createState() => _IOSSetupVideoWithOverlaysState();
+}
+
+class _IOSSetupVideoWithOverlaysState extends State<_IOSSetupVideoWithOverlays> {
+  bool showOverlays = true;
+  late WebViewController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = WebViewController()
+      ..setJavaScriptMode(JavaScriptMode.unrestricted)
+      ..addJavaScriptChannel('PlayerStateChannel', onMessageReceived: (JavaScriptMessage message) {
+        // YouTube player states: 1 = playing, 2 = paused
+        print('[PlayerStateChannel] Received: ${message.message}');
+        if (message.message == '1') {
+          setState(() { showOverlays = false; });
+        } else if (message.message == '2') {
+          setState(() { showOverlays = true; });
+        }
+      })
+      ..setNavigationDelegate(NavigationDelegate())
+      ..loadHtmlString(_getVideoEmbedHtml(widget.videoId));
+  }
+
+  String _getVideoEmbedHtml(String videoId) {
+    return '''
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { margin: 0; padding: 0; background: #000; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .video-container { width: 100vw; height: 100vh; position: relative; }
+        iframe { width: 100vw; height: 100vh; border: none; }
+    </style>
+</head>
+<body>
+    <div class="video-container">
+        <iframe id="ytplayer" src="https://www.youtube.com/embed/$videoId?enablejsapi=1&autoplay=1&rel=0&showinfo=0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+    </div>
+    <script>
+      var tag = document.createElement('script');
+      tag.src = "https://www.youtube.com/iframe_api";
+      var firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+      var player;
+      function onYouTubeIframeAPIReady() {
+        player = new YT.Player('ytplayer', {
+          events: {
+            'onStateChange': onPlayerStateChange
+          }
+        });
+      }
+      function onPlayerStateChange(event) {
+        // 1 = playing, 2 = paused
+        console.log('[JS] Player state: ' + event.data);
+        PlayerStateChannel.postMessage(event.data.toString());
+      }
+      function playVideo() {
+        if (player) player.playVideo();
+      }
+      function pauseVideo() {
+        if (player) player.pauseVideo();
+      }
+    </script>
+</body>
+</html>
+    ''';
+  }
+
+  void _toggleOverlaysAndPausePlay() async {
+    if (showOverlays) {
+      // Hide overlays and play video
+      setState(() { showOverlays = false; });
+      try {
+        await _controller.runJavaScript('playVideo();');
+      } catch (_) {}
+    } else {
+      // Show overlays and pause video
+      setState(() { showOverlays = true; });
+      try {
+        await _controller.runJavaScript('pauseVideo();');
+      } catch (_) {}
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    print('[OverlayDebug] build called, showOverlays: $showOverlays');
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: Stack(
+        children: [
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: _toggleOverlaysAndPausePlay,
+            child: WebViewWidget(controller: _controller),
+          ),
+          if (showOverlays) ...[
+            // Floating back arrow (left side, centered vertically)
+            Positioned(
+              left: 20,
+              top: MediaQuery.of(context).size.height / 2 - 30,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.arrow_back_ios,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                ),
+              ),
+            ),
+            // Floating forward arrow (right side, centered vertically)
+            Positioned(
+              right: 20,
+              top: MediaQuery.of(context).size.height / 2 - 30,
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                  onPressed: () async {
+                    utils.Utils().changeSystemColor(Brightness.dark);
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => Setup4(widget.categories)),
+                    ).then((_) {
+                      utils.Utils().changeSystemColor(Brightness.light);
+                    });
+                  },
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 } 

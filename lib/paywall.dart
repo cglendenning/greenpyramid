@@ -6,6 +6,93 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:life_ops/navbar.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'package:life_ops/you_and_me_video_player.dart';
+import 'package:html/parser.dart' as html_parser;
+import 'package:youtube_player_flutter/youtube_player_flutter.dart' as yt_flutter;
+import 'package:youtube_player_iframe/youtube_player_iframe.dart' as yt_iframe;
+
+// --- iOS dynamic video player widget ---
+class _IOSPaywallVideoPlayer extends StatefulWidget {
+  @override
+  State<_IOSPaywallVideoPlayer> createState() => _IOSPaywallVideoPlayerState();
+}
+
+class _IOSPaywallVideoPlayerState extends State<_IOSPaywallVideoPlayer> {
+  String? _videoId;
+  bool _loading = true;
+  bool _error = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _resolveVideoId();
+  }
+
+  Future<void> _resolveVideoId() async {
+    setState(() {
+      _loading = true;
+      _error = false;
+    });
+    try {
+      final response = await http.get(Uri.parse('https://www.stillwatersretreats.com/greenpyramid/paywall-video'));
+      String? youtubeUrl;
+      final document = html_parser.parse(response.body);
+      final iframe = document.querySelector('iframe');
+      if (iframe != null) {
+        youtubeUrl = iframe.attributes['src'];
+      }
+      final id = youtubeUrl != null ? _extractYouTubeId(youtubeUrl) : null;
+      if (id != null && id.isNotEmpty) {
+        setState(() {
+          _videoId = id;
+          _loading = false;
+        });
+      } else {
+        setState(() {
+          _error = true;
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _error = true;
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(child: CircularProgressIndicator(color: Colors.white)),
+      );
+    }
+    if (_error || _videoId == null) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error_outline, color: Colors.white, size: 64),
+              const SizedBox(height: 16),
+              const Text('Could not load video', style: TextStyle(color: Colors.white)),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: _resolveVideoId,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    return YouAndMeVideoPlayerScreen(videoId: _videoId!, forceLandscape: false, showOverlays: false);
+  }
+}
 
 class Paywall extends StatefulWidget {
   @override
@@ -17,6 +104,7 @@ class _PaywallState extends State<Paywall> {
   bool _isMuted = true;
   bool _hasError = false;
   bool _isWebViewReady = false;
+  bool _isDisposed = false;
 
   @override
   void initState() {
@@ -28,8 +116,6 @@ class _PaywallState extends State<Paywall> {
     try {
       print('🌐 [PAYWALL VIDEO] Initializing WebView');
       print('🌐 [PAYWALL VIDEO] Loading URL: https://www.stillwatersretreats.com/greenpyramid/paywall-video');
-      
-      // Load the redirect URL directly - it will redirect to YouTube video after 250ms
       _webViewController = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setBackgroundColor(Colors.black)
@@ -37,12 +123,18 @@ class _PaywallState extends State<Paywall> {
         ..setNavigationDelegate(
           NavigationDelegate(
             onPageStarted: (String url) {
+              if (_isDisposed) return;
               print('🌐 [PAYWALL VIDEO] Page started loading: $url');
+              setState(() {
+                _isWebViewReady = false;
+              });
             },
             onProgress: (int progress) {
+              if (_isDisposed) return;
               print('🌐 [PAYWALL VIDEO] Loading progress: $progress%');
             },
             onPageFinished: (String url) {
+              if (_isDisposed) return;
               print('✅ [PAYWALL VIDEO] Page finished loading: $url');
               setState(() {
                 _isWebViewReady = true;
@@ -53,6 +145,7 @@ class _PaywallState extends State<Paywall> {
               return NavigationDecision.navigate;
             },
             onWebResourceError: (WebResourceError error) {
+              if (_isDisposed) return;
               print('❌ [PAYWALL VIDEO] WebView error: ${error.description}');
               print('❌ [PAYWALL VIDEO] Error code: ${error.errorCode}');
               setState(() {
@@ -72,6 +165,8 @@ class _PaywallState extends State<Paywall> {
 
   @override
   void dispose() {
+    _isDisposed = true;
+    _webViewController = null;
     super.dispose();
   }
 
@@ -86,6 +181,33 @@ class _PaywallState extends State<Paywall> {
         child: const Center(
           child: Icon(Icons.error_outline, color: Colors.white, size: 48),
         ),
+      );
+    }
+    if (Platform.isIOS) {
+      // Use youtube_player_iframe for iOS paywall video (no overlays)
+      return FutureBuilder<String?>(
+        future: _getPaywallVideoId(),
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return Container(
+              color: Colors.black,
+              height: height,
+              child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+            );
+          }
+          final videoId = snapshot.data;
+          print('[Paywall] iOS YouTube videoId: $videoId');
+          if (videoId == null) {
+            return Container(
+              color: Colors.black,
+              height: height,
+              child: const Center(
+                child: Icon(Icons.error_outline, color: Colors.white, size: 48),
+              ),
+            );
+          }
+          return _PaywallYoutubePlayer(videoId: videoId, width: width, height: height);
+        },
       );
     }
     if (_webViewController == null) {
@@ -125,6 +247,22 @@ class _PaywallState extends State<Paywall> {
           ),
       ],
     );
+  }
+
+  Future<String?> _getPaywallVideoId() async {
+    try {
+      final response = await http.get(Uri.parse('https://www.stillwatersretreats.com/greenpyramid/paywall-video'));
+      String? youtubeUrl;
+      final document = html_parser.parse(response.body);
+      final iframe = document.querySelector('iframe');
+      if (iframe != null) {
+        youtubeUrl = iframe.attributes['src'];
+      }
+      final id = youtubeUrl != null ? _extractYouTubeId(youtubeUrl) : null;
+      return id;
+    } catch (e) {
+      return null;
+    }
   }
 
   @override
@@ -624,5 +762,73 @@ Future<void> launchInBrowser(Uri url) async {
     mode: LaunchMode.externalApplication,
   )) {
     throw Exception('Could not launch $url');
+  }
+}
+
+// Move this to top-level so both _IOSPaywallVideoPlayerState and _PaywallState can use it
+String? _extractYouTubeId(String url) {
+  final uri = Uri.tryParse(url);
+  if (uri == null) return null;
+  // Handles both youtu.be and youtube.com URLs
+  if (uri.host.contains('youtu.be')) {
+    return uri.pathSegments.isNotEmpty ? uri.pathSegments[0] : null;
+  }
+  if (uri.host.contains('youtube.com')) {
+    if (uri.path == '/watch') {
+      return uri.queryParameters['v'];
+    }
+    // /embed/VIDEOID
+    if (uri.pathSegments.isNotEmpty && uri.pathSegments[0] == 'embed') {
+      return uri.pathSegments.length > 1 ? uri.pathSegments[1] : null;
+    }
+  }
+  return null;
+}
+
+class _PaywallYoutubePlayer extends StatefulWidget {
+  final String videoId;
+  final double width;
+  final double height;
+  const _PaywallYoutubePlayer({required this.videoId, required this.width, required this.height});
+
+  @override
+  State<_PaywallYoutubePlayer> createState() => _PaywallYoutubePlayerState();
+}
+
+class _PaywallYoutubePlayerState extends State<_PaywallYoutubePlayer> {
+  late yt_iframe.YoutubePlayerController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = yt_iframe.YoutubePlayerController(
+      params: const yt_iframe.YoutubePlayerParams(
+        showControls: true,
+        showFullscreenButton: true,
+        enableCaption: false,
+      ),
+    );
+    // Load the video after the controller is initialized
+    Future.microtask(() {
+      _controller.loadVideoById(videoId: widget.videoId);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.close();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: widget.width,
+      height: widget.height,
+      child: yt_iframe.YoutubePlayer(
+        controller: _controller,
+        aspectRatio: 9 / 16,
+      ),
+    );
   }
 }

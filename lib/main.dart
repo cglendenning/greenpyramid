@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:life_ops/homescreen.dart';
 import 'package:life_ops/notification.dart';
@@ -70,8 +71,14 @@ Future<void> initPlatformState() async {
   bool config = await Purchases.isConfigured;
   CustomerInfo ci = await Purchases.getCustomerInfo();
 
-  print('Purchase configured: $config');
-  print('Customer Info: $ci');
-  print('Active Subscriptions: ${ci.activeSubscriptions}');
+  if (kDebugMode) {
+    print('Purchase configured: $config');
+  }
+  if (kDebugMode) {
+    print('Customer Info: $ci');
+  }
+  if (kDebugMode) {
+    print('Active Subscriptions: ${ci.activeSubscriptions}');
+  }
 
 }
