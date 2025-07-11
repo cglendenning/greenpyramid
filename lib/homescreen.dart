@@ -183,6 +183,8 @@ class _HomeScreen extends State<HomeScreenWidget> {
             ][currentScreenIndex]));
   }
 
+
+
   (dynamic, dynamic) setColorAndShade(int pctComplete) {
     // If you are tempted to make the shading more
     // granular, re-consider. I like the steps. They

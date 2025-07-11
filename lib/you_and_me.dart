@@ -3,9 +3,39 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:life_ops/personal_coaching.dart';
 import 'dart:io';
 import 'package:life_ops/you_and_me_video_player.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
-class YouAndMeScreen extends StatelessWidget {
+class YouAndMeScreen extends StatefulWidget {
   const YouAndMeScreen({Key? key}) : super(key: key);
+
+  @override
+  State<YouAndMeScreen> createState() => _YouAndMeScreenState();
+}
+
+class _YouAndMeScreenState extends State<YouAndMeScreen> with RouteAware {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      routeObserver.subscribe(this, ModalRoute.of(context)! as PageRoute);
+    });
+  }
+
+  @override
+  void dispose() {
+    routeObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // Called when coming back to this screen
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+  }
 
   static const String youAndMeCopy = '''
 

@@ -10,6 +10,9 @@ import 'package:app_install_date/app_install_date.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'package:flutter/widgets.dart';
+import 'coaching.dart' show routeObserver;
+import 'you_and_me.dart' as youAndMeRouteObserver show routeObserver;
 
 final GlobalKey<NavigatorState> navigatorKey =
     GlobalKey(debugLabel: "Main Navigator");

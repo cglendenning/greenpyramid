@@ -5,7 +5,33 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:life_ops/navbar.dart';
 import 'package:life_ops/personal_coaching.dart';
 import 'package:life_ops/paywall.dart';
+import 'dart:io' show Platform;
+import 'package:youtube_player_flutter/youtube_player_flutter.dart' as yt_flutter;
+import 'package:flutter/widgets.dart';
+import 'package:flutter/services.dart';
+import 'dart:developer';
+final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
+void debugDumpState(String label, BuildContext? context, {dynamic controller, dynamic extra}) {
+  final now = DateTime.now().toIso8601String();
+  final ctxHash = context?.hashCode;
+  final widgetTree = context != null ? context.widget.toStringShort() : 'null';
+  final nav = context != null ? Navigator.canPop(context) : 'unknown';
+  
+  // Safely access MediaQuery to avoid crashes during initState
+  String orientation = 'unknown';
+  if (context != null) {
+    try {
+      orientation = MediaQuery.of(context).orientation.toString();
+    } catch (e) {
+      orientation = 'error: $e';
+    }
+  }
+  
+  log('[$now] $label | ctx: $ctxHash | widget: $widgetTree | canPop: $nav | orientation: $orientation | controller: $controller | extra: $extra');
+}
+
+// COACHING SCREEN
 class Coaching extends StatefulWidget {
   const Coaching({super.key});
 
@@ -13,7 +39,7 @@ class Coaching extends StatefulWidget {
   State<Coaching> createState() => _CoachingState();
 }
 
-class _CoachingState extends State<Coaching> {
+class _CoachingState extends State<Coaching> with RouteAware {
   List<YouTubeVideo> videos = [];
   bool isLoading = true;
   String? errorMessage;
@@ -21,7 +47,51 @@ class _CoachingState extends State<Coaching> {
   @override
   void initState() {
     super.initState();
+    debugDumpState('COACHING: initState', context);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        debugDumpState('COACHING: subscribing to routeObserver', context);
+        routeObserver.subscribe(this, ModalRoute.of(context)! as PageRoute);
+      } catch (e, st) {
+        log('COACHING: Error subscribing to routeObserver: $e\n$st');
+      }
+    });
     fetchVideos();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    debugDumpState('COACHING: didChangeDependencies', context);
+  }
+
+  @override
+  void dispose() {
+    debugDumpState('COACHING: dispose called', context);
+    try {
+      routeObserver.unsubscribe(this);
+      debugDumpState('COACHING: dispose completed successfully', context);
+    } catch (e, st) {
+      log('COACHING: Error in dispose: $e\n$st');
+    }
+    super.dispose();
+  }
+
+  @override
+  void didPopNext() {
+    // Use a post-frame callback to ensure context is ready
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      debugDumpState('COACHING: didPopNext called', context);
+      try {
+        // Reset orientation to portrait when returning from video
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.portraitUp,
+        ]);
+        debugDumpState('COACHING: didPopNext completed successfully', context);
+      } catch (e, st) {
+        log('COACHING: Error in didPopNext: $e\n$st');
+      }
+    });
   }
 
   Future<void> fetchVideos() async {
@@ -71,11 +141,12 @@ class _CoachingState extends State<Coaching> {
           isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (e, st) {
       setState(() {
         errorMessage = 'Failed to load videos: $e';
         isLoading = false;
       });
+      log('COACHING: Error fetching videos: $e\n$st');
     }
   }
 
@@ -118,8 +189,8 @@ class _CoachingState extends State<Coaching> {
           description: description,
         ));
       }
-    } catch (e) {
-      debugPrint('Error parsing RSS feed: $e');
+    } catch (e, st) {
+      debugPrint('Error parsing RSS feed: $e\n$st');
     }
     
     return videos;
@@ -127,6 +198,7 @@ class _CoachingState extends State<Coaching> {
 
   @override
   Widget build(BuildContext context) {
+    debugDumpState('COACHING: build method called', context, extra: {'isLoading': isLoading, 'errorMessage': errorMessage});
     return Scaffold(
       appBar: const NavBar(),
       body: isLoading
@@ -808,18 +880,49 @@ class VideoPlayerScreen extends StatefulWidget {
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindingObserver {
   late WebViewController _controller;
   bool isLoading = true;
+  yt_flutter.YoutubePlayerController? _ytController;
+  bool _ytReady = false;
 
   @override
   void initState() {
     super.initState();
-    // Register observer to monitor orientation changes
+    debugDumpState('VIDEO PLAYER: initState called', context, controller: _ytController);
     WidgetsBinding.instance.addObserver(this);
-    // Force landscape orientation immediately
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-    _initializeWebView();
+    
+    // Delay orientation change to allow widget to fully initialize
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        SystemChrome.setPreferredOrientations([
+          DeviceOrientation.landscapeLeft,
+          DeviceOrientation.landscapeRight,
+        ]);
+        debugDumpState('VIDEO PLAYER: setPreferredOrientations to landscape', context);
+      } catch (e, st) {
+        log('VIDEO PLAYER: Error setting orientation in initState: $e\n$st');
+      }
+    });
+    
+    if (Platform.isIOS) {
+      _ytController = yt_flutter.YoutubePlayerController(
+        initialVideoId: widget.video.id,
+        flags: const yt_flutter.YoutubePlayerFlags(
+          autoPlay: true,
+          mute: false,
+          forceHD: false,
+          enableCaption: false,
+          controlsVisibleAtStart: true,
+        ),
+      );
+      debugDumpState('VIDEO PLAYER: Created YoutubePlayerController', context, controller: _ytController);
+    } else {
+      _initializeWebView();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    debugDumpState('VIDEO PLAYER: didChangeDependencies', context, controller: _ytController);
   }
 
   void _initializeWebView() {
@@ -885,75 +988,159 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
 
   @override
   Widget build(BuildContext context) {
-    // Force landscape orientation and lock it
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-
-        return WillPopScope(
-      onWillPop: () async {
-        // Ensure orientation is restored when back button is pressed
-        SystemChrome.setPreferredOrientations([
-          DeviceOrientation.portraitUp,
-        ]);
-        return true;
-      },
-      child: Scaffold(
-        backgroundColor: Colors.black,
-        body: Stack(
-          children: [
-            WebViewWidget(controller: _controller),
-            if (isLoading)
-              const Center(
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                ),
-              ),
-            // Back button overlay
-            Positioned(
-              top: MediaQuery.of(context).padding.top + 10,
-              left: 16,
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.7),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
-                  onPressed: () {
-                    // Restore portrait orientation
-                    SystemChrome.setPreferredOrientations([
-                      DeviceOrientation.portraitUp,
-                    ]);
-                    Navigator.pop(context);
+    debugDumpState('VIDEO PLAYER: build method called', context, controller: _ytController, extra: {'isLoading': isLoading});
+    if (Platform.isIOS) {
+      return WillPopScope(
+        onWillPop: () async {
+          log('VIDEO PLAYER: WillPopScope iOS called');
+          
+          // Pause YouTube controller before popping
+          if (Platform.isIOS && _ytController != null) {
+            try {
+              _ytController!.pause();
+              log('VIDEO PLAYER: WillPopScope iOS paused controller');
+            } catch (e, st) {
+              log('VIDEO PLAYER: Error pausing controller in WillPopScope iOS: $e\n$st');
+            }
+          }
+          
+          // Reset orientation to portrait
+          try {
+            SystemChrome.setPreferredOrientations([
+              DeviceOrientation.portraitUp,
+            ]);
+            log('VIDEO PLAYER: WillPopScope iOS set portrait');
+          } catch (e, st) {
+            log('VIDEO PLAYER: Error in WillPopScope iOS: $e\n$st');
+          }
+          
+          return true;
+        },
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            children: [
+              SizedBox.expand(
+                child: yt_flutter.YoutubePlayer(
+                  controller: _ytController!,
+                  showVideoProgressIndicator: true,
+                  onReady: () {
+                    setState(() { _ytReady = true; });
                   },
                 ),
               ),
-            ),
-          ],
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 10,
+                left: 16,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () {
+                      log('VIDEO PLAYER: Back button pressed');
+                      
+                      // Pause YouTube controller before navigating
+                      if (Platform.isIOS && _ytController != null) {
+                        try {
+                          _ytController!.pause();
+                          log('VIDEO PLAYER: Back button paused controller');
+                        } catch (e, st) {
+                          log('VIDEO PLAYER: Error pausing controller in back button: $e\n$st');
+                        }
+                      }
+                      
+                      // Reset orientation to portrait
+                      try {
+                        SystemChrome.setPreferredOrientations([
+                          DeviceOrientation.portraitUp,
+                        ]);
+                        log('VIDEO PLAYER: Back button set portrait');
+                      } catch (e, st) {
+                        log('VIDEO PLAYER: Error in Back button: $e\n$st');
+                      }
+                      
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      return WillPopScope(
+        onWillPop: () async {
+          log('VIDEO PLAYER: WillPopScope Android called');
+          return true;
+        },
+        child: Scaffold(
+          backgroundColor: Colors.black,
+          body: Stack(
+            children: [
+              WebViewWidget(controller: _controller),
+              if (isLoading)
+                const Center(
+                  child: CircularProgressIndicator(
+                    color: Colors.white,
+                  ),
+                ),
+              Positioned(
+                top: MediaQuery.of(context).padding.top + 10,
+                left: 16,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () {
+                      log('VIDEO PLAYER: Back button pressed Android');
+                      Navigator.pop(context);
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
   }
 
   @override
   void dispose() {
-    // Remove observer and restore portrait orientation
+    log('VIDEO PLAYER: dispose called');
+    
+    // Pause and dispose YouTube controller on iOS
+    if (Platform.isIOS && _ytController != null) {
+      try {
+        _ytController!.pause();
+        _ytController!.dispose();
+        log('VIDEO PLAYER: YouTube controller disposed');
+      } catch (e, st) {
+        log('VIDEO PLAYER: Error disposing YouTube controller: $e\n$st');
+      }
+    }
+    
+    // Reset orientation to portrait
+    try {
+      SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
+      log('VIDEO PLAYER: Orientation reset to portrait');
+    } catch (e, st) {
+      log('VIDEO PLAYER: Error resetting orientation: $e\n$st');
+    }
+    
     WidgetsBinding.instance.removeObserver(this);
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
     super.dispose();
+    log('VIDEO PLAYER: super.dispose() completed');
   }
 
-  @override
-  void didChangeMetrics() {
-    super.didChangeMetrics();
-    // Force landscape orientation whenever metrics change (including rotation)
-    SystemChrome.setPreferredOrientations([
-      DeviceOrientation.landscapeLeft,
-      DeviceOrientation.landscapeRight,
-    ]);
-  }
+
 } 
