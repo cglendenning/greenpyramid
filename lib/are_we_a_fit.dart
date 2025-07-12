@@ -135,7 +135,7 @@ You can also reach out for a free 15 minute chat with me below.
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const AreWeAFitVideoPlayerScreen(videoId: 'SeKP2Qgdk9o'),
+                      builder: (context) => const AreWeAFitVideoPlayerScreen(videoId: 'cb4Lvy9qGFw'),
                     ),
                   );
                 },
@@ -146,7 +146,7 @@ You can also reach out for a free 15 minute chat with me below.
                     child: Stack(
                       children: [
                         Image.network(
-                          'https://img.youtube.com/vi/SeKP2Qgdk9o/hqdefault.jpg',
+                          'https://img.youtube.com/vi/cb4Lvy9qGFw/hqdefault.jpg',
                           fit: BoxFit.cover,
                           width: double.infinity,
                           errorBuilder: (context, error, stackTrace) {
