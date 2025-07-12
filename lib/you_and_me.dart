@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 import 'package:life_ops/personal_coaching.dart';
-import 'dart:io';
 import 'package:life_ops/you_and_me_video_player.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';

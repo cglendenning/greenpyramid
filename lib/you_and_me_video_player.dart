@@ -19,7 +19,6 @@ class _YouAndMeVideoPlayerScreenState extends State<YouAndMeVideoPlayerScreen> w
   bool isLoading = true;
   bool showOverlays = false;
   YoutubePlayerController? _ytController;
-  bool _ytReady = false;
 
   @override
   void initState() {
@@ -165,19 +164,6 @@ class _YouAndMeVideoPlayerScreenState extends State<YouAndMeVideoPlayerScreen> w
     }
   }
 
-  void _toggleOverlaysAndPausePlay() async {
-    if (showOverlays) {
-      setState(() { showOverlays = false; });
-      try {
-        await _controller.runJavaScript('playVideo();');
-      } catch (_) {}
-    } else {
-      setState(() { showOverlays = true; });
-      try {
-        await _controller.runJavaScript('pauseVideo();');
-      } catch (_) {}
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -253,7 +239,7 @@ class _YouAndMeVideoPlayerScreenState extends State<YouAndMeVideoPlayerScreen> w
                   controller: _ytController!,
                   showVideoProgressIndicator: true,
                   onReady: () {
-                    setState(() { _ytReady = true; });
+                    setState(() { });
                   },
                 ),
               ),

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_email_sender/flutter_email_sender.dart';
-import 'package:image_picker/image_picker.dart';
 
 class PersonalCoaching extends StatefulWidget {
   const PersonalCoaching({super.key});
@@ -198,21 +197,7 @@ Best regards,
     );
   }
 
-  void _openImagePicker() async {
-    final picker = ImagePicker();
-    XFile? pick = await picker.pickImage(source: ImageSource.gallery);
-    if (pick != null) {
-      setState(() {
-        attachments.add(pick.path);
-      });
-    }
-  }
 
-  void _removeAttachment(int index) {
-    setState(() {
-      attachments.removeAt(index);
-    });
-  }
 }
 
 class _BenefitItem extends StatelessWidget {

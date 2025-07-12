@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:rxdart/subjects.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
@@ -130,108 +131,6 @@ class LocalNotificationService {
   }
 
   // Generate a random question from the full pool (for testing)
-  String _generateRandomQuestion() {
-    final random = Random();
-    
-    // Combine all message pools into one list (90 total questions) - ALL UNIQUE
-    List<String> allMessages = [
-      // Morning questions (30)
-      "What is one thing you're looking forward to today?",
-      "What healthy habit will you focus on this morning?",
-      "What's your top priority for today?",
-      "How will you energize yourself this morning?",
-      "What's one way you can make today meaningful?",
-      "What's your intention for the day?",
-      "How will you practice gratitude this morning?",
-      "What's one thing you want to learn today?",
-      "How will you support your well-being today?",
-      "What's your first step toward your main goal?",
-      "How will you stay positive today?",
-      "What's one thing you want to avoid today?",
-      "How will you connect with others today?",
-      "What's your plan for a productive morning?",
-      "How will you take care of your body today?",
-      "What's one thing you want to finish before noon?",
-      "How will you stay focused this morning?",
-      "What's your motivation for today?",
-      "How will you handle distractions today?",
-      "What's one thing you want to celebrate tonight?",
-      "How will you practice mindfulness this morning?",
-      "What's your biggest opportunity today?",
-      "How will you challenge yourself today?",
-      "What's your main source of inspiration today?",
-      "How will you make time for yourself today?",
-      "What's one thing you want to improve from yesterday?",
-      "How will you show kindness today?",
-      "What's your plan for a balanced day?",
-      "How will you nurture your creativity today?",
-      "What's your morning affirmation?",
-      // Afternoon questions (30)
-      "What's been your biggest win so far today?",
-      "How are you feeling right now?",
-      "What's one thing you can do to boost your afternoon energy?",
-      "What's your next important task?",
-      "How will you reset if you feel off track?",
-      "What's something you've learned today?",
-      "How can you help someone this afternoon?",
-      "What's your plan for a healthy break?",
-      "How will you stay motivated for the rest of the day?",
-      "What's one thing you want to finish before evening?",
-      "How will you manage your time this afternoon?",
-      "What's your biggest challenge right now?",
-      "How will you celebrate progress today?",
-      "What's one thing you can delegate or simplify?",
-      "How will you practice patience this afternoon?",
-      "What's your strategy for handling stress today?",
-      "How will you keep your goals in sight?",
-      "What's one thing you're grateful for this afternoon?",
-      "How will you recharge during your break?",
-      "What's your focus for the next hour?",
-      "How will you encourage yourself to keep going?",
-      "What's one thing you can do to help your future self?",
-      "How will you stay organized this afternoon?",
-      "What's your plan for a smooth transition to evening?",
-      "How will you reflect on your progress so far?",
-      "What's one thing you want to avoid this afternoon?",
-      "How will you practice self-care today?",
-      "What's your biggest lesson from today so far?",
-      "How will you finish the day strong?",
-      "What's your afternoon affirmation?",
-      // Evening questions (30)
-      "What was your favorite moment today?",
-      "How did you take care of yourself today?",
-      "What's one thing you accomplished that you're proud of?",
-      "How did you overcome a challenge today?",
-      "What's something new you learned today?",
-      "How did you show kindness today?",
-      "What's one thing you're grateful for tonight?",
-      "How will you unwind this evening?",
-      "What's your plan for a restful night?",
-      "How did you support someone today?",
-      "What's one thing you'd like to improve tomorrow?",
-      "How did you practice mindfulness today?",
-      "What's your biggest insight from today?",
-      "How did you nurture your creativity today?",
-      "What's one thing you want to let go of before bed?",
-      "How did you balance work and rest today?",
-      "What's your intention for tomorrow?",
-      "How did you manage your energy today?",
-      "What's one thing you want to remember from today?",
-      "How did you celebrate your progress?",
-      "What's your evening affirmation?",
-      "How did you handle stress today?",
-      "What's one thing you'll do differently tomorrow?",
-      "How did you connect with others today?",
-      "What's your plan for a positive start tomorrow?",
-      "How did you practice self-care this evening?",
-      "What's one thing you're looking forward to tomorrow?",
-      "How did you stay organized today?",
-      "What's your biggest lesson from today?",
-      "How will you show gratitude before sleep?",
-    ];
-    
-    return allMessages[random.nextInt(allMessages.length)];
-  }
 
 
 
@@ -299,23 +198,39 @@ class LocalNotificationService {
               payload: selectedRoute, // Route to morning, afternoon, or evening based on question
               matchDateTimeComponents: null,
           );
-          print('✅ Test notification  \\${999 - i} scheduled for \\${scheduledTime.toString()}');
-          print('  Route: \\${selectedRoute}');
-          print('  Question: \\${timeAppropriateQuestion}');
-          print('  ---');
+          if (kDebugMode) {
+            print('✅ Test notification  \\${999 - i} scheduled for \\${scheduledTime.toString()}');
+          }
+          if (kDebugMode) {
+            print('  Route: \\${selectedRoute}');
+          }
+          if (kDebugMode) {
+            print('  Question: \\${timeAppropriateQuestion}');
+          }
+          if (kDebugMode) {
+            print('  ---');
+          }
         } catch (e) {
-          print('❌ Failed to schedule notification \\${999 - i}: $e');
+          if (kDebugMode) {
+            print('❌ Failed to schedule notification \\${999 - i}: $e');
+          }
         }
       }
       // Wait a moment then verify scheduled notifications
       await Future.delayed(Duration(seconds: 2));
       final pending = await _localNotificationService.pendingNotificationRequests();
-      print('📋 Total pending notifications: \\${pending.length}');
+      if (kDebugMode) {
+        print('📋 Total pending notifications: \\${pending.length}');
+      }
       for (var notification in pending) {
-        print('  - ID: \\${notification.id}, Title: \\${notification.title}');
+        if (kDebugMode) {
+          print('  - ID: \\${notification.id}, Title: \\${notification.title}');
+        }
       }
     } catch (e) {
-      print('❌ Error scheduling test notifications: $e');
+      if (kDebugMode) {
+        print('❌ Error scheduling test notifications: $e');
+      }
     }
   }
 
@@ -326,7 +241,9 @@ class LocalNotificationService {
     await _localNotificationService.cancel(997);
     await _localNotificationService.cancel(996);
     await _localNotificationService.cancel(995);
-    print('All test notifications cancelled');
+    if (kDebugMode) {
+      print('All test notifications cancelled');
+    }
   }
 
   Future<void> intialize() async {
@@ -383,7 +300,9 @@ class LocalNotificationService {
                 AndroidFlutterLocalNotificationsPlugin>()
             ?.requestNotificationsPermission();
         
-        print('Android notification permission granted: $granted');
+        if (kDebugMode) {
+          print('Android notification permission granted: $granted');
+        }
         
         // Check if notifications are enabled
         final bool? areNotificationsEnabled = await _localNotificationService
@@ -391,20 +310,28 @@ class LocalNotificationService {
                 AndroidFlutterLocalNotificationsPlugin>()
             ?.areNotificationsEnabled();
         
-        print('Android notifications enabled: $areNotificationsEnabled');
+        if (kDebugMode) {
+          print('Android notifications enabled: $areNotificationsEnabled');
+        }
         
         // Request battery optimization exemption (Android only)
         await _requestBatteryOptimizationExemption();
         
         // USE_EXACT_ALARM is handled via manifest, no runtime request needed
-        print('USE_EXACT_ALARM permission handled via manifest');
+        if (kDebugMode) {
+          print('USE_EXACT_ALARM permission handled via manifest');
+        }
       } else if (Platform.isIOS) {
         // iOS permissions are handled during initialization
-        print('iOS notification permissions handled during initialization');
+        if (kDebugMode) {
+          print('iOS notification permissions handled during initialization');
+        }
       }
       
     } catch (e) {
-      print('Error requesting notification permissions: $e');
+      if (kDebugMode) {
+        print('Error requesting notification permissions: $e');
+      }
     }
   }
 
@@ -415,13 +342,19 @@ class LocalNotificationService {
         final status = await Permission.ignoreBatteryOptimizations.status;
         if (status.isDenied) {
           final result = await Permission.ignoreBatteryOptimizations.request();
-          print('Android battery optimization exemption result: $result');
+          if (kDebugMode) {
+            print('Android battery optimization exemption result: $result');
+          }
         } else {
-          print('Android battery optimization exemption already granted: $status');
+          if (kDebugMode) {
+            print('Android battery optimization exemption already granted: $status');
+          }
         }
       }
     } catch (e) {
-      print('Error requesting battery optimization exemption: $e');
+      if (kDebugMode) {
+        print('Error requesting battery optimization exemption: $e');
+      }
     }
   }
 
@@ -431,14 +364,18 @@ class LocalNotificationService {
       if (Platform.isAndroid) {
         // For Android 12+, we assume exact alarms are available if the permission is in manifest
         // The system will handle the permission automatically
-        print('Android: Assuming exact alarms are available (permission in manifest)');
+        if (kDebugMode) {
+          print('Android: Assuming exact alarms are available (permission in manifest)');
+        }
         return true;
       } else {
         // iOS doesn't have exact alarm restrictions like Android
         return true;
       }
     } catch (e) {
-      print('Error checking exact alarm permission: $e');
+      if (kDebugMode) {
+        print('Error checking exact alarm permission: $e');
+      }
       return false;
     }
   }
@@ -447,10 +384,14 @@ class LocalNotificationService {
     if (Platform.isAndroid) {
       final canScheduleExact = await _canScheduleExactAlarms();
       if (canScheduleExact) {
-        print('Android: Using exactAllowWhileIdle scheduling mode');
+        if (kDebugMode) {
+          print('Android: Using exactAllowWhileIdle scheduling mode');
+        }
         return AndroidScheduleMode.exactAllowWhileIdle;
       } else {
-        print('Android: Using exact scheduling mode (fallback)');
+        if (kDebugMode) {
+          print('Android: Using exact scheduling mode (fallback)');
+        }
         return AndroidScheduleMode.exact;
       }
     } else {
@@ -472,7 +413,9 @@ class LocalNotificationService {
     for (var i = 0; i < pending.length; i++) {
       if (pending[i].id == id) {
         idFound = true;
-        print('${Platform.isAndroid ? 'Android' : 'iOS'}: Pending notification with id $id found');
+        if (kDebugMode) {
+          print('${Platform.isAndroid ? 'Android' : 'iOS'}: Pending notification with id $id found');
+        }
       }
     }
     if (!idFound) {
@@ -519,7 +462,9 @@ class LocalNotificationService {
           payload: payload,
           matchDateTimeComponents: DateTimeComponents.time,
       );
-      print('✅ Daily notification scheduled for $title at $hour:$minute using mode: $scheduleMode');
+      if (kDebugMode) {
+        print('✅ Daily notification scheduled for $title at $hour:$minute using mode: $scheduleMode');
+      }
     }
   }
 
@@ -560,9 +505,13 @@ class LocalNotificationService {
           ),
         ),
       );
-      print('✅ iOS test notification sent');
+      if (kDebugMode) {
+        print('✅ iOS test notification sent');
+      }
     } catch (e) {
-      print('❌ iOS test notification failed: $e');
+      if (kDebugMode) {
+        print('❌ iOS test notification failed: $e');
+      }
     }
   }
 

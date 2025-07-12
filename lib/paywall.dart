@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'dart:io';
@@ -9,7 +10,6 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'package:life_ops/you_and_me_video_player.dart';
 import 'package:html/parser.dart' as html_parser;
-import 'package:youtube_player_flutter/youtube_player_flutter.dart' as yt_flutter;
 import 'package:youtube_player_iframe/youtube_player_iframe.dart' as yt_iframe;
 
 // --- iOS dynamic video player widget ---
@@ -114,8 +114,12 @@ class _PaywallState extends State<Paywall> {
 
   void _initializeWebView() {
     try {
-      print('🌐 [PAYWALL VIDEO] Initializing WebView');
-      print('🌐 [PAYWALL VIDEO] Loading URL: https://www.stillwatersretreats.com/greenpyramid/paywall-video');
+      if (kDebugMode) {
+        print('🌐 [PAYWALL VIDEO] Initializing WebView');
+      }
+      if (kDebugMode) {
+        print('🌐 [PAYWALL VIDEO] Loading URL: https://www.stillwatersretreats.com/greenpyramid/paywall-video');
+      }
       _webViewController = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setBackgroundColor(Colors.black)
@@ -124,30 +128,42 @@ class _PaywallState extends State<Paywall> {
           NavigationDelegate(
             onPageStarted: (String url) {
               if (_isDisposed) return;
-              print('🌐 [PAYWALL VIDEO] Page started loading: $url');
+              if (kDebugMode) {
+                print('🌐 [PAYWALL VIDEO] Page started loading: $url');
+              }
               setState(() {
                 _isWebViewReady = false;
               });
             },
             onProgress: (int progress) {
               if (_isDisposed) return;
-              print('🌐 [PAYWALL VIDEO] Loading progress: $progress%');
+              if (kDebugMode) {
+                print('🌐 [PAYWALL VIDEO] Loading progress: $progress%');
+              }
             },
             onPageFinished: (String url) {
               if (_isDisposed) return;
-              print('✅ [PAYWALL VIDEO] Page finished loading: $url');
+              if (kDebugMode) {
+                print('✅ [PAYWALL VIDEO] Page finished loading: $url');
+              }
               setState(() {
                 _isWebViewReady = true;
               });
             },
             onNavigationRequest: (NavigationRequest request) {
-              print('🌐 [PAYWALL VIDEO] Navigation request: ${request.url}');
+              if (kDebugMode) {
+                print('🌐 [PAYWALL VIDEO] Navigation request: ${request.url}');
+              }
               return NavigationDecision.navigate;
             },
             onWebResourceError: (WebResourceError error) {
               if (_isDisposed) return;
-              print('❌ [PAYWALL VIDEO] WebView error: ${error.description}');
-              print('❌ [PAYWALL VIDEO] Error code: ${error.errorCode}');
+              if (kDebugMode) {
+                print('❌ [PAYWALL VIDEO] WebView error: ${error.description}');
+              }
+              if (kDebugMode) {
+                print('❌ [PAYWALL VIDEO] Error code: ${error.errorCode}');
+              }
               setState(() {
                 _hasError = true;
               });
@@ -156,7 +172,9 @@ class _PaywallState extends State<Paywall> {
         )
         ..loadRequest(Uri.parse('https://www.stillwatersretreats.com/greenpyramid/paywall-video'));
     } catch (e) {
-      print('❌ [PAYWALL VIDEO] Error initializing WebView: $e');
+      if (kDebugMode) {
+        print('❌ [PAYWALL VIDEO] Error initializing WebView: $e');
+      }
       setState(() {
         _hasError = true;
       });
@@ -196,7 +214,9 @@ class _PaywallState extends State<Paywall> {
             );
           }
           final videoId = snapshot.data;
-          print('[Paywall] iOS YouTube videoId: $videoId');
+          if (kDebugMode) {
+            print('[Paywall] iOS YouTube videoId: $videoId');
+          }
           if (videoId == null) {
             return Container(
               color: Colors.black,
@@ -614,7 +634,9 @@ class _PaywallState extends State<Paywall> {
         _showAndroidBillingError(context);
       } else {
         // Handle other errors silently or show a generic message
-        print('Purchase error: $e');
+        if (kDebugMode) {
+          print('Purchase error: $e');
+        }
       }
     }
   }

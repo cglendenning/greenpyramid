@@ -1,4 +1,5 @@
 import 'package:dart_openai/dart_openai.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:life_ops/db.dart';
@@ -51,7 +52,9 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    print('🚀 [COACH SCREEN] initState() - Triggering initial subscription check');
+    if (kDebugMode) {
+      print('🚀 [COACH SCREEN] initState() - Triggering initial subscription check');
+    }
     _checkSubscriptionStatus();
     WidgetsBinding.instance.addObserver(this);
     _focusNode = FocusNode();
@@ -93,7 +96,9 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   void _onFocusChange() {
     if (_focusNode.hasFocus) {
       // Reload chat history and check subscription when screen gains focus
-      print('🎯 [COACH SCREEN] Screen gained focus - Triggering subscription check');
+      if (kDebugMode) {
+        print('🎯 [COACH SCREEN] Screen gained focus - Triggering subscription check');
+      }
       _loadChatHistory();
       _checkSubscriptionStatus();
     }
@@ -103,7 +108,9 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       // Reload chat history and check subscription when app becomes visible
-      print('📱 [COACH SCREEN] App resumed - Triggering subscription check');
+      if (kDebugMode) {
+        print('📱 [COACH SCREEN] App resumed - Triggering subscription check');
+      }
       _loadChatHistory();
       _checkSubscriptionStatus();
     }
@@ -131,7 +138,9 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
       _hasLoadedHistory = true;
       setState(() {});
     } catch (e) {
-      print('Error loading chat history: $e');
+      if (kDebugMode) {
+        print('Error loading chat history: $e');
+      }
       // Only add initial message on error if we haven't loaded history yet
       if (!_hasLoadedHistory) {
         _messages.clear();
@@ -157,7 +166,9 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
       // Now insert the new message
       await dbHelper.insertChatMessage(role, content);
     } catch (e) {
-      print('Error saving message: $e');
+      if (kDebugMode) {
+        print('Error saving message: $e');
+      }
     }
   }
 

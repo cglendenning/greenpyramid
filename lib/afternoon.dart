@@ -17,8 +17,8 @@ import 'package:life_ops/coach.dart';
 
   class Afternoon extends StatefulWidget {
   const Afternoon({
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   _Afternoon createState() => _Afternoon();

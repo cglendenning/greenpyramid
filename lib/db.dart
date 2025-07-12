@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
@@ -92,8 +93,12 @@ class DatabaseHelper {
             )
             ''');
     } catch (e, s) {
-      print(e);
-      print(s);
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
     }
 
     // store the history of task executions
@@ -109,8 +114,12 @@ class DatabaseHelper {
             )
             ''');
     } catch (e, s) {
-      print(e);
-      print(s);
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
     }
 
     try {
@@ -122,8 +131,12 @@ class DatabaseHelper {
             )
             ''');
     } catch (e, s) {
-      print(e);
-      print(s);
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
     }
 
     // store quotes
@@ -136,8 +149,12 @@ class DatabaseHelper {
             )
             ''');
     } catch (e, s) {
-      print(e);
-      print(s);
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
     }
 
     try {
@@ -145,8 +162,12 @@ class DatabaseHelper {
           CREATE INDEX curr_index ON $quoteTable($columnCurrent)
             ''');
     } catch (e, s) {
-      print(e);
-      print(s);
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
     }
 
     try {
@@ -159,8 +180,12 @@ class DatabaseHelper {
         )
         ''');
     } catch (e, s) {
-      print(e);
-      print(s);
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
     }
   }
 
@@ -169,8 +194,10 @@ class DatabaseHelper {
       if (i > oldVersion) {
         switch (i) {
           case 2:
-            print(
-                '****** in _onUpgrade(): oldversion is $oldVersion and newVersion is $newVersion');
+            if (kDebugMode) {
+              print(
+                  '****** in _onUpgrade(): oldversion is $oldVersion and newVersion is $newVersion');
+            }
             await db.execute(
                 "ALTER TABLE task ADD COLUMN sunday TEXT NOT NULL DEFAULT 'true'");
             await db.execute(
@@ -187,8 +214,10 @@ class DatabaseHelper {
                 "ALTER TABLE task ADD COLUMN saturday TEXT NOT NULL DEFAULT 'true'");
             break;
           case 3:
-            print(
-                '****** in _onUpgrade(): oldversion is $oldVersion and newVersion is $newVersion');
+            if (kDebugMode) {
+              print(
+                  '****** in _onUpgrade(): oldversion is $oldVersion and newVersion is $newVersion');
+            }
             await db.execute('''
               CREATE TABLE $chatTable (
               $chatColumnId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -333,8 +362,12 @@ class DatabaseHelper {
             "from task where $dow = 'true'";
         await db.execute(query);
       } catch (e, s) {
-        print(e);
-        print(s);
+        if (kDebugMode) {
+          print(e);
+        }
+        if (kDebugMode) {
+          print(s);
+        }
       }
     }
   }
@@ -379,8 +412,12 @@ class DatabaseHelper {
       Database db = await instance.database;
       id = await db.insert(taskTable, row);
     } catch (e, s) {
-      print(e);
-      print(s);
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
     }
     return id;
   }
@@ -394,8 +431,12 @@ class DatabaseHelper {
       Database db = await instance.database;
       id = await db.insert(categoryTable, row);
     } catch (e, s) {
-      print(e);
-      print(s);
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
     }
     return id;
   }
@@ -409,8 +450,12 @@ class DatabaseHelper {
       Database db = await instance.database;
       id = await db.insert(taskLogTable, row);
     } catch (e, s) {
-      print(e);
-      print(s);
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
     }
     return id;
   }
@@ -423,7 +468,9 @@ class DatabaseHelper {
       Database db = await instance.database;
       ret = await db.query(taskTable);
     } catch (e, s) {
-      print(e);
+      if (kDebugMode) {
+        print(e);
+      }
       print(s);
     }
     return ret;

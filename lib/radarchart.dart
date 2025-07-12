@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:vector_math/vector_math.dart' as vm;
 import 'package:flutter/material.dart';
 import 'dart:math' show pi, cos, sin;
@@ -393,7 +394,9 @@ class RadarChartPainter extends CustomPainter {
         canvas.drawPath(path, graphPaint);
       });
     } catch (e, s) {
-      print(s);
+      if (kDebugMode) {
+        print(s);
+      }
     }
   }
 

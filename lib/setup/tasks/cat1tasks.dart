@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:dart_openai/dart_openai.dart';
@@ -383,11 +384,17 @@ class _Cat1TasksState extends State<Cat1Tasks> {
 
       chatResult = chatCompletion.choices.first.message.content?.first.text ?? '';
     } catch (e, s) {
-      print(e);
-      print(s);
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
     }
 
-    print(chatResult);
+    if (kDebugMode) {
+      print(chatResult);
+    }
     cat1TaskChoices.clear();
     cat1TaskChoices = chatResult.split("|");
     cat1TaskChoices.add("Enter My Own...");
@@ -449,7 +456,9 @@ class _Cat1TasksState extends State<Cat1Tasks> {
 
   void navigateToCat2Tasks() async {
     for (var category in cats) {
-      print('categoryid: ${category.categoryid} cat: ${category.cat}');
+      if (kDebugMode) {
+        print('categoryid: ${category.categoryid} cat: ${category.cat}');
+      }
     }
 
     currentCatId = 2;

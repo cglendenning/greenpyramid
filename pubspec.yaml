@@ -53,11 +53,11 @@ dependencies:
   vector_math: ^2.1.4
   video_player: ^2.10.0
   android_intent_plus: ^5.3.0
-  youtube_player_flutter: ^8.1.2
-  webview_flutter: ^4.7.0
+  youtube_player_flutter: ^9.1.1
+  webview_flutter: ^4.13.0
   http: ^1.2.0
   html: ^0.15.4
-  youtube_player_iframe: ^4.0.4
+  youtube_player_iframe: ^5.2.1
 
 dev_dependencies:
   flutter_test:
@@ -179,3 +179,6 @@ flutter_launcher_icons:
   macos:
     generate: true
     image_path: "images/logo.png"
+
+dependency_overrides:
+  flutter_inappwebview: ^6.0.0

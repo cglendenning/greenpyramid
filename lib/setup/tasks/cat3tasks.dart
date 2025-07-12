@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:dart_openai/dart_openai.dart';
@@ -354,7 +355,9 @@ class _Cat3TasksState extends State<Cat3Tasks> {
   }
 
   Future<String> generateCat3TaskList() async {
-    print('in generateCat3TaskList()');
+    if (kDebugMode) {
+      print('in generateCat3TaskList()');
+    }
 
     setState(() {
       taskValue = cat3TaskChoices.first;
@@ -384,8 +387,12 @@ class _Cat3TasksState extends State<Cat3Tasks> {
 
       chatResult = chatCompletion.choices.first.message.content?.first.text ?? '';
     } catch (e, s) {
-      print(e);
-      print(s);
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
     }
 
     print(chatResult);

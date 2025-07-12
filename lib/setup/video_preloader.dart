@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'dart:io' show Platform;
 
@@ -20,14 +21,18 @@ class VideoPreloader {
   Future<void> startPreloading() async {
     // Only preload on iOS since Android uses WebView
     if (Platform.isAndroid) {
-      print('🌐 [VIDEO PRELOADER] Android detected - WebView will handle video loading');
+      if (kDebugMode) {
+        print('🌐 [VIDEO PRELOADER] Android detected - WebView will handle video loading');
+      }
       return;
     }
     
     if (_isPreloading || _isPreloaded) return;
     
     _isPreloading = true;
-    print('🎬 [VIDEO PRELOADER] Starting background video buffering...');
+    if (kDebugMode) {
+      print('🎬 [VIDEO PRELOADER] Starting background video buffering...');
+    }
     
     try {
       _preloadedController = YoutubePlayerController(
@@ -47,7 +52,9 @@ class VideoPreloader {
       
       _isPreloaded = true;
       _isPreloading = false;
-      print('✅ [VIDEO PRELOADER] Video successfully preloaded and ready!');
+      if (kDebugMode) {
+        print('✅ [VIDEO PRELOADER] Video successfully preloaded and ready!');
+      }
       
     } catch (e) {
       _isPreloading = false;

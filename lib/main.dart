@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:life_ops/homescreen.dart';
 import 'package:life_ops/notification.dart';
-import 'package:timezone/data/latest.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz show initializeTimeZones;
 import 'package:life_ops/db.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';
@@ -11,8 +11,6 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:flutter/widgets.dart';
-import 'coaching.dart' show routeObserver;
-import 'you_and_me.dart' as youAndMeRouteObserver show routeObserver;
 
 final GlobalKey<NavigatorState> navigatorKey =
     GlobalKey(debugLabel: "Main Navigator");

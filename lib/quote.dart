@@ -1,5 +1,6 @@
 import "dart:math";
 import 'package:dart_openai/dart_openai.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:life_ops/secrets.dart';
 
 class Quote {
@@ -76,8 +77,12 @@ class Quote {
 
       chatResult = (chatCompletion.choices[0].message.content?.first.text ?? '');
     } catch (e, s) {
-      print(e);
-      print(s);
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
     }
 
     return chatResult;

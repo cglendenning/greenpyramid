@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -346,7 +347,9 @@ class _NotificationSwitchState extends State<NotificationSwitch> {
       onPressed: () async {
         setState(() {});
         var res = await cancelAllNotifications();
-        print(res);
+        if (kDebugMode) {
+          print(res);
+        }
         Navigator.pop(context);
       },
     );

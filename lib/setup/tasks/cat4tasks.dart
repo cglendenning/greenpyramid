@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:dart_openai/dart_openai.dart';
@@ -355,7 +356,9 @@ class _Cat4TasksState extends State<Cat4Tasks> {
 
   Future<String> generateCat4TaskList() async {
 
-    print('in generateCat4TaskList()');
+    if (kDebugMode) {
+      print('in generateCat4TaskList()');
+    }
 
     setState(() {
       taskValue = cat4TaskChoices.first;
@@ -385,11 +388,17 @@ class _Cat4TasksState extends State<Cat4Tasks> {
 
       chatResult = chatCompletion.choices.first.message.content?.first.text ?? '';
     } catch (e, s) {
-      print(e);
-      print(s);
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
     }
 
-    print(chatResult);
+    if (kDebugMode) {
+      print(chatResult);
+    }
     cat4TaskChoices.clear();
     cat4TaskChoices = chatResult.split("|");
     cat4TaskChoices.add("Enter My Own...");

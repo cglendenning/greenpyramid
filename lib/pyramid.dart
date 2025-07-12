@@ -3,7 +3,6 @@ import 'package:life_ops/tasklist.dart';
 import 'package:life_ops/db.dart';
 import 'package:life_ops/dbtools.dart';
 import 'package:intl/intl.dart' as intl;
-import 'package:life_ops/chat.dart';
 import 'package:life_ops/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/coach.dart';
@@ -203,37 +202,6 @@ class _Pyramid extends State<Pyramid> {
       ],
     );
 
-    List<String> emotionChoices = <String>[
-      'My current mindset is...',
-      'ambitious',
-      'anxious',
-      'at peace',
-      'bored',
-      'burned out',
-      'defeated',
-      'discouraged',
-      'doubtful',
-      'fearful',
-      'frustrated',
-      'inadequate',
-      'lacking skills',
-      'inspired',
-      'like an imposter',
-      'motivated',
-      'nervous',
-      'overwhelmed',
-      'pessimistic',
-      'proud of my achievements',
-      'regretful',
-      'self-conscious',
-      'settled',
-      'stressed',
-      'stuck',
-      'thwarted',
-      'unmotivated',
-      'vibrant',
-      'worried'
-    ];
 
     final cat1LG = _cat1LGToggled ? grey1LG : dynamic1LG;
     final cat2LG = _cat2LGToggled ? grey2LG : dynamic2LG;

@@ -1,4 +1,5 @@
 import 'package:dart_openai/dart_openai.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:life_ops/db.dart';
 import 'package:life_ops/navbar.dart';
@@ -8,7 +9,6 @@ import 'package:life_ops/setup/setup1.dart';
 import 'package:life_ops/setup/setup2.dart';
 import 'package:life_ops/setup/setup_video.dart';
 import 'package:life_ops/secrets.dart';
-import 'package:life_ops/utils.dart' as utils;
 
 // add some additional behind-the-scenes directives to openAI...
 String suffix = " Do not answer with a list.";
@@ -184,8 +184,12 @@ class _Setup3State extends State<Setup3> {
               "journey of success...\n\n" +
           (chatCompletion.choices[0].message.content?.first.text ?? '');
     } catch (e, s) {
-      print(e);
-      print(s);
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
     }
     setState(() {
       _awaitingResponse = false;

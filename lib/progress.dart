@@ -1,4 +1,5 @@
 import 'package:dart_openai/dart_openai.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:life_ops/db.dart';
 import 'package:life_ops/paywall.dart';
@@ -267,8 +268,12 @@ class _ProgressState extends State<Progress> {
 
       chatResult = (chatCompletion.choices[0].message.content?.first.text ?? '') + postScript;
     } catch (e, s) {
-      print(e);
-      print(s);
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
     }
 
     return chatResult;

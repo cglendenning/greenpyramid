@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:life_ops/notification.dart';
 import 'package:life_ops/db.dart';
@@ -317,18 +318,24 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
     try {
       // Invalidate cache to force fresh data from RevenueCat
       await Purchases.invalidateCustomerInfoCache();
-      print('🏠 [HOME SCREEN] Cache invalidated, fetching fresh data...');
+      if (kDebugMode) {
+        print('🏠 [HOME SCREEN] Cache invalidated, fetching fresh data...');
+      }
       
       CustomerInfo ci = await Purchases.getCustomerInfo();
       bool newSubscriptionStatus = ci.activeSubscriptions.isNotEmpty;
-      print('🏠 [HOME SCREEN] Subscription check - isSubscribed: $newSubscriptionStatus');
+      if (kDebugMode) {
+        print('🏠 [HOME SCREEN] Subscription check - isSubscribed: $newSubscriptionStatus');
+      }
       if (mounted) {
         setState(() {
           isSubscribed = newSubscriptionStatus;
         });
       }
     } catch (e) {
-      print('🏠 [HOME SCREEN] Error checking subscription: $e');
+      if (kDebugMode) {
+        print('🏠 [HOME SCREEN] Error checking subscription: $e');
+      }
       if (mounted) {
         setState(() {
           isSubscribed = false;
@@ -535,7 +542,9 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
         context, MaterialPageRoute(builder: (context) => Cancel()))
         .then((value) {
       // Refresh subscription status when returning from cancel screen
-      print('🏠 [HOME SCREEN] Returning from cancel screen - checking subscription');
+      if (kDebugMode) {
+        print('🏠 [HOME SCREEN] Returning from cancel screen - checking subscription');
+      }
       _checkSubscriptionStatus();
     });
     utils.Utils().changeSystemColor(Brightness.light);

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:dart_openai/dart_openai.dart';
@@ -362,7 +363,6 @@ class _Cat5TasksState extends State<Cat5Tasks> {
 
     OpenAI.apiKey = openAIApiKey;
 
-    String system = "You are comma separated value list generator.";
     var prompt = utils.Utils().taskPrompt(cat);
     const int timeout = 20;
 
@@ -384,11 +384,17 @@ class _Cat5TasksState extends State<Cat5Tasks> {
 
       chatResult = chatCompletion.choices.first.message.content?.first.text ?? '';
     } catch (e, s) {
-      print(e);
-      print(s);
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
     }
 
-    print(chatResult);
+    if (kDebugMode) {
+      print(chatResult);
+    }
     cat5TaskChoices.clear();
     cat5TaskChoices = chatResult.split("|");
     cat5TaskChoices.add("Enter My Own...");

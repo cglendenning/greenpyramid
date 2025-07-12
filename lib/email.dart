@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_email_sender/flutter_email_sender.dart';
 import 'package:image_picker/image_picker.dart';
@@ -35,7 +36,9 @@ class _EmailSenderState extends State<EmailSender> {
       await FlutterEmailSender.send(email);
       platformResponse = 'success';
     } catch (error) {
-      print(error);
+      if (kDebugMode) {
+        print(error);
+      }
       platformResponse = error.toString();
     }
 

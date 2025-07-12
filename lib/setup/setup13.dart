@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:life_ops/pyramid.dart';
 import 'package:flutter/gestures.dart';
@@ -181,7 +182,9 @@ class _Setup13State extends State<Setup13> {
 
 
   void navigateToCat1Tasks() async {
-    print('in navigateToCat1Tasks. dd1Value is $dd1Value.');
+    if (kDebugMode) {
+      print('in navigateToCat1Tasks. dd1Value is $dd1Value.');
+    }
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => Cat1Tasks(dd1Value)),

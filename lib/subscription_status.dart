@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:life_ops/navbar.dart';
@@ -42,11 +43,15 @@ class _SubscriptionStatusState extends State<SubscriptionStatus> with TickerProv
       await Purchases.invalidateCustomerInfoCache();
       
       // Force a sync with the store to get the latest subscription status
-      print('[DEBUG] Forcing sync with store...');
+      if (kDebugMode) {
+        print('[DEBUG] Forcing sync with store...');
+      }
       await Purchases.syncPurchases();
       
       CustomerInfo info = await Purchases.getCustomerInfo();
-      print('[DEBUG] CustomerInfo: ' + info.toString());
+      if (kDebugMode) {
+        print('[DEBUG] CustomerInfo: ' + info.toString());
+      }
       setState(() {
         _customerInfo = info;
         _loading = false;
@@ -111,8 +116,12 @@ class _SubscriptionStatusState extends State<SubscriptionStatus> with TickerProv
     final entitlement = allEntitlements.isNotEmpty ? allEntitlements.values.first : null;
     if (entitlement != null) {
       // Debug output for entitlement and originalPurchaseDate
-      print('[DEBUG] Entitlement: ' + entitlement.toString());
-      print('[DEBUG] Entitlement originalPurchaseDate: ' + entitlement.originalPurchaseDate.toString());
+      if (kDebugMode) {
+        print('[DEBUG] Entitlement: ' + entitlement.toString());
+      }
+      if (kDebugMode) {
+        print('[DEBUG] Entitlement originalPurchaseDate: ' + entitlement.originalPurchaseDate.toString());
+      }
     }
     final planId = entitlement?.productIdentifier ?? (activeSubs.isNotEmpty ? activeSubs.first : (allProductIds.isNotEmpty ? allProductIds.last : 'Unknown'));
     final isActive = activeSubs.isNotEmpty;
@@ -134,15 +143,9 @@ class _SubscriptionStatusState extends State<SubscriptionStatus> with TickerProv
     if (planPurchaseDate == null && entitlement != null) {
       try {
         // Use entitlement's latestPurchaseDate as primary fallback (most accurate)
-        if (entitlement.latestPurchaseDate != null) {
-          planPurchaseDate = DateTime.tryParse(entitlement.latestPurchaseDate!);
-          print('[DEBUG] - Using entitlement latestPurchaseDate as fallback: $planPurchaseDate');
-        } else {
-          // Use entitlement's originalPurchaseDate as secondary fallback
-          planPurchaseDate = DateTime.tryParse(entitlement.originalPurchaseDate);
-          print('[DEBUG] - Using entitlement originalPurchaseDate as fallback: $planPurchaseDate');
-        }
-      } catch (e) {
+        planPurchaseDate = DateTime.tryParse(entitlement.latestPurchaseDate);
+        print('[DEBUG] - Using entitlement latestPurchaseDate as fallback: $planPurchaseDate');
+            } catch (e) {
         print('[DEBUG] - Error parsing entitlement purchase dates: $e');
       }
     }

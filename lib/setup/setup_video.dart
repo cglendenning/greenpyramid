@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
@@ -5,7 +6,6 @@ import 'package:life_ops/setup/setup4.dart';
 import 'package:life_ops/utils.dart' as utils;
 import 'dart:io' show Platform;
 import 'package:http/http.dart' as http;
-import 'package:life_ops/you_and_me_video_player.dart';
 import 'package:html/parser.dart' as html_parser;
 
 class SetupVideo extends StatefulWidget {
@@ -19,7 +19,6 @@ class SetupVideo extends StatefulWidget {
 
 class _SetupVideoState extends State<SetupVideo> {
   WebViewController? _webViewController;
-  bool _isMuted = true;
   bool _hasError = false;
   bool _isWebViewReady = false;
 
@@ -37,8 +36,12 @@ class _SetupVideoState extends State<SetupVideo> {
 
   void _initializeWebView() {
     try {
-      print('🌐 [SETUP VIDEO] Initializing WebView');
-      print('🌐 [SETUP VIDEO] Loading URL: https://www.stillwatersretreats.com/greenpyramid/setup-video');
+      if (kDebugMode) {
+        print('🌐 [SETUP VIDEO] Initializing WebView');
+      }
+      if (kDebugMode) {
+        print('🌐 [SETUP VIDEO] Loading URL: https://www.stillwatersretreats.com/greenpyramid/setup-video');
+      }
       
       _webViewController = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -47,24 +50,36 @@ class _SetupVideoState extends State<SetupVideo> {
         ..setNavigationDelegate(
           NavigationDelegate(
             onPageStarted: (String url) {
-              print('🌐 [SETUP VIDEO] Page started loading: $url');
+              if (kDebugMode) {
+                print('🌐 [SETUP VIDEO] Page started loading: $url');
+              }
             },
             onProgress: (int progress) {
-              print('🌐 [SETUP VIDEO] Loading progress: $progress%');
+              if (kDebugMode) {
+                print('🌐 [SETUP VIDEO] Loading progress: $progress%');
+              }
             },
             onPageFinished: (String url) {
-              print('✅ [SETUP VIDEO] Page finished loading: $url');
+              if (kDebugMode) {
+                print('✅ [SETUP VIDEO] Page finished loading: $url');
+              }
               setState(() {
                 _isWebViewReady = true;
               });
             },
             onNavigationRequest: (NavigationRequest request) {
-              print('🌐 [SETUP VIDEO] Navigation request: ${request.url}');
+              if (kDebugMode) {
+                print('🌐 [SETUP VIDEO] Navigation request: ${request.url}');
+              }
               return NavigationDecision.navigate;
             },
             onWebResourceError: (WebResourceError error) {
-              print('❌ [SETUP VIDEO] WebView error: ${error.description}');
-              print('❌ [SETUP VIDEO] Error code: ${error.errorCode}');
+              if (kDebugMode) {
+                print('❌ [SETUP VIDEO] WebView error: ${error.description}');
+              }
+              if (kDebugMode) {
+                print('❌ [SETUP VIDEO] Error code: ${error.errorCode}');
+              }
               setState(() {
                 _hasError = true;
               });
@@ -74,7 +89,9 @@ class _SetupVideoState extends State<SetupVideo> {
         ..loadRequest(Uri.parse('https://www.stillwatersretreats.com/greenpyramid/setup-video'));
         
     } catch (e) {
-      print('❌ [SETUP VIDEO] Error initializing WebView: $e');
+      if (kDebugMode) {
+        print('❌ [SETUP VIDEO] Error initializing WebView: $e');
+      }
       setState(() {
         _hasError = true;
       });
@@ -172,7 +189,9 @@ class _SetupVideoState extends State<SetupVideo> {
                       }
                     ''');
                   } catch (e) {
-                    print('❌ [SETUP VIDEO] Error pausing video: $e');
+                    if (kDebugMode) {
+                      print('❌ [SETUP VIDEO] Error pausing video: $e');
+                    }
                   }
                   Navigator.pop(context);
                 },
@@ -216,7 +235,9 @@ class _SetupVideoState extends State<SetupVideo> {
                       }
                     ''');
                   } catch (e) {
-                    print('❌ [SETUP VIDEO] Error pausing video: $e');
+                    if (kDebugMode) {
+                      print('❌ [SETUP VIDEO] Error pausing video: $e');
+                    }
                   }
                   
                   // Wait a moment for JavaScript to execute before navigating
@@ -317,9 +338,15 @@ class _IOSSetupVideoPlayerState extends State<_IOSSetupVideoPlayer> {
     });
     try {
       final response = await http.get(Uri.parse('https://www.stillwatersretreats.com/greenpyramid/setup-video'));
-      print('Status: ${response.statusCode}, Headers: ${response.headers}');
-      print('Request URL: ${response.request?.url}');
-      print('Body: ${response.body}');
+      if (kDebugMode) {
+        print('Status: ${response.statusCode}, Headers: ${response.headers}');
+      }
+      if (kDebugMode) {
+        print('Request URL: ${response.request?.url}');
+      }
+      if (kDebugMode) {
+        print('Body: ${response.body}');
+      }
       String? youtubeUrl;
       final document = html_parser.parse(response.body);
       final iframe = document.querySelector('iframe');

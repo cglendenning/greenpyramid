@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:life_ops/db.dart';
 import 'package:life_ops/dbtools.dart';
@@ -144,8 +145,10 @@ class _Setup18State extends State<Setup18> {
           "(${category.categoryid}, '${category.cat}') "
           " on conflict (categoryid) do update set cat = '${category.cat}'");
       for (var task in tasks) {
-        print ('task.id: ${task.id} task.category: ${task.category} '
+        if (kDebugMode) {
+          print ('task.id: ${task.id} task.category: ${task.category} '
             'task.taskdescription: ${task.taskdescription}');
+        }
         // HACK: This is a very simple sanitization because chatGPT can not
         // guarantee that it will not produce single quotes in it's output.
         task.taskdescription = task.taskdescription.replaceAll('\'', '');

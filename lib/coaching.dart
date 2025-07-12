@@ -8,7 +8,6 @@ import 'package:life_ops/paywall.dart';
 import 'dart:io' show Platform;
 import 'package:youtube_player_flutter/youtube_player_flutter.dart' as yt_flutter;
 import 'package:flutter/widgets.dart';
-import 'package:flutter/services.dart';
 import 'dart:developer';
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
@@ -881,7 +880,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   late WebViewController _controller;
   bool isLoading = true;
   yt_flutter.YoutubePlayerController? _ytController;
-  bool _ytReady = false;
 
   @override
   void initState() {
@@ -1025,7 +1023,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
                   controller: _ytController!,
                   showVideoProgressIndicator: true,
                   onReady: () {
-                    setState(() { _ytReady = true; });
+                    setState(() { });
                   },
                 ),
               ),
