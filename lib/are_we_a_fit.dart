@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:life_ops/personal_coaching.dart';
-import 'package:life_ops/you_and_me_video_player.dart';
+import 'package:life_ops/are_we_a_fit_video_player.dart';
+import 'package:life_ops/navbar.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter/widgets.dart';
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
-class YouAndMeScreen extends StatefulWidget {
-  const YouAndMeScreen({Key? key}) : super(key: key);
+class AreWeAFitScreen extends StatefulWidget {
+  const AreWeAFitScreen({Key? key}) : super(key: key);
 
   @override
-  State<YouAndMeScreen> createState() => _YouAndMeScreenState();
+  State<AreWeAFitScreen> createState() => _AreWeAFitScreenState();
 }
 
-class _YouAndMeScreenState extends State<YouAndMeScreen> with RouteAware {
+class _AreWeAFitScreenState extends State<AreWeAFitScreen> with RouteAware {
   @override
   void initState() {
     super.initState();
@@ -35,7 +35,7 @@ class _YouAndMeScreenState extends State<YouAndMeScreen> with RouteAware {
     ]);
   }
 
-  static const String youAndMeCopy = '''
+  static const String areWeAFitCopy = '''
 
 You may be a builder, maker, solopreneur, entrepreneur or creator who gets frustrated and angry at non-creative people and processes that get in the way of you producing your best work. You probably never express this, because you are nice. Setting boundaries is not your love language because you are petrified of being perceived as a jerk. You fear having to defend your boundaries so much that you never set them. You resonate with the idea of a life where you can bask in the tranquility of craftsmanship where you construct high quality things for others that they find incredibly valuable.
 
@@ -52,7 +52,7 @@ You can also reach out for a free 15 minute chat with me below.
 
   List<String> _bubbleBlocks() {
     // Split into 2-3 sentence blocks for bubbles
-    final text = youAndMeCopy.replaceAll('\n', ' ').replaceAll('  ', ' ');
+    final text = areWeAFitCopy.replaceAll('\n', ' ').replaceAll('  ', ' ');
     final regex = RegExp(r'([^.!?]*[.!?])');
     final sentences = regex.allMatches(text).map((m) => m.group(0)!.trim()).toList();
     List<String> blocks = [];
@@ -100,7 +100,7 @@ You can also reach out for a free 15 minute chat with me below.
                   const Icon(Icons.spa, color: Color(0xff1782FF), size: 32),
                   const SizedBox(width: 10),
                   Text(
-                    'You & Me',
+                    'Are We A Fit?',
                     style: const TextStyle(
                       fontSize: 32,
                       fontWeight: FontWeight.bold,
@@ -131,7 +131,7 @@ You can also reach out for a free 15 minute chat with me below.
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const YouAndMeVideoPlayerScreen(videoId: 'SeKP2Qgdk9o'),
+                      builder: (context) => const AreWeAFitVideoPlayerScreen(videoId: 'SeKP2Qgdk9o'),
                     ),
                   );
                 },
@@ -241,11 +241,7 @@ You can also reach out for a free 15 minute chat with me below.
     }
     return Scaffold(
       extendBodyBehindAppBar: true,
-      appBar: AppBar(
-        title: const Text('You & Me'),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
+      appBar: NavBar(),
       body: Container(
         decoration: BoxDecoration(
           image: DecorationImage(

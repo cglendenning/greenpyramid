@@ -4,17 +4,17 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'dart:io' show Platform;
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
-class YouAndMeVideoPlayerScreen extends StatefulWidget {
+class AreWeAFitVideoPlayerScreen extends StatefulWidget {
   final String videoId;
   final bool forceLandscape;
   final bool showOverlays;
-  const YouAndMeVideoPlayerScreen({Key? key, required this.videoId, this.forceLandscape = true, this.showOverlays = true}) : super(key: key);
+  const AreWeAFitVideoPlayerScreen({Key? key, required this.videoId, this.forceLandscape = true, this.showOverlays = true}) : super(key: key);
 
   @override
-  State<YouAndMeVideoPlayerScreen> createState() => _YouAndMeVideoPlayerScreenState();
+  State<AreWeAFitVideoPlayerScreen> createState() => _AreWeAFitVideoPlayerScreenState();
 }
 
-class _YouAndMeVideoPlayerScreenState extends State<YouAndMeVideoPlayerScreen> with WidgetsBindingObserver {
+class _AreWeAFitVideoPlayerScreenState extends State<AreWeAFitVideoPlayerScreen> with WidgetsBindingObserver {
   late WebViewController _controller;
   bool isLoading = true;
   bool showOverlays = false;

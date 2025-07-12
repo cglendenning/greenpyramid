@@ -23,7 +23,7 @@ import 'package:life_ops/cancel.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:life_ops/subscription_status.dart';
 import 'package:life_ops/coaching.dart';
-import 'package:life_ops/you_and_me.dart';
+import 'package:life_ops/are_we_a_fit.dart';
 
 int currentScreenIndex = 0;
 
@@ -406,8 +406,8 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
           case 'coaching':
             navigateToCoaching(context);
             break;
-          case 'youAndMe':
-            navigateToYouAndMe(context);
+          case 'areWeAFit':
+            navigateToAreWeAFit(context);
             break;
           default:
         }
@@ -443,8 +443,8 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
             child: Text('Coaching'),
           ),
           const PopupMenuItem<String>(
-            value: 'youAndMe',
-            child: Text('You & Me'),
+            value: 'areWeAFit',
+            child: Text('Are We A Fit?'),
           ),
         ];
         return items;
@@ -560,10 +560,10 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
     setState(() {});
   }
 
-  void navigateToYouAndMe(BuildContext context) async {
+  void navigateToAreWeAFit(BuildContext context) async {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => const YouAndMeScreen()))
+        context, MaterialPageRoute(builder: (context) => const AreWeAFitScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});

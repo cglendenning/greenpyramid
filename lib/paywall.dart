@@ -1,16 +1,16 @@
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:life_ops/navbar.dart';
+import 'package:life_ops/are_we_a_fit_video_player.dart';
+import 'package:http/http.dart' as http;
+import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:youtube_player_iframe/youtube_player_iframe.dart' as yt_iframe;
 import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:life_ops/navbar.dart';
-import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:http/http.dart' as http;
-import 'package:life_ops/you_and_me_video_player.dart';
 import 'package:html/parser.dart' as html_parser;
-import 'package:youtube_player_iframe/youtube_player_iframe.dart' as yt_iframe;
+import 'package:webview_flutter/webview_flutter.dart';
 
 // --- iOS dynamic video player widget ---
 class _IOSPaywallVideoPlayer extends StatefulWidget {
@@ -90,7 +90,7 @@ class _IOSPaywallVideoPlayerState extends State<_IOSPaywallVideoPlayer> {
         ),
       );
     }
-    return YouAndMeVideoPlayerScreen(videoId: _videoId!, forceLandscape: false, showOverlays: false);
+    return AreWeAFitVideoPlayerScreen(videoId: _videoId!, forceLandscape: false, showOverlays: false);
   }
 }
 
