@@ -122,12 +122,6 @@ class _Morning extends State<Morning> {
                                                   )));
                                         }
                                       }),
-                                  Container(
-                                      padding: const EdgeInsets.all(10.0),
-                                      child: Text(
-                                        'Check off the tasks you completed on $taskLogDate:'
-                                      )),
-                                  const SizedBox(height: 20),
                                   FutureBuilder(
                                       future: getUncheckedTasks(),
                                       // convert to a pre-defined var.
@@ -138,62 +132,146 @@ class _Morning extends State<Morning> {
                                               child:
                                               CircularProgressIndicator());
                                         } else {
-                                          return Container(
-                                            // constrain the scrollview to 1/3 of the height
-                                            // of the screen.
-                                              height: MediaQuery
-                                                  .of(context)
-                                                  .size
-                                                  .height /
-                                                  3,
-                                              child: Scrollbar(
-                                                  child: ListView.builder(
-                                                      scrollDirection:
-                                                      Axis.vertical,
-                                                      shrinkWrap: true,
-                                                      itemCount:
-                                                      snapshot.data.length,
-                                                      itemBuilder:
-                                                          (BuildContext context,
-                                                          int index) {
-                                                        return CheckboxListTile(
-                                                            title: Text(
-                                                                '${snapshot
-                                                                    .data[index]
-                                                                    .taskdescription}'),
-                                                            subtitle: Text(
-                                                                '${snapshot
-                                                                    .data[index]
-                                                                    .category}'),
-                                                            value: toBoolean(
-                                                                snapshot
-                                                                    .data[index]
-                                                                    .checked),
-                                                            onChanged:
-                                                                (bool? value) {
-                                                              setState(() {
-                                                                var v = value
-                                                                    .toString();
-                                                                snapshot
-                                                                    .data[index]
-                                                                    .checked =
-                                                                    v;
-                                                                dbHelper
-                                                                    .rawUpdate(
-                                                                    "update tasklog set checked = '${value
-                                                                        .toString()}' "
-                                                                        "where taskdescription = '${snapshot
+                                          // Check if there are any tasks to display
+                                          if (snapshot.data.isEmpty) {
+                                            return Container(
+                                              padding: const EdgeInsets.all(20.0),
+                                              child: Column(
+                                                children: [
+                                                  const Icon(
+                                                    Icons.task_alt,
+                                                    size: 64,
+                                                    color: Colors.green,
+                                                  ),
+                                                  const SizedBox(height: 16),
+                                                  const Text(
+                                                    'You\'re on fire!',
+                                                    style: TextStyle(
+                                                      fontSize: 24,
+                                                      fontWeight: FontWeight.bold,
+                                                      color: Colors.black,
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                  const SizedBox(height: 8),
+                                                  Text(
+                                                    'You completed all your tasks for $taskLogDate, or you didn\'t have any tasks scheduled for that day.',
+                                                    style: const TextStyle(
+                                                      fontSize: 16,
+                                                      color: Colors.black,
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                  ),
+                                                  const SizedBox(height: 16),
+                                                  Container(
+                                                    padding: const EdgeInsets.all(16),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.white.withOpacity(0.9),
+                                                      borderRadius: BorderRadius.circular(12),
+                                                      border: Border.all(
+                                                        color: Colors.black.withOpacity(0.2),
+                                                      ),
+                                                    ),
+                                                    child: const Column(
+                                                      children: [
+                                                        Icon(
+                                                          Icons.trending_up,
+                                                          color: Colors.green,
+                                                          size: 32,
+                                                        ),
+                                                        SizedBox(height: 8),
+                                                        Text(
+                                                          'Ready for today?',
+                                                          style: TextStyle(
+                                                            fontSize: 18,
+                                                            fontWeight: FontWeight.bold,
+                                                            color: Colors.black,
+                                                          ),
+                                                        ),
+                                                        SizedBox(height: 4),
+                                                        Text(
+                                                          'Focus on today\'s priorities and build momentum for success.',
+                                                          style: TextStyle(
+                                                            fontSize: 14,
+                                                            color: Colors.black87,
+                                                          ),
+                                                          textAlign: TextAlign.center,
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          }
+                                          
+                                          return Column(
+                                            children: [
+                                              Container(
+                                                padding: const EdgeInsets.all(10.0),
+                                                child: Text(
+                                                  'Check off the tasks you completed on $taskLogDate:'
+                                                ),
+                                              ),
+                                              const SizedBox(height: 20),
+                                              Container(
+                                                // constrain the scrollview to 1/3 of the height
+                                                // of the screen.
+                                                  height: MediaQuery
+                                                      .of(context)
+                                                      .size
+                                                      .height /
+                                                      3,
+                                                  child: Scrollbar(
+                                                      child: ListView.builder(
+                                                          scrollDirection:
+                                                          Axis.vertical,
+                                                          shrinkWrap: true,
+                                                          itemCount:
+                                                          snapshot.data.length,
+                                                          itemBuilder:
+                                                              (BuildContext context,
+                                                              int index) {
+                                                            return CheckboxListTile(
+                                                                title: Text(
+                                                                    '${snapshot
                                                                         .data[index]
-                                                                        .taskdescription}' "
-                                                                        " and category = '${snapshot
+                                                                        .taskdescription}'),
+                                                                subtitle: Text(
+                                                                    '${snapshot
                                                                         .data[index]
-                                                                        .category}'"
-                                                                        " and taskdate = '${snapshot
+                                                                        .category}'),
+                                                                value: toBoolean(
+                                                                    snapshot
                                                                         .data[index]
-                                                                        .taskdate}'");
-                                                              });
-                                                            });
-                                                      })));
+                                                                        .checked),
+                                                                onChanged:
+                                                                    (bool? value) {
+                                                                  setState(() {
+                                                                    var v = value
+                                                                        .toString();
+                                                                    snapshot
+                                                                        .data[index]
+                                                                        .checked =
+                                                                        v;
+                                                                    dbHelper
+                                                                        .rawUpdate(
+                                                                        "update tasklog set checked = '${value
+                                                                            .toString()}' "
+                                                                            "where taskdescription = '${snapshot
+                                                                            .data[index]
+                                                                            .taskdescription}' "
+                                                                            " and category = '${snapshot
+                                                                            .data[index]
+                                                                            .category}'"
+                                                                            " and taskdate = '${snapshot
+                                                                            .data[index]
+                                                                            .taskdate}'");
+                                                                  });
+                                                                });
+                                                          }))),
+                                            ],
+                                          );
                                         }
                                       }),
                                   const SizedBox(height: 20),
@@ -217,76 +295,6 @@ class _Morning extends State<Morning> {
                                   const SizedBox(height: 10),
                                 ])))))));
   }
-
-  /*
-  Future<Widget> subscribeLink() async {
-    var link;
-    CustomerInfo ci = await Purchases.getCustomerInfo();
-
-    var daysRemaining = installDate
-        .add(const Duration(days: 7))
-        .difference(tz.TZDateTime.now(tz.local))
-        .inDays;
-
-    String dayString = 'days remaining';
-
-    if (daysRemaining == 1) {
-      dayString = 'day remaining!!';
-    }
-
-    // FT: No subscription and free trial days remaining > 0
-    if (ci.activeSubscriptions.isEmpty && daysRemaining > 0) {
-      link = RichText(
-        text: TextSpan(
-            text: 'Subscribe. $daysRemaining $dayString',
-            style: const TextStyle(
-                color: Colors.black,
-                decoration: TextDecoration.underline,
-                fontSize: 16),
-            recognizer: TapGestureRecognizer()
-              ..onTap = () {
-                navigateToPaywall();
-                setState(() {});
-              }),
-      );
-      // S: Active subscription found.
-    } else if (ci.activeSubscriptions.isNotEmpty) {
-      link = const Text('');
-      // U: No active subscription found, and daysRemaining is 0 or less.
-    } else if (paywalled == false) {
-      navigateToPaywall();
-    } else {
-      Navigator.pop(context);
-    }
-    return link;
-  }
-   */
-
-  void navigateToPaywall() async {
-    // Check if user is already subscribed
-    bool isSubscribed = await utils.Utils().isUserSubscribed();
-    if (isSubscribed) {
-      // Show a message that they're already subscribed
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You already have an active subscription!'),
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return;
-    }
-
-    utils.Utils().changeSystemColor(Brightness.dark);
-
-    await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => Paywall()));
-    paywalled = true;
-
-    setState(() {});
-  }
-
-
-
 
   Future<List<UncheckedTask>> getUncheckedTasks() async {
     final List<Map<String, dynamic>> maps =
