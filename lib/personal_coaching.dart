@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_email_sender/flutter_email_sender.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 class PersonalCoaching extends StatefulWidget {
   const PersonalCoaching({super.key});
@@ -11,6 +12,7 @@ class PersonalCoaching extends StatefulWidget {
 
 class _PersonalCoachingState extends State<PersonalCoaching> {
   List<String> attachments = [];
+  FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
   final _subjectController = TextEditingController(
     text: 'Personal Coaching Inquiry - Green Pyramid App User',
@@ -30,6 +32,12 @@ I'm ready to invest in myself and make real changes. Looking forward to hearing 
 Best regards,
 [Your name]''',
   );
+
+  @override
+  void initState() {
+    super.initState();
+    analytics.logEvent(name: 'personal_coaching');
+  }
 
   @override
   Widget build(BuildContext context) {

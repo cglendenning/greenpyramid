@@ -11,6 +11,7 @@ import 'dart:io' show Platform;
 import 'package:youtube_player_flutter/youtube_player_flutter.dart' as yt_flutter;
 import 'package:flutter/widgets.dart';
 import 'dart:developer';
+import 'package:firebase_analytics/firebase_analytics.dart';
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
 void debugDumpState(String label, BuildContext? context, {dynamic controller, dynamic extra}) {
@@ -217,6 +218,7 @@ class _CoachingState extends State<Coaching> with RouteAware {
   @override
   Widget build(BuildContext context) {
     debugDumpState('COACHING: build method called', context, extra: {'isLoading': isLoading, 'errorMessage': errorMessage});
+    FirebaseAnalytics.instance.logEvent(name: 'coaching');
     return Scaffold(
       appBar: const NavBar(),
       body: isLoading

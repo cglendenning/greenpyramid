@@ -3,6 +3,7 @@ import 'package:life_ops/personal_coaching.dart';
 import 'package:life_ops/are_we_a_fit_video_player.dart';
 import 'package:life_ops/navbar.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
 class AreWeAFitScreen extends StatefulWidget {
@@ -13,9 +14,12 @@ class AreWeAFitScreen extends StatefulWidget {
 }
 
 class _AreWeAFitScreenState extends State<AreWeAFitScreen> with RouteAware {
+  FirebaseAnalytics analytics = FirebaseAnalytics.instance;
+  
   @override
   void initState() {
     super.initState();
+    analytics.logEvent(name: 'are_we_a_fit');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       routeObserver.subscribe(this, ModalRoute.of(context)! as PageRoute);
     });

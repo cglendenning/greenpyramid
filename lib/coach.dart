@@ -174,7 +174,7 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    analytics.logEvent(name: 'chat');
+    analytics.logEvent(name: 'coach_chat');
     print('🏗️ [COACH SCREEN] Building UI - isSubscribed: $isSubscribed');
 
     return SafeArea(

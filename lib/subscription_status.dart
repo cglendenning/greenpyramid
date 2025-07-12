@@ -5,6 +5,7 @@ import 'package:life_ops/navbar.dart';
 import 'package:intl/intl.dart';
 import 'package:life_ops/cancel.dart';
 import 'package:life_ops/paywall.dart';
+import 'package:firebase_analytics/firebase_analytics.dart';
 
 class SubscriptionStatus extends StatefulWidget {
   @override
@@ -17,10 +18,12 @@ class _SubscriptionStatusState extends State<SubscriptionStatus> with TickerProv
   String? _error;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
   @override
   void initState() {
     super.initState();
+    analytics.logEvent(name: 'subscription_status');
     
     // Initialize pulse animation for the resubscribe button
     _pulseController = AnimationController(
