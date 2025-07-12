@@ -352,10 +352,14 @@ class _IOSSetupVideoPlayerState extends State<_IOSSetupVideoPlayer> {
       final iframe = document.querySelector('iframe');
       if (iframe != null) {
         youtubeUrl = iframe.attributes['src'];
-        print('Found iframe src: $youtubeUrl');
+        if (kDebugMode) {
+          print('Found iframe src: $youtubeUrl');
+        }
       }
       final id = youtubeUrl != null ? _extractYouTubeId(youtubeUrl) : null;
-      print('Extracted YouTube ID: $id');
+      if (kDebugMode) {
+        print('Extracted YouTube ID: $id');
+      }
       if (id != null && id.isNotEmpty) {
         setState(() {
           _videoId = id;
@@ -450,7 +454,9 @@ class _IOSSetupVideoWithOverlaysState extends State<_IOSSetupVideoWithOverlays> 
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..addJavaScriptChannel('PlayerStateChannel', onMessageReceived: (JavaScriptMessage message) {
         // YouTube player states: 1 = playing, 2 = paused
-        print('[PlayerStateChannel] Received: ${message.message}');
+        if (kDebugMode) {
+          print('[PlayerStateChannel] Received: ${message.message}');
+        }
         if (message.message == '1') {
           setState(() { showOverlays = false; });
         } else if (message.message == '2') {
@@ -525,7 +531,9 @@ class _IOSSetupVideoWithOverlaysState extends State<_IOSSetupVideoWithOverlays> 
 
   @override
   Widget build(BuildContext context) {
-    print('[OverlayDebug] build called, showOverlays: $showOverlays');
+    if (kDebugMode) {
+      print('[OverlayDebug] build called, showOverlays: $showOverlays');
+    }
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(

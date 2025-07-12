@@ -311,13 +311,28 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   }
 
   Future<void> navigateToPaywall() async {
+    // Check if user is already subscribed
+    bool isSubscribed = await utils.Utils().isUserSubscribed();
+    if (isSubscribed) {
+      // Show a message that they're already subscribed
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You already have an active subscription!'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+    
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => Paywall()),
     );
     // Check subscription status after returning from paywall
-    print('💰 [COACH SCREEN] Returning from paywall - Triggering subscription check');
+    if (kDebugMode) {
+      print('💰 [COACH SCREEN] Returning from paywall - Triggering subscription check');
+    }
     await _checkSubscriptionStatus();
     setState(() {
       utils.Utils().changeSystemColor(Brightness.light);

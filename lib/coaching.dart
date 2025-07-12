@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
@@ -5,6 +6,7 @@ import 'package:webview_flutter/webview_flutter.dart';
 import 'package:life_ops/navbar.dart';
 import 'package:life_ops/personal_coaching.dart';
 import 'package:life_ops/paywall.dart';
+import 'package:life_ops/utils.dart' as utils;
 import 'dart:io' show Platform;
 import 'package:youtube_player_flutter/youtube_player_flutter.dart' as yt_flutter;
 import 'package:flutter/widgets.dart';
@@ -42,6 +44,7 @@ class _CoachingState extends State<Coaching> with RouteAware {
   List<YouTubeVideo> videos = [];
   bool isLoading = true;
   String? errorMessage;
+  bool isSubscribed = false;
 
   @override
   void initState() {
@@ -56,6 +59,7 @@ class _CoachingState extends State<Coaching> with RouteAware {
       }
     });
     fetchVideos();
+    _checkSubscriptionStatus();
   }
 
   @override
@@ -91,6 +95,21 @@ class _CoachingState extends State<Coaching> with RouteAware {
         log('COACHING: Error in didPopNext: $e\n$st');
       }
     });
+  }
+
+  Future<void> _checkSubscriptionStatus() async {
+    try {
+      bool subscriptionStatus = await utils.Utils().isUserSubscribed();
+      if (mounted) {
+        setState(() {
+          isSubscribed = subscriptionStatus;
+        });
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error checking subscription status: $e');
+      }
+    }
   }
 
   Future<void> fetchVideos() async {
@@ -257,12 +276,14 @@ class _CoachingState extends State<Coaching> with RouteAware {
       } else if (i == 8) {
         widgets.add(_buildPersonalCoachingCTA2());
         widgets.add(const SizedBox(height: 32));
-      } else if (i == 12) {
+      } else if (i == 12 && !isSubscribed) {
+        // Only show "Mindset Mastery" section if not subscribed
         widgets.add(_buildAICoachingCTA3());
         widgets.add(const SizedBox(height: 32));
       } else if (i % 5 == 0 && i > 8) {
         // Every 5 videos - alternating CTAs
-        if ((i / 3) % 2 == 0) {
+        if ((i / 3) % 2 == 0 && !isSubscribed) {
+          // Only show AI coaching CTAs if not subscribed
           widgets.add(_buildAICoachingCTA4());
         } else {
           widgets.add(_buildPersonalCoachingCTA4());
@@ -769,9 +790,11 @@ class _CoachingState extends State<Coaching> with RouteAware {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 12),
-          const Text(
-            'Choose your path: AI coaching for 24/7 support or personal coaching for accelerated results.',
-            style: TextStyle(
+          Text(
+            isSubscribed 
+              ? 'Ready for the next level? Work directly with Craig for accelerated results and personalized guidance.'
+              : 'Choose your path: AI coaching for 24/7 support or personal coaching for accelerated results.',
+            style: const TextStyle(
               fontSize: 16,
               color: Colors.white,
               height: 1.4,
@@ -779,57 +802,96 @@ class _CoachingState extends State<Coaching> with RouteAware {
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => _navigateToPaywall(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xff1782FF),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+          if (!isSubscribed) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _navigateToPaywall(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xff1782FF),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                  ),
-                  child: const Text(
-                    'AI Coaching',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton(
-                  onPressed: () => _navigateToPersonalCoaching(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xffC35DCC),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Personal Coaching',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                    child: const Text(
+                      'AI Coaching',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _navigateToPersonalCoaching(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: const Color(0xffC35DCC),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Personal Coaching',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ] else ...[
+            // If subscribed, only show Personal Coaching button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => _navigateToPersonalCoaching(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: const Color(0xffC35DCC),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'Personal Coaching',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-            ],
-          ),
+            ),
+          ],
         ],
       ),
     );
   }
 
-  void _navigateToPaywall(BuildContext context) {
+  void _navigateToPaywall(BuildContext context) async {
+    // Check if user is already subscribed
+    bool isSubscribed = await utils.Utils().isUserSubscribed();
+    if (isSubscribed) {
+      // Show a message that they're already subscribed
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You already have an active subscription!'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
+    
+    // Navigate to paywall only if not subscribed
     Navigator.push(
       context,
       MaterialPageRoute(builder: (context) => Paywall()),

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/services.dart';
 import 'package:life_ops/setup/setup1.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
 
 class Utils {
 
@@ -45,5 +46,18 @@ class Utils {
 
   bool toBoolean(String s) {
     return s != '0' && s != 'false' && s != '';
+  }
+
+  Future<bool> isUserSubscribed() async {
+    try {
+      await Purchases.invalidateCustomerInfoCache();
+      CustomerInfo ci = await Purchases.getCustomerInfo();
+      return ci.activeSubscriptions.isNotEmpty;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error checking subscription status: $e');
+      }
+      return false;
+    }
   }
 }

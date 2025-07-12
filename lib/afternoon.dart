@@ -207,6 +207,18 @@ class _Afternoon extends State<Afternoon> {
   }
 
   void navigateToPaywall() async {
+    // Check if user is already subscribed
+    bool isSubscribed = await utils.Utils().isUserSubscribed();
+    if (isSubscribed) {
+      // Show a message that they're already subscribed
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You already have an active subscription!'),
+          duration: Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
 
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(
