@@ -7,7 +7,7 @@ import 'package:intl/intl.dart' as intl;
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 3;
+  static const _databaseVersion = 4;
 
   // The task table. This stores the current view of tasks for each value.
   static const taskTable = 'task';
@@ -50,6 +50,12 @@ class DatabaseHelper {
   static const chatColumnSender = 'sender';
   static const chatColumnContent = 'content';
   static const chatColumnTimestamp = 'timestamp';
+
+  // The vision_statement table. This stores the user's vision statement.
+  static const visionStatementTable = 'vision_statement';
+  static const columnVisionId = 'id';
+  static const columnVisionText = 'vision_text';
+  static const columnVisionCreated = 'created';
 
   // make this a singleton class
   DatabaseHelper._privateConstructor();
@@ -187,6 +193,23 @@ class DatabaseHelper {
         print(s);
       }
     }
+
+    try {
+      await db.execute('''
+            CREATE TABLE $visionStatementTable (
+              $columnVisionId INTEGER PRIMARY KEY AUTOINCREMENT,
+              $columnVisionText TEXT NOT NULL,
+              $columnVisionCreated TEXT NOT NULL
+            )
+            ''');
+    } catch (e, s) {
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
+    }
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -225,6 +248,19 @@ class DatabaseHelper {
               $chatColumnContent TEXT NOT NULL,
               $chatColumnTimestamp TEXT NOT NULL
             )
+            ''');
+          case 4:
+            if (kDebugMode) {
+              print(
+                  '****** in _onUpgrade(): oldversion is '
+                  ' 2$oldVersion and newVersion is $newVersion');
+            }
+            await db.execute('''
+              CREATE TABLE $visionStatementTable (
+                $columnVisionId INTEGER PRIMARY KEY AUTOINCREMENT,
+                $columnVisionText TEXT NOT NULL,
+                $columnVisionCreated TEXT NOT NULL
+              )
             ''');
         }
       }
@@ -471,7 +507,9 @@ class DatabaseHelper {
       if (kDebugMode) {
         print(e);
       }
-      print(s);
+      if (kDebugMode) {
+        print(s);
+      }
     }
     return ret;
   }
@@ -563,7 +601,9 @@ class DatabaseHelper {
           where: "checked = 'true' and ${DatabaseHelper.columnTLTaskDate} = ?",
           whereArgs: whereArguments);
     } catch (e, s) {
-      print(e);
+      if (kDebugMode) {
+        print(e);
+      }
       print(s);
     }
     return ret;
@@ -591,7 +631,9 @@ class DatabaseHelper {
           where: "${DatabaseHelper.columnCategoryId} = ?",
           whereArgs: whereArguments);
     } catch (e, s) {
-      print(e);
+      if (kDebugMode) {
+        print(e);
+      }
       print(s);
     }
     return ret;
@@ -857,6 +899,47 @@ class DatabaseHelper {
   Future<int> deleteCategory() async {
     Database db = await instance.database;
     return await db.delete(categoryTable);
+  }
+
+  Future<int> insertVisionStatement(String visionText) async {
+    int id = 0;
+    try {
+      Database db = await instance.database;
+      id = await db.insert(visionStatementTable, {
+        columnVisionText: visionText,
+        columnVisionCreated: DateTime.now().toIso8601String(),
+      });
+    } catch (e, s) {
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
+    }
+    return id;
+  }
+
+  Future<String?> getLatestVisionStatement() async {
+    try {
+      Database db = await instance.database;
+      final result = await db.query(
+        visionStatementTable,
+        orderBy: '$columnVisionCreated DESC',
+        limit: 1,
+      );
+      if (result.isNotEmpty) {
+        return result.first[columnVisionText] as String;
+      }
+    } catch (e, s) {
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
+    }
+    return null;
   }
 
   Future<void> insertChatMessage(String sender, String content) async {

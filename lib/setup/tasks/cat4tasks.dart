@@ -460,7 +460,9 @@ class _Cat4TasksState extends State<Cat4Tasks> {
 
   void navigateToCat5Tasks() async {
     for (var category in cats) {
-      print('categoryid: ${category.categoryid} cat: ${category.cat}');
+      if (kDebugMode) {
+        print('categoryid: ${category.categoryid} cat: ${category.cat}');
+      }
     }
 
     currentCatId = 5;

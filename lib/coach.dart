@@ -175,7 +175,9 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     analytics.logEvent(name: 'coach_chat');
-    print('🏗️ [COACH SCREEN] Building UI - isSubscribed: $isSubscribed');
+    if (kDebugMode) {
+      print('🏗️ [COACH SCREEN] Building UI - isSubscribed: $isSubscribed');
+    }
 
     return SafeArea(
       child: Focus(
@@ -288,7 +290,9 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
 
   Future<void> _onSubmitted(String message) async {
     // Check subscription status before processing message
-    print('💬 [COACH SCREEN] Message submitted - Triggering subscription check');
+    if (kDebugMode) {
+      print('💬 [COACH SCREEN] Message submitted - Triggering subscription check');
+    }
     await _checkSubscriptionStatus();
     
     // Count user messages (excluding assistant messages)

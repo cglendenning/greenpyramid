@@ -147,7 +147,9 @@ class _SubscriptionStatusState extends State<SubscriptionStatus> with TickerProv
       try {
         // Use entitlement's latestPurchaseDate as primary fallback (most accurate)
         planPurchaseDate = DateTime.tryParse(entitlement.latestPurchaseDate);
-        print('[DEBUG] - Using entitlement latestPurchaseDate as fallback: $planPurchaseDate');
+        if (kDebugMode) {
+          print('[DEBUG] - Using entitlement latestPurchaseDate as fallback: $planPurchaseDate');
+        }
             } catch (e) {
         print('[DEBUG] - Error parsing entitlement purchase dates: $e');
       }
@@ -161,7 +163,9 @@ class _SubscriptionStatusState extends State<SubscriptionStatus> with TickerProv
         final estimatedPurchaseDate = parsedExpiration.subtract(const Duration(days: 30));
         if (estimatedPurchaseDate.isBefore(DateTime.now())) {
           planPurchaseDate = estimatedPurchaseDate;
-          print('[DEBUG] - Using estimated purchase date (expiration - 30 days): $planPurchaseDate');
+          if (kDebugMode) {
+            print('[DEBUG] - Using estimated purchase date (expiration - 30 days): $planPurchaseDate');
+          }
         }
       } catch (e) {
         print('[DEBUG] - Error calculating estimated purchase date: $e');
@@ -174,23 +178,25 @@ class _SubscriptionStatusState extends State<SubscriptionStatus> with TickerProv
     bool isCancelledButNotExpired = false;
     
     // Debug logging to help understand the subscription state
-    print('[DEBUG] Subscription Status Debug:');
-    print('[DEBUG] - isActive: $isActive');
-    print('[DEBUG] - activeSubs: $activeSubs');
-    print('[DEBUG] - allEntitlements: ${allEntitlements.keys}');
-    print('[DEBUG] - allProductIds: $allProductIds');
-    print('[DEBUG] - parsedExpiration: $parsedExpiration');
-    
-    // Let's explore more CustomerInfo properties to find cancellation status
-    print('[DEBUG] - CustomerInfo toString: ${_customerInfo.toString()}');
-    print('[DEBUG] - All entitlements (including inactive): ${_customerInfo?.entitlements.all.keys}');
-    print('[DEBUG] - Latest expiration date: ${_customerInfo?.latestExpirationDate}');
-    print('[DEBUG] - All purchase dates: ${_customerInfo?.allPurchaseDates}');
-    print('[DEBUG] - Non subscription transactions: ${_customerInfo?.nonSubscriptionTransactions}');
-    print('[DEBUG] - Plan ID for purchase date lookup: $planId');
-    print('[DEBUG] - Purchase date from allPurchaseDates: $planPurchaseDateStr');
-    print('[DEBUG] - Parsed purchase date: $planPurchaseDate');
-    
+    if (kDebugMode) {
+      print('[DEBUG] Subscription Status Debug:');
+      print('[DEBUG] - isActive: $isActive');
+      print('[DEBUG] - activeSubs: $activeSubs');
+      print('[DEBUG] - allEntitlements: ${allEntitlements.keys}');
+      print('[DEBUG] - allProductIds: $allProductIds');
+      print('[DEBUG] - parsedExpiration: $parsedExpiration');
+
+      // Let's explore more CustomerInfo properties to find cancellation status
+      print('[DEBUG] - CustomerInfo toString: ${_customerInfo.toString()}');
+      print('[DEBUG] - All entitlements (including inactive): ${_customerInfo?.entitlements.all.keys}');
+      print('[DEBUG] - Latest expiration date: ${_customerInfo?.latestExpirationDate}');
+      print('[DEBUG] - All purchase dates: ${_customerInfo?.allPurchaseDates}');
+      print('[DEBUG] - Non subscription transactions: ${_customerInfo?.nonSubscriptionTransactions}');
+      print('[DEBUG] - Plan ID for purchase date lookup: $planId');
+      print('[DEBUG] - Purchase date from allPurchaseDates: $planPurchaseDateStr');
+      print('[DEBUG] - Parsed purchase date: $planPurchaseDate');
+    }
+
     // Try to access unsubscribeAt field if available in CustomerInfo
     try {
       // Check if CustomerInfo has an unsubscribeAt field

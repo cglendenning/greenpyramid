@@ -126,42 +126,17 @@ class _Setup3State extends State<Setup3> {
   }
 
   Future<String> firstCompletion() async {
-    final String cats = '"' +
-        categories[0] +
-        '"|"' +
-        categories[1] +
-        '"|"' +
-        categories[2] +
-        '"|"' +
-        categories[3] +
-        '"|"' +
-        categories[4] +
-        '"|"' +
-        categories[5] +
-        '"~~';
-
+    final String cats = categories.map((c) => '"' + c + '"').join('|') + '~~';
     OpenAI.apiKey = openAIApiKey;
-
-    String system = '';
-
-    system = "You are Jocko Willink as a life coach.";
-
-    String prompt = "Your client provided this data: $cats. "
-        "The data is ranked in order of importance. "
-        "Build a vision statement for this person starting with the phrase "
-        "I will become the kind of person that ";
-
+    String system =
+        "You are a seasoned, wise mindset and life coach with decades of experience helping people transform their lives through the Green Pyramid methodology. You have a laid-back, approachable personality with a subtle sense of humor - you're the kind of coach who can make someone laugh while delivering profound insights. You have mastered the art of delivering profound insights in just a few powerful words. Keep your responses to 100 words or less. Your client provided this data: $cats. The data is ranked in order of importance. Speak with the wisdom of experience - be conversational, supportive, and deliver specific, actionable guidance rather than generic advice. Your words should carry weight and inspire reflection.";
+    String prompt = "Build a vision statement for this person starting with the phrase 'I will become the kind of person that ...' and make it inspiring, concise, and personal.";
     const int timeout = 45;
-
-    String chatResult = "Epic fail. please hit the back arrow in the upper "
-        "left to try building your vision again.";
-
+    String chatResult = "Epic fail. please hit the back arrow in the upper left to try building your vision again.";
     try {
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
         model: "gpt-4.1-2025-04-14",
-        // My understanding of top_p and temperature:
-        // https://community.openai.com/t/a-better-explanation-of-top-p/2426/10
         topP: 1,
         temperature: 1,
         messages: [
@@ -176,13 +151,12 @@ class _Setup3State extends State<Setup3> {
             content: [
               OpenAIChatCompletionChoiceMessageContentItemModel.text(prompt),
             ],
-
           ),
         ],
       ).timeout(const Duration(seconds: timeout));
-      chatResult = "We built a vision statement for you as you continue your "
-              "journey of success...\n\n" +
-          (chatCompletion.choices[0].message.content?.first.text ?? '');
+      chatResult = (chatCompletion.choices[0].message.content?.first.text ?? '').trim();
+      // Store the vision statement in the database
+      await dbHelper.insertVisionStatement(chatResult);
     } catch (e, s) {
       if (kDebugMode) {
         print(e);

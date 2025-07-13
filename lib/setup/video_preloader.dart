@@ -66,7 +66,9 @@ class VideoPreloader {
   YoutubePlayerController? getPreloadedController() {
     // Return null on Android since we use WebView
     if (Platform.isAndroid) {
-      print('🌐 [VIDEO PRELOADER] Android detected - using WebView instead of preloaded controller');
+      if (kDebugMode) {
+        print('🌐 [VIDEO PRELOADER] Android detected - using WebView instead of preloaded controller');
+      }
       return null;
     }
     

@@ -24,6 +24,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:life_ops/subscription_status.dart';
 import 'package:life_ops/coaching.dart';
 import 'package:life_ops/are_we_a_fit.dart';
+import 'package:life_ops/profile.dart';
 
 int currentScreenIndex = 0;
 
@@ -409,6 +410,9 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
           case 'areWeAFit':
             navigateToAreWeAFit(context);
             break;
+          case 'profile':
+            navigateToProfile(context);
+            break;
           default:
         }
       },
@@ -445,6 +449,10 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
           const PopupMenuItem<String>(
             value: 'areWeAFit',
             child: Text('Are We A Fit?'),
+          ),
+          const PopupMenuItem<String>(
+            value: 'profile',
+            child: Text('Profile'),
           ),
         ];
         return items;
@@ -564,6 +572,15 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(
         context, MaterialPageRoute(builder: (context) => const AreWeAFitScreen()))
+        .then((value) {});
+    utils.Utils().changeSystemColor(Brightness.light);
+    setState(() {});
+  }
+
+  void navigateToProfile(BuildContext context) async {
+    utils.Utils().changeSystemColor(Brightness.dark);
+    await Navigator.push(
+        context, MaterialPageRoute(builder: (context) => ProfileScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
@@ -717,7 +734,9 @@ class _BottomNavBarState extends State<BottomNavBar> {
             switch (index) {
               case 0:
                 if (currentScreenIndex != index) {
-                  print('currentScreenIndex: $currentScreenIndex');
+                  if (kDebugMode) {
+                    print('currentScreenIndex: $currentScreenIndex');
+                  }
                   print('index: $index');
                   currentScreenIndex = index;
                 }
@@ -729,7 +748,9 @@ class _BottomNavBarState extends State<BottomNavBar> {
                 }
               case 2:
                 if (currentScreenIndex != index) {
-                  print('currentScreenIndex: $currentScreenIndex');
+                  if (kDebugMode) {
+                    print('currentScreenIndex: $currentScreenIndex');
+                  }
                   print('index: $index');
                   currentScreenIndex = index;
                 }
