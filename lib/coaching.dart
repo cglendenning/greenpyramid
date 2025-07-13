@@ -11,7 +11,6 @@ import 'dart:io' show Platform;
 import 'package:youtube_player_flutter/youtube_player_flutter.dart' as yt_flutter;
 import 'package:flutter/widgets.dart';
 import 'dart:developer';
-import 'dart:convert';
 import 'package:firebase_analytics/firebase_analytics.dart';
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
@@ -227,9 +226,9 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
 
   Future<void> _preloadFreshVideos() async {
     try {
-      // Try multiple approaches to get all videos from the channel
       List<YouTubeVideo> allVideos = [];
       Set<String> videoIds = {};
+      bool instantCachePopulated = false;
       
       // Method 1: Try RSS feed with different parameters (this has proper metadata)
       try {
@@ -241,9 +240,25 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
         );
 
         if (response.statusCode == 200) {
-          final videos = parseRSSFeed(response.body);
-          allVideos.addAll(videos);
-          videoIds.addAll(videos.map((v) => v.id));
+          final parsedVideos = parseRSSFeed(response.body);
+          for (final video in parsedVideos) {
+            if (!videoIds.contains(video.id)) {
+              allVideos.add(video);
+              videoIds.add(video.id);
+              // Populate _instantCache as soon as we have 5 videos
+              if (!instantCachePopulated && allVideos.length == 5) {
+                _instantCache = List.from(allVideos);
+                if (mounted) {
+                  setState(() {
+                    this.videos = List.from(_instantCache);
+                    _displayedVideoCount = 5;
+                    isLoading = false;
+                  });
+                }
+                instantCachePopulated = true;
+              }
+            }
+          }
         }
       } catch (e) {
         if (kDebugMode) {
@@ -261,9 +276,8 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
         );
         
         if (altResponse.statusCode == 200) {
-          final altVideos = parseRSSFeed(altResponse.body);
-          // Add videos that aren't already in the list
-          for (final video in altVideos) {
+          final altParsedVideos = parseRSSFeed(altResponse.body);
+          for (final video in altParsedVideos) {
             if (!videoIds.contains(video.id)) {
               allVideos.add(video);
               videoIds.add(video.id);
@@ -288,11 +302,9 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
           
           if (channelResponse.statusCode == 200) {
             final channelVideoIds = parseChannelPageForVideoIds(channelResponse.body);
-            
-            // Fetch metadata for more videos (increased limit)
             int fetchCount = 0;
             for (final videoId in channelVideoIds) {
-              if (!videoIds.contains(videoId) && fetchCount < 25) { // Increased from 10 to 25
+              if (!videoIds.contains(videoId) && fetchCount < 25) {
                 try {
                   final videoMetadata = await fetchVideoMetadata(videoId);
                   if (videoMetadata != null) {
@@ -319,15 +331,12 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
         // Update cache
         _cachedVideos = List.from(allVideos);
         _lastCacheTime = DateTime.now();
-        
-        // Update instant cache with first 5 videos
-        _instantCache = allVideos.take(5).toList();
-        
-        // Update UI with new videos
+        // _instantCache is already set to the first 5 videos
+        // Update UI with new videos, skipping the first 5 already shown
         if (mounted) {
           setState(() {
-            this.videos = List.from(allVideos)..shuffle();
-            _displayedVideoCount = 5; // Reset to show first 5 videos
+            this.videos = _instantCache + allVideos.skip(_instantCache.length).toList();
+            _displayedVideoCount = 5;
             isLoading = false;
           });
         }
@@ -353,14 +362,12 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
             description: 'Take your pyramid to the next level',
           ),
         ];
-        
-        // Randomize sample videos too
         sampleVideos.shuffle();
-        
+        _instantCache = sampleVideos.take(5).toList();
         if (mounted) {
           setState(() {
-            videos = sampleVideos;
-            _displayedVideoCount = 5; // Reset to show first 5 videos
+            this.videos = List.from(_instantCache);
+            _displayedVideoCount = 5;
             isLoading = false;
           });
         }
@@ -654,26 +661,14 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: Center(
-            child: Column(
-              children: [
-                if (_isLoadingMore)
-                  const CircularProgressIndicator()
-                else
-                  const SizedBox(height: 20),
-                const SizedBox(height: 8),
-                Text(
-                  '${_displayedVideoCount} of ${videos.length} videos loaded',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
+            child: const CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xff1782FF)),
             ),
           ),
         ),
       );
     }
+    // No message or spinner when all videos are loaded
     
     return widgets;
   }

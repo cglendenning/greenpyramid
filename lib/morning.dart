@@ -3,18 +3,10 @@ import 'package:life_ops/db.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:life_ops/dbtools.dart';
 import 'package:life_ops/quote.dart';
-import 'package:life_ops/paywall.dart';
 import 'package:life_ops/navbar.dart';
-import 'package:life_ops/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:life_ops/coach.dart';
-// import 'package:purchases_flutter/purchases_flutter.dart';
-// import 'package:timezone/timezone.dart' as tz;
-// import 'package:life_ops/main.dart';
-// import 'package:flutter/gestures.dart';
-
-
 
 class Morning extends StatefulWidget {
   const Morning({

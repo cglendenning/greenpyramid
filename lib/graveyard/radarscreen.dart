@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:life_ops/radarchart.dart';
+import 'package:life_ops/graveyard/radarchart.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
 class RadarScreen extends StatefulWidget {
