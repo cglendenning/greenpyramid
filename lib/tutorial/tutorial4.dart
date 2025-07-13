@@ -5,8 +5,6 @@ import 'package:life_ops/navbar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
-
-
 class Tutorial4 extends StatefulWidget {
   const Tutorial4({Key? key}) : super(key: key);
 
@@ -15,19 +13,17 @@ class Tutorial4 extends StatefulWidget {
 }
 
 class _Tutorial4 extends State<Tutorial4> {
-
   var _static1LGColor;
 
   @override
   void initState() {
-
-    _static1LGColor = Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000);
+    _static1LGColor =
+        Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000);
 
     super.initState();
   }
 
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
-
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +31,6 @@ class _Tutorial4 extends State<Tutorial4> {
     const String forward = 'images/svg/forward.svg';
     final Widget svgForward = SvgPicture.asset(forward,
         fit: BoxFit.scaleDown, semanticsLabel: 'forward');
-
 
     final static1LG = LinearGradient(
       begin: Alignment.topCenter,
@@ -59,17 +54,15 @@ class _Tutorial4 extends State<Tutorial4> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          const Text('Tutorial (4 of 5)'),
-                          const SizedBox(height: 10),
-                          Container(
-                              padding: const EdgeInsets.all(10.0),
-                              child: const Text(
-                                  "As you become more diligent at your daily tasks, "
-                                      "your pyramid will shift from red or yellow to green. "
-                              )),
-                          const SizedBox(height: 10),
-
-                          Stack(children: <Widget>[
+                      const Text('Tutorial (4 of 5)'),
+                      const SizedBox(height: 10),
+                      Container(
+                          padding: const EdgeInsets.all(10.0),
+                          child: const Text(
+                              "As you become more diligent at your daily tasks, "
+                              "your pyramid will shift from red or yellow to green. ")),
+                      const SizedBox(height: 10),
+                      Stack(children: <Widget>[
                         // Send every DrawCatX the same green linear gradient...
                         CustomPaint(
                             size: Size(pyramidWidth, pyramidHeight),
@@ -91,22 +84,23 @@ class _Tutorial4 extends State<Tutorial4> {
                             painter: DrawCat6(static1LG)),
                       ]).animate().shimmer(duration: 1000.ms),
                       const SizedBox(height: 30),
-                          Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: <Widget>[
-                                Column(
-                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                    children: <Widget>[
-                                      IconButton(
-                                        icon: svgForward,
-                                        onPressed: () {
-                                          setState(() {
-                                            navigateToTutorial5();
-                                          });
-                                        },
-                                      ),
-                                    ])
-                              ]),
+                      Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                            Column(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: <Widget>[
+                                  IconButton(
+                                    icon: svgForward,
+                                    onPressed: () {
+                                      setState(() {
+                                        navigateToTutorial5();
+                                      });
+                                    },
+                                  ),
+                                ])
+                          ]),
                     ])))));
   }
 

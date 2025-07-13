@@ -13,9 +13,7 @@ import 'package:life_ops/coach.dart';
 // import 'package:timezone/timezone.dart' as tz;
 // import 'package:life_ops/main.dart';
 
-
-
-  class Afternoon extends StatefulWidget {
+class Afternoon extends StatefulWidget {
   const Afternoon({
     super.key,
   });
@@ -36,7 +34,6 @@ class _Afternoon extends State<Afternoon> {
   String taskLogDate = intl.DateFormat('yyyy-MM-dd').format(DateTime.now());
   bool paywalled = false;
 
-
   _Afternoon();
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
@@ -48,29 +45,31 @@ class _Afternoon extends State<Afternoon> {
     analytics.logEvent(name: 'afternoon');
     return SafeArea(
         child: Scaffold(
-          appBar: const NavBar(),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => Coach(showAppBar: true)),
-              );
-            },
-            backgroundColor: Colors.white,
-            child: SvgPicture.asset(
-              'images/svg/bottom_nav/chat.svg',
-              height: 26,
-              width: 26,
-              fit: BoxFit.contain,
-              colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
-              semanticsLabel: 'Chat',
+            appBar: const NavBar(),
+            floatingActionButton: FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => Coach(showAppBar: true)),
+                );
+              },
+              backgroundColor: Colors.white,
+              child: SvgPicture.asset(
+                'images/svg/bottom_nav/chat.svg',
+                height: 26,
+                width: 26,
+                fit: BoxFit.contain,
+                colorFilter:
+                    const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                semanticsLabel: 'Chat',
+              ),
             ),
-          ),
             body: Container(
                 decoration: BoxDecoration(
                     image: DecorationImage(
-                   colorFilter: ColorFilter.mode(
-                       Colors.black.withOpacity(0.5), BlendMode.dstATop),
+                  colorFilter: ColorFilter.mode(
+                      Colors.black.withOpacity(0.5), BlendMode.dstATop),
                   image: const AssetImage("images/afternoon_1.jpg"),
                   fit: BoxFit.cover,
                 )),
@@ -79,13 +78,7 @@ class _Afternoon extends State<Afternoon> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-
-                          Container(
-                              padding: const EdgeInsets.all(10.0),
-                              child: Text(
-                                  "Here are the tasks you still need to complete today, $taskLogDate:",
-                              )),
-                      const SizedBox(height: 20),
+                      
                       FutureBuilder(
                           future: getUncheckedTasks(),
                           // convert to a pre-defined var.
@@ -94,38 +87,128 @@ class _Afternoon extends State<Afternoon> {
                               return const Center(
                                   child: CircularProgressIndicator());
                             } else {
-                              return Container(
-                                  // constrain the scrollview to 1/3 of the height
-                                  // of the screen.
-                                  height:
-                                      MediaQuery.of(context).size.height / 5,
-                                  child: Scrollbar(
+                              // Check if there are any tasks to display
+                              if (snapshot.data.isEmpty) {
+                                return Container(
+                                  padding: const EdgeInsets.all(20.0),
+                                  child: Column(
+                                    children: [
+                                      const Icon(
+                                        Icons.celebration,
+                                        size: 64,
+                                        color: Colors.orange,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      const Text(
+                                        'Great progress!',
+                                        style: TextStyle(
+                                          fontSize: 24,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.black,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'You\'ve completed all your tasks for $taskLogDate, or you didn\'t have any tasks scheduled for today.',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          color: Colors.black,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withOpacity(0.9),
+                                          borderRadius:
+                                              BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color:
+                                                Colors.black.withOpacity(0.2),
+                                          ),
+                                        ),
+                                        child: const Column(
+                                          children: [
+                                            Icon(
+                                              Icons.lightbulb,
+                                              color: Colors.orange,
+                                              size: 32,
+                                            ),
+                                            SizedBox(height: 8),
+                                            Text(
+                                              'Keep the momentum!',
+                                              style: TextStyle(
+                                                fontSize: 18,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.black,
+                                              ),
+                                            ),
+                                            SizedBox(height: 4),
+                                            Text(
+                                              'Use this energy to tackle tomorrow\'s challenges with confidence.',
+                                              style: TextStyle(
+                                                fontSize: 14,
+                                                color: Colors.black87,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+
+                              return Column(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10.0),
+                                    child: Text(
+                                      "Here are the tasks you still need to complete today, $taskLogDate:",
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                  Container(
+                                    // constrain the scrollview to 1/3 of the height
+                                    // of the screen.
+                                    height:
+                                        MediaQuery.of(context).size.height / 5,
+                                    child: Scrollbar(
                                       child: ListView.builder(
-                                          scrollDirection: Axis.vertical,
-                                          shrinkWrap: true,
-                                          itemCount: snapshot.data.length,
-                                          itemBuilder: (BuildContext context,
-                                              int index) {
-                                            return CheckboxListTile(
-                                                title: Text(
-                                                    '${snapshot.data[index].taskdescription}'),
-                                                subtitle: Text(
-                                                    '${snapshot.data[index].category}'),
-                                                value: toBoolean(snapshot
-                                                    .data[index].checked),
-                                                onChanged: (bool? value) {
-                                                  setState(() {
-                                                    var v = value.toString();
-                                                    snapshot.data[index]
-                                                        .checked = v;
-                                                    dbHelper.rawUpdate(
-                                                        "update tasklog set checked = '${value.toString()}' "
-                                                        "where taskdescription = '${snapshot.data[index].taskdescription}' "
-                                                        " and category = '${snapshot.data[index].category}'"
-                                                        " and taskdate = '${snapshot.data[index].taskdate}'");
-                                                  });
-                                                });
-                                          })));
+                                        scrollDirection: Axis.vertical,
+                                        shrinkWrap: true,
+                                        itemCount: snapshot.data.length,
+                                        itemBuilder:
+                                            (BuildContext context, int index) {
+                                          return CheckboxListTile(
+                                            title: Text(
+                                                '${snapshot.data[index].taskdescription}'),
+                                            subtitle: Text(
+                                                '${snapshot.data[index].category}'),
+                                            value: toBoolean(
+                                                snapshot.data[index].checked),
+                                            onChanged: (bool? value) {
+                                              setState(() {
+                                                var v = value.toString();
+                                                snapshot.data[index].checked =
+                                                    v;
+                                                dbHelper.rawUpdate(
+                                                    "update tasklog set checked = '${value.toString()}' "
+                                                    "where taskdescription = '${snapshot.data[index].taskdescription}' "
+                                                    " and category = '${snapshot.data[index].category}'"
+                                                    " and taskdate = '${snapshot.data[index].taskdate}'");
+                                              });
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
                             }
                           }),
                       FutureBuilder(
@@ -139,15 +222,15 @@ class _Afternoon extends State<Afternoon> {
                             } else if (snapshot.hasData) {
                               children = <Widget>[
                                 const SizedBox(height: 10),
-
                                 Container(
-                                  // color: Colors.white.withOpacity(0.5),
+                                    // color: Colors.white.withOpacity(0.5),
                                     decoration: BoxDecoration(
-                                        borderRadius: const BorderRadius.all(Radius.circular(20)),
-                                      color: Colors.white.withOpacity(0.8)
-                                    ),
+                                        borderRadius: const BorderRadius.all(
+                                            Radius.circular(20)),
+                                        color: Colors.white.withOpacity(0.8)),
                                     padding: const EdgeInsets.all(10.0),
-                                    child: Text('${snapshot.data?[0].quotetext}',
+                                    child: Text(
+                                      '${snapshot.data?[0].quotetext}',
                                     )),
                                 const SizedBox(height: 10),
                               ];
@@ -185,7 +268,7 @@ class _Afternoon extends State<Afternoon> {
                           }),
                       const SizedBox(height: 20),
 
-                          /*
+                      /*
                           FutureBuilder(
                               future: subscribeLink(),
                               builder: (context,
@@ -201,9 +284,8 @@ class _Afternoon extends State<Afternoon> {
                               }),
                            */
 
-
-                          const SizedBox(height: 10),
-                        ])))));
+                      const SizedBox(height: 10),
+                    ])))));
   }
 
   void navigateToPaywall() async {
@@ -273,7 +355,6 @@ class _Afternoon extends State<Afternoon> {
     return link;
   }
    */
-
 
   Future<List<UncheckedTask>> getUncheckedTasks() async {
     final List<Map<String, dynamic>> maps =

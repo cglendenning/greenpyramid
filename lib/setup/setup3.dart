@@ -78,9 +78,9 @@ class _Setup3State extends State<Setup3> {
     return Column(
       children: [
         LinearProgressIndicator(
-            value: 2/23,
-            color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000)
-        ),
+            value: 2 / 23,
+            color: Color(
+                int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000)),
         Expanded(
           child: ListView(
             reverse: true,
@@ -130,9 +130,11 @@ class _Setup3State extends State<Setup3> {
     OpenAI.apiKey = openAIApiKey;
     String system =
         "You are a seasoned, wise mindset and life coach with decades of experience helping people transform their lives through the Green Pyramid methodology. You have a laid-back, approachable personality with a subtle sense of humor - you're the kind of coach who can make someone laugh while delivering profound insights. You have mastered the art of delivering profound insights in just a few powerful words. Keep your responses to 100 words or less. Your client provided this data: $cats. The data is ranked in order of importance. Speak with the wisdom of experience - be conversational, supportive, and deliver specific, actionable guidance rather than generic advice. Your words should carry weight and inspire reflection.";
-    String prompt = "Build a vision statement for this person starting with the phrase 'I will become the kind of person that ...' and make it inspiring, concise, and personal.";
+    String prompt =
+        "Build a vision statement for this person starting with the phrase 'I will become the kind of person that ...' and make it inspiring, concise, and personal.";
     const int timeout = 45;
-    String chatResult = "Epic fail. please hit the back arrow in the upper left to try building your vision again.";
+    String chatResult =
+        "Epic fail. please hit the back arrow in the upper left to try building your vision again.";
     try {
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
@@ -154,7 +156,8 @@ class _Setup3State extends State<Setup3> {
           ),
         ],
       ).timeout(const Duration(seconds: timeout));
-      chatResult = (chatCompletion.choices[0].message.content?.first.text ?? '').trim();
+      chatResult =
+          (chatCompletion.choices[0].message.content?.first.text ?? '').trim();
       // Store the vision statement in the database
       await dbHelper.insertVisionStatement(chatResult);
     } catch (e, s) {
@@ -226,10 +229,10 @@ class MessageComposer extends StatelessWidget {
                     ),
             ),
             IconButton(
-              onPressed:
-                  !awaitingResponse ? () => navigateToSetup4() : null,
-              icon:
-                  !awaitingResponse ? svgForward : const CircularProgressIndicator(),
+              onPressed: !awaitingResponse ? () => navigateToSetup4() : null,
+              icon: !awaitingResponse
+                  ? svgForward
+                  : const CircularProgressIndicator(),
             ),
           ],
         ),
@@ -240,7 +243,8 @@ class MessageComposer extends StatelessWidget {
   void navigateToSetup4() async {
     await Navigator.push(
       ctx,
-      MaterialPageRoute(builder: (context) => SetupVideo(categories: categories)),
+      MaterialPageRoute(
+          builder: (context) => SetupVideo(categories: categories)),
     );
   }
 }
@@ -324,7 +328,8 @@ class ChatApi {
               .map((e) => OpenAIChatCompletionChoiceMessageModel(
                     role: e.msgType,
                     content: [
-                      OpenAIChatCompletionChoiceMessageContentItemModel.text(e.content),
+                      OpenAIChatCompletionChoiceMessageContentItemModel.text(
+                          e.content),
                     ],
                   ))
               .toList(),

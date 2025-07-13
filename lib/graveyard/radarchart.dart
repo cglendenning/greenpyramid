@@ -147,18 +147,18 @@ class RadarChartPainter extends CustomPainter {
   final double fraction;
 
   RadarChartPainter(
-      this.ticks,
-      this.features,
-      this.data,
-      this.reverseAxis,
-      this.ticksTextStyle,
-      this.featuresTextStyle,
-      this.outlineColor,
-      this.axisColor,
-      this.graphColors,
-      this.sides,
-      this.fraction,
-      );
+    this.ticks,
+    this.features,
+    this.data,
+    this.reverseAxis,
+    this.ticksTextStyle,
+    this.featuresTextStyle,
+    this.outlineColor,
+    this.axisColor,
+    this.graphColors,
+    this.sides,
+    this.fraction,
+  );
 
   Path variablePath(Size size, double radius, int sides) {
     var path = Path();
@@ -226,7 +226,7 @@ class RadarChartPainter extends CustomPainter {
 
     tickLabels
         .sublist(
-        reverseAxis ? 1 : 0, reverseAxis ? ticks.length : ticks.length - 1)
+            reverseAxis ? 1 : 0, reverseAxis ? ticks.length : ticks.length - 1)
         .asMap()
         .forEach((index, tick) {
       var tickRadius = tickDistance * (index + 1);
@@ -261,31 +261,16 @@ class RadarChartPainter extends CustomPainter {
       cat6Radians
     ];
 
-    List<int> xRotateNudge = [
-      10,
-      45,
-      -180,
-      -170,
-      35,
-      75
-    ];
+    List<int> xRotateNudge = [10, 45, -180, -170, 35, 75];
 
-    List<int> yRotateNudge = [
-      -50,
-      -100,
-      145,
-      -70,
-      -115,
-      -60
-    ];
-
+    List<int> yRotateNudge = [-50, -100, 145, -70, -115, -60];
 
     features.asMap().forEach((index, feature) {
       var xAngle = cos(angle * index - pi / 2);
       var yAngle = sin(angle * index - pi / 2);
 
       var featureOffset =
-      Offset(centerX + radius * xAngle, centerY + radius * yAngle);
+          Offset(centerX + radius * xAngle, centerY + radius * yAngle);
 
       canvas.drawLine(centerOffset, featureOffset, ticksPaint);
 
@@ -294,22 +279,21 @@ class RadarChartPainter extends CustomPainter {
       // Excellent explanation...
       // https://stackoverflow.com/questions/5789813/what-does-canvas-translate-do
       canvas.save();
-      canvas.translate(labelXOffset + xRotateNudge[index], featureOffset.dy + yRotateNudge[index]);
+      canvas.translate(labelXOffset + xRotateNudge[index],
+          featureOffset.dy + yRotateNudge[index]);
       canvas.rotate(rads[index]);
 
       TextPainter(
         text: TextSpan(text: feature, style: featuresTextStyle),
-      // textAlign: xAngle < 0 ? TextAlign.right : TextAlign.left,
+        // textAlign: xAngle < 0 ? TextAlign.right : TextAlign.left,
         textAlign: TextAlign.center,
         textDirection: TextDirection.ltr,
       )
         ..layout(minWidth: featureOffset.dx)
-      ..paint(canvas, const Offset(0,0));
-
+        ..paint(canvas, const Offset(0, 0));
 
       canvas.restore();
     });
-
 
     // Painting each graph
     try {
@@ -381,14 +365,16 @@ class RadarChartPainter extends CustomPainter {
             case 5:
               startAngle = 3.66;
           }
-          path.addArc(Rect.fromCircle(
-            center: Offset(size.width / 2, size.height / 2),
-            radius: radius * (pointRadius/100),
-          ), startAngle,1.06);
+          path.addArc(
+              Rect.fromCircle(
+                center: Offset(size.width / 2, size.height / 2),
+                radius: radius * (pointRadius / 100),
+              ),
+              startAngle,
+              1.06);
 
           // https://api.flutter.dev/flutter/dart-ui/Path/addArc.html
         }
-
 
         path.close();
         canvas.drawPath(path, graphPaint);

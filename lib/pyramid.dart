@@ -202,7 +202,6 @@ class _Pyramid extends State<Pyramid> {
       ],
     );
 
-
     final cat1LG = _cat1LGToggled ? grey1LG : dynamic1LG;
     final cat2LG = _cat2LGToggled ? grey2LG : dynamic2LG;
     final cat3LG = _cat3LGToggled ? grey3LG : dynamic3LG;
@@ -507,7 +506,7 @@ class _Pyramid extends State<Pyramid> {
             future: totalPctCompleteFuture,
             builder: (BuildContext context, AsyncSnapshot snapshot) {
               Widget display;
-              if (!snapshot.hasData || snapshot.data == '' ) {
+              if (!snapshot.hasData || snapshot.data == '') {
                 display = Text(
                   '0 Percent Complete',
                   style: pctCompleteTextStyle,
@@ -530,11 +529,15 @@ class _Pyramid extends State<Pyramid> {
             icon: const Icon(Icons.psychology, color: Colors.white),
             label: const Text(
               'Mindset',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white),
             ),
             style: ElevatedButton.styleFrom(
               backgroundColor: Color(0xFF66CC5D), // #66CC5D
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12.8),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 32, vertical: 12.8),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(30.0),
               ),
@@ -543,11 +546,17 @@ class _Pyramid extends State<Pyramid> {
             onPressed: () async {
               final result = await Navigator.push(
                 context,
-                MaterialPageRoute(builder: (context) => MindsetSelect(
-                  categories: [cat1String, cat2String, cat3String, cat4String, cat5String, cat6String]
-                      .where((cat) => cat.isNotEmpty)
-                      .toList(),
-                )),
+                MaterialPageRoute(
+                    builder: (context) => MindsetSelect(
+                          categories: [
+                            cat1String,
+                            cat2String,
+                            cat3String,
+                            cat4String,
+                            cat5String,
+                            cat6String
+                          ].where((cat) => cat.isNotEmpty).toList(),
+                        )),
               );
               if (result != null && result is List && result.length == 2) {
                 final mood = result[0] as String;
@@ -561,12 +570,15 @@ class _Pyramid extends State<Pyramid> {
     );
   }
 
-  void navigateToChat(BuildContext context, String mood, String category) async {
+  void navigateToChat(
+      BuildContext context, String mood, String category) async {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (context) => Coach(mood: mood, category: category, showAppBar: true))).then((_) {
+            context,
+            MaterialPageRoute(
+                builder: (context) =>
+                    Coach(mood: mood, category: category, showAppBar: true)))
+        .then((_) {
       setState(() {
         utils.Utils().changeSystemColor(Brightness.light);
         setFutures();
@@ -706,7 +718,6 @@ class DrawCat1 extends CustomPainter {
     var textSpan = TextSpan(
       text: '$cat1',
       style: textStyle,
-
     );
 
     final textPainter = TextPainter(
@@ -723,7 +734,6 @@ class DrawCat1 extends CustomPainter {
 
     var xCenter = ((size.width / 2.4) - textPainter.width) / 2;
     var yCenter = (size.height * 4.1 / 5);
-
 
     final offset = Offset(xCenter, yCenter);
     textPainter.paint(canvas, offset);
@@ -887,7 +897,6 @@ class DrawCat3 extends CustomPainter {
 
     var xCenter = ((size.width / 0.63) - textPainter.width) / 2;
     var yCenter = (size.height * 4.1 / 5);
-
 
     final offset = Offset(xCenter, yCenter);
     textPainter.paint(canvas, offset);
@@ -1057,7 +1066,6 @@ class DrawCat5 extends CustomPainter {
 
     var xCenter = ((size.width / 0.8) - textPainter.width) / 2;
     var yCenter = (size.height / 2.1);
-
 
     final offset = Offset(xCenter, yCenter);
     textPainter.paint(canvas, offset);

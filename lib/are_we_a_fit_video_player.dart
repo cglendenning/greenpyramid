@@ -8,13 +8,20 @@ class AreWeAFitVideoPlayerScreen extends StatefulWidget {
   final String videoId;
   final bool forceLandscape;
   final bool showOverlays;
-  const AreWeAFitVideoPlayerScreen({Key? key, required this.videoId, this.forceLandscape = true, this.showOverlays = true}) : super(key: key);
+  const AreWeAFitVideoPlayerScreen(
+      {Key? key,
+      required this.videoId,
+      this.forceLandscape = true,
+      this.showOverlays = true})
+      : super(key: key);
 
   @override
-  State<AreWeAFitVideoPlayerScreen> createState() => _AreWeAFitVideoPlayerScreenState();
+  State<AreWeAFitVideoPlayerScreen> createState() =>
+      _AreWeAFitVideoPlayerScreenState();
 }
 
-class _AreWeAFitVideoPlayerScreenState extends State<AreWeAFitVideoPlayerScreen> with WidgetsBindingObserver {
+class _AreWeAFitVideoPlayerScreenState extends State<AreWeAFitVideoPlayerScreen>
+    with WidgetsBindingObserver {
   late WebViewController _controller;
   bool isLoading = true;
   bool showOverlays = false;
@@ -70,9 +77,15 @@ class _AreWeAFitVideoPlayerScreenState extends State<AreWeAFitVideoPlayerScreen>
     final isEnded = playerState == PlayerState.ended;
     final isPlaying = playerState == PlayerState.playing;
     if (isPaused || isEnded) {
-      if (!showOverlays) setState(() { showOverlays = true; });
+      if (!showOverlays)
+        setState(() {
+          showOverlays = true;
+        });
     } else if (isPlaying) {
-      if (showOverlays) setState(() { showOverlays = false; });
+      if (showOverlays)
+        setState(() {
+          showOverlays = false;
+        });
     }
   }
 
@@ -164,7 +177,6 @@ class _AreWeAFitVideoPlayerScreenState extends State<AreWeAFitVideoPlayerScreen>
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     if (widget.forceLandscape || !Platform.isIOS) {
@@ -239,7 +251,7 @@ class _AreWeAFitVideoPlayerScreenState extends State<AreWeAFitVideoPlayerScreen>
                   controller: _ytController!,
                   showVideoProgressIndicator: true,
                   onReady: () {
-                    setState(() { });
+                    setState(() {});
                   },
                 ),
               ),
@@ -313,4 +325,4 @@ class _AreWeAFitVideoPlayerScreenState extends State<AreWeAFitVideoPlayerScreen>
     _ytController?.dispose();
     super.dispose();
   }
-} 
+}

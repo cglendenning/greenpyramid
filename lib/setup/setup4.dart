@@ -12,8 +12,7 @@ class Setup4 extends StatefulWidget {
   const Setup4(this.categories);
 
   @override
-  State<Setup4> createState() =>
-      _Setup4State(categories);
+  State<Setup4> createState() => _Setup4State(categories);
 }
 
 class _Setup4State extends State<Setup4> {
@@ -31,7 +30,7 @@ class _Setup4State extends State<Setup4> {
   Widget build(BuildContext context) {
     analytics.logEvent(name: '${setupVersion}_setup4');
     Color green =
-    Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000);
+        Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000);
 
     final lg = LinearGradient(
       begin: Alignment.topCenter,
@@ -39,14 +38,8 @@ class _Setup4State extends State<Setup4> {
       colors: [green, green],
     );
 
-    double pyramidWidth = MediaQuery
-        .of(context)
-        .size
-        .width * 0.87;
-    double pyramidHeight = MediaQuery
-        .of(context)
-        .size
-        .width * 0.82;
+    double pyramidWidth = MediaQuery.of(context).size.width * 0.87;
+    double pyramidHeight = MediaQuery.of(context).size.width * 0.82;
 
     var mainTextStyle = const TextStyle(
         fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'SourceSans3');
@@ -55,62 +48,59 @@ class _Setup4State extends State<Setup4> {
     final Widget svgForward = SvgPicture.asset(forward,
         fit: BoxFit.scaleDown, semanticsLabel: 'forward');
 
-
-
     return Container(
         color: Colors.black,
         child: SafeArea(
             child: Scaffold(
           appBar: const NavBar(),
-          body: Column(
-              children: [
-                LinearProgressIndicator(
-                    value: 3/23,
-                    color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000)
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Let\'s Go!',
-                  style: mainTextStyle,
-                ),
-                Container(
-                    padding: const EdgeInsets.all(10.0),
-                    child: const Text(
-                      "Here is your Green Pyramid. The things that matter most "
-                        "are on the bottom, holding up the rest of your life. "
-                        "\n\nWe will now explain what the pyramid is all about "
-                        "and the color coding. Let\'s continue...")),
-                const SizedBox(height: 20),
-                Stack(children: <Widget>[
-                  CustomPaint(
-                      size: Size(pyramidWidth, pyramidHeight),
-                      painter: DrawCat1(lg, categories[0], 0)),
-                  CustomPaint(
-                      size: Size(pyramidWidth, pyramidHeight),
-                      painter: DrawCat2(lg, categories[1], 0)),
-                  CustomPaint(
-                      size: Size(pyramidWidth, pyramidHeight),
-                      painter: DrawCat3(lg, categories[2], 0)),
-                  CustomPaint(
-                      size: Size(pyramidWidth, pyramidHeight),
-                      painter: DrawCat4(lg, categories[3], 0)),
-                  CustomPaint(
-                      size: Size(pyramidWidth, pyramidHeight),
-                      painter: DrawCat5(lg, categories[4], 0)),
-                  CustomPaint(
-                      size: Size(pyramidWidth, pyramidHeight),
-                      painter: DrawCat6(lg, categories[5], 0)),
-                ]),
-                const SizedBox(height: 40),
-                IconButton(
-                  icon: svgForward,
-                  onPressed: () {
-                    setState(() {
-                      navigateToSetup5();
-                    });
-                  },
-                )
-              ]),
+          body: Column(children: [
+            LinearProgressIndicator(
+                value: 3 / 23,
+                color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) +
+                    0xFF000000)),
+            const SizedBox(height: 10),
+            Text(
+              'Let\'s Go!',
+              style: mainTextStyle,
+            ),
+            Container(
+                padding: const EdgeInsets.all(10.0),
+                child: const Text(
+                    "Here is your Green Pyramid. The things that matter most "
+                    "are on the bottom, holding up the rest of your life. "
+                    "\n\nWe will now explain what the pyramid is all about "
+                    "and the color coding. Let\'s continue...")),
+            const SizedBox(height: 20),
+            Stack(children: <Widget>[
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat1(lg, categories[0], 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat2(lg, categories[1], 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat3(lg, categories[2], 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat4(lg, categories[3], 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat5(lg, categories[4], 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat6(lg, categories[5], 0)),
+            ]),
+            const SizedBox(height: 40),
+            IconButton(
+              icon: svgForward,
+              onPressed: () {
+                setState(() {
+                  navigateToSetup5();
+                });
+              },
+            )
+          ]),
         )));
   }
 
@@ -120,5 +110,4 @@ class _Setup4State extends State<Setup4> {
       MaterialPageRoute(builder: (context) => const Setup5()),
     );
   }
-
 }

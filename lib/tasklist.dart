@@ -47,7 +47,7 @@ class _TaskListState extends State<TaskList> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      Text('$category Log'),
+                  Text('$category Log'),
                   FutureBuilder(
                       future: getTaskLog(),
                       builder: (context, AsyncSnapshot snapshot) {
@@ -97,7 +97,7 @@ class _TaskListState extends State<TaskList> {
                   SizedBox(
                     height: 80,
                     width: MediaQuery.of(context).size.width * 0.87,
-                      child: CupertinoDatePicker(
+                    child: CupertinoDatePicker(
                       key: UniqueKey(),
                       mode: CupertinoDatePickerMode.date,
                       minimumDate: DateFormat("yyyy-MM-dd").parse("2023-06-01"),
@@ -118,23 +118,19 @@ class _TaskListState extends State<TaskList> {
                   ),
                   const SizedBox(height: 10),
                   FutureBuilder(
-                    future: combined(7),
+                      future: combined(7),
                       builder: (context, AsyncSnapshot snapshot) {
                         if (!snapshot.hasData) {
-                          return const Center(
-                              child: Text(
-                                  ''));
+                          return const Center(child: Text(''));
                         } else {
                           // if there are no tasks at all, getCompletionPercentage()
                           // will return -1.
                           if (snapshot.data == -1) {
-                            return const Center(
-                                child: Text(
-                                    ''));
+                            return const Center(child: Text(''));
                           } else {
                             return Text(
                                 '${snapshot.data.toString()} Percent Complete (7 days)',
-                            style: pctCompleteTextStyle);
+                                style: pctCompleteTextStyle);
                           }
                         }
                       }),
@@ -174,7 +170,6 @@ class _TaskListState extends State<TaskList> {
   }
 
   Future<List<TaskLog>> getTaskLog() async {
-
     // Is there a row for this category and date in tasklog?
     final List<Map<String, dynamic>> taskLogCount =
         await dbHelper.queryTaskLogByCategory(category, taskLogDate);
@@ -203,7 +198,7 @@ class _TaskListState extends State<TaskList> {
 
   Future<List<Task>> getTaskDetails(String cat, String desc) async {
     final List<Map<String, dynamic>> maps =
-    await dbHelper.querySingleTask(cat, desc);
+        await dbHelper.querySingleTask(cat, desc);
 
     // Convert the List<Map<String, dynamic> into a List<Task>.
     return List.generate(maps.length, (i) {
@@ -220,7 +215,6 @@ class _TaskListState extends State<TaskList> {
           saturday: maps[i]['saturday']);
     });
   }
-
 
   // Using the technique from here because getTaskLog() was
   // being called after getCompletionPercentage() when flipping
@@ -250,15 +244,15 @@ class Task {
 
   Task(
       {required this.id,
-        required this.category,
-        required this.taskdescription,
-        required this.sunday,
-        required this.monday,
-        required this.tuesday,
-        required this.wednesday,
-        required this.thursday,
-        required this.friday,
-        required this.saturday});
+      required this.category,
+      required this.taskdescription,
+      required this.sunday,
+      required this.monday,
+      required this.tuesday,
+      required this.wednesday,
+      required this.thursday,
+      required this.friday,
+      required this.saturday});
 
   Task.fromMap(dynamic obj) {
     id = obj["id"];
@@ -273,9 +267,6 @@ class Task {
     saturday = obj["saturday"];
   }
 }
-
-
-
 
 class TaskLog {
   int id = 0;

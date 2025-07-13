@@ -19,7 +19,7 @@ class Coach extends StatefulWidget {
   final bool showAppBar;
   final String? mood;
   final String? category;
-  
+
   Coach({super.key, this.showAppBar = true, this.mood, this.category});
 
   final ChatApi chatApi = ChatApi();
@@ -37,7 +37,8 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   late FocusNode _focusNode;
   int freeMessageLimit = 10;
   bool isSubscribed = true; // Start as true to prevent banner flash
-  final GlobalKey<_MessageComposerState> _messageComposerKey = GlobalKey<_MessageComposerState>();
+  final GlobalKey<_MessageComposerState> _messageComposerKey =
+      GlobalKey<_MessageComposerState>();
 
   final _messages = <CoachMessage>[
     CoachMessage('Give me just a moment...', OpenAIChatMessageRole.assistant),
@@ -53,7 +54,8 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     if (kDebugMode) {
-      print('🚀 [COACH SCREEN] initState() - Triggering initial subscription check');
+      print(
+          '🚀 [COACH SCREEN] initState() - Triggering initial subscription check');
     }
     _checkSubscriptionStatus();
     WidgetsBinding.instance.addObserver(this);
@@ -61,9 +63,14 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
     _focusNode.addListener(_onFocusChange);
     _loadChatHistory().then((_) async {
       // Always inject a new message if mood and category are provided, but only once per navigation
-      if (!_injectedMoodCategory && widget.mood != null && widget.category != null && widget.mood!.isNotEmpty && widget.category!.isNotEmpty) {
+      if (!_injectedMoodCategory &&
+          widget.mood != null &&
+          widget.category != null &&
+          widget.mood!.isNotEmpty &&
+          widget.category!.isNotEmpty) {
         _injectedMoodCategory = true;
-        String prompt = "The area of my life I am most ${widget.mood} about is: ${widget.category}.";
+        String prompt =
+            "The area of my life I am most ${widget.mood} about is: ${widget.category}.";
         _messages.add(CoachMessage(prompt, OpenAIChatMessageRole.user));
         await _saveMessage(prompt, 'user');
         setState(() {
@@ -97,7 +104,8 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
     if (_focusNode.hasFocus) {
       // Reload chat history and check subscription when screen gains focus
       if (kDebugMode) {
-        print('🎯 [COACH SCREEN] Screen gained focus - Triggering subscription check');
+        print(
+            '🎯 [COACH SCREEN] Screen gained focus - Triggering subscription check');
       }
       _loadChatHistory();
       _checkSubscriptionStatus();
@@ -119,22 +127,24 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   Future<void> _loadChatHistory() async {
     try {
       final chatHistory = await dbHelper.getChatHistory();
-      _chatHistory = chatHistory.map((map) => ChatMessage.fromMap(map)).toList();
-      
+      _chatHistory =
+          chatHistory.map((map) => ChatMessage.fromMap(map)).toList();
+
       // Convert ChatMessage to CoachMessage for UI display
       _messages.clear();
       for (var chatMsg in _chatHistory) {
-        OpenAIChatMessageRole role = chatMsg.role == 'user' 
-            ? OpenAIChatMessageRole.user 
+        OpenAIChatMessageRole role = chatMsg.role == 'user'
+            ? OpenAIChatMessageRole.user
             : OpenAIChatMessageRole.assistant;
         _messages.add(CoachMessage(chatMsg.content, role));
       }
-      
+
       // Only add initial message if there's no history AND no existing messages
       if (_messages.isEmpty && !_hasLoadedHistory) {
-        _messages.add(CoachMessage('Give me just a moment...', OpenAIChatMessageRole.assistant));
+        _messages.add(CoachMessage(
+            'Give me just a moment...', OpenAIChatMessageRole.assistant));
       }
-      
+
       _hasLoadedHistory = true;
       setState(() {});
     } catch (e) {
@@ -144,7 +154,8 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
       // Only add initial message on error if we haven't loaded history yet
       if (!_hasLoadedHistory) {
         _messages.clear();
-        _messages.add(CoachMessage('Give me just a moment...', OpenAIChatMessageRole.assistant));
+        _messages.add(CoachMessage(
+            'Give me just a moment...', OpenAIChatMessageRole.assistant));
         _hasLoadedHistory = true;
         setState(() {});
       }
@@ -162,7 +173,7 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
           await dbHelper.deleteOldestChatMessage(oldestMessage['id']);
         }
       }
-      
+
       // Now insert the new message
       await dbHelper.insertChatMessage(role, content);
     } catch (e) {
@@ -274,8 +285,12 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
         return;
       }
       // If mood and category are provided, use them to build the initial prompt
-      if (widget.mood != null && widget.category != null && widget.mood!.isNotEmpty && widget.category!.isNotEmpty) {
-        String prompt = "The area of my life I am most ${widget.mood} about is: ${widget.category}.";
+      if (widget.mood != null &&
+          widget.category != null &&
+          widget.mood!.isNotEmpty &&
+          widget.category!.isNotEmpty) {
+        String prompt =
+            "The area of my life I am most ${widget.mood} about is: ${widget.category}.";
         _messages.add(CoachMessage(prompt, OpenAIChatMessageRole.user));
         await _saveMessage(prompt, 'user');
       }
@@ -291,21 +306,23 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   Future<void> _onSubmitted(String message) async {
     // Check subscription status before processing message
     if (kDebugMode) {
-      print('💬 [COACH SCREEN] Message submitted - Triggering subscription check');
+      print(
+          '💬 [COACH SCREEN] Message submitted - Triggering subscription check');
     }
     await _checkSubscriptionStatus();
-    
+
     // Count user messages (excluding assistant messages)
-    int userMessageCount = _messages.where((m) => m.msgType == OpenAIChatMessageRole.user).length;
+    int userMessageCount =
+        _messages.where((m) => m.msgType == OpenAIChatMessageRole.user).length;
     if (!isSubscribed && userMessageCount >= freeMessageLimit) {
       // Show paywall before allowing the 11th message
       await navigateToPaywall();
       return;
     }
-    
+
     // Clear the text field immediately after submission
     _messageComposerKey.currentState?.clearText();
-    
+
     setState(() {
       _messages.add(CoachMessage(message + suffix, OpenAIChatMessageRole.user));
       _awaitingResponse = true;
@@ -327,7 +344,7 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
       );
       return;
     }
-    
+
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(
       context,
@@ -335,7 +352,8 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
     );
     // Check subscription status after returning from paywall
     if (kDebugMode) {
-      print('💰 [COACH SCREEN] Returning from paywall - Triggering subscription check');
+      print(
+          '💰 [COACH SCREEN] Returning from paywall - Triggering subscription check');
     }
     await _checkSubscriptionStatus();
     setState(() {
@@ -374,18 +392,17 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
     // Create messages with categories data always included
     List<CoachMessage> messagesWithContext = [
       CoachMessage(
-        "You are a seasoned, wise mindset and life coach with decades of experience helping people transform their lives through the Green Pyramid methodology. You have a laid-back, approachable personality with a subtle sense of humor - you're the kind of coach who can make someone laugh while delivering profound insights. You have mastered the art of delivering profound insights in just a few powerful words. Keep your responses to 100 words or less. Your client provided this data: $categories. The third column is true or false, indicating whether or not the client performed the activity on that day. Some days will not have entries. That is ok. Those days were scheduled days off. Speak with the wisdom of experience - be conversational, supportive, and deliver specific, actionable guidance rather than generic advice. Your words should carry weight and inspire reflection.",
-        OpenAIChatMessageRole.system
-      ),
+          "You are a seasoned, wise mindset and life coach with decades of experience helping people transform their lives through the Green Pyramid methodology. You have a laid-back, approachable personality with a subtle sense of humor - you're the kind of coach who can make someone laugh while delivering profound insights. You have mastered the art of delivering profound insights in just a few powerful words. Keep your responses to 100 words or less. Your client provided this data: $categories. The third column is true or false, indicating whether or not the client performed the activity on that day. Some days will not have entries. That is ok. Those days were scheduled days off. Speak with the wisdom of experience - be conversational, supportive, and deliver specific, actionable guidance rather than generic advice. Your words should carry weight and inspire reflection.",
+          OpenAIChatMessageRole.system),
       ..._messages
     ];
-    
+
     final response = await widget.chatApi.completeChat(messagesWithContext);
     setState(() {
       _messages.add(CoachMessage(response, OpenAIChatMessageRole.assistant));
       _awaitingResponse = false;
     });
-    
+
     // Save assistant response to database
     await _saveMessage(response, 'assistant');
   }
@@ -459,7 +476,6 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
             content: [
               OpenAIChatCompletionChoiceMessageContentItemModel.text(prompt)
             ],
-
           ),
         ],
       ).timeout(const Duration(seconds: timeout));
@@ -477,24 +493,30 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
     try {
       // Invalidate cache to force fresh data from RevenueCat
       await Purchases.invalidateCustomerInfoCache();
-      print('🔄 [SUBSCRIPTION CHECK] Cache invalidated, fetching fresh data...');
-      
+      print(
+          '🔄 [SUBSCRIPTION CHECK] Cache invalidated, fetching fresh data...');
+
       CustomerInfo ci = await Purchases.getCustomerInfo();
-      
+
       // Log detailed subscription information
       print('📱 [SUBSCRIPTION CHECK] Customer ID: ${ci.originalAppUserId}');
-      print('📱 [SUBSCRIPTION CHECK] Active Subscriptions: ${ci.activeSubscriptions}');
-      print('📱 [SUBSCRIPTION CHECK] All Purchased Product IDs: ${ci.allPurchasedProductIdentifiers}');
-      print('📱 [SUBSCRIPTION CHECK] Latest Expiration Date: ${ci.latestExpirationDate}');
-      
+      print(
+          '📱 [SUBSCRIPTION CHECK] Active Subscriptions: ${ci.activeSubscriptions}');
+      print(
+          '📱 [SUBSCRIPTION CHECK] All Purchased Product IDs: ${ci.allPurchasedProductIdentifiers}');
+      print(
+          '📱 [SUBSCRIPTION CHECK] Latest Expiration Date: ${ci.latestExpirationDate}');
+
       bool newSubscriptionStatus = ci.activeSubscriptions.isNotEmpty;
-      print('📱 [SUBSCRIPTION CHECK] Subscription Status: ${newSubscriptionStatus ? "SUBSCRIBED" : "NOT SUBSCRIBED"}');
-      
+      print(
+          '📱 [SUBSCRIPTION CHECK] Subscription Status: ${newSubscriptionStatus ? "SUBSCRIBED" : "NOT SUBSCRIBED"}');
+
       if (mounted) {
         setState(() {
           isSubscribed = newSubscriptionStatus;
         });
-        print('📱 [SUBSCRIPTION CHECK] UI updated - isSubscribed: $isSubscribed');
+        print(
+            '📱 [SUBSCRIPTION CHECK] UI updated - isSubscribed: $isSubscribed');
       } else {
         print('📱 [SUBSCRIPTION CHECK] Widget not mounted, skipping UI update');
       }
@@ -505,7 +527,8 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
         setState(() {
           isSubscribed = false;
         });
-        print('📱 [SUBSCRIPTION CHECK] Error fallback - isSubscribed set to false');
+        print(
+            '📱 [SUBSCRIPTION CHECK] Error fallback - isSubscribed set to false');
       }
     }
     print('🔄 [SUBSCRIPTION CHECK] Verification complete');
@@ -691,11 +714,11 @@ class MessageBubble extends StatelessWidget {
               Text(
                 noSuffixContent,
                 softWrap: true,
-                overflow: msgType == OpenAIChatMessageRole.assistant 
-                    ? TextOverflow.visible 
+                overflow: msgType == OpenAIChatMessageRole.assistant
+                    ? TextOverflow.visible
                     : TextOverflow.ellipsis,
-                maxLines: msgType == OpenAIChatMessageRole.assistant 
-                    ? null 
+                maxLines: msgType == OpenAIChatMessageRole.assistant
+                    ? null
                     : 15, // Allow assistant messages to expand, limit user messages
               ),
             ],
@@ -729,9 +752,10 @@ class ChatApi {
           messages: messages
               .map((e) => OpenAIChatCompletionChoiceMessageModel(
                     role: e.msgType,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(e.content),
-            ],
+                    content: [
+                      OpenAIChatCompletionChoiceMessageContentItemModel.text(
+                          e.content),
+                    ],
                   ))
               .toList(),
         )

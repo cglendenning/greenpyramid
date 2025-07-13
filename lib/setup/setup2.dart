@@ -6,7 +6,6 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'dart:ui';
 import 'package:life_ops/navbar.dart';
 
-
 final List<String> categories = [
   'Health',
   'Mindset',
@@ -29,7 +28,6 @@ final List<String> categories = [
   'Location',
   'Volunteering'
 ];
-
 
 class Setup2 extends StatefulWidget {
   const Setup2();
@@ -70,43 +68,45 @@ class _Setup2State extends State<Setup2> {
         child: Container(
             decoration: const BoxDecoration(
                 image: DecorationImage(
-                  image: const AssetImage("images/morning_1.jpg"),
-                  fit: BoxFit.cover,
-                )),
+              image: const AssetImage("images/morning_1.jpg"),
+              fit: BoxFit.cover,
+            )),
             child: Scaffold(
                 appBar: const NavBar(),
-          backgroundColor: Colors.transparent,
-            body: Column(children: [
-              LinearProgressIndicator(
-                value: 1/23,
-                color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000)
-              ),
-      const SizedBox(height: 10),
-              Container(
-                  padding: const EdgeInsets.all(10.0),
-                  child: Text("Drag six values that matter most to you "
-                      "to the top of the list. Place them in order of "
-                      "importance. Scroll for more options.",
-                  style: descStyle)),
-              const SizedBox(height: 10),
-              Container(
-                  height: MediaQuery.of(context).size.height / 2.2,
-                  child:
-                  const Material(
-                    color: Colors.transparent,
-                      child: ValueList())),
-              const SizedBox(height: 20),
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-        IconButton(
-          icon: svgForward,
-          onPressed: () {
-            setState(() {
-              navigateToSetup3();
-            });
-          },
-        )
-      ]),
-    ]))));
+                backgroundColor: Colors.transparent,
+                body: Column(children: [
+                  LinearProgressIndicator(
+                      value: 1 / 23,
+                      color: Color(
+                          int.parse("#66CC5D".substring(1, 7), radix: 16) +
+                              0xFF000000)),
+                  const SizedBox(height: 10),
+                  Container(
+                      padding: const EdgeInsets.all(10.0),
+                      child: Text(
+                          "Drag six values that matter most to you "
+                          "to the top of the list. Place them in order of "
+                          "importance. Scroll for more options.",
+                          style: descStyle)),
+                  const SizedBox(height: 10),
+                  Container(
+                      height: MediaQuery.of(context).size.height / 2.2,
+                      child: const Material(
+                          color: Colors.transparent, child: ValueList())),
+                  const SizedBox(height: 20),
+                  Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        IconButton(
+                          icon: svgForward,
+                          onPressed: () {
+                            setState(() {
+                              navigateToSetup3();
+                            });
+                          },
+                        )
+                      ]),
+                ]))));
   }
 
   void navigateToSetup3() async {
@@ -118,9 +118,7 @@ class _Setup2State extends State<Setup2> {
     cats.add(SetupCat(categoryid: 6, cat: categories[5]));
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => Setup3(
-        categories
-      )),
+      MaterialPageRoute(builder: (context) => Setup3(categories)),
     );
   }
 }
@@ -154,11 +152,11 @@ class _ValueListState extends State<ValueList> {
   Widget build(BuildContext context) {
     final Color oddItemColor =
         Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000)
-     .withOpacity(0.85);
+            .withOpacity(0.85);
 
     final Color evenItemColor =
         Color(int.parse("#C35DCC".substring(1, 7), radix: 16) + 0xFF000000)
-    .withOpacity(0.85);
+            .withOpacity(0.85);
 
     final List<Card> cards = <Card>[
       for (int index = 0; index < categories.length; index += 1)
@@ -172,9 +170,8 @@ class _ValueListState extends State<ValueList> {
                   children: <Widget>[
                     Padding(
                         padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                            "${index+1}) ${categories[index]}",
-                        style: descStyle)),
+                        child: Text("${index + 1}) ${categories[index]}",
+                            style: descStyle)),
                     Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: Stack(
@@ -189,9 +186,11 @@ class _ValueListState extends State<ValueList> {
                                   height: 48,
                                   decoration: BoxDecoration(
                                     shape: BoxShape.circle,
-                                    border: Border.all(color: Colors.red, width: 4),
+                                    border:
+                                        Border.all(color: Colors.red, width: 4),
                                   ),
-                                  child: const Icon(Icons.drag_handle, color: Colors.red, size: 28),
+                                  child: const Icon(Icons.drag_handle,
+                                      color: Colors.red, size: 28),
                                 ),
                               ),
                             ReorderableDragStartListener(
@@ -259,7 +258,8 @@ class _ValueListState extends State<ValueList> {
             top: (MediaQuery.of(context).size.height / 15) + 16,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
@@ -273,7 +273,10 @@ class _ValueListState extends State<ValueList> {
                 ),
                 child: const Text(
                   'Tap, hold and drag to re-order the list',
-                  style: TextStyle(color: Colors.black, fontSize: 14, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold),
                 ),
               ),
             ),

@@ -10,7 +10,7 @@ import 'package:html/parser.dart' as html_parser;
 
 class SetupVideo extends StatefulWidget {
   final List<String>? categories;
-  
+
   const SetupVideo({super.key, this.categories});
 
   @override
@@ -40,9 +40,10 @@ class _SetupVideoState extends State<SetupVideo> {
         print('🌐 [SETUP VIDEO] Initializing WebView');
       }
       if (kDebugMode) {
-        print('🌐 [SETUP VIDEO] Loading URL: https://www.stillwatersretreats.com/greenpyramid/setup-video');
+        print(
+            '🌐 [SETUP VIDEO] Loading URL: https://www.stillwatersretreats.com/greenpyramid/setup-video');
       }
-      
+
       _webViewController = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
         ..setBackgroundColor(Colors.black)
@@ -86,8 +87,8 @@ class _SetupVideoState extends State<SetupVideo> {
             },
           ),
         )
-        ..loadRequest(Uri.parse('https://www.stillwatersretreats.com/greenpyramid/setup-video'));
-        
+        ..loadRequest(Uri.parse(
+            'https://www.stillwatersretreats.com/greenpyramid/setup-video'));
     } catch (e) {
       if (kDebugMode) {
         print('❌ [SETUP VIDEO] Error initializing WebView: $e');
@@ -129,7 +130,8 @@ class _SetupVideoState extends State<SetupVideo> {
               final screenHeight = MediaQuery.of(context).size.height;
               final videoWidth = screenWidth * 0.9; // 90% of screen width
               final videoHeight = videoWidth * 16 / 9; // 16:9 aspect ratio
-              final topMargin = (screenHeight - videoHeight) / 2; // Center vertically
+              final topMargin =
+                  (screenHeight - videoHeight) / 2; // Center vertically
               return Positioned(
                 top: topMargin,
                 left: (screenWidth - videoWidth) / 2,
@@ -141,7 +143,7 @@ class _SetupVideoState extends State<SetupVideo> {
               );
             },
           ),
-          
+
           // Loading indicator
           if (!_isWebViewReady)
             Container(
@@ -152,7 +154,7 @@ class _SetupVideoState extends State<SetupVideo> {
                 ),
               ),
             ),
-          
+
           // Floating back arrow (left side, centered vertically)
           Positioned(
             left: 20,
@@ -198,7 +200,7 @@ class _SetupVideoState extends State<SetupVideo> {
               ),
             ),
           ),
-          
+
           // Floating forward arrow (right side, centered vertically)
           Positioned(
             right: 20,
@@ -239,7 +241,7 @@ class _SetupVideoState extends State<SetupVideo> {
                       print('❌ [SETUP VIDEO] Error pausing video: $e');
                     }
                   }
-                  
+
                   // Wait a moment for JavaScript to execute before navigating
                   await Future.delayed(const Duration(milliseconds: 300));
                   navigateToSetup4();
@@ -310,7 +312,7 @@ class _SetupVideoState extends State<SetupVideo> {
       });
     });
   }
-} 
+}
 
 // --- iOS dynamic video player widget ---
 class _IOSSetupVideoPlayer extends StatefulWidget {
@@ -337,7 +339,8 @@ class _IOSSetupVideoPlayerState extends State<_IOSSetupVideoPlayer> {
       _error = false;
     });
     try {
-      final response = await http.get(Uri.parse('https://www.stillwatersretreats.com/greenpyramid/setup-video'));
+      final response = await http.get(Uri.parse(
+          'https://www.stillwatersretreats.com/greenpyramid/setup-video'));
       if (kDebugMode) {
         print('Status: ${response.statusCode}, Headers: ${response.headers}');
       }
@@ -415,7 +418,8 @@ class _IOSSetupVideoPlayerState extends State<_IOSSetupVideoPlayer> {
             children: [
               const Icon(Icons.error_outline, color: Colors.white, size: 64),
               const SizedBox(height: 16),
-              const Text('Could not load video', style: TextStyle(color: Colors.white)),
+              const Text('Could not load video',
+                  style: TextStyle(color: Colors.white)),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _resolveVideoId,
@@ -432,18 +436,21 @@ class _IOSSetupVideoPlayerState extends State<_IOSSetupVideoPlayer> {
       categories: widget.categories ?? [],
     );
   }
-} 
+}
 
 class _IOSSetupVideoWithOverlays extends StatefulWidget {
   final String videoId;
   final List<String> categories;
-  const _IOSSetupVideoWithOverlays({required this.videoId, required this.categories});
+  const _IOSSetupVideoWithOverlays(
+      {required this.videoId, required this.categories});
 
   @override
-  State<_IOSSetupVideoWithOverlays> createState() => _IOSSetupVideoWithOverlaysState();
+  State<_IOSSetupVideoWithOverlays> createState() =>
+      _IOSSetupVideoWithOverlaysState();
 }
 
-class _IOSSetupVideoWithOverlaysState extends State<_IOSSetupVideoWithOverlays> {
+class _IOSSetupVideoWithOverlaysState
+    extends State<_IOSSetupVideoWithOverlays> {
   bool showOverlays = true;
   late WebViewController _controller;
 
@@ -452,15 +459,20 @@ class _IOSSetupVideoWithOverlaysState extends State<_IOSSetupVideoWithOverlays> 
     super.initState();
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..addJavaScriptChannel('PlayerStateChannel', onMessageReceived: (JavaScriptMessage message) {
+      ..addJavaScriptChannel('PlayerStateChannel',
+          onMessageReceived: (JavaScriptMessage message) {
         // YouTube player states: 1 = playing, 2 = paused
         if (kDebugMode) {
           print('[PlayerStateChannel] Received: ${message.message}');
         }
         if (message.message == '1') {
-          setState(() { showOverlays = false; });
+          setState(() {
+            showOverlays = false;
+          });
         } else if (message.message == '2') {
-          setState(() { showOverlays = true; });
+          setState(() {
+            showOverlays = true;
+          });
         }
       })
       ..setNavigationDelegate(NavigationDelegate())
@@ -516,13 +528,17 @@ class _IOSSetupVideoWithOverlaysState extends State<_IOSSetupVideoWithOverlays> 
   void _toggleOverlaysAndPausePlay() async {
     if (showOverlays) {
       // Hide overlays and play video
-      setState(() { showOverlays = false; });
+      setState(() {
+        showOverlays = false;
+      });
       try {
         await _controller.runJavaScript('playVideo();');
       } catch (_) {}
     } else {
       // Show overlays and pause video
-      setState(() { showOverlays = true; });
+      setState(() {
+        showOverlays = true;
+      });
       try {
         await _controller.runJavaScript('pauseVideo();');
       } catch (_) {}
@@ -584,7 +600,8 @@ class _IOSSetupVideoWithOverlaysState extends State<_IOSSetupVideoWithOverlays> 
                     utils.Utils().changeSystemColor(Brightness.dark);
                     await Navigator.push(
                       context,
-                      MaterialPageRoute(builder: (context) => Setup4(widget.categories)),
+                      MaterialPageRoute(
+                          builder: (context) => Setup4(widget.categories)),
                     ).then((_) {
                       utils.Utils().changeSystemColor(Brightness.light);
                     });
@@ -597,4 +614,4 @@ class _IOSSetupVideoWithOverlaysState extends State<_IOSSetupVideoWithOverlays> 
       ),
     );
   }
-} 
+}

@@ -45,184 +45,179 @@ class _Setup12State extends State<Setup12> {
     var mainTextStyle = const TextStyle(
         fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'SourceSans3');
 
-
     return SafeArea(
         child: Scaffold(
             appBar: const NavBar(),
             body: Center(
-                child: Column(
-                    children: [
-                      LinearProgressIndicator(
-                          value: 11/23,
-                          color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000)
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Foundational Values',
-                        style: mainTextStyle,
-                      ),
-                      const SizedBox(height: 10),
-                      Container(
-                      padding: const EdgeInsets.all(10.0),
-                      child: const Text(
-                        "Your best possible life will only happen if "
-                        "you have clear values. ",
-                      )),
-                  Container(
-                      padding: const EdgeInsets.all(10.0),
-                      child: Text(
-                        "Choose three values that matter most to you. "
-                        "Use \"$otherDefault\" to choose your own foundational values. "
-                        "You are choosing values at this step, not tasks yet. ",
-                      )),
-                  const SizedBox(height: 30),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                    height: 40.0,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30.0),
-                      color: Colors.lightBlueAccent,
+                child: Column(children: [
+              LinearProgressIndicator(
+                  value: 11 / 23,
+                  color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) +
+                      0xFF000000)),
+              const SizedBox(height: 10),
+              Text(
+                'Foundational Values',
+                style: mainTextStyle,
+              ),
+              const SizedBox(height: 10),
+              Container(
+                  padding: const EdgeInsets.all(10.0),
+                  child: const Text(
+                    "Your best possible life will only happen if "
+                    "you have clear values. ",
+                  )),
+              Container(
+                  padding: const EdgeInsets.all(10.0),
+                  child: Text(
+                    "Choose three values that matter most to you. "
+                    "Use \"$otherDefault\" to choose your own foundational values. "
+                    "You are choosing values at this step, not tasks yet. ",
+                  )),
+              const SizedBox(height: 30),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                height: 40.0,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30.0),
+                  color: Colors.lightBlueAccent,
+                ),
+                child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                  value: dd1Value,
+                  borderRadius: BorderRadius.circular(30.0),
+                  icon: const Icon(Icons.arrow_drop_down),
+                  elevation: 16,
+                  style: const TextStyle(color: Colors.black),
+                  onChanged: (String? value) {
+                    // This is called when the user selects an item.
+                    setState(() {
+                      if (value == otherDefault) {
+                        showOtherDialog(cat1dd, 1);
+                      } else {
+                        dd1Value = value!;
+                      }
+                    });
+                  },
+                  items: cat1dd.map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                ) // your Dropdown Widget here
                     ),
-                    child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                      value: dd1Value,
-                      borderRadius: BorderRadius.circular(30.0),
-                      icon: const Icon(Icons.arrow_drop_down),
-                      elevation: 16,
-                      style: const TextStyle(color: Colors.black),
-                      onChanged: (String? value) {
-                        // This is called when the user selects an item.
+              ),
+              const SizedBox(height: 60),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                height: 40.0,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30.0),
+                  color: Colors.lightBlueAccent,
+                ),
+                child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                  value: dd2Value,
+                  borderRadius: BorderRadius.circular(30.0),
+                  icon: const Icon(Icons.arrow_drop_down),
+                  elevation: 16,
+                  style: const TextStyle(color: Colors.black),
+                  onChanged: (String? value) {
+                    // This is called when the user selects an item.
+                    setState(() {
+                      if (value == otherDefault) {
+                        showOtherDialog(cat2dd, 2);
+                      } else {
+                        dd2Value = value!;
+                      }
+                    });
+                  },
+                  items: cat2dd.map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                ) // your Dropdown Widget here
+                    ),
+              ),
+              const SizedBox(height: 60),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                height: 40.0,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30.0),
+                  color: Colors.lightBlueAccent,
+                ),
+                child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                  value: dd3Value,
+                  borderRadius: BorderRadius.circular(30.0),
+                  icon: const Icon(Icons.arrow_drop_down),
+                  elevation: 16,
+                  style: const TextStyle(color: Colors.black),
+                  onChanged: (String? value) {
+                    // This is called when the user selects an item.
+                    setState(() {
+                      if (value == otherDefault) {
+                        showOtherDialog(cat3dd, 3);
+                      } else {
+                        dd3Value = value!;
+                      }
+                    });
+                  },
+                  items: cat3dd.map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                ) // your Dropdown Widget here
+                    ),
+              ),
+              const SizedBox(height: 30),
+              Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: <Widget>[
+                    RichText(
+                      text: TextSpan(
+                          text: 'Why Only Three?',
+                          style: const TextStyle(
+                              color: Colors.blue,
+                              decoration: TextDecoration.underline,
+                              fontSize: 16),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () {
+                              setState(() {
+                                showWhyThreeDialog();
+                              });
+                            }),
+                    ),
+                    IconButton(
+                      icon: svgForward,
+                      onPressed: () {
                         setState(() {
-                          if (value == otherDefault) {
-                            showOtherDialog(cat1dd, 1);
-                          } else {
-                            dd1Value = value!;
-                          }
+                          navigateToSetup13();
                         });
                       },
-                      items:
-                          cat1dd.map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                    ) // your Dropdown Widget here
-                        ),
-                  ),
-                  const SizedBox(height: 60),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                    height: 40.0,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30.0),
-                      color: Colors.lightBlueAccent,
-                    ),
-                    child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                      value: dd2Value,
-                      borderRadius: BorderRadius.circular(30.0),
-                      icon: const Icon(Icons.arrow_drop_down),
-                      elevation: 16,
-                      style: const TextStyle(color: Colors.black),
-                      onChanged: (String? value) {
-                        // This is called when the user selects an item.
+                    )
+                  ]),
+              const SizedBox(height: 20),
+              RichText(
+                text: TextSpan(
+                    text: 'Skip Setup',
+                    style: const TextStyle(
+                        color: Colors.blue,
+                        decoration: TextDecoration.underline,
+                        fontSize: 12),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () {
                         setState(() {
-                          if (value == otherDefault) {
-                            showOtherDialog(cat2dd, 2);
-                          } else {
-                            dd2Value = value!;
-                          }
+                          showSkipAlertDialog(context);
                         });
-                      },
-                      items:
-                          cat2dd.map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                    ) // your Dropdown Widget here
-                        ),
-                  ),
-                  const SizedBox(height: 60),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                    height: 40.0,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30.0),
-                      color: Colors.lightBlueAccent,
-                    ),
-                    child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                      value: dd3Value,
-                      borderRadius: BorderRadius.circular(30.0),
-                      icon: const Icon(Icons.arrow_drop_down),
-                      elevation: 16,
-                      style: const TextStyle(color: Colors.black),
-                      onChanged: (String? value) {
-                        // This is called when the user selects an item.
-                        setState(() {
-                          if (value == otherDefault) {
-                            showOtherDialog(cat3dd, 3);
-                          } else {
-                            dd3Value = value!;
-                          }
-                        });
-                      },
-                      items:
-                          cat3dd.map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                    ) // your Dropdown Widget here
-                        ),
-                  ),
-                  const SizedBox(height: 30),
-                  Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: <Widget>[
-                        RichText(
-                          text: TextSpan(
-                              text: 'Why Only Three?',
-                              style: const TextStyle(
-                                  color: Colors.blue,
-                                  decoration: TextDecoration.underline,
-                                  fontSize: 16),
-                              recognizer: TapGestureRecognizer()
-                                ..onTap = () {
-                                  setState(() {
-                                    showWhyThreeDialog();
-                                  });
-                                }),
-                        ),
-                        IconButton(
-                          icon: svgForward,
-                          onPressed: () {
-                            setState(() {
-                              navigateToSetup13();
-                            });
-                          },
-                        )
-                      ]),
-                  const SizedBox(height: 20),
-                  RichText(
-                    text: TextSpan(
-                        text: 'Skip Setup',
-                        style: const TextStyle(
-                            color: Colors.blue,
-                            decoration: TextDecoration.underline,
-                            fontSize: 12),
-                        recognizer: TapGestureRecognizer()
-                          ..onTap = () {
-                            setState(() {
-                              showSkipAlertDialog(context);
-                            });
-                          }),
-                  ),
-                ]))));
+                      }),
+              ),
+            ]))));
   }
 
   showSkipAlertDialog(BuildContext context) {
@@ -241,9 +236,7 @@ class _Setup12State extends State<Setup12> {
           cats.clear();
           tasks.clear();
           Navigator.popUntil(
-              context,
-              ModalRoute.withName(
-                  Navigator.defaultRouteName));
+              context, ModalRoute.withName(Navigator.defaultRouteName));
         });
       },
     );
@@ -252,9 +245,9 @@ class _Setup12State extends State<Setup12> {
       title: const Text("Skip Setup?"),
       content: const Text(
           "Green Pyramid will not be useful to you until you complete setup. "
-              "You can resume setup through the menu in the upper right of the home "
-              "screen. Press \"Skip Setup\" to skip setup or \"Cancel\" to continue "
-              "setup."),
+          "You can resume setup through the menu in the upper right of the home "
+          "screen. Press \"Skip Setup\" to skip setup or \"Cancel\" to continue "
+          "setup."),
       actions: [
         cancelButton,
         continueButton,
@@ -269,9 +262,7 @@ class _Setup12State extends State<Setup12> {
     );
   }
 
-
   showWhyThreeDialog() {
-
     // set up the buttons
     Widget doneButton = TextButton(
       child: const Text("Gotcha"),
@@ -283,11 +274,10 @@ class _Setup12State extends State<Setup12> {
       content: Container(
           padding: const EdgeInsets.all(5.0),
           child: const Text(
-            "Any more than three foundational values dilutes focus "
-            "on what really matters in your life. You will have an "
-            "opportunity to add more non-foundational values "
-            "on a later screen."
-          )),
+              "Any more than three foundational values dilutes focus "
+              "on what really matters in your life. You will have an "
+              "opportunity to add more non-foundational values "
+              "on a later screen.")),
       actions: [
         doneButton,
       ],
@@ -358,7 +348,6 @@ class _Setup12State extends State<Setup12> {
   }
 
   void navigateToSetup13() async {
-
     // "upsert"...
     cats.removeWhere((item) => item.categoryid == 1);
     cats.removeWhere((item) => item.categoryid == 2);

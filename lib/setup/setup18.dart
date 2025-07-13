@@ -48,7 +48,7 @@ class _Setup18State extends State<Setup18> {
   Widget build(BuildContext context) {
     analytics.logEvent(name: '${setupVersion}_setup18');
     Color green =
-    Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000);
+        Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000);
 
     final lg = LinearGradient(
       begin: Alignment.topCenter,
@@ -56,76 +56,67 @@ class _Setup18State extends State<Setup18> {
       colors: [green, green],
     );
 
-    double pyramidWidth = MediaQuery
-        .of(context)
-        .size
-        .width * 0.87;
-    double pyramidHeight = MediaQuery
-        .of(context)
-        .size
-        .width * 0.82;
+    double pyramidWidth = MediaQuery.of(context).size.width * 0.87;
+    double pyramidHeight = MediaQuery.of(context).size.width * 0.82;
 
     var mainTextStyle = const TextStyle(
         fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'SourceSans3');
-
 
     return Container(
         color: Colors.black,
         child: SafeArea(
             child: Scaffold(
           appBar: const NavBar(),
-          body: Column(
-              children: [
-                LinearProgressIndicator(
-                    value: 23/23,
-                    color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000)
-                ),
-
-                const SizedBox(height: 10),
-                Text(
-                  'Setup Complete',
-                  style: mainTextStyle,
-                ),
-                Container(
-                    padding: const EdgeInsets.all(10.0),
-                    child: const Text(
-                        "Setup is now complete! You will receive notifications "
-                        "to remind you to track your daily actions. Once "
-                        "you click Done, you will still have the ability "
-                        "to edit your categories by tapping the Edit icon "
-                        "in the bottom navigation bar from the home "
-                        "screen. You will also be able to edit your "
-                        "tasks by tapping a category on the pyramid "
-                        "which will navigate to the edit task section.")),
-                const SizedBox(height: 20),
-                Stack(children: <Widget>[
-                  CustomPaint(
-                      size: Size(pyramidWidth, pyramidHeight),
-                      painter: DrawCat1(lg, dd1Value, 0)),
-                  CustomPaint(
-                      size: Size(pyramidWidth, pyramidHeight),
-                      painter: DrawCat2(lg, dd2Value, 0)),
-                  CustomPaint(
-                      size: Size(pyramidWidth, pyramidHeight),
-                      painter: DrawCat3(lg, dd3Value, 0)),
-                  CustomPaint(
-                      size: Size(pyramidWidth, pyramidHeight),
-                      painter: DrawCat4(lg, dd4Value, 0)),
-                  CustomPaint(
-                      size: Size(pyramidWidth, pyramidHeight),
-                      painter: DrawCat5(lg, dd5Value, 0)),
-                  CustomPaint(
-                      size: Size(pyramidWidth, pyramidHeight),
-                      painter: DrawCat6(lg, dd6Value, 0)),
-                ]),
-                const SizedBox(height: 40),
-                ElevatedButton(
-                  onPressed: () {
-                    completeSetup();
-                  },
-                  child: const Text('Done'),
-                ),
-              ]),
+          body: Column(children: [
+            LinearProgressIndicator(
+                value: 23 / 23,
+                color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) +
+                    0xFF000000)),
+            const SizedBox(height: 10),
+            Text(
+              'Setup Complete',
+              style: mainTextStyle,
+            ),
+            Container(
+                padding: const EdgeInsets.all(10.0),
+                child: const Text(
+                    "Setup is now complete! You will receive notifications "
+                    "to remind you to track your daily actions. Once "
+                    "you click Done, you will still have the ability "
+                    "to edit your categories by tapping the Edit icon "
+                    "in the bottom navigation bar from the home "
+                    "screen. You will also be able to edit your "
+                    "tasks by tapping a category on the pyramid "
+                    "which will navigate to the edit task section.")),
+            const SizedBox(height: 20),
+            Stack(children: <Widget>[
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat1(lg, dd1Value, 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat2(lg, dd2Value, 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat3(lg, dd3Value, 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat4(lg, dd4Value, 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat5(lg, dd5Value, 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat6(lg, dd6Value, 0)),
+            ]),
+            const SizedBox(height: 40),
+            ElevatedButton(
+              onPressed: () {
+                completeSetup();
+              },
+              child: const Text('Done'),
+            ),
+          ]),
         )));
   }
 
@@ -146,8 +137,8 @@ class _Setup18State extends State<Setup18> {
           " on conflict (categoryid) do update set cat = '${category.cat}'");
       for (var task in tasks) {
         if (kDebugMode) {
-          print ('task.id: ${task.id} task.category: ${task.category} '
-            'task.taskdescription: ${task.taskdescription}');
+          print('task.id: ${task.id} task.category: ${task.category} '
+              'task.taskdescription: ${task.taskdescription}');
         }
         // HACK: This is a very simple sanitization because chatGPT can not
         // guarantee that it will not produce single quotes in it's output.
@@ -198,7 +189,8 @@ class _Setup18State extends State<Setup18> {
     // that I did not want. pushNamedAndRemoveUntil() removed the leading back
     // arrow after completing setup.
     // Navigator.popAndPushNamed(context, Navigator.defaultRouteName);
-    Navigator.pushNamedAndRemoveUntil(context, Navigator.defaultRouteName, (_) => false);
+    Navigator.pushNamedAndRemoveUntil(
+        context, Navigator.defaultRouteName, (_) => false);
   }
 
   Future<Cat> getPctComplete(int categoryid) async {
@@ -227,4 +219,3 @@ class Cat {
     cat = obj["cat"];
   }
 }
-

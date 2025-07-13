@@ -55,9 +55,8 @@ class _TodayState extends State<Today> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Text(quote),
-
-                          const SizedBox(height: 10),
+                      Text(quote),
+                      const SizedBox(height: 10),
                       FutureBuilder(
                           future: Quote().getCommentary(quote, needType),
                           builder: (context, AsyncSnapshot snapshot) {

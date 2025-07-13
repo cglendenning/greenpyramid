@@ -91,8 +91,7 @@ class _EmailSenderState extends State<EmailSender> {
                   maxLines: 20,
                   textAlignVertical: TextAlignVertical.top,
                   decoration: const InputDecoration(
-                      labelText: 'Body',
-                      border: OutlineInputBorder()),
+                      labelText: 'Body', border: OutlineInputBorder()),
                 ),
               ),
             ),

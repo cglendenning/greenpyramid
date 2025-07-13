@@ -4,7 +4,6 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:life_ops/secrets.dart';
 
 class Quote {
-
   String randomQuote() {
     List<String> quotes = [
       '"The best way to predict the future is to create it." - Peter Drucker',
@@ -31,7 +30,7 @@ class Quote {
     String system = '';
     String prompt = '';
 
-    switch (cType ) {
+    switch (cType) {
       case 'inspiration':
         system = "You are Tony Robbins. But do not identify yourself.";
         prompt = "Generate no more than 50 words expanding upon "
@@ -45,11 +44,11 @@ class Quote {
         prompt = "Generate no more than 50 words expanding upon "
             "this quote: $quote. End with a quip about winning the day.";
       case 'encouragement':
-        system = "You are a fear management expert. But do not identify yourself.";
+        system =
+            "You are a fear management expert. But do not identify yourself.";
         prompt = "Generate no more than 50 words expanding upon "
             "this quote: $quote. End with a quip about winning the day.";
     }
-
 
     const int timeout = 45;
 
@@ -75,7 +74,8 @@ class Quote {
         ],
       ).timeout(const Duration(seconds: timeout));
 
-      chatResult = (chatCompletion.choices[0].message.content?.first.text ?? '');
+      chatResult =
+          (chatCompletion.choices[0].message.content?.first.text ?? '');
     } catch (e, s) {
       if (kDebugMode) {
         print(e);

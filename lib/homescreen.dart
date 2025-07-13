@@ -29,7 +29,6 @@ import 'package:life_ops/profile.dart';
 int currentScreenIndex = 0;
 
 class HomeScreen extends StatelessWidget {
-
   @override
   Widget build(BuildContext context) {
     FirebaseAnalytics analytics = FirebaseAnalytics.instance;
@@ -185,8 +184,6 @@ class _HomeScreen extends State<HomeScreenWidget> {
             ][currentScreenIndex]));
   }
 
-
-
   (dynamic, dynamic) setColorAndShade(int pctComplete) {
     // If you are tempted to make the shading more
     // granular, re-consider. I like the steps. They
@@ -220,7 +217,6 @@ class _HomeScreen extends State<HomeScreenWidget> {
     _cat5Future = getPctComplete(5);
     _cat6Future = getPctComplete(6);
     _totalPctComplete = getTotalPctComplete();
-
   }
 
   void listenToNotification() =>
@@ -242,7 +238,6 @@ class _HomeScreen extends State<HomeScreenWidget> {
     String totalComplete = await dbHelper.getTotalPercentage(7);
     return totalComplete;
   }
-
 
   Future<Cat> getCategory(int categoryid) async {
     final List<Map<String, dynamic>> maps =
@@ -287,7 +282,8 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
-class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver {
+class CustomAppBarState extends State<CustomAppBar>
+    with WidgetsBindingObserver {
   final String currentScreen;
   final double elevation;
   bool isSubscribed = false;
@@ -322,11 +318,12 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
       if (kDebugMode) {
         print('🏠 [HOME SCREEN] Cache invalidated, fetching fresh data...');
       }
-      
+
       CustomerInfo ci = await Purchases.getCustomerInfo();
       bool newSubscriptionStatus = ci.activeSubscriptions.isNotEmpty;
       if (kDebugMode) {
-        print('🏠 [HOME SCREEN] Subscription check - isSubscribed: $newSubscriptionStatus');
+        print(
+            '🏠 [HOME SCREEN] Subscription check - isSubscribed: $newSubscriptionStatus');
       }
       if (mounted) {
         setState(() {
@@ -488,18 +485,15 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
   }
 
   void navigateToMotivation(BuildContext context) async {
-
     utils.Utils().changeSystemColor(Brightness.dark);
-    await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => const Motivation()))
+    await Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const Motivation()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
-
   }
 
   void navigateToTutorial(BuildContext context) async {
-
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(
             context, MaterialPageRoute(builder: (context) => const Tutorial1()))
@@ -509,10 +503,9 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
   }
 
   void navigateToFeedback(BuildContext context) async {
-
     utils.Utils().changeSystemColor(Brightness.dark);
-    await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => const EmailSender()))
+    await Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const EmailSender()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
@@ -530,7 +523,7 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
   void navigateToFAQ(BuildContext context) async {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => const FAQ()))
+            context, MaterialPageRoute(builder: (context) => const FAQ()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
@@ -547,11 +540,12 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
   void navigateToCancel(BuildContext context) async {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => Cancel()))
+            context, MaterialPageRoute(builder: (context) => Cancel()))
         .then((value) {
       // Refresh subscription status when returning from cancel screen
       if (kDebugMode) {
-        print('🏠 [HOME SCREEN] Returning from cancel screen - checking subscription');
+        print(
+            '🏠 [HOME SCREEN] Returning from cancel screen - checking subscription');
       }
       _checkSubscriptionStatus();
     });
@@ -562,7 +556,7 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
   void navigateToCoaching(BuildContext context) async {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => const Coaching()))
+            context, MaterialPageRoute(builder: (context) => const Coaching()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
@@ -570,8 +564,8 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
 
   void navigateToAreWeAFit(BuildContext context) async {
     utils.Utils().changeSystemColor(Brightness.dark);
-    await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => const AreWeAFitScreen()))
+    await Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const AreWeAFitScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
@@ -580,7 +574,7 @@ class CustomAppBarState extends State<CustomAppBar> with WidgetsBindingObserver 
   void navigateToProfile(BuildContext context) async {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => ProfileScreen()))
+            context, MaterialPageRoute(builder: (context) => ProfileScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});

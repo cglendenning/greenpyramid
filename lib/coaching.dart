@@ -8,18 +8,21 @@ import 'package:life_ops/personal_coaching.dart';
 import 'package:life_ops/paywall.dart';
 import 'package:life_ops/utils.dart' as utils;
 import 'dart:io' show Platform;
-import 'package:youtube_player_flutter/youtube_player_flutter.dart' as yt_flutter;
+import 'package:youtube_player_flutter/youtube_player_flutter.dart'
+    as yt_flutter;
 import 'package:flutter/widgets.dart';
 import 'dart:developer';
 import 'package:firebase_analytics/firebase_analytics.dart';
+
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
-void debugDumpState(String label, BuildContext? context, {dynamic controller, dynamic extra}) {
+void debugDumpState(String label, BuildContext? context,
+    {dynamic controller, dynamic extra}) {
   final now = DateTime.now().toIso8601String();
   final ctxHash = context?.hashCode;
   final widgetTree = context != null ? context.widget.toStringShort() : 'null';
   final nav = context != null ? Navigator.canPop(context) : 'unknown';
-  
+
   // Safely access MediaQuery to avoid crashes during initState
   String orientation = 'unknown';
   if (context != null) {
@@ -29,7 +32,7 @@ void debugDumpState(String label, BuildContext? context, {dynamic controller, dy
       orientation = 'error: $e';
     }
   }
-  
+
   log('[$now] $label | ctx: $ctxHash | widget: $widgetTree | canPop: $nav | orientation: $orientation | controller: $controller | extra: $extra');
 }
 
@@ -41,19 +44,21 @@ class Coaching extends StatefulWidget {
   State<Coaching> createState() => _CoachingState();
 }
 
-class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObserver {
+class _CoachingState extends State<Coaching>
+    with RouteAware, WidgetsBindingObserver {
   List<YouTubeVideo> videos = [];
   bool isLoading = true;
   String? errorMessage;
   bool isSubscribed = false;
   static List<YouTubeVideo> _cachedVideos = []; // Simple cache for videos
-  static DateTime _lastCacheTime = DateTime.now().subtract(const Duration(hours: 1)); // Cache for 1 hour
-  
+  static DateTime _lastCacheTime =
+      DateTime.now().subtract(const Duration(hours: 1)); // Cache for 1 hour
+
   // Lazy loading variables
   int _displayedVideoCount = 5; // Show 5 videos initially
   bool _isLoadingMore = false;
   final ScrollController _scrollController = ScrollController();
-  
+
   // Instant display cache - stores just first 5 videos for immediate display
   static List<YouTubeVideo> _instantCache = [];
 
@@ -97,7 +102,8 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
   }
 
   void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
       _loadMoreVideos();
     }
   }
@@ -107,12 +113,13 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
       setState(() {
         _isLoadingMore = true;
       });
-      
+
       // Simulate loading delay for better UX
       Future.delayed(const Duration(milliseconds: 500), () {
         if (mounted) {
           setState(() {
-            _displayedVideoCount = (_displayedVideoCount + 5).clamp(0, videos.length);
+            _displayedVideoCount =
+                (_displayedVideoCount + 5).clamp(0, videos.length);
             _isLoadingMore = false;
           });
         }
@@ -130,10 +137,10 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
         SystemChrome.setPreferredOrientations([
           DeviceOrientation.portraitUp,
         ]);
-        
+
         // Refresh videos when returning to the screen to get latest from channel
         fetchVideos();
-        
+
         debugDumpState('COACHING: didPopNext completed successfully', context);
       } catch (e, st) {
         log('COACHING: Error in didPopNext: $e\n$st');
@@ -169,13 +176,14 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
     try {
       // Check if we have cached videos that are still fresh (less than 1 hour old)
       final now = DateTime.now();
-      if (_cachedVideos.isNotEmpty && now.difference(_lastCacheTime).inHours < 1) {
+      if (_cachedVideos.isNotEmpty &&
+          now.difference(_lastCacheTime).inHours < 1) {
         setState(() {
           this.videos = List.from(_cachedVideos)..shuffle();
           _displayedVideoCount = 5; // Reset to show first 5 videos
           isLoading = false;
         });
-        
+
         // Pre-load remaining videos in background
         _preloadRemainingVideos();
         return;
@@ -188,7 +196,7 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
           _displayedVideoCount = 5; // Reset to show first 5 videos
           isLoading = false;
         });
-        
+
         // Pre-load fresh data in background
         _preloadFreshVideos();
         return;
@@ -201,7 +209,7 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
           _displayedVideoCount = 5; // Reset to show first 5 videos
           isLoading = false;
         });
-        
+
         // Pre-load fresh data in background
         _preloadFreshVideos();
         return;
@@ -229,13 +237,15 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
       List<YouTubeVideo> allVideos = [];
       Set<String> videoIds = {};
       bool instantCachePopulated = false;
-      
+
       // Method 1: Try RSS feed with different parameters (this has proper metadata)
       try {
         final response = await http.get(
-          Uri.parse('https://www.youtube.com/feeds/videos.xml?channel_id=UCLLThMzPSIa7ckEISQfhycw&max-results=50'),
+          Uri.parse(
+              'https://www.youtube.com/feeds/videos.xml?channel_id=UCLLThMzPSIa7ckEISQfhycw&max-results=50'),
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
           },
         );
 
@@ -269,12 +279,14 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
       // Method 2: Try alternative RSS feed format
       try {
         final altResponse = await http.get(
-          Uri.parse('https://www.youtube.com/feeds/videos.xml?channel_id=UCLLThMzPSIa7ckEISQfhycw&orderby=published&max-results=50'),
+          Uri.parse(
+              'https://www.youtube.com/feeds/videos.xml?channel_id=UCLLThMzPSIa7ckEISQfhycw&orderby=published&max-results=50'),
           headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            'User-Agent':
+                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
           },
         );
-        
+
         if (altResponse.statusCode == 200) {
           final altParsedVideos = parseRSSFeed(altResponse.body);
           for (final video in altParsedVideos) {
@@ -294,14 +306,17 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
       if (allVideos.length < 50) {
         try {
           final channelResponse = await http.get(
-            Uri.parse('https://www.youtube.com/channel/UCLLThMzPSIa7ckEISQfhycw/videos'),
+            Uri.parse(
+                'https://www.youtube.com/channel/UCLLThMzPSIa7ckEISQfhycw/videos'),
             headers: {
-              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+              'User-Agent':
+                  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             },
           );
-          
+
           if (channelResponse.statusCode == 200) {
-            final channelVideoIds = parseChannelPageForVideoIds(channelResponse.body);
+            final channelVideoIds =
+                parseChannelPageForVideoIds(channelResponse.body);
             int fetchCount = 0;
             for (final videoId in channelVideoIds) {
               if (!videoIds.contains(videoId) && fetchCount < 25) {
@@ -335,7 +350,8 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
         // Update UI with new videos, skipping the first 5 already shown
         if (mounted) {
           setState(() {
-            this.videos = _instantCache + allVideos.skip(_instantCache.length).toList();
+            this.videos =
+                _instantCache + allVideos.skip(_instantCache.length).toList();
             _displayedVideoCount = 5;
             isLoading = false;
           });
@@ -350,7 +366,7 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
             description: 'Learn the basics of the Green Pyramid method',
           ),
           YouTubeVideo(
-            id: 'sample2', 
+            id: 'sample2',
             title: 'Building Your Foundation',
             thumbnail: 'https://img.youtube.com/vi/sample2/mqdefault.jpg',
             description: 'How to build a strong foundation for success',
@@ -358,7 +374,7 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
           YouTubeVideo(
             id: 'sample3',
             title: 'Advanced Pyramid Strategies',
-            thumbnail: 'https://img.youtube.com/vi/sample3/mqdefault.jpg', 
+            thumbnail: 'https://img.youtube.com/vi/sample3/mqdefault.jpg',
             description: 'Take your pyramid to the next level',
           ),
         ];
@@ -390,36 +406,46 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
 
   List<YouTubeVideo> parseRSSFeed(String xmlData) {
     List<YouTubeVideo> videos = [];
-    
+
     try {
       // Simple XML parsing for RSS feed
       final entries = xmlData.split('<entry>');
-      
-      for (int i = 1; i < entries.length; i++) { // Skip first empty entry
+
+      for (int i = 1; i < entries.length; i++) {
+        // Skip first empty entry
         final entry = entries[i];
-        
+
         // Extract video ID
-        final videoIdMatch = RegExp(r'<yt:videoId>([^<]+)</yt:videoId>').firstMatch(entry);
+        final videoIdMatch =
+            RegExp(r'<yt:videoId>([^<]+)</yt:videoId>').firstMatch(entry);
         if (videoIdMatch == null) continue;
         final videoId = videoIdMatch.group(1);
-        
+
         // Extract title
         final titleMatch = RegExp(r'<title>([^<]+)</title>').firstMatch(entry);
         if (titleMatch == null) continue;
         final title = titleMatch.group(1);
-        
+
         // Extract description from media:group
-        final mediaGroupMatch = RegExp(r'<media:group>([\\s\\S]*?)</media:group>').firstMatch(entry);
+        final mediaGroupMatch =
+            RegExp(r'<media:group>([\\s\\S]*?)</media:group>')
+                .firstMatch(entry);
         String description = '';
         if (mediaGroupMatch != null) {
           final mediaGroup = mediaGroupMatch.group(1)!;
-          final descMatch = RegExp(r'<media:description>([\\s\\S]*?)</media:description>').firstMatch(mediaGroup);
-          description = descMatch?.group(1)?.replaceAll('&quot;', '"').replaceAll('&amp;', '&') ?? '';
+          final descMatch =
+              RegExp(r'<media:description>([\\s\\S]*?)</media:description>')
+                  .firstMatch(mediaGroup);
+          description = descMatch
+                  ?.group(1)
+                  ?.replaceAll('&quot;', '"')
+                  .replaceAll('&amp;', '&') ??
+              '';
         }
-        
+
         // Create thumbnail URL using hqdefault for better quality
         final thumbnail = 'https://img.youtube.com/vi/$videoId/hqdefault.jpg';
-        
+
         videos.add(YouTubeVideo(
           id: videoId!,
           title: title!,
@@ -430,13 +456,13 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
     } catch (e, st) {
       debugPrint('Error parsing RSS feed: $e\n$st');
     }
-    
+
     return videos;
   }
 
   List<String> parseChannelPageForVideoIds(String htmlData) {
     List<String> videoIds = [];
-    
+
     try {
       // Look for video IDs in the channel page HTML
       // YouTube stores video IDs in various data attributes
@@ -446,12 +472,14 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
         RegExp(r'watch\?v=([^"&]+)'),
         RegExp(r'/watch\?v=([^"&]+)'),
       ];
-      
+
       for (final pattern in videoIdPatterns) {
         final matches = pattern.allMatches(htmlData);
         for (final match in matches) {
           final videoId = match.group(1);
-          if (videoId != null && videoId.length == 11 && !videoIds.contains(videoId)) {
+          if (videoId != null &&
+              videoId.length == 11 &&
+              !videoIds.contains(videoId)) {
             videoIds.add(videoId);
           }
         }
@@ -459,7 +487,7 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
     } catch (e, st) {
       debugPrint('Error parsing channel page for video IDs: $e\n$st');
     }
-    
+
     return videoIds;
   }
 
@@ -469,21 +497,25 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
       final response = await http.get(
         Uri.parse('https://www.youtube.com/watch?v=$videoId'),
         headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+          'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
         },
       ).timeout(const Duration(seconds: 5)); // Add 5-second timeout
 
       if (response.statusCode == 200) {
         final htmlData = response.body;
-        
+
         // Extract title from meta tags
         String? title;
-        final titleMatch = RegExp(r'<meta property="og:title" content="([^"]+)"').firstMatch(htmlData);
+        final titleMatch =
+            RegExp(r'<meta property="og:title" content="([^"]+)"')
+                .firstMatch(htmlData);
         if (titleMatch != null) {
           title = titleMatch.group(1);
         } else {
           // Fallback: try to find title in other meta tags
-          final titleMatch2 = RegExp(r'<title>([^<]+)</title>').firstMatch(htmlData);
+          final titleMatch2 =
+              RegExp(r'<title>([^<]+)</title>').firstMatch(htmlData);
           if (titleMatch2 != null) {
             title = titleMatch2.group(1);
             // Clean up the title (remove " - YouTube" suffix)
@@ -492,10 +524,11 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
             }
           }
         }
-        
+
         // Only extract description if we need it (we're not showing it anymore)
-        String description = ''; // Empty since we're not displaying descriptions
-        
+        String description =
+            ''; // Empty since we're not displaying descriptions
+
         return YouTubeVideo(
           id: videoId,
           title: title ?? 'Video $videoId',
@@ -513,7 +546,8 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
 
   @override
   Widget build(BuildContext context) {
-    debugDumpState('COACHING: build method called', context, extra: {'isLoading': isLoading, 'errorMessage': errorMessage});
+    debugDumpState('COACHING: build method called', context,
+        extra: {'isLoading': isLoading, 'errorMessage': errorMessage});
     FirebaseAnalytics.instance.logEvent(name: 'coaching');
     return Scaffold(
       appBar: const NavBar(),
@@ -531,10 +565,10 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
           // Hero Section
           _buildHeroSection(),
           const SizedBox(height: 32),
-          
+
           // All Videos with interspersed CTAs
           ..._buildAllVideosWithCTAs(),
-          
+
           // Final CTA
           _buildFinalCTA(),
         ],
@@ -544,7 +578,7 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
 
   List<Widget> _buildAllVideosWithCTAs() {
     List<Widget> widgets = [];
-    
+
     // If videos are still loading and we don't have any yet, show loading state
     if (videos.isEmpty && isLoading) {
       widgets.add(
@@ -590,7 +624,7 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
       );
       return widgets;
     }
-    
+
     // If there's an error, show error state
     if (errorMessage != null) {
       widgets.add(
@@ -623,15 +657,15 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
       );
       return widgets;
     }
-    
+
     // Only show the first _displayedVideoCount videos
     final videosToShow = videos.take(_displayedVideoCount).toList();
-    
+
     for (int i = 0; i < videosToShow.length; i++) {
       // Add video
       widgets.add(_buildVideoCard(videosToShow[i], i + 1));
       widgets.add(const SizedBox(height: 24));
-      
+
       // Add CTA after every 2-3 videos
       if (i == 4) {
         widgets.add(_buildPersonalCoachingCTA());
@@ -654,7 +688,7 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
         widgets.add(const SizedBox(height: 32));
       }
     }
-    
+
     // Add loading indicator if there are more videos to load
     if (_displayedVideoCount < videos.length) {
       widgets.add(
@@ -669,7 +703,7 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
       );
     }
     // No message or spinner when all videos are loaded
-    
+
     return widgets;
   }
 
@@ -734,7 +768,8 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
                   Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: const Color(0xff1782FF),
                           borderRadius: BorderRadius.circular(12),
@@ -1128,8 +1163,6 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
     );
   }
 
-
-
   Widget _buildFinalCTA() {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -1157,9 +1190,9 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
           ),
           const SizedBox(height: 12),
           Text(
-            isSubscribed 
-              ? 'Ready for the next level? Work directly with Craig for accelerated results and personalized guidance.'
-              : 'Choose your path: AI coaching for 24/7 support or personal coaching for accelerated results.',
+            isSubscribed
+                ? 'Ready for the next level? Work directly with Craig for accelerated results and personalized guidance.'
+                : 'Choose your path: AI coaching for 24/7 support or personal coaching for accelerated results.',
             style: const TextStyle(
               fontSize: 16,
               color: Colors.white,
@@ -1256,7 +1289,7 @@ class _CoachingState extends State<Coaching> with RouteAware, WidgetsBindingObse
       );
       return;
     }
-    
+
     // Navigate to paywall only if not subscribed
     Navigator.push(
       context,
@@ -1304,7 +1337,8 @@ class VideoPlayerScreen extends StatefulWidget {
   State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
 }
 
-class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindingObserver {
+class _VideoPlayerScreenState extends State<VideoPlayerScreen>
+    with WidgetsBindingObserver {
   late WebViewController _controller;
   bool isLoading = true;
   yt_flutter.YoutubePlayerController? _ytController;
@@ -1312,9 +1346,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   @override
   void initState() {
     super.initState();
-    debugDumpState('VIDEO PLAYER: initState called', context, controller: _ytController);
+    debugDumpState('VIDEO PLAYER: initState called', context,
+        controller: _ytController);
     WidgetsBinding.instance.addObserver(this);
-    
+
     // Delay orientation change to allow widget to fully initialize
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
@@ -1322,12 +1357,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
           DeviceOrientation.landscapeLeft,
           DeviceOrientation.landscapeRight,
         ]);
-        debugDumpState('VIDEO PLAYER: setPreferredOrientations to landscape', context);
+        debugDumpState(
+            'VIDEO PLAYER: setPreferredOrientations to landscape', context);
       } catch (e, st) {
         log('VIDEO PLAYER: Error setting orientation in initState: $e\n$st');
       }
     });
-    
+
     if (Platform.isIOS) {
       _ytController = yt_flutter.YoutubePlayerController(
         initialVideoId: widget.video.id,
@@ -1339,7 +1375,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
           controlsVisibleAtStart: true,
         ),
       );
-      debugDumpState('VIDEO PLAYER: Created YoutubePlayerController', context, controller: _ytController);
+      debugDumpState('VIDEO PLAYER: Created YoutubePlayerController', context,
+          controller: _ytController);
     } else {
       _initializeWebView();
     }
@@ -1348,7 +1385,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    debugDumpState('VIDEO PLAYER: didChangeDependencies', context, controller: _ytController);
+    debugDumpState('VIDEO PLAYER: didChangeDependencies', context,
+        controller: _ytController);
   }
 
   void _initializeWebView() {
@@ -1414,12 +1452,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
 
   @override
   Widget build(BuildContext context) {
-    debugDumpState('VIDEO PLAYER: build method called', context, controller: _ytController, extra: {'isLoading': isLoading});
+    debugDumpState('VIDEO PLAYER: build method called', context,
+        controller: _ytController, extra: {'isLoading': isLoading});
     if (Platform.isIOS) {
       return WillPopScope(
         onWillPop: () async {
           log('VIDEO PLAYER: WillPopScope iOS called');
-          
+
           // Pause YouTube controller before popping
           if (Platform.isIOS && _ytController != null) {
             try {
@@ -1429,7 +1468,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
               log('VIDEO PLAYER: Error pausing controller in WillPopScope iOS: $e\n$st');
             }
           }
-          
+
           // Reset orientation to portrait
           try {
             SystemChrome.setPreferredOrientations([
@@ -1439,7 +1478,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
           } catch (e, st) {
             log('VIDEO PLAYER: Error in WillPopScope iOS: $e\n$st');
           }
-          
+
           return true;
         },
         child: Scaffold(
@@ -1451,7 +1490,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
                   controller: _ytController!,
                   showVideoProgressIndicator: true,
                   onReady: () {
-                    setState(() { });
+                    setState(() {});
                   },
                 ),
               ),
@@ -1467,7 +1506,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
                     icon: const Icon(Icons.arrow_back, color: Colors.white),
                     onPressed: () {
                       log('VIDEO PLAYER: Back button pressed');
-                      
+
                       // Pause YouTube controller before navigating
                       if (Platform.isIOS && _ytController != null) {
                         try {
@@ -1477,7 +1516,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
                           log('VIDEO PLAYER: Error pausing controller in back button: $e\n$st');
                         }
                       }
-                      
+
                       // Reset orientation to portrait
                       try {
                         SystemChrome.setPreferredOrientations([
@@ -1487,7 +1526,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
                       } catch (e, st) {
                         log('VIDEO PLAYER: Error in Back button: $e\n$st');
                       }
-                      
+
                       Navigator.pop(context);
                     },
                   ),
@@ -1541,7 +1580,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
   @override
   void dispose() {
     log('VIDEO PLAYER: dispose called');
-    
+
     // Pause and dispose YouTube controller on iOS
     if (Platform.isIOS && _ytController != null) {
       try {
@@ -1552,7 +1591,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
         log('VIDEO PLAYER: Error disposing YouTube controller: $e\n$st');
       }
     }
-    
+
     // Reset orientation to portrait
     try {
       SystemChrome.setPreferredOrientations([
@@ -1562,11 +1601,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with WidgetsBindi
     } catch (e, st) {
       log('VIDEO PLAYER: Error resetting orientation: $e\n$st');
     }
-    
+
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
     log('VIDEO PLAYER: super.dispose() completed');
   }
-
-
-} 
+}

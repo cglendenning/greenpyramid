@@ -66,162 +66,156 @@ class _Cat6TasksState extends State<Cat6Tasks> {
               ),
             ),
             body: Center(
-                child: Column(
-                    children: [
-                      LinearProgressIndicator(
-                          value: 22/23,
-                          color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000)
-                      ),
-
-                      const SizedBox(height: 10),
-                  Text(
-                    cat,
-                    style: mainTextStyle,
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                      padding: const EdgeInsets.all(10.0),
-                      child: Text(
-                          "Daily action is the best way to support $cat.")),
-                  Container(
-                      padding: const EdgeInsets.all(10.0),
-                      child: const Text(
-                          "We generated some suggestions in the pick list below. "
-                          "Choose from the list, choose \"Enter My Own...\", or "
-                          "press the refresh icon to generate more suggestions.\n\n"
-                          "Click \"Save\" to save this task before moving on.")),
-                  const SizedBox(height: 30),
-                  Container(
-                      // constrain the scrollview to 1/3 of the height
-                      // of the screen.
-                      height: MediaQuery.of(context).size.height / 4,
-                      child: Scrollbar(
-                          child: ListView.builder(
-                              itemCount: tasksForCat6.length,
-                              itemBuilder: (BuildContext context, int index) {
-                                return ListTile(
-                                  title:
-                                      Text(tasksForCat6[index].taskdescription),
-                                  subtitle: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: <Widget>[
-                                        Text(tasksForCat6[index].category),
-                                        Text(getDaysOfWeek(tasksForCat6[index]))
-                                      ]),
-                                  trailing: GestureDetector(
-                                      onTap: () {
-                                        setState(() {
-                                          showDeleteAlertDialog(
-                                              context,
-                                              tasksForCat6[index]
-                                                  .taskdescription);
-                                        });
-                                      },
-                                      child: const Icon(Icons.delete_rounded)),
-                                );
-                              }))),
-                  Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: <Widget>[
-                        GestureDetector(
-                            onTap: () {
-                              if (!cat6TasksGenerating) {
-                                setState(() {
-                                  cat6TaskChoices.clear();
-                                  cat6TaskChoices.add(defaultText);
-                                  cat6TaskChoices.add(taskValue);
-                                  generateTaskList();
-                                });
-                              }
-                            },
-                            child: const Icon(
-                              Icons.refresh,
-                              color: Colors.blue,
-                              size: 25,
-                            )),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                          height: 40.0,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(30.0),
-                            color: Colors.yellow,
-                          ),
-                          child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                            value: taskValue,
-                            menuMaxHeight:
-                                MediaQuery.of(context).size.height / 3,
-                            borderRadius: BorderRadius.circular(30.0),
-                            icon: const Icon(Icons.arrow_drop_down),
-                            elevation: 16,
-                            style: const TextStyle(color: Colors.black),
-                            onChanged: (String? value) {
-                              // This is called when the user selects an item.
-                              setState(() {
-                                if (value == "Enter My Own...") {
-                                  showOtherDialog(cat6TaskChoices);
-                                } else if (!cat6TaskChoices.contains(value)) {
-                                  taskValue = cat6TaskChoices.first;
-                                } else {
-                                  taskValue = value!;
-                                }
-                              });
-                            },
-                            items: cat6TaskChoices
-                                .map<DropdownMenuItem<String>>((String value) {
-                              return DropdownMenuItem<String>(
-                                value: value,
-                                child: Text(value),
-                              );
-                            }).toList(),
-                          ) // your Dropdown Widget here
-                              ),
-                        ),
-                        ElevatedButton(
-                          onPressed: !cat6TasksGenerating ? (){
-                            cat6TaskChoices.clear();
-                            cat6TaskChoices.add(defaultText);
-                            cat6TaskChoices.add(taskValue);
-                            navigateToSetupTaskDow();
-                          } : null,
-                          child: const Text('Save'),
-                        ),
-                      ]),
-                  const SizedBox(height: 30),
-                  Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: <Widget>[
-                        IconButton(
-                          icon: svgForward,
-                          onPressed: () {
+                child: Column(children: [
+              LinearProgressIndicator(
+                  value: 22 / 23,
+                  color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) +
+                      0xFF000000)),
+              const SizedBox(height: 10),
+              Text(
+                cat,
+                style: mainTextStyle,
+              ),
+              const SizedBox(height: 10),
+              Container(
+                  padding: const EdgeInsets.all(10.0),
+                  child: Text("Daily action is the best way to support $cat.")),
+              Container(
+                  padding: const EdgeInsets.all(10.0),
+                  child: const Text(
+                      "We generated some suggestions in the pick list below. "
+                      "Choose from the list, choose \"Enter My Own...\", or "
+                      "press the refresh icon to generate more suggestions.\n\n"
+                      "Click \"Save\" to save this task before moving on.")),
+              const SizedBox(height: 30),
+              Container(
+                  // constrain the scrollview to 1/3 of the height
+                  // of the screen.
+                  height: MediaQuery.of(context).size.height / 4,
+                  child: Scrollbar(
+                      child: ListView.builder(
+                          itemCount: tasksForCat6.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            return ListTile(
+                              title: Text(tasksForCat6[index].taskdescription),
+                              subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: <Widget>[
+                                    Text(tasksForCat6[index].category),
+                                    Text(getDaysOfWeek(tasksForCat6[index]))
+                                  ]),
+                              trailing: GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      showDeleteAlertDialog(context,
+                                          tasksForCat6[index].taskdescription);
+                                    });
+                                  },
+                                  child: const Icon(Icons.delete_rounded)),
+                            );
+                          }))),
+              Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: <Widget>[
+                    GestureDetector(
+                        onTap: () {
+                          if (!cat6TasksGenerating) {
                             setState(() {
                               cat6TaskChoices.clear();
                               cat6TaskChoices.add(defaultText);
-                              if (taskValue != defaultText) {
-                                cat6TaskChoices.add(taskValue);
-                              }
-                              navigateToSetup18();
+                              cat6TaskChoices.add(taskValue);
+                              generateTaskList();
                             });
-                          },
-                        ),
-                      ]),
-                  const SizedBox(height: 20),
-                  RichText(
-                    text: TextSpan(
-                        text: 'Skip Setup',
-                        style: const TextStyle(
-                            color: Colors.blue,
-                            decoration: TextDecoration.underline,
-                            fontSize: 12),
-                        recognizer: TapGestureRecognizer()
-                          ..onTap = () {
-                            setState(() {
-                              showSkipAlertDialog(context);
-                            });
-                          }),
-                  ),
-                ]))));
+                          }
+                        },
+                        child: const Icon(
+                          Icons.refresh,
+                          color: Colors.blue,
+                          size: 25,
+                        )),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                      height: 40.0,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(30.0),
+                        color: Colors.yellow,
+                      ),
+                      child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                        value: taskValue,
+                        menuMaxHeight: MediaQuery.of(context).size.height / 3,
+                        borderRadius: BorderRadius.circular(30.0),
+                        icon: const Icon(Icons.arrow_drop_down),
+                        elevation: 16,
+                        style: const TextStyle(color: Colors.black),
+                        onChanged: (String? value) {
+                          // This is called when the user selects an item.
+                          setState(() {
+                            if (value == "Enter My Own...") {
+                              showOtherDialog(cat6TaskChoices);
+                            } else if (!cat6TaskChoices.contains(value)) {
+                              taskValue = cat6TaskChoices.first;
+                            } else {
+                              taskValue = value!;
+                            }
+                          });
+                        },
+                        items: cat6TaskChoices
+                            .map<DropdownMenuItem<String>>((String value) {
+                          return DropdownMenuItem<String>(
+                            value: value,
+                            child: Text(value),
+                          );
+                        }).toList(),
+                      ) // your Dropdown Widget here
+                          ),
+                    ),
+                    ElevatedButton(
+                      onPressed: !cat6TasksGenerating
+                          ? () {
+                              cat6TaskChoices.clear();
+                              cat6TaskChoices.add(defaultText);
+                              cat6TaskChoices.add(taskValue);
+                              navigateToSetupTaskDow();
+                            }
+                          : null,
+                      child: const Text('Save'),
+                    ),
+                  ]),
+              const SizedBox(height: 30),
+              Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: <Widget>[
+                    IconButton(
+                      icon: svgForward,
+                      onPressed: () {
+                        setState(() {
+                          cat6TaskChoices.clear();
+                          cat6TaskChoices.add(defaultText);
+                          if (taskValue != defaultText) {
+                            cat6TaskChoices.add(taskValue);
+                          }
+                          navigateToSetup18();
+                        });
+                      },
+                    ),
+                  ]),
+              const SizedBox(height: 20),
+              RichText(
+                text: TextSpan(
+                    text: 'Skip Setup',
+                    style: const TextStyle(
+                        color: Colors.blue,
+                        decoration: TextDecoration.underline,
+                        fontSize: 12),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () {
+                        setState(() {
+                          showSkipAlertDialog(context);
+                        });
+                      }),
+              ),
+            ]))));
   }
 
   showSkipAlertDialog(BuildContext context) {
@@ -241,9 +235,7 @@ class _Cat6TasksState extends State<Cat6Tasks> {
           cats.clear();
           tasks.clear();
           Navigator.popUntil(
-              context,
-              ModalRoute.withName(
-                  Navigator.defaultRouteName));
+              context, ModalRoute.withName(Navigator.defaultRouteName));
         });
       },
     );
@@ -252,9 +244,9 @@ class _Cat6TasksState extends State<Cat6Tasks> {
       title: const Text("Skip Setup?"),
       content: const Text(
           "Green Pyramid will not be useful to you until you complete setup. "
-              "You can resume setup through the menu in the upper right of the home "
-              "screen. Press \"Skip Setup\" to skip setup or \"Cancel\" to continue "
-              "setup."),
+          "You can resume setup through the menu in the upper right of the home "
+          "screen. Press \"Skip Setup\" to skip setup or \"Cancel\" to continue "
+          "setup."),
       actions: [
         cancelButton,
         continueButton,
@@ -268,7 +260,6 @@ class _Cat6TasksState extends State<Cat6Tasks> {
       },
     );
   }
-
 
   showDeleteAlertDialog(BuildContext context, String taskdescription) {
     // set up the buttons
@@ -381,7 +372,8 @@ class _Cat6TasksState extends State<Cat6Tasks> {
         ],
       ).timeout(const Duration(seconds: timeout));
 
-      chatResult = chatCompletion.choices.first.message.content?.first.text ?? '';
+      chatResult =
+          chatCompletion.choices.first.message.content?.first.text ?? '';
     } catch (e, s) {
       if (kDebugMode) {
         print(e);

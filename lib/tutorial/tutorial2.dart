@@ -22,12 +22,18 @@ class _Tutorial2 extends State<Tutorial2> {
 
   @override
   void initState() {
-    _static1LGColor = Color(int.parse("#FFE177".substring(1, 7), radix: 16) + 0xFF000000);
-    _static2LGColor = Color(int.parse("#F96E6E".substring(1, 7), radix: 16) + 0xFF000000);
-    _static3LGColor = Color(int.parse("#FFE177".substring(1, 7), radix: 16) + 0xFF000000);
-    _static4LGColor = Color(int.parse("#F96E6E".substring(1, 7), radix: 16) + 0xFF000000);
-    _static5LGColor = Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000);
-    _static6LGColor = Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000);
+    _static1LGColor =
+        Color(int.parse("#FFE177".substring(1, 7), radix: 16) + 0xFF000000);
+    _static2LGColor =
+        Color(int.parse("#F96E6E".substring(1, 7), radix: 16) + 0xFF000000);
+    _static3LGColor =
+        Color(int.parse("#FFE177".substring(1, 7), radix: 16) + 0xFF000000);
+    _static4LGColor =
+        Color(int.parse("#F96E6E".substring(1, 7), radix: 16) + 0xFF000000);
+    _static5LGColor =
+        Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000);
+    _static6LGColor =
+        Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000);
 
     super.initState();
   }
@@ -40,8 +46,6 @@ class _Tutorial2 extends State<Tutorial2> {
     const String forward = 'images/svg/forward.svg';
     final Widget svgForward = SvgPicture.asset(forward,
         fit: BoxFit.scaleDown, semanticsLabel: 'forward');
-
-
 
     final static1LG = LinearGradient(
       begin: Alignment.topCenter,
@@ -110,14 +114,13 @@ class _Tutorial2 extends State<Tutorial2> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          const Text('Tutorial (2 of 5)'),
-                          const SizedBox(height: 10),
-                          Container(
-                              padding: const EdgeInsets.all(10.0),
-                              child: const Text(
-                                  "Each block is a category of your life that matters "
-                                      "to you... "
-                              )),
+                      const Text('Tutorial (2 of 5)'),
+                      const SizedBox(height: 10),
+                      Container(
+                          padding: const EdgeInsets.all(10.0),
+                          child: const Text(
+                              "Each block is a category of your life that matters "
+                              "to you... ")),
                       Stack(children: <Widget>[
                         CustomPaint(
                             size: Size(pyramidWidth, pyramidHeight),
@@ -139,32 +142,30 @@ class _Tutorial2 extends State<Tutorial2> {
                             painter: DrawCat6(static6LG)),
                       ]).animate().shimmer(duration: 1000.ms),
                       const SizedBox(height: 30),
-                          Container(
-                              padding: const EdgeInsets.all(10.0),
-                              child: const Text(
-                                  "...You can put the most important categories of your "
-                                      "life on the bottom, because they hold up the rest of "
-                                      "your life."
-                              )),
-                          Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: <Widget>[
-                                Column(
-                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                    children: <Widget>[
-                                      IconButton(
-                                        icon: svgForward,
-                                        onPressed: () {
-                                          setState(() {
-                                            navigateToTutorial3();
-                                          });
-                                        },
-                                      ),
-                                    ])
-                              ]),
-
-                    ]))
-            )));
+                      Container(
+                          padding: const EdgeInsets.all(10.0),
+                          child: const Text(
+                              "...You can put the most important categories of your "
+                              "life on the bottom, because they hold up the rest of "
+                              "your life.")),
+                      Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: <Widget>[
+                            Column(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: <Widget>[
+                                  IconButton(
+                                    icon: svgForward,
+                                    onPressed: () {
+                                      setState(() {
+                                        navigateToTutorial3();
+                                      });
+                                    },
+                                  ),
+                                ])
+                          ]),
+                    ])))));
   }
 
   void navigateToTutorial3() async {

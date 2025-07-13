@@ -19,7 +19,7 @@ class LocalNotificationService {
   // Notification message generator
   String _generateNotificationMessage(int notificationId) {
     final random = Random();
-    
+
     // Different message pools for each time of day - ALL UNIQUE AND TIME-APPROPRIATE
     List<List<String>> messagePools = [
       // Morning messages (id: 0) - 30 unique questions
@@ -125,14 +125,12 @@ class LocalNotificationService {
 
     // Get the appropriate message pool based on notification ID
     List<String> messages = messagePools[notificationId];
-    
+
     // Return a random message from the pool
     return messages[random.nextInt(messages.length)];
   }
 
   // Generate a random question from the full pool (for testing)
-
-
 
   // Schedule test notification every 1 minute for 5 minutes
   Future<void> scheduleTestNotification() async {
@@ -151,11 +149,13 @@ class LocalNotificationService {
         // Select route and corresponding question pool
         int routeIndex = random.nextInt(routes.length);
         String selectedRoute = routes[routeIndex];
-        
+
         // Get appropriate question based on route
-        String timeAppropriateQuestion = _generateNotificationMessage(routeIndex);
+        String timeAppropriateQuestion =
+            _generateNotificationMessage(routeIndex);
         // Use 1-minute intervals
-        final scheduledTime = tz.TZDateTime.now(tz.local).add(Duration(minutes: i + 1));
+        final scheduledTime =
+            tz.TZDateTime.now(tz.local).add(Duration(minutes: i + 1));
         // Create iOS details with the question as the body
         final DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
           sound: 'doublebeep.aiff',
@@ -163,7 +163,8 @@ class LocalNotificationService {
           presentBadge: true,
           presentSound: true,
         );
-        const AndroidNotificationDetails androidNotificationDetails = AndroidNotificationDetails(
+        const AndroidNotificationDetails androidNotificationDetails =
+            AndroidNotificationDetails(
           'green_pyramid_channel',
           'Green Pyramid Notifications',
           channelDescription: 'Notifications for Green Pyramid app',
@@ -189,17 +190,19 @@ class LocalNotificationService {
         );
         try {
           await _localNotificationService.zonedSchedule(
-              999 - i, // Use IDs 999, 998, 997, 996, 995
-              'Green Pyramid',
-              timeAppropriateQuestion,
-              scheduledTime,
-              details,
-              androidScheduleMode: AndroidScheduleMode.exact,
-              payload: selectedRoute, // Route to morning, afternoon, or evening based on question
-              matchDateTimeComponents: null,
+            999 - i, // Use IDs 999, 998, 997, 996, 995
+            'Green Pyramid',
+            timeAppropriateQuestion,
+            scheduledTime,
+            details,
+            androidScheduleMode: AndroidScheduleMode.exact,
+            payload:
+                selectedRoute, // Route to morning, afternoon, or evening based on question
+            matchDateTimeComponents: null,
           );
           if (kDebugMode) {
-            print('✅ Test notification  \\${999 - i} scheduled for \\${scheduledTime.toString()}');
+            print(
+                '✅ Test notification  \\${999 - i} scheduled for \\${scheduledTime.toString()}');
           }
           if (kDebugMode) {
             print('  Route: \\${selectedRoute}');
@@ -218,7 +221,8 @@ class LocalNotificationService {
       }
       // Wait a moment then verify scheduled notifications
       await Future.delayed(Duration(seconds: 2));
-      final pending = await _localNotificationService.pendingNotificationRequests();
+      final pending =
+          await _localNotificationService.pendingNotificationRequests();
       if (kDebugMode) {
         print('📋 Total pending notifications: \\${pending.length}');
       }
@@ -285,7 +289,7 @@ class LocalNotificationService {
       settings,
       onDidReceiveNotificationResponse: onSelectNotification,
     );
-    
+
     // Request notification permissions for Android
     await _requestNotificationPermissions();
   }
@@ -299,24 +303,24 @@ class LocalNotificationService {
             .resolvePlatformSpecificImplementation<
                 AndroidFlutterLocalNotificationsPlugin>()
             ?.requestNotificationsPermission();
-        
+
         if (kDebugMode) {
           print('Android notification permission granted: $granted');
         }
-        
+
         // Check if notifications are enabled
         final bool? areNotificationsEnabled = await _localNotificationService
             .resolvePlatformSpecificImplementation<
                 AndroidFlutterLocalNotificationsPlugin>()
             ?.areNotificationsEnabled();
-        
+
         if (kDebugMode) {
           print('Android notifications enabled: $areNotificationsEnabled');
         }
-        
+
         // Request battery optimization exemption (Android only)
         await _requestBatteryOptimizationExemption();
-        
+
         // USE_EXACT_ALARM is handled via manifest, no runtime request needed
         if (kDebugMode) {
           print('USE_EXACT_ALARM permission handled via manifest');
@@ -327,7 +331,6 @@ class LocalNotificationService {
           print('iOS notification permissions handled during initialization');
         }
       }
-      
     } catch (e) {
       if (kDebugMode) {
         print('Error requesting notification permissions: $e');
@@ -347,7 +350,8 @@ class LocalNotificationService {
           }
         } else {
           if (kDebugMode) {
-            print('Android battery optimization exemption already granted: $status');
+            print(
+                'Android battery optimization exemption already granted: $status');
           }
         }
       }
@@ -365,7 +369,8 @@ class LocalNotificationService {
         // For Android 12+, we assume exact alarms are available if the permission is in manifest
         // The system will handle the permission automatically
         if (kDebugMode) {
-          print('Android: Assuming exact alarms are available (permission in manifest)');
+          print(
+              'Android: Assuming exact alarms are available (permission in manifest)');
         }
         return true;
       } else {
@@ -414,7 +419,8 @@ class LocalNotificationService {
       if (pending[i].id == id) {
         idFound = true;
         if (kDebugMode) {
-          print('${Platform.isAndroid ? 'Android' : 'iOS'}: Pending notification with id $id found');
+          print(
+              '${Platform.isAndroid ? 'Android' : 'iOS'}: Pending notification with id $id found');
         }
       }
     }
@@ -428,7 +434,8 @@ class LocalNotificationService {
         presentBadge: true,
         presentSound: true,
       );
-      const AndroidNotificationDetails androidNotificationDetails = AndroidNotificationDetails(
+      const AndroidNotificationDetails androidNotificationDetails =
+          AndroidNotificationDetails(
         'green_pyramid_channel',
         'Green Pyramid Notifications',
         channelDescription: 'Notifications for Green Pyramid app',
@@ -453,17 +460,18 @@ class LocalNotificationService {
         iOS: iosDetails,
       );
       await _localNotificationService.zonedSchedule(
-          id,
-          title,
-          dynamicBody,
-          nextInstanceOfTime(hour, minute),
-          details,
-          androidScheduleMode: scheduleMode,
-          payload: payload,
-          matchDateTimeComponents: DateTimeComponents.time,
+        id,
+        title,
+        dynamicBody,
+        nextInstanceOfTime(hour, minute),
+        details,
+        androidScheduleMode: scheduleMode,
+        payload: payload,
+        matchDateTimeComponents: DateTimeComponents.time,
       );
       if (kDebugMode) {
-        print('✅ Daily notification scheduled for $title at $hour:$minute using mode: $scheduleMode');
+        print(
+            '✅ Daily notification scheduled for $title at $hour:$minute using mode: $scheduleMode');
       }
     }
   }
@@ -514,6 +522,4 @@ class LocalNotificationService {
       }
     }
   }
-
-
 }

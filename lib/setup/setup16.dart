@@ -45,111 +45,105 @@ class _Setup16State extends State<Setup16> {
         child: Scaffold(
             appBar: const NavBar(),
             body: Center(
-                child: Column(
-                    children: [
-                      LinearProgressIndicator(
-                          value: 20/23,
-                          color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000)
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Peak Value',
-                        style: mainTextStyle,
-                      ),
-                      const SizedBox(height: 10),
-                  Container(
-                      padding: const EdgeInsets.all(10.0),
-                      child: const Text(
-                        "Now you will define your peak value..."
-                      )),
-                  Container(
-                      padding: const EdgeInsets.all(10.0),
-                      child: const Text(
-                        "Choose a value that represents the pinnacle of living "
-                        "your best life or choose \"Enter My Own...\" to enter your own. "
-                        "This is the value that brings you joy, excitement, "
-                        "peace or tranquility. You are not creating tasks just "
-                        "yet - right now, just choose your peak value."
-                      )),
-                  const SizedBox(height: 30),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                    height: 40.0,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30.0),
-                      color: Colors.lightBlueAccent,
+                child: Column(children: [
+              LinearProgressIndicator(
+                  value: 20 / 23,
+                  color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) +
+                      0xFF000000)),
+              const SizedBox(height: 10),
+              Text(
+                'Peak Value',
+                style: mainTextStyle,
+              ),
+              const SizedBox(height: 10),
+              Container(
+                  padding: const EdgeInsets.all(10.0),
+                  child: const Text("Now you will define your peak value...")),
+              Container(
+                  padding: const EdgeInsets.all(10.0),
+                  child: const Text(
+                      "Choose a value that represents the pinnacle of living "
+                      "your best life or choose \"Enter My Own...\" to enter your own. "
+                      "This is the value that brings you joy, excitement, "
+                      "peace or tranquility. You are not creating tasks just "
+                      "yet - right now, just choose your peak value.")),
+              const SizedBox(height: 30),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                height: 40.0,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30.0),
+                  color: Colors.lightBlueAccent,
+                ),
+                child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                  value: dd6Value,
+                  borderRadius: BorderRadius.circular(30.0),
+                  icon: const Icon(Icons.arrow_drop_down),
+                  elevation: 16,
+                  style: const TextStyle(color: Colors.black),
+                  onChanged: (String? value) {
+                    // This is called when the user selects an item.
+                    setState(() {
+                      if (value == otherDefault) {
+                        showOtherDialog(cat6dd, 6);
+                      } else {
+                        dd6Value = value!;
+                      }
+                    });
+                  },
+                  items: cat6dd.map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                ) // your Dropdown Widget here
                     ),
-                    child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                      value: dd6Value,
-                      borderRadius: BorderRadius.circular(30.0),
-                      icon: const Icon(Icons.arrow_drop_down),
-                      elevation: 16,
-                      style: const TextStyle(color: Colors.black),
-                      onChanged: (String? value) {
-                        // This is called when the user selects an item.
+              ),
+              const SizedBox(height: 30),
+              Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: <Widget>[
+                    RichText(
+                      text: TextSpan(
+                          text: 'Why Only One?',
+                          style: const TextStyle(
+                              color: Colors.blue,
+                              decoration: TextDecoration.underline,
+                              fontSize: 16),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () {
+                              setState(() {
+                                showWhyTwoDialog();
+                              });
+                            }),
+                    ),
+                    IconButton(
+                      icon: svgForward,
+                      onPressed: () {
                         setState(() {
-                          if (value == otherDefault) {
-                            showOtherDialog(cat6dd, 6);
-                          } else {
-                            dd6Value = value!;
-                          }
+                          navigateToSetup17();
                         });
                       },
-                      items:
-                          cat6dd.map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                    ) // your Dropdown Widget here
-                        ),
-                  ),
-                  const SizedBox(height: 30),
-                  Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: <Widget>[
-                        RichText(
-                          text: TextSpan(
-                              text: 'Why Only One?',
-                              style: const TextStyle(
-                                  color: Colors.blue,
-                                  decoration: TextDecoration.underline,
-                                  fontSize: 16),
-                              recognizer: TapGestureRecognizer()
-                                ..onTap = () {
-                                  setState(() {
-                                    showWhyTwoDialog();
-                                  });
-                                }),
-                        ),
-                        IconButton(
-                          icon: svgForward,
-                          onPressed: () {
-                            setState(() {
-                              navigateToSetup17();
-                            });
-                          },
-                        )
-                      ]),
-                      const SizedBox(height: 20),
-                      RichText(
-                        text: TextSpan(
-                            text: 'Skip Setup',
-                            style: const TextStyle(
-                                color: Colors.blue,
-                                decoration: TextDecoration.underline,
-                                fontSize: 12),
-                            recognizer: TapGestureRecognizer()
-                              ..onTap = () {
-                                setState(() {
-                                  showSkipAlertDialog(context);
-                                });
-                              }),
-                      ),
-
-                    ]))));
+                    )
+                  ]),
+              const SizedBox(height: 20),
+              RichText(
+                text: TextSpan(
+                    text: 'Skip Setup',
+                    style: const TextStyle(
+                        color: Colors.blue,
+                        decoration: TextDecoration.underline,
+                        fontSize: 12),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () {
+                        setState(() {
+                          showSkipAlertDialog(context);
+                        });
+                      }),
+              ),
+            ]))));
   }
 
   showSkipAlertDialog(BuildContext context) {
@@ -168,9 +162,7 @@ class _Setup16State extends State<Setup16> {
           cats.clear();
           tasks.clear();
           Navigator.popUntil(
-              context,
-              ModalRoute.withName(
-                  Navigator.defaultRouteName));
+              context, ModalRoute.withName(Navigator.defaultRouteName));
         });
       },
     );
@@ -179,9 +171,9 @@ class _Setup16State extends State<Setup16> {
       title: const Text("Skip Setup?"),
       content: const Text(
           "Green Pyramid will not be useful to you until you complete setup. "
-              "You can resume setup through the menu in the upper right of the home "
-              "screen. Press \"Skip Setup\" to skip setup or \"Cancel\" to continue "
-              "setup."),
+          "You can resume setup through the menu in the upper right of the home "
+          "screen. Press \"Skip Setup\" to skip setup or \"Cancel\" to continue "
+          "setup."),
       actions: [
         cancelButton,
         continueButton,
@@ -208,11 +200,10 @@ class _Setup16State extends State<Setup16> {
       content: Container(
           padding: const EdgeInsets.all(5.0),
           child: const Text(
-            "You have defined your three foundational values and your two "
-            "essential values. Your peak value is about "
-            "leveraging all of that hard work. It is the one value that "
-            "maximizes inspiration, joy and meaning in your life."
-          )),
+              "You have defined your three foundational values and your two "
+              "essential values. Your peak value is about "
+              "leveraging all of that hard work. It is the one value that "
+              "maximizes inspiration, joy and meaning in your life.")),
       actions: [
         doneButton,
       ],
@@ -276,7 +267,6 @@ class _Setup16State extends State<Setup16> {
   }
 
   void navigateToSetup17() async {
-
     // "upsert"...
     cats.removeWhere((item) => item.categoryid == 6);
     cats.add(SetupCat(categoryid: 6, cat: dd6Value));

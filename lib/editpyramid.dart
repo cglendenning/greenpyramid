@@ -149,207 +149,207 @@ class _EditPyramid extends State<EditPyramid> {
         style: mainTextStyle,
       ),
       bigSpacer,
-            Stack(children: <Widget>[
-              FutureBuilder(
-                  future: cat1Future,
-                  builder: (BuildContext context, AsyncSnapshot snapshot) {
-                    Widget display;
-                    if (!snapshot.hasData) {
-                      display = CustomPaint(
-                          size: Size(pyramidWidth, pyramidHeight),
-                          painter: DrawCat1(cat1Color, 'Cat1...', _ts));
-                    } else {
-                      if (!_cat1Edited) {
-                        _drawCat1 = DrawCat1(cat1Color, snapshot.data.cat, _ts);
-                      }
-                      display = GestureDetector(
-                          onTapDown: (details) {
-                            setState(() {
-                              _cat1ColorToggled = !_cat1ColorToggled;
-                            });
-                          },
-                          onTapUp: (details) {
-                            showEditDialog(context, 1, snapshot.data.cat);
-                            setState(() {
-                              _cat1ColorToggled = !_cat1ColorToggled;
-                            });
-                          },
-                          child: CustomPaint(
-                              size: Size(pyramidWidth, pyramidHeight),
-                              painter: _drawCat1));
-                      // DrawCat1(cat1Color, snapshot.data.cat, _ts)));
-                    }
-                    return display;
-                  }),
-              FutureBuilder(
-                  future: cat2Future,
-                  builder: (BuildContext context, AsyncSnapshot snapshot) {
-                    Widget display;
-                    if (!snapshot.hasData) {
-                      display = CustomPaint(
-                          size: Size(pyramidWidth, pyramidHeight),
-                          painter: DrawCat2(cat2Color, 'Cat2...', _ts));
-                    } else {
-                      if (!_cat2Edited) {
-                        _drawCat2 = DrawCat2(cat2Color, snapshot.data.cat, _ts);
-                      }
-                      display = GestureDetector(
-                          onTapDown: (details) {
-                            setState(() {
-                              _cat2ColorToggled = !_cat2ColorToggled;
-                            });
-                          },
-                          onTapUp: (details) {
-                            showEditDialog(context, 2, snapshot.data.cat);
-                            setState(() {
-                              _cat2ColorToggled = !_cat2ColorToggled;
-                            });
-                          },
-                          child: CustomPaint(
-                              size: Size(pyramidWidth, pyramidHeight),
-                              painter: _drawCat2));
-                      // DrawCat2(cat2Color, snapshot.data.cat, _ts)));
-                    }
-                    return display;
-                  }),
-              FutureBuilder(
-                  future: cat3Future,
-                  builder: (BuildContext context, AsyncSnapshot snapshot) {
-                    Widget display;
-                    if (!snapshot.hasData) {
-                      display = CustomPaint(
-                          size: Size(pyramidWidth, pyramidHeight),
-                          painter: DrawCat3(cat3Color, 'Cat3...', _ts));
-                    } else {
-                      if (!_cat3Edited) {
-                        _drawCat3 = DrawCat3(cat3Color, snapshot.data.cat, _ts);
-                      }
-                      display = GestureDetector(
-                          onTapDown: (details) {
-                            setState(() {
-                              _cat3ColorToggled = !_cat3ColorToggled;
-                            });
-                          },
-                          onTapUp: (details) {
-                            showEditDialog(context, 3, snapshot.data.cat);
-                            setState(() {
-                              _cat3ColorToggled = !_cat3ColorToggled;
-                            });
-                          },
-                          child: CustomPaint(
-                              size: Size(pyramidWidth, pyramidHeight),
-                              painter: _drawCat3));
-                      // DrawCat3(cat3Color, snapshot.data.cat, _ts)));
-                    }
-                    return display;
-                  }),
-              FutureBuilder(
-                  future: cat4Future,
-                  builder: (BuildContext context, AsyncSnapshot snapshot) {
-                    Widget display;
-                    if (!snapshot.hasData) {
-                      display = CustomPaint(
-                          size: Size(pyramidWidth, pyramidHeight),
-                          painter: DrawCat4(cat4Color, 'Cat4...', _ts));
-                    } else {
-                      if (!_cat4Edited) {
-                        _drawCat4 = DrawCat4(cat4Color, snapshot.data.cat, _ts);
-                      }
-                      display = GestureDetector(
-                          onTapDown: (details) {
-                            setState(() {
-                              _cat4ColorToggled = !_cat4ColorToggled;
-                            });
-                          },
-                          onTapUp: (details) {
-                            showEditDialog(context, 4, snapshot.data.cat);
-                            setState(() {
-                              _cat4ColorToggled = !_cat4ColorToggled;
-                            });
-                          },
-                          child: CustomPaint(
-                              size: Size(pyramidWidth, pyramidHeight),
-                              painter: _drawCat4));
-                      // DrawCat4(cat4Color, snapshot.data.cat, _ts)));
-                    }
-                    return display;
-                  }),
-              FutureBuilder(
-                  future: cat5Future,
-                  builder: (BuildContext context, AsyncSnapshot snapshot) {
-                    Widget display;
-                    if (!snapshot.hasData) {
-                      display = CustomPaint(
-                          size: Size(pyramidWidth, pyramidHeight),
-                          painter: DrawCat5(cat5Color, 'Cat5...', _ts));
-                    } else {
-                      if (!_cat5Edited) {
-                        _drawCat5 = DrawCat5(cat5Color, snapshot.data.cat, _ts);
-                      }
-                      display = GestureDetector(
-                          onTapDown: (details) {
-                            setState(() {
-                              _cat5ColorToggled = !_cat5ColorToggled;
-                            });
-                          },
-                          onTapUp: (details) {
-                            showEditDialog(context, 5, snapshot.data.cat);
-                            setState(() {
-                              _cat5ColorToggled = !_cat5ColorToggled;
-                            });
-                          },
-                          child: CustomPaint(
-                              size: Size(pyramidWidth, pyramidHeight),
-                              painter: _drawCat5));
-                      // DrawCat5(cat5Color, snapshot.data.cat, _ts)));
-                    }
-                    return display;
-                  }),
-              FutureBuilder(
-                  future: cat6Future,
-                  builder: (BuildContext context, AsyncSnapshot snapshot) {
-                    Widget display;
-                    if (!snapshot.hasData) {
-                      display = CustomPaint(
-                          size: Size(pyramidWidth, pyramidHeight),
-                          painter: DrawCat6(cat6Color, 'Cat6...', _ts));
-                    } else {
-                      if (!_cat6Edited) {
-                        _drawCat6 = DrawCat6(cat6Color, snapshot.data.cat, _ts);
-                      }
-                      display = GestureDetector(
-                          onTapDown: (details) {
-                            setState(() {
-                              _cat6ColorToggled = !_cat6ColorToggled;
-                            });
-                          },
-                          onTapUp: (details) {
-                            showEditDialog(context, 6, snapshot.data.cat);
-                            setState(() {
-                              _cat6ColorToggled = !_cat6ColorToggled;
-                            });
-                          },
-                          child: CustomPaint(
-                              size: Size(pyramidWidth, pyramidHeight),
-                              painter: _drawCat6));
-                      // DrawCat6(cat6Color, snapshot.data.cat, _ts)));
-                    }
-                    return display;
-                  }),
-            ]),
-            const Align(
-              alignment: Alignment.bottomCenter,
-              heightFactor: 2,
-              child: Text(
-                '*NOTE: If a category name is changed, all tasks and task log entries for the previous category name will be deleted.',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 15,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ),
-          ]);
+      Stack(children: <Widget>[
+        FutureBuilder(
+            future: cat1Future,
+            builder: (BuildContext context, AsyncSnapshot snapshot) {
+              Widget display;
+              if (!snapshot.hasData) {
+                display = CustomPaint(
+                    size: Size(pyramidWidth, pyramidHeight),
+                    painter: DrawCat1(cat1Color, 'Cat1...', _ts));
+              } else {
+                if (!_cat1Edited) {
+                  _drawCat1 = DrawCat1(cat1Color, snapshot.data.cat, _ts);
+                }
+                display = GestureDetector(
+                    onTapDown: (details) {
+                      setState(() {
+                        _cat1ColorToggled = !_cat1ColorToggled;
+                      });
+                    },
+                    onTapUp: (details) {
+                      showEditDialog(context, 1, snapshot.data.cat);
+                      setState(() {
+                        _cat1ColorToggled = !_cat1ColorToggled;
+                      });
+                    },
+                    child: CustomPaint(
+                        size: Size(pyramidWidth, pyramidHeight),
+                        painter: _drawCat1));
+                // DrawCat1(cat1Color, snapshot.data.cat, _ts)));
+              }
+              return display;
+            }),
+        FutureBuilder(
+            future: cat2Future,
+            builder: (BuildContext context, AsyncSnapshot snapshot) {
+              Widget display;
+              if (!snapshot.hasData) {
+                display = CustomPaint(
+                    size: Size(pyramidWidth, pyramidHeight),
+                    painter: DrawCat2(cat2Color, 'Cat2...', _ts));
+              } else {
+                if (!_cat2Edited) {
+                  _drawCat2 = DrawCat2(cat2Color, snapshot.data.cat, _ts);
+                }
+                display = GestureDetector(
+                    onTapDown: (details) {
+                      setState(() {
+                        _cat2ColorToggled = !_cat2ColorToggled;
+                      });
+                    },
+                    onTapUp: (details) {
+                      showEditDialog(context, 2, snapshot.data.cat);
+                      setState(() {
+                        _cat2ColorToggled = !_cat2ColorToggled;
+                      });
+                    },
+                    child: CustomPaint(
+                        size: Size(pyramidWidth, pyramidHeight),
+                        painter: _drawCat2));
+                // DrawCat2(cat2Color, snapshot.data.cat, _ts)));
+              }
+              return display;
+            }),
+        FutureBuilder(
+            future: cat3Future,
+            builder: (BuildContext context, AsyncSnapshot snapshot) {
+              Widget display;
+              if (!snapshot.hasData) {
+                display = CustomPaint(
+                    size: Size(pyramidWidth, pyramidHeight),
+                    painter: DrawCat3(cat3Color, 'Cat3...', _ts));
+              } else {
+                if (!_cat3Edited) {
+                  _drawCat3 = DrawCat3(cat3Color, snapshot.data.cat, _ts);
+                }
+                display = GestureDetector(
+                    onTapDown: (details) {
+                      setState(() {
+                        _cat3ColorToggled = !_cat3ColorToggled;
+                      });
+                    },
+                    onTapUp: (details) {
+                      showEditDialog(context, 3, snapshot.data.cat);
+                      setState(() {
+                        _cat3ColorToggled = !_cat3ColorToggled;
+                      });
+                    },
+                    child: CustomPaint(
+                        size: Size(pyramidWidth, pyramidHeight),
+                        painter: _drawCat3));
+                // DrawCat3(cat3Color, snapshot.data.cat, _ts)));
+              }
+              return display;
+            }),
+        FutureBuilder(
+            future: cat4Future,
+            builder: (BuildContext context, AsyncSnapshot snapshot) {
+              Widget display;
+              if (!snapshot.hasData) {
+                display = CustomPaint(
+                    size: Size(pyramidWidth, pyramidHeight),
+                    painter: DrawCat4(cat4Color, 'Cat4...', _ts));
+              } else {
+                if (!_cat4Edited) {
+                  _drawCat4 = DrawCat4(cat4Color, snapshot.data.cat, _ts);
+                }
+                display = GestureDetector(
+                    onTapDown: (details) {
+                      setState(() {
+                        _cat4ColorToggled = !_cat4ColorToggled;
+                      });
+                    },
+                    onTapUp: (details) {
+                      showEditDialog(context, 4, snapshot.data.cat);
+                      setState(() {
+                        _cat4ColorToggled = !_cat4ColorToggled;
+                      });
+                    },
+                    child: CustomPaint(
+                        size: Size(pyramidWidth, pyramidHeight),
+                        painter: _drawCat4));
+                // DrawCat4(cat4Color, snapshot.data.cat, _ts)));
+              }
+              return display;
+            }),
+        FutureBuilder(
+            future: cat5Future,
+            builder: (BuildContext context, AsyncSnapshot snapshot) {
+              Widget display;
+              if (!snapshot.hasData) {
+                display = CustomPaint(
+                    size: Size(pyramidWidth, pyramidHeight),
+                    painter: DrawCat5(cat5Color, 'Cat5...', _ts));
+              } else {
+                if (!_cat5Edited) {
+                  _drawCat5 = DrawCat5(cat5Color, snapshot.data.cat, _ts);
+                }
+                display = GestureDetector(
+                    onTapDown: (details) {
+                      setState(() {
+                        _cat5ColorToggled = !_cat5ColorToggled;
+                      });
+                    },
+                    onTapUp: (details) {
+                      showEditDialog(context, 5, snapshot.data.cat);
+                      setState(() {
+                        _cat5ColorToggled = !_cat5ColorToggled;
+                      });
+                    },
+                    child: CustomPaint(
+                        size: Size(pyramidWidth, pyramidHeight),
+                        painter: _drawCat5));
+                // DrawCat5(cat5Color, snapshot.data.cat, _ts)));
+              }
+              return display;
+            }),
+        FutureBuilder(
+            future: cat6Future,
+            builder: (BuildContext context, AsyncSnapshot snapshot) {
+              Widget display;
+              if (!snapshot.hasData) {
+                display = CustomPaint(
+                    size: Size(pyramidWidth, pyramidHeight),
+                    painter: DrawCat6(cat6Color, 'Cat6...', _ts));
+              } else {
+                if (!_cat6Edited) {
+                  _drawCat6 = DrawCat6(cat6Color, snapshot.data.cat, _ts);
+                }
+                display = GestureDetector(
+                    onTapDown: (details) {
+                      setState(() {
+                        _cat6ColorToggled = !_cat6ColorToggled;
+                      });
+                    },
+                    onTapUp: (details) {
+                      showEditDialog(context, 6, snapshot.data.cat);
+                      setState(() {
+                        _cat6ColorToggled = !_cat6ColorToggled;
+                      });
+                    },
+                    child: CustomPaint(
+                        size: Size(pyramidWidth, pyramidHeight),
+                        painter: _drawCat6));
+                // DrawCat6(cat6Color, snapshot.data.cat, _ts)));
+              }
+              return display;
+            }),
+      ]),
+      const Align(
+        alignment: Alignment.bottomCenter,
+        heightFactor: 2,
+        child: Text(
+          '*NOTE: If a category name is changed, all tasks and task log entries for the previous category name will be deleted.',
+          style: TextStyle(
+            color: Colors.black,
+            fontSize: 15,
+          ),
+          textAlign: TextAlign.center,
+        ),
+      ),
+    ]);
   }
 
   // https://stackoverflow.com/questions/71286766/statefulwidget-does-not-refresh-after-alertdialog-is-closed
@@ -550,7 +550,6 @@ class DrawCat2 extends CustomPainter {
 
   String hexOutlineColor = "#EBEBEB";
 
-
   @override
   void paint(Canvas canvas, Size size) {
     final emhPaint = Paint()
@@ -626,7 +625,6 @@ class DrawCat3 extends CustomPainter {
 
   String hexOutlineColor = "#EBEBEB";
 
-
   @override
   void paint(Canvas canvas, Size size) {
     final efhPaint = Paint()
@@ -701,7 +699,6 @@ class DrawCat4 extends CustomPainter {
   final efPath = Path();
 
   String hexOutlineColor = "#EBEBEB";
-
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -779,7 +776,6 @@ class DrawCat5 extends CustomPainter {
 
   String hexOutlineColor = "#EBEBEB";
 
-
   @override
   void paint(Canvas canvas, Size size) {
     final ehPaint = Paint()
@@ -855,7 +851,6 @@ class DrawCat6 extends CustomPainter {
   final flowPath = Path();
 
   String hexOutlineColor = "#EBEBEB";
-
 
   @override
   void paint(Canvas canvas, Size size) {

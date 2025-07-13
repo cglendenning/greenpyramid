@@ -97,25 +97,29 @@ Best regards,
                   _BenefitItem(
                     icon: Icons.psychology,
                     title: 'Personalized Strategy',
-                    description: 'Custom approach tailored to your specific situation and goals',
+                    description:
+                        'Custom approach tailored to your specific situation and goals',
                   ),
                   SizedBox(height: 12),
                   _BenefitItem(
                     icon: Icons.schedule,
                     title: 'Weekly Sessions',
-                    description: 'Regular check-ins to keep you accountable and on track',
+                    description:
+                        'Regular check-ins to keep you accountable and on track',
                   ),
                   SizedBox(height: 12),
                   _BenefitItem(
                     icon: Icons.support_agent,
                     title: 'Direct Access',
-                    description: 'Priority support and guidance when you need it most',
+                    description:
+                        'Priority support and guidance when you need it most',
                   ),
                   SizedBox(height: 12),
                   _BenefitItem(
                     icon: Icons.trending_up,
                     title: 'Accelerated Results',
-                    description: 'Faster progress with expert guidance and proven methods',
+                    description:
+                        'Faster progress with expert guidance and proven methods',
                   ),
                 ],
               ),
@@ -175,7 +179,8 @@ Best regards,
                     width: double.infinity,
                     child: ElevatedButton.icon(
                       onPressed: () => _openCalendlyBooking(context),
-                      icon: const Icon(Icons.calendar_today, color: Color(0xff1782FF)),
+                      icon: const Icon(Icons.calendar_today,
+                          color: Color(0xff1782FF)),
                       label: const Text(
                         'Book It',
                         style: TextStyle(
@@ -253,7 +258,8 @@ Best regards,
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: Color(0xff1782FF), width: 2),
+                        borderSide: const BorderSide(
+                            color: Color(0xff1782FF), width: 2),
                       ),
                       filled: true,
                       fillColor: const Color(0xffF8F9FA),
@@ -275,7 +281,8 @@ Best regards,
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(color: Color(0xff1782FF), width: 2),
+                          borderSide: const BorderSide(
+                              color: Color(0xff1782FF), width: 2),
                         ),
                         filled: true,
                         fillColor: const Color(0xffF8F9FA),
@@ -360,8 +367,8 @@ Best regards,
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(platformResponse),
-        backgroundColor: platformResponse.contains('successfully') 
-            ? const Color(0xff4CAF50) 
+        backgroundColor: platformResponse.contains('successfully')
+            ? const Color(0xff4CAF50)
             : Colors.red,
       ),
     );
@@ -528,4 +535,4 @@ class _BenefitItem extends StatelessWidget {
       ),
     );
   }
-} 
+}

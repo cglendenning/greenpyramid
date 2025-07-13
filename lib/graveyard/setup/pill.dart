@@ -5,7 +5,6 @@ import 'package:life_ops/dbtools.dart';
 import 'package:life_ops/main.dart';
 import 'package:life_ops/setup/setup12.dart';
 
-
 List<BluePillCat> cats = <BluePillCat>[];
 List<BluePillTask> tasks = <BluePillTask>[];
 
@@ -142,7 +141,6 @@ class _PillState extends State<Pill> {
   }
 
   void completeBluePill() async {
-
     // nuke everything first.
     dbHelper.deleteCategory();
     dbHelper.deleteTasks();
@@ -203,8 +201,8 @@ class _PillState extends State<Pill> {
 
   void navigateToSetup12() async {
     await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => const Setup12())).then((value) {
-    });
+            context, MaterialPageRoute(builder: (context) => const Setup12()))
+        .then((value) {});
     setState(() {});
   }
 }

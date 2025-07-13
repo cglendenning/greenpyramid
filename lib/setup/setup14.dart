@@ -7,7 +7,6 @@ import 'package:life_ops/navbar.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/setup/setup2.dart';
 
-
 String otherDefault = 'Enter My Own...';
 
 List<String> cat4dd = <String>[categories[3], otherDefault];
@@ -44,152 +43,144 @@ class _Setup14State extends State<Setup14> {
     var mainTextStyle = const TextStyle(
         fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'SourceSans3');
 
-
     return SafeArea(
         child: Scaffold(
-            appBar: const   NavBar(),
+            appBar: const NavBar(),
             body: Center(
-                child: Column(
-                    children: [
-                      LinearProgressIndicator(
-                          value: 16/23,
-                          color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000)
-                      ),
-                      const SizedBox(height: 10),
-                      Text(
-                        'Essential Values',
-                        style: mainTextStyle,
-                      ),
-
-                      const SizedBox(height: 10),
-                  Container(
-                      padding: const EdgeInsets.all(10.0),
-                      child: const Text(
-                        "Now you will define your essential values..."
-                      )),
-                  Container(
-                      padding: const EdgeInsets.all(10.0),
-                      child: const Text(
-                        "Choose the two values that will build upon your "
-                        "foundational values or choose \"Other\" to enter your "
-                        "own. You are not creating tasks just yet - right now, "
-                        "just choose your two essential values."
-                      )),
-                  const SizedBox(height: 30),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                    height: 40.0,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30.0),
-                      color: Colors.lightBlueAccent,
+                child: Column(children: [
+              LinearProgressIndicator(
+                  value: 16 / 23,
+                  color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) +
+                      0xFF000000)),
+              const SizedBox(height: 10),
+              Text(
+                'Essential Values',
+                style: mainTextStyle,
+              ),
+              const SizedBox(height: 10),
+              Container(
+                  padding: const EdgeInsets.all(10.0),
+                  child: const Text(
+                      "Now you will define your essential values...")),
+              Container(
+                  padding: const EdgeInsets.all(10.0),
+                  child: const Text(
+                      "Choose the two values that will build upon your "
+                      "foundational values or choose \"Other\" to enter your "
+                      "own. You are not creating tasks just yet - right now, "
+                      "just choose your two essential values.")),
+              const SizedBox(height: 30),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                height: 40.0,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30.0),
+                  color: Colors.lightBlueAccent,
+                ),
+                child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                  value: dd4Value,
+                  borderRadius: BorderRadius.circular(30.0),
+                  icon: const Icon(Icons.arrow_drop_down),
+                  elevation: 16,
+                  style: const TextStyle(color: Colors.black),
+                  onChanged: (String? value) {
+                    // This is called when the user selects an item.
+                    setState(() {
+                      if (value == otherDefault) {
+                        showOtherDialog(cat4dd, 4);
+                      } else {
+                        dd4Value = value!;
+                      }
+                    });
+                  },
+                  items: cat4dd.map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                ) // your Dropdown Widget here
                     ),
-                    child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                      value: dd4Value,
-                      borderRadius: BorderRadius.circular(30.0),
-                      icon: const Icon(Icons.arrow_drop_down),
-                      elevation: 16,
-                      style: const TextStyle(color: Colors.black),
-                      onChanged: (String? value) {
-                        // This is called when the user selects an item.
+              ),
+              const SizedBox(height: 60),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12.0),
+                height: 40.0,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(30.0),
+                  color: Colors.lightBlueAccent,
+                ),
+                child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                  value: dd5Value,
+                  borderRadius: BorderRadius.circular(30.0),
+                  icon: const Icon(Icons.arrow_drop_down),
+                  elevation: 16,
+                  style: const TextStyle(color: Colors.black),
+                  onChanged: (String? value) {
+                    // This is called when the user selects an item.
+                    setState(() {
+                      if (value == otherDefault) {
+                        showOtherDialog(cat5dd, 5);
+                      } else {
+                        dd5Value = value!;
+                      }
+                    });
+                  },
+                  items: cat5dd.map<DropdownMenuItem<String>>((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                ) // your Dropdown Widget here
+                    ),
+              ),
+              const SizedBox(height: 60),
+              const SizedBox(height: 30),
+              Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: <Widget>[
+                    RichText(
+                      text: TextSpan(
+                          text: 'Why Only Two?',
+                          style: const TextStyle(
+                              color: Colors.blue,
+                              decoration: TextDecoration.underline,
+                              fontSize: 16),
+                          recognizer: TapGestureRecognizer()
+                            ..onTap = () {
+                              setState(() {
+                                showWhyTwoDialog();
+                              });
+                            }),
+                    ),
+                    IconButton(
+                      icon: svgForward,
+                      onPressed: () {
                         setState(() {
-                          if (value == otherDefault) {
-                            showOtherDialog(cat4dd, 4);
-                          } else {
-                            dd4Value = value!;
-                          }
+                          navigateToSetup15();
                         });
                       },
-                      items:
-                          cat4dd.map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                    ) // your Dropdown Widget here
-                        ),
-                  ),
-                  const SizedBox(height: 60),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12.0),
-                    height: 40.0,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(30.0),
-                      color: Colors.lightBlueAccent,
-                    ),
-                    child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                      value: dd5Value,
-                      borderRadius: BorderRadius.circular(30.0),
-                      icon: const Icon(Icons.arrow_drop_down),
-                      elevation: 16,
-                      style: const TextStyle(color: Colors.black),
-                      onChanged: (String? value) {
-                        // This is called when the user selects an item.
+                    )
+                  ]),
+              const SizedBox(height: 20),
+              RichText(
+                text: TextSpan(
+                    text: 'Skip Setup',
+                    style: const TextStyle(
+                        color: Colors.blue,
+                        decoration: TextDecoration.underline,
+                        fontSize: 12),
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () {
                         setState(() {
-                          if (value == otherDefault) {
-                            showOtherDialog(cat5dd, 5);
-                          } else {
-                            dd5Value = value!;
-                          }
+                          showSkipAlertDialog(context);
                         });
-                      },
-                      items:
-                          cat5dd.map<DropdownMenuItem<String>>((String value) {
-                        return DropdownMenuItem<String>(
-                          value: value,
-                          child: Text(value),
-                        );
-                      }).toList(),
-                    ) // your Dropdown Widget here
-                        ),
-                  ),
-                  const SizedBox(height: 60),
-                  const SizedBox(height: 30),
-                  Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: <Widget>[
-                        RichText(
-                          text: TextSpan(
-                              text: 'Why Only Two?',
-                              style: const TextStyle(
-                                  color: Colors.blue,
-                                  decoration: TextDecoration.underline,
-                                  fontSize: 16),
-                              recognizer: TapGestureRecognizer()
-                                ..onTap = () {
-                                  setState(() {
-                                    showWhyTwoDialog();
-                                  });
-                                }),
-                        ),
-                        IconButton(
-                          icon: svgForward,
-                          onPressed: () {
-                            setState(() {
-                              navigateToSetup15();
-                            });
-                          },
-                        )
-                      ]),
-                      const SizedBox(height: 20),
-                      RichText(
-                        text: TextSpan(
-                            text: 'Skip Setup',
-                            style: const TextStyle(
-                                color: Colors.blue,
-                                decoration: TextDecoration.underline,
-                                fontSize: 12),
-                            recognizer: TapGestureRecognizer()
-                              ..onTap = () {
-                                setState(() {
-                                  showSkipAlertDialog(context);
-                                });
-                              }),
-                      ),
-
-                    ]))));
+                      }),
+              ),
+            ]))));
   }
 
   showSkipAlertDialog(BuildContext context) {
@@ -208,9 +199,7 @@ class _Setup14State extends State<Setup14> {
           cats.clear();
           tasks.clear();
           Navigator.popUntil(
-              context,
-              ModalRoute.withName(
-                  Navigator.defaultRouteName));
+              context, ModalRoute.withName(Navigator.defaultRouteName));
         });
       },
     );
@@ -219,9 +208,9 @@ class _Setup14State extends State<Setup14> {
       title: const Text("Skip Setup?"),
       content: const Text(
           "Green Pyramid will not be useful to you until you complete setup. "
-              "You can resume setup through the menu in the upper right of the home "
-              "screen. Press \"Skip Setup\" to skip setup or \"Cancel\" to continue "
-              "setup."),
+          "You can resume setup through the menu in the upper right of the home "
+          "screen. Press \"Skip Setup\" to skip setup or \"Cancel\" to continue "
+          "setup."),
       actions: [
         cancelButton,
         continueButton,
@@ -236,9 +225,7 @@ class _Setup14State extends State<Setup14> {
     );
   }
 
-
   showWhyTwoDialog() {
-
     // set up the buttons
     Widget doneButton = TextButton(
       child: const Text("Gotcha"),
@@ -250,12 +237,11 @@ class _Setup14State extends State<Setup14> {
       content: Container(
           padding: const EdgeInsets.all(5.0),
           child: const Text(
-            "Focus and consistency are the keys to success. You already "
-            "defined your three foundational values. You need to be "
-            "intentional about other values you add. If you focus on "
-            "everything then you make progress on nothing. "
-            "Be intentional."
-          )),
+              "Focus and consistency are the keys to success. You already "
+              "defined your three foundational values. You need to be "
+              "intentional about other values you add. If you focus on "
+              "everything then you make progress on nothing. "
+              "Be intentional.")),
       actions: [
         doneButton,
       ],
@@ -324,7 +310,6 @@ class _Setup14State extends State<Setup14> {
   }
 
   void navigateToSetup15() async {
-
     // "upsert"...
     cats.removeWhere((item) => item.categoryid == 4);
     cats.removeWhere((item) => item.categoryid == 5);
@@ -340,8 +325,8 @@ class _Setup14State extends State<Setup14> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-          builder: (context) => Setup15(
-            cat1.cat, cat2.cat, cat3.cat, cat4.cat, cat5.cat)),
+          builder: (context) =>
+              Setup15(cat1.cat, cat2.cat, cat3.cat, cat4.cat, cat5.cat)),
     );
   }
 }

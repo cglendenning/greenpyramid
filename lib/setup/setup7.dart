@@ -48,62 +48,60 @@ class _Setup7State extends State<Setup7> {
     var explainTextStyle = const TextStyle(
         fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'SourceSans3');
 
-
     return SafeArea(
         child: Scaffold(
             appBar: const NavBar(),
             backgroundColor: Colors.white,
             body: Center(
-                child: Column(
-                    children: [
-                      LinearProgressIndicator(
-                          value: 6/23,
-                          color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000)
-                      ),
-                      const SizedBox(height: 10),
-                  Text(
-                    'Green is good.',
-                    style: mainTextStyle,
-                  ),
-                  Container(
-                      padding: const EdgeInsets.all(10.0),
-                      child: Text(
-                          "It means you are crushing most or "
-                          "all of your habits toward your best life...\n\n",
+                child: Column(children: [
+              LinearProgressIndicator(
+                  value: 6 / 23,
+                  color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) +
+                      0xFF000000)),
+              const SizedBox(height: 10),
+              Text(
+                'Green is good.',
+                style: mainTextStyle,
+              ),
+              Container(
+                  padding: const EdgeInsets.all(10.0),
+                  child: Text(
+                      "It means you are crushing most or "
+                      "all of your habits toward your best life...\n\n",
                       style: explainTextStyle)),
-                  const SizedBox(height: 30),
-                      Container(
-                        color: Colors.white,
-                        alignment: Alignment.center,
-                        child:
-                        Image.asset('images/thumbs_up.jpg', height: 100, width: 100),
-                      ),
-                      // Entire Pyramid Stack
+              const SizedBox(height: 30),
+              Container(
+                color: Colors.white,
+                alignment: Alignment.center,
+                child: Image.asset('images/thumbs_up.jpg',
+                    height: 100, width: 100),
+              ),
+              // Entire Pyramid Stack
+              Stack(children: <Widget>[
+                // Foundational Stack (Pyramid + Text)
+                Stack(children: <Widget>[
+                  // Foundational Stack (Pyramid Only)
                   Stack(children: <Widget>[
-                    // Foundational Stack (Pyramid + Text)
-                    Stack(children: <Widget>[
-                      // Foundational Stack (Pyramid Only)
-                      Stack(children: <Widget>[
-                        CustomPaint(
-                            size: Size(pyramidWidth, pyramidHeight),
-                            painter: DrawCat1(lg, cats[0].cat, 0)),
-                      ]).animate().fadeIn(duration: 1000.ms),
-                    ]),
-                    // Essential Stack (Pyramid + Text)
-                  ]),
-                  Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: <Widget>[
-                        IconButton(
-                          icon: svgForward,
-                          onPressed: () {
-                            setState(() {
-                              navigateToSetup8();
-                            });
-                          },
-                        )
-                      ]).animate().fadeIn(),
-                ]))));
+                    CustomPaint(
+                        size: Size(pyramidWidth, pyramidHeight),
+                        painter: DrawCat1(lg, cats[0].cat, 0)),
+                  ]).animate().fadeIn(duration: 1000.ms),
+                ]),
+                // Essential Stack (Pyramid + Text)
+              ]),
+              Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: <Widget>[
+                    IconButton(
+                      icon: svgForward,
+                      onPressed: () {
+                        setState(() {
+                          navigateToSetup8();
+                        });
+                      },
+                    )
+                  ]).animate().fadeIn(),
+            ]))));
   }
 
   void navigateToSetup8() async {

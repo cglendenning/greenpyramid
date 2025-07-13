@@ -32,12 +32,11 @@ class _Setup13State extends State<Setup13> {
   _Setup13State(this.dd1Value, this.dd2Value, this.dd3Value);
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
-
   @override
   Widget build(BuildContext context) {
     analytics.logEvent(name: '${setupVersion}_setup13');
     Color green =
-    Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000);
+        Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000);
 
     final lg = LinearGradient(
       begin: Alignment.topCenter,
@@ -51,14 +50,8 @@ class _Setup13State extends State<Setup13> {
       colors: [Colors.grey, Colors.grey],
     );
 
-    double pyramidWidth = MediaQuery
-        .of(context)
-        .size
-        .width * 0.87;
-    double pyramidHeight = MediaQuery
-        .of(context)
-        .size
-        .width * 0.82;
+    double pyramidWidth = MediaQuery.of(context).size.width * 0.87;
+    double pyramidHeight = MediaQuery.of(context).size.width * 0.82;
 
     const String forward = 'images/svg/forward.svg';
     final Widget svgForward = SvgPicture.asset(forward,
@@ -71,73 +64,71 @@ class _Setup13State extends State<Setup13> {
         color: Colors.black,
         child: SafeArea(
             child: Scaffold(
-              appBar: const NavBar(),
-              body: Column(
-                  children: [
-                    LinearProgressIndicator(
-                        value: 12/23,
-                        color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000)
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Foundational Values',
-                      style: mainTextStyle,
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                        padding: const EdgeInsets.all(10.0),
-                        child: const Text(
-                            "Your foundational values hold up the rest of your life. "
-                                "Next, you will define your daily actions to keep that "
-                                "foundation strong..."
-                        )),
-                    const SizedBox(height: 20),
-                    Stack(children: <Widget>[
-                      CustomPaint(
-                          size: Size(pyramidWidth, pyramidHeight),
-                          painter: DrawCat1(lg, dd1Value, 0)),
-                      CustomPaint(
-                          size: Size(pyramidWidth, pyramidHeight),
-                          painter: DrawCat2(lg, dd2Value, 0)),
-                      CustomPaint(
-                          size: Size(pyramidWidth, pyramidHeight),
-                          painter: DrawCat3(lg, dd3Value, 0)),
-                      CustomPaint(
-                          size: Size(pyramidWidth, pyramidHeight),
-                          painter: DrawCat4(greylg, '', 0)),
-                      CustomPaint(
-                          size: Size(pyramidWidth, pyramidHeight),
-                          painter: DrawCat5(greylg, '', 0)),
-                      CustomPaint(
-                          size: Size(pyramidWidth, pyramidHeight),
-                          painter: DrawCat6(greylg, '', 0)),
-                    ]),
-                    const SizedBox(height: 40),
-                    IconButton(
-                      icon: svgForward,
-                      onPressed: () {
-                        setState(() {
-                          navigateToCat1Tasks();
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 20),
-                    RichText(
-                      text: TextSpan(
-                          text: 'Skip Setup',
-                          style: const TextStyle(
-                              color: Colors.blue,
-                              decoration: TextDecoration.underline,
-                              fontSize: 12),
-                          recognizer: TapGestureRecognizer()
-                            ..onTap = () {
-                              setState(() {
-                                showSkipAlertDialog(context);
-                              });
-                            }),
-                    ),
-                  ]),
-            )));
+          appBar: const NavBar(),
+          body: Column(children: [
+            LinearProgressIndicator(
+                value: 12 / 23,
+                color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) +
+                    0xFF000000)),
+            const SizedBox(height: 10),
+            Text(
+              'Foundational Values',
+              style: mainTextStyle,
+            ),
+            const SizedBox(height: 10),
+            Container(
+                padding: const EdgeInsets.all(10.0),
+                child: const Text(
+                    "Your foundational values hold up the rest of your life. "
+                    "Next, you will define your daily actions to keep that "
+                    "foundation strong...")),
+            const SizedBox(height: 20),
+            Stack(children: <Widget>[
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat1(lg, dd1Value, 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat2(lg, dd2Value, 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat3(lg, dd3Value, 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat4(greylg, '', 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat5(greylg, '', 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat6(greylg, '', 0)),
+            ]),
+            const SizedBox(height: 40),
+            IconButton(
+              icon: svgForward,
+              onPressed: () {
+                setState(() {
+                  navigateToCat1Tasks();
+                });
+              },
+            ),
+            const SizedBox(height: 20),
+            RichText(
+              text: TextSpan(
+                  text: 'Skip Setup',
+                  style: const TextStyle(
+                      color: Colors.blue,
+                      decoration: TextDecoration.underline,
+                      fontSize: 12),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      setState(() {
+                        showSkipAlertDialog(context);
+                      });
+                    }),
+            ),
+          ]),
+        )));
   }
 
   showSkipAlertDialog(BuildContext context) {
@@ -152,9 +143,7 @@ class _Setup13State extends State<Setup13> {
         setState(() {
           analytics.logEvent(name: 'skip_setup2');
           Navigator.popUntil(
-              context,
-              ModalRoute.withName(
-                  Navigator.defaultRouteName));
+              context, ModalRoute.withName(Navigator.defaultRouteName));
         });
       },
     );
@@ -163,9 +152,9 @@ class _Setup13State extends State<Setup13> {
       title: const Text("Skip Setup?"),
       content: const Text(
           "Green Pyramid will not be useful to you until you complete setup. "
-              "You can resume setup through the menu in the upper right of the home "
-              "screen. Press \"Skip Setup\" to skip setup or \"Cancel\" to continue "
-              "setup."),
+          "You can resume setup through the menu in the upper right of the home "
+          "screen. Press \"Skip Setup\" to skip setup or \"Cancel\" to continue "
+          "setup."),
       actions: [
         cancelButton,
         continueButton,
@@ -179,7 +168,6 @@ class _Setup13State extends State<Setup13> {
       },
     );
   }
-
 
   void navigateToCat1Tasks() async {
     if (kDebugMode) {

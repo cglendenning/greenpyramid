@@ -23,7 +23,6 @@ class _Setup5State extends State<Setup5> {
   _Setup5State();
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
-
   @override
   Widget build(BuildContext context) {
     analytics.logEvent(name: '${setupVersion}_setup5');
@@ -51,78 +50,77 @@ class _Setup5State extends State<Setup5> {
     var explainTextStyle = const TextStyle(
         fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'SourceSans3');
 
-
     return SafeArea(
         child: Scaffold(
             appBar: const NavBar(),
             backgroundColor: Colors.white,
             body: Center(
-                child: Column(
-                    children: [
-                      LinearProgressIndicator(
-                          value: 4/23,
-                          color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000)
-                      ),
-                      const SizedBox(height: 10),
-                  Text(
-                    'What Is Green Pyramid?',
-                    style: mainTextStyle,
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                      padding: const EdgeInsets.all(10.0),
-                      child: Text(
-                        "Green Pyramid is an AI-empowered system to make it "
-                        "effortless to live your best possible life.\n\n"
-                        "See the pyramid base below? If that foundation "
-                        "is weak, the whole pyramid will crumble. This analogy "
-                        "works for your life too...\n\n",
-                      style: explainTextStyle,)),
+                child: Column(children: [
+              LinearProgressIndicator(
+                  value: 4 / 23,
+                  color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) +
+                      0xFF000000)),
+              const SizedBox(height: 10),
+              Text(
+                'What Is Green Pyramid?',
+                style: mainTextStyle,
+              ),
+              const SizedBox(height: 10),
+              Container(
+                  padding: const EdgeInsets.all(10.0),
+                  child: Text(
+                    "Green Pyramid is an AI-empowered system to make it "
+                    "effortless to live your best possible life.\n\n"
+                    "See the pyramid base below? If that foundation "
+                    "is weak, the whole pyramid will crumble. This analogy "
+                    "works for your life too...\n\n",
+                    style: explainTextStyle,
+                  )),
 
-                  // Entire Pyramid Stack
+              // Entire Pyramid Stack
+              Stack(children: <Widget>[
+                // Foundational Stack (Pyramid + Text)
+                Stack(children: <Widget>[
+                  // Foundational Stack (Pyramid Only)
                   Stack(children: <Widget>[
-                    // Foundational Stack (Pyramid + Text)
-                    Stack(children: <Widget>[
-                      // Foundational Stack (Pyramid Only)
-                      Stack(children: <Widget>[
-                        CustomPaint(
-                            size: Size(pyramidWidth, pyramidHeight),
-                            painter: DrawCat1(lg, '', 0)),
-                        CustomPaint(
-                            size: Size(pyramidWidth, pyramidHeight),
-                            painter: DrawCat2(lg, '', 0)),
-                        CustomPaint(
-                            size: Size(pyramidWidth, pyramidHeight),
-                            painter: DrawCat3(lg, '', 0))
-                      ]).animate().fadeIn(duration: 1000.ms),
-                      Container(
-                        height: pyramidHeight,
-                        width: pyramidWidth,
-                        child: Align(
-                          // alignment: Alignment.bottomCenter,
-                          alignment: const Alignment(0, 0.7),
-                          child: Text('Foundational Values',
-                              style: foundationalStyle),
-                        ),
-                      ).animate().fadeIn(delay: 1000.ms),
-                    ]),
-                    // Essential Stack (Pyramid + Text)
-                  ]),
-                  const SizedBox(height: 20),
-                  Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: <Widget>[
-                        IconButton(
-                          icon: svgForward,
-                          onPressed: () {
-                            setState(() {
-                              navigateToSetup6();
-                            });
-                          },
-                        )
-                      ]).animate().fadeIn(),
-                  const SizedBox(height: 10),
-                ]))));
+                    CustomPaint(
+                        size: Size(pyramidWidth, pyramidHeight),
+                        painter: DrawCat1(lg, '', 0)),
+                    CustomPaint(
+                        size: Size(pyramidWidth, pyramidHeight),
+                        painter: DrawCat2(lg, '', 0)),
+                    CustomPaint(
+                        size: Size(pyramidWidth, pyramidHeight),
+                        painter: DrawCat3(lg, '', 0))
+                  ]).animate().fadeIn(duration: 1000.ms),
+                  Container(
+                    height: pyramidHeight,
+                    width: pyramidWidth,
+                    child: Align(
+                      // alignment: Alignment.bottomCenter,
+                      alignment: const Alignment(0, 0.7),
+                      child:
+                          Text('Foundational Values', style: foundationalStyle),
+                    ),
+                  ).animate().fadeIn(delay: 1000.ms),
+                ]),
+                // Essential Stack (Pyramid + Text)
+              ]),
+              const SizedBox(height: 20),
+              Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: <Widget>[
+                    IconButton(
+                      icon: svgForward,
+                      onPressed: () {
+                        setState(() {
+                          navigateToSetup6();
+                        });
+                      },
+                    )
+                  ]).animate().fadeIn(),
+              const SizedBox(height: 10),
+            ]))));
   }
 
   void navigateToSetup6() async {

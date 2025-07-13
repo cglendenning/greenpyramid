@@ -14,7 +14,6 @@ import 'package:life_ops/secrets.dart';
 // import 'package:flutter/gestures.dart';
 // import 'package:life_ops/main.dart';
 
-
 class Motivation extends StatefulWidget {
   const Motivation();
 
@@ -23,7 +22,6 @@ class Motivation extends StatefulWidget {
 }
 
 class _MotivationState extends State<Motivation> {
-
   @override
   void initState() {
     super.initState();
@@ -40,8 +38,8 @@ class _MotivationState extends State<Motivation> {
   Widget build(BuildContext context) {
     analytics.logEvent(name: 'motivation');
     const String back = 'images/svg/back.svg';
-    final Widget svgBack = SvgPicture.asset(back,
-        fit: BoxFit.scaleDown, semanticsLabel: 'back');
+    final Widget svgBack =
+        SvgPicture.asset(back, fit: BoxFit.scaleDown, semanticsLabel: 'back');
 
     return SafeArea(
         child: Scaffold(
@@ -51,52 +49,53 @@ class _MotivationState extends State<Motivation> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-          const Icon(
-            Icons.check_circle_outline,
-            color: Colors.green,
-            size: 60,
-          ),
-          const SizedBox(height: 10),
-          FutureBuilder(
-              future: generateCompletion(),
-              builder: (context, AsyncSnapshot snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(
-                      child: Column(children: <Widget>[
-                    Text('Give us about 10 seconds...'),
-                    SizedBox(height: 30),
-                    CircularProgressIndicator()
-                  ]));
-                } else {
-                  return Container(
-                      // constrain the scrollview to 1/3 of the height
-                      // of the screen.
-                      height: MediaQuery.of(context).size.height / 2,
-                      child: Scrollbar(
-                          thickness: 10,
-                          radius: const Radius.circular(20),
-                          scrollbarOrientation: ScrollbarOrientation.right,
-                          child: SingleChildScrollView(
-                            scrollDirection: Axis.vertical,
-                            child: Container(
-                                padding: const EdgeInsets.all(10.0),
-                                child: Text(snapshot.data)),
-                          )));
-                }
-              }),
-          const SizedBox(height: 30),
-                      IconButton(
-                        icon: svgBack,
-                        onPressed: () {
-                          // adInstance.loadAndShowInterstitialAd();
-                          setState(() {
-                            Navigator.pop(context);
-                          });
-                        },
-                      ),
-          const SizedBox(height: 20),
+                  const Icon(
+                    Icons.check_circle_outline,
+                    color: Colors.green,
+                    size: 60,
+                  ),
+                  const SizedBox(height: 10),
+                  FutureBuilder(
+                      future: generateCompletion(),
+                      builder: (context, AsyncSnapshot snapshot) {
+                        if (!snapshot.hasData) {
+                          return const Center(
+                              child: Column(children: <Widget>[
+                            Text('Give us about 10 seconds...'),
+                            SizedBox(height: 30),
+                            CircularProgressIndicator()
+                          ]));
+                        } else {
+                          return Container(
+                              // constrain the scrollview to 1/3 of the height
+                              // of the screen.
+                              height: MediaQuery.of(context).size.height / 2,
+                              child: Scrollbar(
+                                  thickness: 10,
+                                  radius: const Radius.circular(20),
+                                  scrollbarOrientation:
+                                      ScrollbarOrientation.right,
+                                  child: SingleChildScrollView(
+                                    scrollDirection: Axis.vertical,
+                                    child: Container(
+                                        padding: const EdgeInsets.all(10.0),
+                                        child: Text(snapshot.data)),
+                                  )));
+                        }
+                      }),
+                  const SizedBox(height: 30),
+                  IconButton(
+                    icon: svgBack,
+                    onPressed: () {
+                      // adInstance.loadAndShowInterstitialAd();
+                      setState(() {
+                        Navigator.pop(context);
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 20),
 
-          /*
+                  /*
           FutureBuilder(
               future: subscribeLink(),
               builder: (context, AsyncSnapshot snapshot) {
@@ -111,11 +110,9 @@ class _MotivationState extends State<Motivation> {
               }),
           */
 
-          const SizedBox(height: 10),
-        ]))));
+                  const SizedBox(height: 10),
+                ]))));
   }
-
-
 
   void navigateToPaywall() async {
     // Check if user is already subscribed
@@ -274,7 +271,9 @@ class _MotivationState extends State<Motivation> {
           "Do not take it lightly, and you will find something new that "
           "will drive you forward!";
 
-      chatResult = (chatCompletion.choices[0].message.content?.first.text ?? '') + postScript;
+      chatResult =
+          (chatCompletion.choices[0].message.content?.first.text ?? '') +
+              postScript;
     } catch (e, s) {
       if (kDebugMode) {
         print(e);

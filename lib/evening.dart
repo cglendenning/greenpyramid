@@ -51,7 +51,8 @@ class _Evening extends State<Evening> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => Coach(showAppBar: true)),
+                  MaterialPageRoute(
+                      builder: (context) => Coach(showAppBar: true)),
                 );
               },
               backgroundColor: Colors.white,
@@ -60,7 +61,8 @@ class _Evening extends State<Evening> {
                 height: 26,
                 width: 26,
                 fit: BoxFit.contain,
-                colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                colorFilter:
+                    const ColorFilter.mode(Colors.black, BlendMode.srcIn),
                 semanticsLabel: 'Chat',
               ),
             ),
@@ -77,10 +79,11 @@ class _Evening extends State<Evening> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Container(
-                              padding: const EdgeInsets.all(10.0),
-                              child: const Text("Today was good. Tomorrow will be better. Take a moment "
-                                  "to acknowledge the wins today listed below.")),
+                      Container(
+                          padding: const EdgeInsets.all(10.0),
+                          child: const Text(
+                              "Today was good. Tomorrow will be better. Take a moment "
+                              "to acknowledge the wins today listed below.")),
                       const SizedBox(height: 20),
                       FutureBuilder(
                           future: getCheckedTasks(),
@@ -135,13 +138,14 @@ class _Evening extends State<Evening> {
                             } else if (snapshot.hasData) {
                               children = <Widget>[
                                 Container(
-                                  // color: Colors.white.withOpacity(0.5),
+                                    // color: Colors.white.withOpacity(0.5),
                                     decoration: BoxDecoration(
-                                        borderRadius: const BorderRadius.all(Radius.circular(20)),
-                                        color: Colors.white.withOpacity(0.8)
-                                    ),
+                                        borderRadius: const BorderRadius.all(
+                                            Radius.circular(20)),
+                                        color: Colors.white.withOpacity(0.8)),
                                     padding: const EdgeInsets.all(10.0),
-                                    child: Text('${snapshot.data?[0].quotetext}',
+                                    child: Text(
+                                      '${snapshot.data?[0].quotetext}',
                                     )),
                                 const SizedBox(height: 10),
                               ];
@@ -179,7 +183,7 @@ class _Evening extends State<Evening> {
                           }),
                       const SizedBox(height: 20),
 
-                          /*
+                      /*
                           FutureBuilder(
                               future: subscribeLink(),
                               builder: (context, AsyncSnapshot snapshot) {
@@ -194,7 +198,7 @@ class _Evening extends State<Evening> {
                               }),
                           */
 
-                          const SizedBox(height: 10),
+                      const SizedBox(height: 10),
                     ])))));
   }
 
@@ -220,10 +224,8 @@ class _Evening extends State<Evening> {
 
     setState(() {
       utils.Utils().changeSystemColor(Brightness.light);
-
     });
   }
-
 
   /*
   Future<Widget> subscribeLink() async {
@@ -269,7 +271,6 @@ class _Evening extends State<Evening> {
     return link;
   }
    */
-
 
   Future<List<CheckedTask>> getCheckedTasks() async {
     final List<Map<String, dynamic>> maps =

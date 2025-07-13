@@ -251,8 +251,7 @@ class DatabaseHelper {
             ''');
           case 4:
             if (kDebugMode) {
-              print(
-                  '****** in _onUpgrade(): oldversion is '
+              print('****** in _onUpgrade(): oldversion is '
                   ' 2$oldVersion and newVersion is $newVersion');
             }
             await db.execute('''
@@ -576,7 +575,6 @@ class DatabaseHelper {
     return percentage.toString();
   }
 
-
   Future<List<Map<String, dynamic>>> queryUncheckedTasks(String logDate) async {
     late List<Map<String, dynamic>> ret;
     try {
@@ -608,7 +606,6 @@ class DatabaseHelper {
     }
     return ret;
   }
-
 
   Future<List<Map<String, dynamic>>> queryCategories() async {
     late List<Map<String, dynamic>> ret;
@@ -733,7 +730,6 @@ class DatabaseHelper {
     }
     return ret;
   }
-
 
   Future<int> queryLaunchSetup() async {
     late List<Map<String, dynamic>> maps;
@@ -958,7 +954,8 @@ class DatabaseHelper {
 
   Future<void> deleteOldestChatMessage(int messageId) async {
     final db = await database;
-    await db.delete(chatTable, where: '$chatColumnId = ?', whereArgs: [messageId]);
+    await db
+        .delete(chatTable, where: '$chatColumnId = ?', whereArgs: [messageId]);
   }
 }
 

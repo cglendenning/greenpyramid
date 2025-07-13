@@ -16,8 +16,7 @@ class NavBar extends StatefulWidget implements PreferredSizeWidget {
   }) : super(key: key);
 
   @override
-  NavBarState createState() =>
-      NavBarState(currentScreen, elevation, leading);
+  NavBarState createState() => NavBarState(currentScreen, elevation, leading);
 
   @override
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
@@ -34,7 +33,7 @@ class NavBarState extends State<NavBar> {
   Widget build(BuildContext context) {
     String hexLogoColor = "#66CC5D";
     Color logoColor =
-    Color(int.parse(hexLogoColor.substring(1, 7), radix: 16) + 0xFF000000);
+        Color(int.parse(hexLogoColor.substring(1, 7), radix: 16) + 0xFF000000);
     const String logo = 'images/svg/logo_green.svg';
     final Widget svgLogo = SvgPicture.asset(logo,
         height: 40,

@@ -35,7 +35,8 @@ class _IOSPaywallVideoPlayerState extends State<_IOSPaywallVideoPlayer> {
       _error = false;
     });
     try {
-      final response = await http.get(Uri.parse('https://www.stillwatersretreats.com/greenpyramid/paywall-video'));
+      final response = await http.get(Uri.parse(
+          'https://www.stillwatersretreats.com/greenpyramid/paywall-video'));
       String? youtubeUrl;
       final document = html_parser.parse(response.body);
       final iframe = document.querySelector('iframe');
@@ -79,7 +80,8 @@ class _IOSPaywallVideoPlayerState extends State<_IOSPaywallVideoPlayer> {
             children: [
               const Icon(Icons.error_outline, color: Colors.white, size: 64),
               const SizedBox(height: 16),
-              const Text('Could not load video', style: TextStyle(color: Colors.white)),
+              const Text('Could not load video',
+                  style: TextStyle(color: Colors.white)),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: _resolveVideoId,
@@ -90,7 +92,8 @@ class _IOSPaywallVideoPlayerState extends State<_IOSPaywallVideoPlayer> {
         ),
       );
     }
-    return AreWeAFitVideoPlayerScreen(videoId: _videoId!, forceLandscape: false, showOverlays: false);
+    return AreWeAFitVideoPlayerScreen(
+        videoId: _videoId!, forceLandscape: false, showOverlays: false);
   }
 }
 
@@ -118,7 +121,8 @@ class _PaywallState extends State<Paywall> {
         print('🌐 [PAYWALL VIDEO] Initializing WebView');
       }
       if (kDebugMode) {
-        print('🌐 [PAYWALL VIDEO] Loading URL: https://www.stillwatersretreats.com/greenpyramid/paywall-video');
+        print(
+            '🌐 [PAYWALL VIDEO] Loading URL: https://www.stillwatersretreats.com/greenpyramid/paywall-video');
       }
       _webViewController = WebViewController()
         ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -170,7 +174,8 @@ class _PaywallState extends State<Paywall> {
             },
           ),
         )
-        ..loadRequest(Uri.parse('https://www.stillwatersretreats.com/greenpyramid/paywall-video'));
+        ..loadRequest(Uri.parse(
+            'https://www.stillwatersretreats.com/greenpyramid/paywall-video'));
     } catch (e) {
       if (kDebugMode) {
         print('❌ [PAYWALL VIDEO] Error initializing WebView: $e');
@@ -210,7 +215,8 @@ class _PaywallState extends State<Paywall> {
             return Container(
               color: Colors.black,
               height: height,
-              child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+              child: const Center(
+                  child: CircularProgressIndicator(color: Colors.white)),
             );
           }
           final videoId = snapshot.data;
@@ -226,7 +232,8 @@ class _PaywallState extends State<Paywall> {
               ),
             );
           }
-          return _PaywallYoutubePlayer(videoId: videoId, width: width, height: height);
+          return _PaywallYoutubePlayer(
+              videoId: videoId, width: width, height: height);
         },
       );
     }
@@ -253,7 +260,8 @@ class _PaywallState extends State<Paywall> {
           child: Container(
             width: width,
             height: height,
-            decoration: BoxDecoration(borderRadius: BorderRadius.circular(16), color: Colors.black),
+            decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16), color: Colors.black),
             clipBehavior: Clip.hardEdge,
             child: WebViewWidget(controller: _webViewController!),
           ),
@@ -263,7 +271,8 @@ class _PaywallState extends State<Paywall> {
             width: width,
             height: height,
             color: Colors.black,
-            child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+            child: const Center(
+                child: CircularProgressIndicator(color: Colors.white)),
           ),
       ],
     );
@@ -271,7 +280,8 @@ class _PaywallState extends State<Paywall> {
 
   Future<String?> _getPaywallVideoId() async {
     try {
-      final response = await http.get(Uri.parse('https://www.stillwatersretreats.com/greenpyramid/paywall-video'));
+      final response = await http.get(Uri.parse(
+          'https://www.stillwatersretreats.com/greenpyramid/paywall-video'));
       String? youtubeUrl;
       final document = html_parser.parse(response.body);
       final iframe = document.querySelector('iframe');
@@ -289,8 +299,7 @@ class _PaywallState extends State<Paywall> {
   Widget build(BuildContext context) {
     FirebaseAnalytics analytics = FirebaseAnalytics.instance;
     analytics.logEvent(name: 'paywall');
-    var tsTiny = const TextStyle(
-        fontSize: 12, fontStyle: FontStyle.normal);
+    var tsTiny = const TextStyle(fontSize: 12, fontStyle: FontStyle.normal);
 
     return SafeArea(
         child: Scaffold(
@@ -344,9 +353,9 @@ class _PaywallState extends State<Paywall> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Price section
             Container(
               padding: const EdgeInsets.all(20),
@@ -389,9 +398,9 @@ class _PaywallState extends State<Paywall> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // Coaching methodology section
             const Text(
               'Your Personal AI Green Pyramid Coach',
@@ -411,11 +420,11 @@ class _PaywallState extends State<Paywall> {
               ),
               textAlign: TextAlign.center,
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             _buildEmbeddedVideo(context),
-            
+
             // Features section
             Container(
               padding: const EdgeInsets.all(20),
@@ -470,9 +479,9 @@ class _PaywallState extends State<Paywall> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 32),
-            
+
             // CTA button
             SizedBox(
               width: double.infinity,
@@ -498,9 +507,9 @@ class _PaywallState extends State<Paywall> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 16),
-            
+
             // Guarantee
             Container(
               padding: const EdgeInsets.all(16),
@@ -528,9 +537,9 @@ class _PaywallState extends State<Paywall> {
                 ],
               ),
             ),
-            
+
             const SizedBox(height: 24),
-            
+
             Text(legal(), style: tsTiny),
             const SizedBox(height: 16),
             Terms(),
@@ -628,9 +637,10 @@ class _PaywallState extends State<Paywall> {
     } catch (e) {
       // Always pop the dialog if it is open
       Navigator.pop(context); // pop the dialog box
-      
+
       // Handle specific Android billing error
-      if (Platform.isAndroid && e.toString().contains('Billing is not available')) {
+      if (Platform.isAndroid &&
+          e.toString().contains('Billing is not available')) {
         _showAndroidBillingError(context);
       } else {
         // Handle other errors silently or show a generic message
@@ -707,23 +717,26 @@ class _PaywallState extends State<Paywall> {
     );
   }
 
-  showLoaderDialog(BuildContext context){
-    AlertDialog alert=AlertDialog(
+  showLoaderDialog(BuildContext context) {
+    AlertDialog alert = AlertDialog(
       content: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           const CircularProgressIndicator(),
-          Container(margin: const EdgeInsets.only(left: 7),child:const Text("Subscribing..." )),
-        ],),
+          Container(
+              margin: const EdgeInsets.only(left: 7),
+              child: const Text("Subscribing...")),
+        ],
+      ),
     );
-    showDialog(barrierDismissible: false,
-      context:context,
-      builder:(BuildContext context){
+    showDialog(
+      barrierDismissible: false,
+      context: context,
+      builder: (BuildContext context) {
         return alert;
       },
     );
   }
-
 }
 
 class Terms extends StatelessWidget {
@@ -811,7 +824,8 @@ class _PaywallYoutubePlayer extends StatefulWidget {
   final String videoId;
   final double width;
   final double height;
-  const _PaywallYoutubePlayer({required this.videoId, required this.width, required this.height});
+  const _PaywallYoutubePlayer(
+      {required this.videoId, required this.width, required this.height});
 
   @override
   State<_PaywallYoutubePlayer> createState() => _PaywallYoutubePlayerState();

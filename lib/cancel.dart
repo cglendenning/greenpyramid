@@ -20,7 +20,7 @@ class _CancelState extends State<Cancel> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
-    
+
     // Shake animation for the "please don't go" effect
     _shakeController = AnimationController(
       duration: const Duration(milliseconds: 500),
@@ -38,7 +38,7 @@ class _CancelState extends State<Cancel> with TickerProviderStateMixin {
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
-    
+
     // Start pulsing
     _pulseController.repeat(reverse: true);
   }
@@ -64,9 +64,10 @@ class _CancelState extends State<Cancel> with TickerProviderStateMixin {
     try {
       // Get customer info first
       CustomerInfo customerInfo = await Purchases.getCustomerInfo();
-      
+
       if (customerInfo.activeSubscriptions.isEmpty) {
-        _showDialog('No Active Subscription', 'You don\'t have an active subscription to cancel.');
+        _showDialog('No Active Subscription',
+            'You don\'t have an active subscription to cancel.');
         setState(() {
           _isCancelling = false;
         });
@@ -88,19 +89,19 @@ class _CancelState extends State<Cancel> with TickerProviderStateMixin {
 
       // Show instructions for cancelling through the store
       _showCancelInstructions();
-
     } catch (e) {
       setState(() {
         _isCancelling = false;
         _showFinalWarning = false;
       });
-      _showDialog('Error', 'An error occurred while checking your subscription: $e');
+      _showDialog(
+          'Error', 'An error occurred while checking your subscription: $e');
     }
   }
 
   void _showCancelInstructions() {
     String instructions = '';
-    
+
     if (Platform.isIOS) {
       instructions = 'To cancel your subscription:\n\n'
           '1. Open Settings on your iPhone\n'
@@ -182,7 +183,7 @@ class _CancelState extends State<Cancel> with TickerProviderStateMixin {
                 child: Column(
                   children: [
                     const SizedBox(height: 40),
-                    
+
                     // Humorous header
                     Container(
                       padding: const EdgeInsets.all(24),
@@ -235,9 +236,9 @@ class _CancelState extends State<Cancel> with TickerProviderStateMixin {
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 32),
-                    
+
                     // Humorous reasons to stay
                     Container(
                       padding: const EdgeInsets.all(20),
@@ -264,17 +265,22 @@ class _CancelState extends State<Cancel> with TickerProviderStateMixin {
                             ),
                           ),
                           const SizedBox(height: 16),
-                          _buildReasonItem('🤖', 'Your AI coach will miss you terribly'),
-                          _buildReasonItem('📊', 'All that progress data will go to waste'),
-                          _buildReasonItem('💪', 'Who will motivate you at 3 AM?'),
-                          _buildReasonItem('🧠', 'The Green Pyramid methodology needs you'),
-                          _buildReasonItem('🎯', 'Your goals are so close to being achieved'),
+                          _buildReasonItem(
+                              '🤖', 'Your AI coach will miss you terribly'),
+                          _buildReasonItem(
+                              '📊', 'All that progress data will go to waste'),
+                          _buildReasonItem(
+                              '💪', 'Who will motivate you at 3 AM?'),
+                          _buildReasonItem(
+                              '🧠', 'The Green Pyramid methodology needs you'),
+                          _buildReasonItem('🎯',
+                              'Your goals are so close to being achieved'),
                         ],
                       ),
                     ),
-                    
+
                     const SizedBox(height: 32),
-                    
+
                     // Final warning when cancelling
                     if (_showFinalWarning)
                       Container(
@@ -282,7 +288,8 @@ class _CancelState extends State<Cancel> with TickerProviderStateMixin {
                         decoration: BoxDecoration(
                           color: Colors.red.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.red.withOpacity(0.3)),
+                          border:
+                              Border.all(color: Colors.red.withOpacity(0.3)),
                         ),
                         child: Column(
                           children: [
@@ -312,18 +319,20 @@ class _CancelState extends State<Cancel> with TickerProviderStateMixin {
                           ],
                         ),
                       ),
-                    
+
                     const SizedBox(height: 32),
-                    
+
                     // Cancel button
                     SizedBox(
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: _isCancelling ? null : () {
-                          _shakeTheScreen();
-                          _cancelSubscription();
-                        },
+                        onPressed: _isCancelling
+                            ? null
+                            : () {
+                                _shakeTheScreen();
+                                _cancelSubscription();
+                              },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.red,
                           foregroundColor: Colors.white,
@@ -341,25 +350,26 @@ class _CancelState extends State<Cancel> with TickerProviderStateMixin {
                                     height: 20,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Colors.white),
                                     ),
                                   ),
                                   SizedBox(width: 12),
                                   Text('Cancelling...'),
                                 ],
                               )
-                                                         : const Text(
-                                 'Show Cancel Instructions',
-                                 style: TextStyle(
-                                   fontSize: 16,
-                                   fontWeight: FontWeight.bold,
-                                 ),
-                               ),
+                            : const Text(
+                                'Show Cancel Instructions',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 16),
-                    
+
                     // Keep subscription button
                     SizedBox(
                       width: double.infinity,
@@ -384,9 +394,9 @@ class _CancelState extends State<Cancel> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
-                    
+
                     const SizedBox(height: 24),
-                    
+
                     // Small print
                     const Text(
                       'You\'ll still have access until the end of your current billing period.',
@@ -429,4 +439,4 @@ class _CancelState extends State<Cancel> with TickerProviderStateMixin {
       ),
     );
   }
-} 
+}

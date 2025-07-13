@@ -65,15 +65,18 @@ class _MindsetSelectState extends State<MindsetSelect> {
               style: TextStyle(fontSize: 18),
             ),
             const SizedBox(height: 32),
-            const Text('How are you feeling today?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            const Text('How are you feeling today?',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               value: selectedMood,
               hint: const Text('Select a mindset...'),
-              items: moodChoices.map((mood) => DropdownMenuItem(
-                value: mood,
-                child: Text(mood),
-              )).toList(),
+              items: moodChoices
+                  .map((mood) => DropdownMenuItem(
+                        value: mood,
+                        child: Text(mood),
+                      ))
+                  .toList(),
               onChanged: (mood) {
                 setState(() {
                   selectedMood = mood;
@@ -81,21 +84,26 @@ class _MindsetSelectState extends State<MindsetSelect> {
                 });
               },
               decoration: InputDecoration(
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                border:
+                    OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
             ),
             if (selectedMood != null) ...[
               const SizedBox(height: 32),
-              const Text('Which area of your life?', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              const Text('Which area of your life?',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: selectedCategory,
                 hint: const Text('Select a category...'),
-                items: widget.categories.map((cat) => DropdownMenuItem(
-                  value: cat,
-                  child: Text(cat),
-                )).toList(),
+                items: widget.categories
+                    .map((cat) => DropdownMenuItem(
+                          value: cat,
+                          child: Text(cat),
+                        ))
+                    .toList(),
                 onChanged: (cat) {
                   setState(() {
                     selectedCategory = cat;
@@ -105,8 +113,10 @@ class _MindsetSelectState extends State<MindsetSelect> {
                   }
                 },
                 decoration: InputDecoration(
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
               ),
             ],
@@ -115,4 +125,4 @@ class _MindsetSelectState extends State<MindsetSelect> {
       ),
     );
   }
-} 
+}

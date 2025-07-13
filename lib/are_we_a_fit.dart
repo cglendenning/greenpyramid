@@ -4,6 +4,7 @@ import 'package:life_ops/are_we_a_fit_video_player.dart';
 import 'package:life_ops/navbar.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
 class AreWeAFitScreen extends StatefulWidget {
@@ -15,7 +16,7 @@ class AreWeAFitScreen extends StatefulWidget {
 
 class _AreWeAFitScreenState extends State<AreWeAFitScreen> with RouteAware {
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
-  
+
   @override
   void initState() {
     super.initState();
@@ -58,12 +59,14 @@ You can also reach out for a free 15 minute chat with me below.
     // Split into 2-3 sentence blocks for bubbles
     final text = areWeAFitCopy.replaceAll('\n', ' ').replaceAll('  ', ' ');
     final regex = RegExp(r'([^.!?]*[.!?])');
-    final sentences = regex.allMatches(text).map((m) => m.group(0)!.trim()).toList();
+    final sentences =
+        regex.allMatches(text).map((m) => m.group(0)!.trim()).toList();
     List<String> blocks = [];
     String current = '';
     int count = 0;
     for (final sentence in sentences) {
-      if (sentence.contains('[video link here]') || sentence.contains('[coaching form here]')) {
+      if (sentence.contains('[video link here]') ||
+          sentence.contains('[coaching form here]')) {
         if (current.isNotEmpty) blocks.add(current.trim());
         blocks.add(sentence);
         current = '';
@@ -135,14 +138,16 @@ You can also reach out for a free 15 minute chat with me below.
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const AreWeAFitVideoPlayerScreen(videoId: 'cb4Lvy9qGFw'),
+                      builder: (context) => const AreWeAFitVideoPlayerScreen(
+                          videoId: 'cb4Lvy9qGFw'),
                     ),
                   );
                 },
                 child: AspectRatio(
                   aspectRatio: 16 / 9,
                   child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                    borderRadius:
+                        const BorderRadius.vertical(top: Radius.circular(12)),
                     child: Stack(
                       children: [
                         Image.network(
@@ -206,7 +211,8 @@ You can also reach out for a free 15 minute chat with me below.
                 onPressed: () {
                   Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (context) => const PersonalCoaching()),
+                    MaterialPageRoute(
+                        builder: (context) => const PersonalCoaching()),
                   );
                 },
               ),
@@ -219,7 +225,8 @@ You can also reach out for a free 15 minute chat with me below.
       } else {
         content.add(
           Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10.0, horizontal: 4.0),
+            padding:
+                const EdgeInsets.symmetric(vertical: 10.0, horizontal: 4.0),
             child: Container(
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.92),
@@ -235,7 +242,11 @@ You can also reach out for a free 15 minute chat with me below.
               padding: const EdgeInsets.symmetric(vertical: 18, horizontal: 18),
               child: Text(
                 block,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w500, color: Colors.black87, height: 1.4),
+                style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                    height: 1.4),
                 textAlign: TextAlign.left,
               ),
             ),
@@ -265,4 +276,4 @@ You can also reach out for a free 15 minute chat with me below.
       ),
     );
   }
-} 
+}

@@ -21,9 +21,7 @@ bool populateGap = true;
 DateTime installDate = DateTime.now();
 bool interventionShown = false;
 
-
 Future<void> main() async {
-
   WidgetsFlutterBinding.ensureInitialized();
   initPlatformState();
 
@@ -49,7 +47,6 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
 
   int defaultCats = await dbHelper.queryLaunchSetup();
 
@@ -81,5 +78,4 @@ Future<void> initPlatformState() async {
   if (kDebugMode) {
     print('Active Subscriptions: ${ci.activeSubscriptions}');
   }
-
 }

@@ -21,7 +21,6 @@ final List<String> categories = [
   'Volunteering'
 ];
 
-
 class Welcome1 extends StatefulWidget {
   const Welcome1();
 
@@ -66,63 +65,57 @@ class _Welcome1State extends State<Welcome1> {
       color: Colors.black,
     );
 
-
-
     return SafeArea(
         child: Container(
             decoration: const BoxDecoration(
                 image: DecorationImage(
-                  image: const AssetImage("images/borabora.jpg"),
-                  fit: BoxFit.cover,
-                )),
-
+              image: const AssetImage("images/borabora.jpg"),
+              fit: BoxFit.cover,
+            )),
             child: Scaffold(
-          backgroundColor: Colors.transparent,
-            body: Column(children: [
-      const SizedBox(height: 10),
-              Container(
-                  padding: const EdgeInsets.all(10.0),
-                  child: Text("Drag the top six items that matter most to you "
-                      "to the top of the list...",
-                  style: descStyle)),
-              Container(
-                  height: MediaQuery.of(context).size.height / 2.2,
-                  child:
-                  const Material(
-                    color: Colors.transparent,
-                      child: ValueList())),
-              Container(
-                  padding: const EdgeInsets.all(10.0),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.8),
-                      border: Border.all(
-                        color: Colors.transparent,
-                      ),
-                      borderRadius: const BorderRadius.all(Radius.circular(20))
-                  ),
-                  child: Text("(You will fine tune this list later...)",
-                      style: italicStyle)),
-
-              Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-        IconButton(
-          icon: svgForward,
-          onPressed: () {
-            setState(() {
-              navigateToSetup3();
-            });
-          },
-        )
-      ]),
-    ]))));
+                backgroundColor: Colors.transparent,
+                body: Column(children: [
+                  const SizedBox(height: 10),
+                  Container(
+                      padding: const EdgeInsets.all(10.0),
+                      child: Text(
+                          "Drag the top six items that matter most to you "
+                          "to the top of the list...",
+                          style: descStyle)),
+                  Container(
+                      height: MediaQuery.of(context).size.height / 2.2,
+                      child: const Material(
+                          color: Colors.transparent, child: ValueList())),
+                  Container(
+                      padding: const EdgeInsets.all(10.0),
+                      decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.8),
+                          border: Border.all(
+                            color: Colors.transparent,
+                          ),
+                          borderRadius:
+                              const BorderRadius.all(Radius.circular(20))),
+                      child: Text("(You will fine tune this list later...)",
+                          style: italicStyle)),
+                  Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        IconButton(
+                          icon: svgForward,
+                          onPressed: () {
+                            setState(() {
+                              navigateToSetup3();
+                            });
+                          },
+                        )
+                      ]),
+                ]))));
   }
 
   void navigateToSetup3() async {
-
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => Setup3(
-        categories
-      )),
+      MaterialPageRoute(builder: (context) => Setup3(categories)),
     );
   }
 }
@@ -135,7 +128,6 @@ class ValueList extends StatefulWidget {
 }
 
 class _ValueListState extends State<ValueList> {
-
   var descStyle = const TextStyle(
     fontFamily: 'Raleway',
     fontSize: 16,
@@ -147,11 +139,11 @@ class _ValueListState extends State<ValueList> {
   Widget build(BuildContext context) {
     final Color oddItemColor =
         Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000)
-     .withOpacity(0.85);
+            .withOpacity(0.85);
 
     final Color evenItemColor =
         Color(int.parse("#C35DCC".substring(1, 7), radix: 16) + 0xFF000000)
-    .withOpacity(0.85);
+            .withOpacity(0.85);
 
     final List<Card> cards = <Card>[
       for (int index = 0; index < categories.length; index += 1)
@@ -165,9 +157,8 @@ class _ValueListState extends State<ValueList> {
                   children: <Widget>[
                     Padding(
                         padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                            "${index+1}) ${categories[index]}",
-                        style: descStyle)),
+                        child: Text("${index + 1}) ${categories[index]}",
+                            style: descStyle)),
                     Padding(
                         padding: const EdgeInsets.all(16.0),
                         child: ReorderableDragStartListener(

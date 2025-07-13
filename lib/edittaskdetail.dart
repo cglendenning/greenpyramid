@@ -42,18 +42,17 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
                       return Column(children: [
                         const SizedBox(height: 10),
                         Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceAround,
-                        children: <Widget>[
-                          Text('${snapshot.data[0].taskdescription}'),
-                        GestureDetector(
-                            onTap: () {
-                               setState(() {
-                                showEditDialog(context,
-                                    snapshot.data[0]);
-                               });
-                            },
-                            child: const Icon(Icons.edit)),
-                        ]),
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: <Widget>[
+                              Text('${snapshot.data[0].taskdescription}'),
+                              GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      showEditDialog(context, snapshot.data[0]);
+                                    });
+                                  },
+                                  child: const Icon(Icons.edit)),
+                            ]),
                         CheckboxListTile(
                             title: const Text('Sunday'),
                             value: toBoolean(snapshot.data[0].sunday),
@@ -72,11 +71,10 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
                               setState(() {
                                 dbHelper.rawUpdate(
                                     "update task set monday = '${value.toString()}' "
-                                        "where category = '${snapshot.data[0].category}' and "
-                                        "taskdescription = '${snapshot.data[0].taskdescription}'");
+                                    "where category = '${snapshot.data[0].category}' and "
+                                    "taskdescription = '${snapshot.data[0].taskdescription}'");
                               });
                             }),
-
                         CheckboxListTile(
                             title: const Text('Tuesday'),
                             value: toBoolean(snapshot.data[0].tuesday),
@@ -84,11 +82,10 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
                               setState(() {
                                 dbHelper.rawUpdate(
                                     "update task set tuesday = '${value.toString()}' "
-                                        "where category = '${snapshot.data[0].category}' and "
-                                        "taskdescription = '${snapshot.data[0].taskdescription}'");
+                                    "where category = '${snapshot.data[0].category}' and "
+                                    "taskdescription = '${snapshot.data[0].taskdescription}'");
                               });
                             }),
-
                         CheckboxListTile(
                             title: const Text('Wednesday'),
                             value: toBoolean(snapshot.data[0].wednesday),
@@ -96,11 +93,10 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
                               setState(() {
                                 dbHelper.rawUpdate(
                                     "update task set wednesday = '${value.toString()}' "
-                                        "where category = '${snapshot.data[0].category}' and "
-                                        "taskdescription = '${snapshot.data[0].taskdescription}'");
+                                    "where category = '${snapshot.data[0].category}' and "
+                                    "taskdescription = '${snapshot.data[0].taskdescription}'");
                               });
                             }),
-
                         CheckboxListTile(
                             title: const Text('Thursday'),
                             value: toBoolean(snapshot.data[0].thursday),
@@ -108,11 +104,10 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
                               setState(() {
                                 dbHelper.rawUpdate(
                                     "update task set thursday = '${value.toString()}' "
-                                        "where category = '${snapshot.data[0].category}' and "
-                                        "taskdescription = '${snapshot.data[0].taskdescription}'");
+                                    "where category = '${snapshot.data[0].category}' and "
+                                    "taskdescription = '${snapshot.data[0].taskdescription}'");
                               });
                             }),
-
                         CheckboxListTile(
                             title: const Text('Friday'),
                             value: toBoolean(snapshot.data[0].friday),
@@ -120,11 +115,10 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
                               setState(() {
                                 dbHelper.rawUpdate(
                                     "update task set friday = '${value.toString()}' "
-                                        "where category = '${snapshot.data[0].category}' and "
-                                        "taskdescription = '${snapshot.data[0].taskdescription}'");
+                                    "where category = '${snapshot.data[0].category}' and "
+                                    "taskdescription = '${snapshot.data[0].taskdescription}'");
                               });
                             }),
-
                         CheckboxListTile(
                             title: const Text('Saturday'),
                             value: toBoolean(snapshot.data[0].saturday),
@@ -132,11 +126,10 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
                               setState(() {
                                 dbHelper.rawUpdate(
                                     "update task set saturday = '${value.toString()}' "
-                                        "where category = '${snapshot.data[0].category}' and "
-                                        "taskdescription = '${snapshot.data[0].taskdescription}'");
+                                    "where category = '${snapshot.data[0].category}' and "
+                                    "taskdescription = '${snapshot.data[0].taskdescription}'");
                               });
                             }),
-
                       ]);
                     }
                   }),
@@ -175,7 +168,7 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
         if (task.taskdescription != taskDescriptionText.text) {
           dbHelper.rawDelete(
               "delete from tasklog where taskdescription = '${task.taskdescription}' "
-                  "and category = '$category'");
+              "and category = '$category'");
 
           // Look at each dow column in task and determine whether or not
           // today's dow is set to true. If so, insert into tasklog.
@@ -190,7 +183,7 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
               DatabaseHelper.columnTLTaskDescription: taskDescriptionText.text,
               DatabaseHelper.columnTLChecked: 'false',
               DatabaseHelper.columnTLTaskDate:
-              formatter.format(DateTime.now()).toString()
+                  formatter.format(DateTime.now()).toString()
             };
             await dbHelper.insertTaskLog(taskLogRow);
           } else if (todayFmt == 'Monday' && task.monday == 'true') {
@@ -201,7 +194,7 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
               DatabaseHelper.columnTLTaskDescription: taskDescriptionText.text,
               DatabaseHelper.columnTLChecked: 'false',
               DatabaseHelper.columnTLTaskDate:
-              formatter.format(DateTime.now()).toString()
+                  formatter.format(DateTime.now()).toString()
             };
             await dbHelper.insertTaskLog(taskLogRow);
           } else if (todayFmt == 'Tuesday' && task.tuesday == 'true') {
@@ -212,7 +205,7 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
               DatabaseHelper.columnTLTaskDescription: taskDescriptionText.text,
               DatabaseHelper.columnTLChecked: 'false',
               DatabaseHelper.columnTLTaskDate:
-              formatter.format(DateTime.now()).toString()
+                  formatter.format(DateTime.now()).toString()
             };
             await dbHelper.insertTaskLog(taskLogRow);
           } else if (todayFmt == 'Wednesday' && task.wednesday == 'true') {
@@ -223,7 +216,7 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
               DatabaseHelper.columnTLTaskDescription: taskDescriptionText.text,
               DatabaseHelper.columnTLChecked: 'false',
               DatabaseHelper.columnTLTaskDate:
-              formatter.format(DateTime.now()).toString()
+                  formatter.format(DateTime.now()).toString()
             };
             await dbHelper.insertTaskLog(taskLogRow);
           } else if (todayFmt == 'Thursday' && task.thursday == 'true') {
@@ -234,7 +227,7 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
               DatabaseHelper.columnTLTaskDescription: taskDescriptionText.text,
               DatabaseHelper.columnTLChecked: 'false',
               DatabaseHelper.columnTLTaskDate:
-              formatter.format(DateTime.now()).toString()
+                  formatter.format(DateTime.now()).toString()
             };
             await dbHelper.insertTaskLog(taskLogRow);
           } else if (todayFmt == 'Friday' && task.friday == 'true') {
@@ -245,7 +238,7 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
               DatabaseHelper.columnTLTaskDescription: taskDescriptionText.text,
               DatabaseHelper.columnTLChecked: 'false',
               DatabaseHelper.columnTLTaskDate:
-              formatter.format(DateTime.now()).toString()
+                  formatter.format(DateTime.now()).toString()
             };
             await dbHelper.insertTaskLog(taskLogRow);
           } else if (todayFmt == 'Saturday' && task.saturday == 'true') {
@@ -256,16 +249,16 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
               DatabaseHelper.columnTLTaskDescription: taskDescriptionText.text,
               DatabaseHelper.columnTLChecked: 'false',
               DatabaseHelper.columnTLTaskDate:
-              formatter.format(DateTime.now()).toString()
+                  formatter.format(DateTime.now()).toString()
             };
             await dbHelper.insertTaskLog(taskLogRow);
           }
         }
 
-          dbHelper.rawUpdate(
-              "update task set taskdescription = '${taskDescriptionText.text}' "
-                  "where category = '$category'"
-                  " and taskdescription = '${task.taskdescription}'");
+        dbHelper.rawUpdate(
+            "update task set taskdescription = '${taskDescriptionText.text}' "
+            "where category = '$category'"
+            " and taskdescription = '${task.taskdescription}'");
 
         desc = taskDescriptionText.text;
         setState(() {});
@@ -282,37 +275,34 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
       ),
     );
 
-    Widget warning = const Row(
-      children: <Widget>[
+    Widget warning = const Row(children: <Widget>[
       SizedBox(height: 10),
       Flexible(
-        child: Text(
-          '*NOTE: If a task name is changed, all task log entries for the previous task name will be deleted.',
+          child: Text(
+        '*NOTE: If a task name is changed, all task log entries for the previous task name will be deleted.',
         style: TextStyle(
           color: Colors.black,
           fontSize: 15,
         ),
         textAlign: TextAlign.center,
-      ))]);
+      ))
+    ]);
 
     // set up the AlertDialog
     AlertDialog alert = AlertDialog(
       title: const Text("Update Task..."),
-      content:
-      Container(
-        child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text("Update the task description below."),
-              const SizedBox(height: 10),
-              taskDescriptionField,
-              cancelButton,
-              continueButton,
-              warning
-            ]
-        )
-      ),
+      content: Container(
+          child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+            const Text("Update the task description below."),
+            const SizedBox(height: 10),
+            taskDescriptionField,
+            cancelButton,
+            continueButton,
+            warning
+          ])),
     );
     // show the dialog
     showDialog(

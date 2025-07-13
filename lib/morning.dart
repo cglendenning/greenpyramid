@@ -44,7 +44,8 @@ class _Morning extends State<Morning> {
               onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => Coach(showAppBar: true)),
+                  MaterialPageRoute(
+                      builder: (context) => Coach(showAppBar: true)),
                 );
               },
               backgroundColor: Colors.white,
@@ -53,18 +54,19 @@ class _Morning extends State<Morning> {
                 height: 26,
                 width: 26,
                 fit: BoxFit.contain,
-                colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                colorFilter:
+                    const ColorFilter.mode(Colors.black, BlendMode.srcIn),
                 semanticsLabel: 'Chat',
               ),
             ),
             body: Container(
                 decoration: BoxDecoration(
                     image: DecorationImage(
-                      colorFilter: ColorFilter.mode(
-                          Colors.black.withOpacity(0.5), BlendMode.dstATop),
-                      image: const AssetImage("images/morning_1.jpg"),
-                      fit: BoxFit.cover,
-                    )),
+                  colorFilter: ColorFilter.mode(
+                      Colors.black.withOpacity(0.5), BlendMode.dstATop),
+                  image: const AssetImage("images/morning_1.jpg"),
+                  fit: BoxFit.cover,
+                )),
                 child: Center(
                     child: Scrollbar(
                         thickness: 10,
@@ -81,36 +83,35 @@ class _Morning extends State<Morning> {
                                       child: Text(quote)),
                                   const SizedBox(height: 20),
                                   FutureBuilder(
-                                      future: Quote().getCommentary(quote, 'inspiration'),
+                                      future: Quote()
+                                          .getCommentary(quote, 'inspiration'),
                                       builder:
                                           (context, AsyncSnapshot snapshot) {
                                         if (!snapshot.hasData) {
                                           return const Center(
                                               child: Column(children: <Widget>[
-                                                Text(
-                                                    'Give us about 10 seconds...'),
-                                                SizedBox(height: 30),
-                                                CircularProgressIndicator()
-                                              ]));
+                                            Text('Give us about 10 seconds...'),
+                                            SizedBox(height: 30),
+                                            CircularProgressIndicator()
+                                          ]));
                                         } else {
                                           return Container(
                                               child: Scrollbar(
                                                   thickness: 10,
                                                   radius:
-                                                  const Radius.circular(20),
+                                                      const Radius.circular(20),
                                                   scrollbarOrientation:
-                                                  ScrollbarOrientation
-                                                      .right,
+                                                      ScrollbarOrientation
+                                                          .right,
                                                   child: SingleChildScrollView(
                                                     scrollDirection:
-                                                    Axis.vertical,
+                                                        Axis.vertical,
                                                     child: Container(
                                                         padding:
-                                                        const EdgeInsets
-                                                            .all(10.0),
+                                                            const EdgeInsets
+                                                                .all(10.0),
                                                         child: Text(
-                                                          snapshot.data
-                                                        )),
+                                                            snapshot.data)),
                                                   )));
                                         }
                                       }),
@@ -122,12 +123,13 @@ class _Morning extends State<Morning> {
                                         if (!snapshot.hasData) {
                                           return const Center(
                                               child:
-                                              CircularProgressIndicator());
+                                                  CircularProgressIndicator());
                                         } else {
                                           // Check if there are any tasks to display
                                           if (snapshot.data.isEmpty) {
                                             return Container(
-                                              padding: const EdgeInsets.all(20.0),
+                                              padding:
+                                                  const EdgeInsets.all(20.0),
                                               child: Column(
                                                 children: [
                                                   const Icon(
@@ -140,7 +142,8 @@ class _Morning extends State<Morning> {
                                                     'You\'re on fire!',
                                                     style: TextStyle(
                                                       fontSize: 24,
-                                                      fontWeight: FontWeight.bold,
+                                                      fontWeight:
+                                                          FontWeight.bold,
                                                       color: Colors.black,
                                                     ),
                                                     textAlign: TextAlign.center,
@@ -156,12 +159,18 @@ class _Morning extends State<Morning> {
                                                   ),
                                                   const SizedBox(height: 16),
                                                   Container(
-                                                    padding: const EdgeInsets.all(16),
+                                                    padding:
+                                                        const EdgeInsets.all(
+                                                            16),
                                                     decoration: BoxDecoration(
-                                                      color: Colors.white.withOpacity(0.9),
-                                                      borderRadius: BorderRadius.circular(12),
+                                                      color: Colors.white
+                                                          .withOpacity(0.9),
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                              12),
                                                       border: Border.all(
-                                                        color: Colors.black.withOpacity(0.2),
+                                                        color: Colors.black
+                                                            .withOpacity(0.2),
                                                       ),
                                                     ),
                                                     child: const Column(
@@ -176,7 +185,8 @@ class _Morning extends State<Morning> {
                                                           'Ready for today?',
                                                           style: TextStyle(
                                                             fontSize: 18,
-                                                            fontWeight: FontWeight.bold,
+                                                            fontWeight:
+                                                                FontWeight.bold,
                                                             color: Colors.black,
                                                           ),
                                                         ),
@@ -185,9 +195,11 @@ class _Morning extends State<Morning> {
                                                           'Focus on today\'s priorities and build momentum for success.',
                                                           style: TextStyle(
                                                             fontSize: 14,
-                                                            color: Colors.black87,
+                                                            color:
+                                                                Colors.black87,
                                                           ),
-                                                          textAlign: TextAlign.center,
+                                                          textAlign:
+                                                              TextAlign.center,
                                                         ),
                                                       ],
                                                     ),
@@ -196,69 +208,59 @@ class _Morning extends State<Morning> {
                                               ),
                                             );
                                           }
-                                          
+
                                           return Column(
                                             children: [
                                               Container(
-                                                padding: const EdgeInsets.all(10.0),
+                                                padding:
+                                                    const EdgeInsets.all(10.0),
                                                 child: Text(
-                                                  'Check off the tasks you completed on $taskLogDate:'
-                                                ),
+                                                    'Check off the tasks you completed on $taskLogDate:'),
                                               ),
                                               const SizedBox(height: 20),
                                               Container(
-                                                // constrain the scrollview to 1/3 of the height
-                                                // of the screen.
-                                                  height: MediaQuery
-                                                      .of(context)
-                                                      .size
-                                                      .height /
+                                                  // constrain the scrollview to 1/3 of the height
+                                                  // of the screen.
+                                                  height: MediaQuery.of(context)
+                                                          .size
+                                                          .height /
                                                       3,
                                                   child: Scrollbar(
                                                       child: ListView.builder(
                                                           scrollDirection:
-                                                          Axis.vertical,
+                                                              Axis.vertical,
                                                           shrinkWrap: true,
-                                                          itemCount:
-                                                          snapshot.data.length,
+                                                          itemCount: snapshot
+                                                              .data.length,
                                                           itemBuilder:
-                                                              (BuildContext context,
-                                                              int index) {
+                                                              (BuildContext
+                                                                      context,
+                                                                  int index) {
                                                             return CheckboxListTile(
                                                                 title: Text(
-                                                                    '${snapshot
-                                                                        .data[index]
-                                                                        .taskdescription}'),
+                                                                    '${snapshot.data[index].taskdescription}'),
                                                                 subtitle: Text(
-                                                                    '${snapshot
-                                                                        .data[index]
-                                                                        .category}'),
+                                                                    '${snapshot.data[index].category}'),
                                                                 value: toBoolean(
                                                                     snapshot
-                                                                        .data[index]
+                                                                        .data[
+                                                                            index]
                                                                         .checked),
                                                                 onChanged:
-                                                                    (bool? value) {
+                                                                    (bool?
+                                                                        value) {
                                                                   setState(() {
                                                                     var v = value
                                                                         .toString();
                                                                     snapshot
-                                                                        .data[index]
-                                                                        .checked =
-                                                                        v;
-                                                                    dbHelper
-                                                                        .rawUpdate(
-                                                                        "update tasklog set checked = '${value
-                                                                            .toString()}' "
-                                                                            "where taskdescription = '${snapshot
-                                                                            .data[index]
-                                                                            .taskdescription}' "
-                                                                            " and category = '${snapshot
-                                                                            .data[index]
-                                                                            .category}'"
-                                                                            " and taskdate = '${snapshot
-                                                                            .data[index]
-                                                                            .taskdate}'");
+                                                                        .data[
+                                                                            index]
+                                                                        .checked = v;
+                                                                    dbHelper.rawUpdate(
+                                                                        "update tasklog set checked = '${value.toString()}' "
+                                                                        "where taskdescription = '${snapshot.data[index].taskdescription}' "
+                                                                        " and category = '${snapshot.data[index].category}'"
+                                                                        " and taskdate = '${snapshot.data[index].taskdate}'");
                                                                   });
                                                                 });
                                                           }))),
@@ -290,7 +292,7 @@ class _Morning extends State<Morning> {
 
   Future<List<UncheckedTask>> getUncheckedTasks() async {
     final List<Map<String, dynamic>> maps =
-    await dbHelper.queryUncheckedTasks(taskLogDate);
+        await dbHelper.queryUncheckedTasks(taskLogDate);
 
     // Convert the List<Map<String, dynamic> into a List<Task>.
     return List.generate(maps.length, (i) {

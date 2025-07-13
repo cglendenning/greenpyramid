@@ -48,64 +48,62 @@ class _Setup9State extends State<Setup9> {
     var explainTextStyle = const TextStyle(
         fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'SourceSans3');
 
-
     return SafeArea(
         child: Scaffold(
             appBar: const NavBar(),
             backgroundColor: Colors.white,
             body: Center(
-                child: Column(
-                    children: [
-                      LinearProgressIndicator(
-                          value: 8/23,
-                          color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000)
-                      ),
-                      const SizedBox(height: 10),
-                  Text(
-                    'Red is not so good.',
-                    style: mainTextStyle,
-                  ),
-                  const SizedBox(height: 10),
-                  Container(
-                      padding: const EdgeInsets.all(10.0),
-                      child: Text(
-                          "It means you are doing few or none of your habits "
-                          "toward your best life.\n\n Next we will explore daily "
-                          "actions in detail...",
+                child: Column(children: [
+              LinearProgressIndicator(
+                  value: 8 / 23,
+                  color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) +
+                      0xFF000000)),
+              const SizedBox(height: 10),
+              Text(
+                'Red is not so good.',
+                style: mainTextStyle,
+              ),
+              const SizedBox(height: 10),
+              Container(
+                  padding: const EdgeInsets.all(10.0),
+                  child: Text(
+                      "It means you are doing few or none of your habits "
+                      "toward your best life.\n\n Next we will explore daily "
+                      "actions in detail...",
                       style: explainTextStyle)),
-                      Container(
-                        color: Colors.white,
-                        alignment: Alignment.center,
-                        child:
-                        Image.asset('images/thumbs_down.jpg', height: 100, width: 100),
-                      ),
-                      // Entire Pyramid Stack
+              Container(
+                color: Colors.white,
+                alignment: Alignment.center,
+                child: Image.asset('images/thumbs_down.jpg',
+                    height: 100, width: 100),
+              ),
+              // Entire Pyramid Stack
+              Stack(children: <Widget>[
+                // Foundational Stack (Pyramid + Text)
+                Stack(children: <Widget>[
+                  // Foundational Stack (Pyramid Only)
                   Stack(children: <Widget>[
-                    // Foundational Stack (Pyramid + Text)
-                    Stack(children: <Widget>[
-                      // Foundational Stack (Pyramid Only)
-                      Stack(children: <Widget>[
-                        CustomPaint(
-                            size: Size(pyramidWidth, pyramidHeight),
-                            painter: DrawCat1(lg, cats[0].cat, 0)),
-                      ]).animate().fadeIn(duration: 1000.ms),
-                    ]),
-                    // Essential Stack (Pyramid + Text)
-                  ]),
-                  const SizedBox(height: 20),
-                  Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
-                      children: <Widget>[
-                        IconButton(
-                          icon: svgForward,
-                          onPressed: () {
-                            setState(() {
-                              navigateToSetup10();
-                            });
-                          },
-                        )
-                      ]).animate().fadeIn(),
-                ]))));
+                    CustomPaint(
+                        size: Size(pyramidWidth, pyramidHeight),
+                        painter: DrawCat1(lg, cats[0].cat, 0)),
+                  ]).animate().fadeIn(duration: 1000.ms),
+                ]),
+                // Essential Stack (Pyramid + Text)
+              ]),
+              const SizedBox(height: 20),
+              Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: <Widget>[
+                    IconButton(
+                      icon: svgForward,
+                      onPressed: () {
+                        setState(() {
+                          navigateToSetup10();
+                        });
+                      },
+                    )
+                  ]).animate().fadeIn(),
+            ]))));
   }
 
   void navigateToSetup10() async {

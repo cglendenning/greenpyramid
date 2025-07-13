@@ -4,7 +4,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:life_ops/navbar.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
-
 class Tutorial1 extends StatefulWidget {
   const Tutorial1();
 
@@ -36,17 +35,18 @@ class _Tutorial1State extends State<Tutorial1> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Text('Tutorial (1 of 5)'),
-                      const SizedBox(height: 10),
-                      Container(
-                          padding: const EdgeInsets.all(10.0),
-                          child: const Text("Certain things we do every day matter more than "
-                              "other things. The Green Pyramid helps you "
-                              "visualize this...")),
+                  const Text('Tutorial (1 of 5)'),
+                  const SizedBox(height: 10),
+                  Container(
+                      padding: const EdgeInsets.all(10.0),
+                      child: const Text(
+                          "Certain things we do every day matter more than "
+                          "other things. The Green Pyramid helps you "
+                          "visualize this...")),
                   const SizedBox(height: 30),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
+                  Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
                         Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: <Widget>[

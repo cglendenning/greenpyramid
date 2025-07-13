@@ -4,7 +4,6 @@ import 'package:life_ops/setup/setup1.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 class Utils {
-
   void changeSystemColor(Brightness mode) {
     SystemChrome.setSystemUIOverlayStyle(
         SystemUiOverlayStyle(statusBarBrightness: mode));

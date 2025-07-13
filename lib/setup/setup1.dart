@@ -34,11 +34,11 @@ class _Setup1State extends State<Setup1> {
         setState(() {});
         _controller.play();
       });
-    
+
     // Start preloading the YouTube video in the background
     _startVideoPreloading();
   }
-  
+
   void _startVideoPreloading() {
     // Start preloading in the background without blocking the UI
     Future.microtask(() async {
@@ -58,7 +58,6 @@ class _Setup1State extends State<Setup1> {
 
   @override
   Widget build(BuildContext context) {
-
     const String forward = 'images/svg/forward.svg';
     final Widget svgForward = SvgPicture.asset(forward,
         fit: BoxFit.scaleDown, semanticsLabel: 'forward');
@@ -73,7 +72,6 @@ class _Setup1State extends State<Setup1> {
       fontSize: 36,
       color: Colors.black,
     );
-
 
     return SafeArea(
         child: Scaffold(
@@ -95,34 +93,31 @@ class _Setup1State extends State<Setup1> {
               children: [
             Container(
                 padding: const EdgeInsets.all(10.0),
-                child:
-            Text(
-                "\"Do today what others won't, so tomorrow you can do "
-                "what others can't.\"",
-                style: quoteStyle)),
-                      Container(
-                        margin: const EdgeInsets.all(16.0),
-                        child:Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: <Widget>[
-                              Image.asset('images/logo.png', scale: 6),
-                            ]
-                        ),
-                      ),
+                child: Text(
+                    "\"Do today what others won't, so tomorrow you can do "
+                    "what others can't.\"",
+                    style: quoteStyle)),
+            Container(
+              margin: const EdgeInsets.all(16.0),
+              child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: <Widget>[
+                    Image.asset('images/logo.png', scale: 6),
+                  ]),
+            ),
             const SizedBox(height: 20),
-                Container(
-                    padding: const EdgeInsets.all(10.0),
-                    decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.6),
-                        border: Border.all(
-                          color: Colors.transparent,
-                        ),
-                        borderRadius: const BorderRadius.all(Radius.circular(20))
+            Container(
+                padding: const EdgeInsets.all(10.0),
+                decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.6),
+                    border: Border.all(
+                      color: Colors.transparent,
                     ),
-                    child: Text("Let\'s build your best life...",
-                        style: bestLifeStyle)),
-                const SizedBox(height: 10),
-                Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
+                    borderRadius: const BorderRadius.all(Radius.circular(20))),
+                child: Text("Let\'s build your best life...",
+                    style: bestLifeStyle)),
+            const SizedBox(height: 10),
+            Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
               IconButton(
                 icon: svgForward,
                 onPressed: () {
@@ -144,7 +139,6 @@ class _Setup1State extends State<Setup1> {
     );
   }
 }
-
 
 class SetupCat {
   int categoryid = 0;
@@ -168,15 +162,14 @@ class SetupTask {
 
   SetupTask(
       {required this.id,
-        required this.category,
-        required this.taskdescription,
-        required this.sunday,
-        required this.monday,
-        required this.tuesday,
-        required this.wednesday,
-        required this.thursday,
-        required this.friday,
-        required this.saturday,
-        required this.createDate});
+      required this.category,
+      required this.taskdescription,
+      required this.sunday,
+      required this.monday,
+      required this.tuesday,
+      required this.wednesday,
+      required this.thursday,
+      required this.friday,
+      required this.saturday,
+      required this.createDate});
 }
-

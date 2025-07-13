@@ -17,7 +17,6 @@ class Setup15 extends StatefulWidget {
   const Setup15(this.dd1Value, this.dd2Value, this.dd3Value, this.dd4Value,
       this.dd5Value);
 
-
   @override
   State<Setup15> createState() =>
       _Setup15State(dd1Value, dd2Value, dd3Value, dd4Value, dd5Value);
@@ -43,7 +42,7 @@ class _Setup15State extends State<Setup15> {
   Widget build(BuildContext context) {
     analytics.logEvent(name: '${setupVersion}_setup15');
     Color green =
-    Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000);
+        Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000);
 
     final lg = LinearGradient(
       begin: Alignment.topCenter,
@@ -61,91 +60,80 @@ class _Setup15State extends State<Setup15> {
     final Widget svgForward = SvgPicture.asset(forward,
         fit: BoxFit.scaleDown, semanticsLabel: 'forward');
 
-    double pyramidWidth = MediaQuery
-        .of(context)
-        .size
-        .width * 0.87;
-    double pyramidHeight = MediaQuery
-        .of(context)
-        .size
-        .width * 0.82;
-
+    double pyramidWidth = MediaQuery.of(context).size.width * 0.87;
+    double pyramidHeight = MediaQuery.of(context).size.width * 0.82;
 
     var mainTextStyle = const TextStyle(
         fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'SourceSans3');
-
 
     return Container(
         color: Colors.black,
         child: SafeArea(
             child: Scaffold(
           appBar: const NavBar(),
-          body: Column(
-              children: [
-                LinearProgressIndicator(
-                    value: 17/23,
-                    color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000)
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Essential Values',
-                  style: mainTextStyle,
-                ),
-                const SizedBox(height: 10),
-                Container(
-                    padding: const EdgeInsets.all(10.0),
-                    child: const Text(
-                      "Your essential values are building on top of your "
-                      "foundational values. Let's now define your daily "
-                      "actions for your essential values..."
-                    )),
-                const SizedBox(height: 20),
-                Stack(children: <Widget>[
-                  CustomPaint(
-                      size: Size(pyramidWidth, pyramidHeight),
-                      painter: DrawCat1(lg, dd1Value, 0)),
-                  CustomPaint(
-                      size: Size(pyramidWidth, pyramidHeight),
-                      painter: DrawCat2(lg, dd2Value, 0)),
-                  CustomPaint(
-                      size: Size(pyramidWidth, pyramidHeight),
-                      painter: DrawCat3(lg, dd3Value, 0)),
-                  CustomPaint(
-                      size: Size(pyramidWidth, pyramidHeight),
-                      painter: DrawCat4(lg, dd4Value, 0)),
-                  CustomPaint(
-                      size: Size(pyramidWidth, pyramidHeight),
-                      painter: DrawCat5(lg, dd5Value, 0)),
-                  CustomPaint(
-                      size: Size(pyramidWidth, pyramidHeight),
-                      painter: DrawCat6(greylg, '', 0)),
-                ]),
-                const SizedBox(height: 40),
-                IconButton(
-                  icon: svgForward,
-                  onPressed: () {
-                    setState(() {
-                      navigateToCat4Tasks();
-                    });
-                  },
-                ),
-                const SizedBox(height: 20),
-                RichText(
-                  text: TextSpan(
-                      text: 'Skip Setup',
-                      style: const TextStyle(
-                          color: Colors.blue,
-                          decoration: TextDecoration.underline,
-                          fontSize: 12),
-                      recognizer: TapGestureRecognizer()
-                        ..onTap = () {
-                          setState(() {
-                            showSkipAlertDialog(context);
-                          });
-                        }),
-                ),
-
-              ]),
+          body: Column(children: [
+            LinearProgressIndicator(
+                value: 17 / 23,
+                color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) +
+                    0xFF000000)),
+            const SizedBox(height: 10),
+            Text(
+              'Essential Values',
+              style: mainTextStyle,
+            ),
+            const SizedBox(height: 10),
+            Container(
+                padding: const EdgeInsets.all(10.0),
+                child: const Text(
+                    "Your essential values are building on top of your "
+                    "foundational values. Let's now define your daily "
+                    "actions for your essential values...")),
+            const SizedBox(height: 20),
+            Stack(children: <Widget>[
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat1(lg, dd1Value, 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat2(lg, dd2Value, 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat3(lg, dd3Value, 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat4(lg, dd4Value, 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat5(lg, dd5Value, 0)),
+              CustomPaint(
+                  size: Size(pyramidWidth, pyramidHeight),
+                  painter: DrawCat6(greylg, '', 0)),
+            ]),
+            const SizedBox(height: 40),
+            IconButton(
+              icon: svgForward,
+              onPressed: () {
+                setState(() {
+                  navigateToCat4Tasks();
+                });
+              },
+            ),
+            const SizedBox(height: 20),
+            RichText(
+              text: TextSpan(
+                  text: 'Skip Setup',
+                  style: const TextStyle(
+                      color: Colors.blue,
+                      decoration: TextDecoration.underline,
+                      fontSize: 12),
+                  recognizer: TapGestureRecognizer()
+                    ..onTap = () {
+                      setState(() {
+                        showSkipAlertDialog(context);
+                      });
+                    }),
+            ),
+          ]),
         )));
   }
 
@@ -165,9 +153,7 @@ class _Setup15State extends State<Setup15> {
           cats.clear();
           tasks.clear();
           Navigator.popUntil(
-              context,
-              ModalRoute.withName(
-                  Navigator.defaultRouteName));
+              context, ModalRoute.withName(Navigator.defaultRouteName));
         });
       },
     );
@@ -176,9 +162,9 @@ class _Setup15State extends State<Setup15> {
       title: const Text("Skip Setup?"),
       content: const Text(
           "Green Pyramid will not be useful to you until you complete setup. "
-              "You can resume setup through the menu in the upper right of the home "
-              "screen. Press \"Skip Setup\" to skip setup or \"Cancel\" to continue "
-              "setup."),
+          "You can resume setup through the menu in the upper right of the home "
+          "screen. Press \"Skip Setup\" to skip setup or \"Cancel\" to continue "
+          "setup."),
       actions: [
         cancelButton,
         continueButton,
@@ -192,7 +178,6 @@ class _Setup15State extends State<Setup15> {
       },
     );
   }
-
 
   void navigateToCat4Tasks() async {
     await Navigator.push(
@@ -214,4 +199,3 @@ class Cat {
     cat = obj["cat"];
   }
 }
-

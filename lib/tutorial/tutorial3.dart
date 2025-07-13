@@ -27,11 +27,7 @@ class _Tutorial3State extends State<Tutorial3> {
     final Widget svgForward = SvgPicture.asset(forward,
         fit: BoxFit.scaleDown, semanticsLabel: 'forward');
 
-    List<String> tasks = [
-      "Exercise",
-      "Hip Mobility",
-      "Shoulder Mobility"
-    ];
+    List<String> tasks = ["Exercise", "Hip Mobility", "Shoulder Mobility"];
 
     return SafeArea(
         child: Scaffold(
@@ -41,46 +37,46 @@ class _Tutorial3State extends State<Tutorial3> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const Text('Tutorial (3 of 5)'),
-                      const SizedBox(height: 10),
-                      Container(
-                          padding: const EdgeInsets.all(10.0),
-                          child: const Text("Each category has daily tasks that you need to do "
-                              "in order to keep your pyramid green.")),
+                  const Text('Tutorial (3 of 5)'),
+                  const SizedBox(height: 10),
+                  Container(
+                      padding: const EdgeInsets.all(10.0),
+                      child: const Text(
+                          "Each category has daily tasks that you need to do "
+                          "in order to keep your pyramid green.")),
                   const SizedBox(height: 100),
-                Container(
-                // constrain the scrollview to 1/3 of the height
-                // of the screen.
-                height: MediaQuery.of(context).size.height / 3,
-            child: Scrollbar(
-                child: ListView.builder(
-                    itemCount: tasks.length,
-                    itemBuilder:
-                        (BuildContext context, int index) {
-                      return CheckboxListTile(
-                          title: Text(tasks[index]),
-                          subtitle: const Text('Health'),
-                          value: true,
-                          onChanged: (bool? value) {
-                            setState(() {});
-                          });
-                    }))),
-                      Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: <Widget>[
-                            Column(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                children: <Widget>[
-                                  IconButton(
-                                    icon: svgForward,
-                                    onPressed: () {
-                                      setState(() {
-                                        navigateToTutorial4();
-                                      });
-                                    },
-                                  ),
-                                ])
-                          ]),
+                  Container(
+                      // constrain the scrollview to 1/3 of the height
+                      // of the screen.
+                      height: MediaQuery.of(context).size.height / 3,
+                      child: Scrollbar(
+                          child: ListView.builder(
+                              itemCount: tasks.length,
+                              itemBuilder: (BuildContext context, int index) {
+                                return CheckboxListTile(
+                                    title: Text(tasks[index]),
+                                    subtitle: const Text('Health'),
+                                    value: true,
+                                    onChanged: (bool? value) {
+                                      setState(() {});
+                                    });
+                              }))),
+                  Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: <Widget>[
+                        Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: <Widget>[
+                              IconButton(
+                                icon: svgForward,
+                                onPressed: () {
+                                  setState(() {
+                                    navigateToTutorial4();
+                                  });
+                                },
+                              ),
+                            ])
+                      ]),
                   const SizedBox(height: 10),
                 ]))));
   }

@@ -32,9 +32,9 @@ class _EditTaskListState extends State<EditTaskList> {
             appBar: const NavBar(),
             body: Center(
                 child: Column(children: [
-                  const SizedBox(height: 10),
-                  Text(category),
-                  FutureBuilder(
+              const SizedBox(height: 10),
+              Text(category),
+              FutureBuilder(
                   future: getTasks(),
                   builder: (context, AsyncSnapshot snapshot) {
                     if (!snapshot.hasData) {
@@ -77,7 +77,7 @@ class _EditTaskListState extends State<EditTaskList> {
                                                     navigateToEditTaskDetail(
                                                         snapshot.data[index]
                                                             .category,
-                                                    snapshot.data[index]
+                                                        snapshot.data[index]
                                                             .taskdescription);
                                                   });
                                                 },
@@ -201,7 +201,6 @@ class _EditTaskListState extends State<EditTaskList> {
     );
   }
 
-
   void insertTaskAndTaskLog(String desc) async {
     final intl.DateFormat formatter = intl.DateFormat('yyyy-MM-dd');
 
@@ -226,8 +225,8 @@ class _EditTaskListState extends State<EditTaskList> {
   }
 
   void navigateToEditTaskDetail(String cat, String desc) async {
-    await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => EditTaskDetail(cat, desc)));
+    await Navigator.push(context,
+        MaterialPageRoute(builder: (context) => EditTaskDetail(cat, desc)));
     setState(() {});
   }
 }

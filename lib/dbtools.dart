@@ -22,7 +22,7 @@ class DBTools {
       DatabaseHelper.columnCategory: physical,
       DatabaseHelper.columnTaskDescription: 'Hip Mobility',
       DatabaseHelper.columnCreateDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTask(taskRow);
 
@@ -31,7 +31,7 @@ class DBTools {
       DatabaseHelper.columnCategory: physical,
       DatabaseHelper.columnTaskDescription: 'Shoulder Mobility',
       DatabaseHelper.columnCreateDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTask(taskRow);
 
@@ -40,7 +40,7 @@ class DBTools {
       DatabaseHelper.columnCategory: physical,
       DatabaseHelper.columnTaskDescription: 'CrossFit',
       DatabaseHelper.columnCreateDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTask(taskRow);
 
@@ -49,7 +49,7 @@ class DBTools {
       DatabaseHelper.columnCategory: mental,
       DatabaseHelper.columnTaskDescription: 'Box Breathing',
       DatabaseHelper.columnCreateDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTask(taskRow);
 
@@ -58,7 +58,7 @@ class DBTools {
       DatabaseHelper.columnCategory: mental,
       DatabaseHelper.columnTaskDescription: 'Gratitude Journal',
       DatabaseHelper.columnCreateDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTask(taskRow);
 
@@ -67,7 +67,7 @@ class DBTools {
       DatabaseHelper.columnCategory: mental,
       DatabaseHelper.columnTaskDescription: 'Walk In Nature',
       DatabaseHelper.columnCreateDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTask(taskRow);
 
@@ -76,7 +76,7 @@ class DBTools {
       DatabaseHelper.columnCategory: financial,
       DatabaseHelper.columnTaskDescription: 'Review Budget',
       DatabaseHelper.columnCreateDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTask(taskRow);
 
@@ -85,7 +85,7 @@ class DBTools {
       DatabaseHelper.columnCategory: financial,
       DatabaseHelper.columnTaskDescription: 'Business Dev',
       DatabaseHelper.columnCreateDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTask(taskRow);
 
@@ -94,7 +94,7 @@ class DBTools {
       DatabaseHelper.columnCategory: financial,
       DatabaseHelper.columnTaskDescription: 'Business Ops',
       DatabaseHelper.columnCreateDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTask(taskRow);
 
@@ -103,7 +103,7 @@ class DBTools {
       DatabaseHelper.columnCategory: father,
       DatabaseHelper.columnTaskDescription: 'Play With Kids',
       DatabaseHelper.columnCreateDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTask(taskRow);
 
@@ -112,7 +112,7 @@ class DBTools {
       DatabaseHelper.columnCategory: father,
       DatabaseHelper.columnTaskDescription: 'Teach Kids',
       DatabaseHelper.columnCreateDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTask(taskRow);
 
@@ -121,7 +121,7 @@ class DBTools {
       DatabaseHelper.columnCategory: spouse,
       DatabaseHelper.columnTaskDescription: 'Send Encouraging Text',
       DatabaseHelper.columnCreateDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTask(taskRow);
 
@@ -130,7 +130,7 @@ class DBTools {
       DatabaseHelper.columnCategory: spouse,
       DatabaseHelper.columnTaskDescription: 'Quality Time',
       DatabaseHelper.columnCreateDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTask(taskRow);
 
@@ -139,7 +139,7 @@ class DBTools {
       DatabaseHelper.columnCategory: flow,
       DatabaseHelper.columnTaskDescription: 'Mountain Biking',
       DatabaseHelper.columnCreateDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTask(taskRow);
   }
@@ -157,7 +157,7 @@ class DBTools {
       DatabaseHelper.columnTLTaskDescription: 'Hip Mobility',
       DatabaseHelper.columnTLChecked: 'false',
       DatabaseHelper.columnTLTaskDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTaskLog(taskLogRow);
 
@@ -167,7 +167,7 @@ class DBTools {
       DatabaseHelper.columnTLTaskDescription: 'Shoulder Mobility',
       DatabaseHelper.columnTLChecked: 'true',
       DatabaseHelper.columnTLTaskDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTaskLog(taskLogRow);
 
@@ -177,7 +177,7 @@ class DBTools {
       DatabaseHelper.columnTLTaskDescription: 'CrossFit',
       DatabaseHelper.columnTLChecked: 'false',
       DatabaseHelper.columnTLTaskDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTaskLog(taskLogRow);
 
@@ -242,7 +242,7 @@ class DBTools {
       DatabaseHelper.columnTLTaskDescription: 'Box Breathing',
       DatabaseHelper.columnTLChecked: 'true',
       DatabaseHelper.columnTLTaskDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTaskLog(taskLogRow);
 
@@ -252,7 +252,7 @@ class DBTools {
       DatabaseHelper.columnTLTaskDescription: 'Gratitude Journal',
       DatabaseHelper.columnTLChecked: 'true',
       DatabaseHelper.columnTLTaskDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTaskLog(taskLogRow);
 
@@ -262,7 +262,7 @@ class DBTools {
       DatabaseHelper.columnTLTaskDescription: 'Walk In Nature',
       DatabaseHelper.columnTLChecked: 'false',
       DatabaseHelper.columnTLTaskDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTaskLog(taskLogRow);
 
@@ -305,7 +305,7 @@ class DBTools {
       DatabaseHelper.columnTLTaskDescription: 'Review Budget',
       DatabaseHelper.columnTLChecked: 'false',
       DatabaseHelper.columnTLTaskDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTaskLog(taskLogRow);
 
@@ -315,7 +315,7 @@ class DBTools {
       DatabaseHelper.columnTLTaskDescription: 'Business Dev',
       DatabaseHelper.columnTLChecked: 'true',
       DatabaseHelper.columnTLTaskDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTaskLog(taskLogRow);
 
@@ -325,7 +325,7 @@ class DBTools {
       DatabaseHelper.columnTLTaskDescription: 'Business Ops',
       DatabaseHelper.columnTLChecked: 'true',
       DatabaseHelper.columnTLTaskDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTaskLog(taskLogRow);
 
@@ -335,7 +335,7 @@ class DBTools {
       DatabaseHelper.columnTLTaskDescription: 'Throw The Football',
       DatabaseHelper.columnTLChecked: 'true',
       DatabaseHelper.columnTLTaskDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTaskLog(taskLogRow);
 
@@ -345,7 +345,7 @@ class DBTools {
       DatabaseHelper.columnTLTaskDescription: 'Teach Kids',
       DatabaseHelper.columnTLChecked: 'false',
       DatabaseHelper.columnTLTaskDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTaskLog(taskLogRow);
 
@@ -355,7 +355,7 @@ class DBTools {
       DatabaseHelper.columnTLTaskDescription: 'Text spouse',
       DatabaseHelper.columnTLChecked: 'false',
       DatabaseHelper.columnTLTaskDate:
-      formatter.format(DateTime.now()).toString()
+          formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTaskLog(taskLogRow);
   }
