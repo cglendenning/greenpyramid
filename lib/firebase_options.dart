@@ -3,6 +3,7 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
+import 'package:life_ops/secrets.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
@@ -46,30 +47,30 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAKOLTsCnSkNJOyKFBuKCoHr2IVlijvwuU',
-    appId: '1:240516747661:web:e34a3faac6fea991b8edc4',
-    messagingSenderId: '240516747661',
-    projectId: 'life-ops',
-    authDomain: 'life-ops.firebaseapp.com',
-    storageBucket: 'life-ops.appspot.com',
-    measurementId: 'G-C8YB5PM7E5',
+  static final FirebaseOptions web = FirebaseOptions(
+    apiKey: firebaseWebApiKey,
+    appId: firebaseWebAppId,
+    messagingSenderId: firebaseWebMessagingSenderId,
+    projectId: firebaseWebProjectId,
+    authDomain: firebaseWebAuthDomain,
+    storageBucket: firebaseWebStorageBucket,
+    measurementId: firebaseWebMeasurementId,
   );
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyApK3GhsgPbPl3IU8AC9bfBen4hZ_hF0LI',
-    appId: '1:240516747661:android:924d4e04235e4d1bb8edc4',
-    messagingSenderId: '240516747661',
-    projectId: 'life-ops',
-    storageBucket: 'life-ops.appspot.com',
+  static final FirebaseOptions android = FirebaseOptions(
+    apiKey: firebaseAndroidApiKey,
+    appId: firebaseAndroidAppId,
+    messagingSenderId: firebaseAndroidMessagingSenderId,
+    projectId: firebaseAndroidProjectId,
+    storageBucket: firebaseAndroidStorageBucket,
   );
 
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDPrOOVcKLIfMJTgJU1UZQ-21I_P44UTVw',
-    appId: '1:240516747661:ios:6a1aff094bb40a24b8edc4',
-    messagingSenderId: '240516747661',
-    projectId: 'life-ops',
-    storageBucket: 'life-ops.appspot.com',
-    iosBundleId: 'com.cglendenning.lifeops',
+  static final FirebaseOptions ios = FirebaseOptions(
+    apiKey: firebaseIOSApiKey,
+    appId: firebaseIOSAppId,
+    messagingSenderId: firebaseIOSMessagingSenderId,
+    projectId: firebaseIOSProjectId,
+    storageBucket: firebaseIOSStorageBucket,
+    iosBundleId: firebaseIOSBundleId,
   );
 }

@@ -11,6 +11,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:flutter/widgets.dart';
+import 'secrets.dart';
 
 final GlobalKey<NavigatorState> navigatorKey =
     GlobalKey(debugLabel: "Main Navigator");
@@ -60,9 +61,9 @@ Future<void> initPlatformState() async {
   await Purchases.setLogLevel(LogLevel.debug);
   var configuration;
   if (Platform.isAndroid) {
-    configuration = PurchasesConfiguration('goog_vghfDYUMYMIQWVQSXmmSEUnvRJP');
+    configuration = PurchasesConfiguration(revenuecatAndroidKey);
   } else if (Platform.isIOS) {
-    configuration = PurchasesConfiguration('appl_QKKaUAQcMOlmpopwAJTKzmpaNEt');
+    configuration = PurchasesConfiguration(revenuecatIOSKey);
   }
   await Purchases.configure(configuration);
 
