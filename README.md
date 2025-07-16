@@ -1,3 +1,23 @@
+# Green Pyramid
+
+Green Pyramid is an AI-empowered system designed to make it effortless to live your best possible life. The methodology is built on the principle that foundational habits have exponentially greater impact on your life than non-foundational ones. Think of it like a real pyramid—if the foundation is weak, the whole structure crumbles. The same applies to your life.
+
+## The Green Pyramid Methodology
+
+- **Hierarchical Habit Tracking:** The pyramid has 6 levels, with your most important values at the bottom (foundational) and less critical ones at the top. Categories 1, 2, and 3 are your foundational values—the bedrock of life success and well-being. Gaps in these foundational habits carry significantly more weight than gaps in higher categories.
+- **Personalized Values and Actions:** You choose your 6 most important life values or categories. For each, you define specific daily tasks or habits. These are not random tasks, but carefully chosen actions that align with your core values and move you toward your best life.
+- **Daily Action and Review:** Each value requires daily action if you are truly committed to it. You receive three notifications per day (morning, afternoon, evening) to check in on your tasks. Mark tasks as completed or not completed; your pyramid colors update based on your completion percentage for each category.
+- **Color-Coded Feedback:**
+  - **Green:** Crushing most or all of your habits toward your best life
+  - **Yellow:** Executing some of your habits
+  - **Red:** Doing few or none of your habits
+  The goal is to keep your pyramid as green as possible, especially the foundational levels.
+- **AI Coaching:** The Coach feature is an AI-powered life coach that analyzes your habit tracking data and provides personalized insights. It prioritizes foundational habit gaps while acknowledging progress in all areas, offering specific, actionable guidance.
+- **Progress and Adaptation:** The system tracks your completion percentage over time, so occasional missed days won't drastically affect your overall progress. The key is consistency over the long term. You can edit your categories and tasks at any time as your life evolves.
+- **Visual and Motivational:** The visual pyramid makes it easy to see your life balance at a glance. The methodology encourages you to focus on what matters most, build a solid foundation, and use daily actions to move toward your best self.
+
+---
+
 # Life Ops
 
 A cross-platform productivity and coaching app built with Flutter.
