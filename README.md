@@ -18,10 +18,6 @@ Green Pyramid is an AI-empowered system designed to make it effortless to live y
 
 ---
 
-# Life Ops
-
-A cross-platform productivity and coaching app built with Flutter.
-
 ## Features
 
 - **Personalized Task Management:** Organize daily tasks by value-driven categories.
