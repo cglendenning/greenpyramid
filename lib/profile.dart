@@ -83,7 +83,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         isReviewing = true;
         isRegenerating = false;
       });
-    } catch (e, s) {
+    } catch (e) {
       setState(() {
         newVisionStatement = 'Failed to generate vision statement.';
         isReviewing = true;
@@ -155,7 +155,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 .trim();
         isLoadingAnalysis = false;
       });
-    } catch (e, s) {
+    } catch (e) {
       setState(() {
         progressAnalysis = 'Failed to generate progress analysis.';
         isLoadingAnalysis = false;
