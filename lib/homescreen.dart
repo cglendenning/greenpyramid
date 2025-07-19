@@ -25,6 +25,7 @@ import 'package:life_ops/subscription_status.dart';
 import 'package:life_ops/coaching.dart';
 import 'package:life_ops/are_we_a_fit.dart';
 import 'package:life_ops/profile.dart';
+import 'package:life_ops/visualizations.dart';
 
 int currentScreenIndex = 0;
 
@@ -180,7 +181,8 @@ class _HomeScreen extends State<HomeScreenWidget> {
                 _cat6Future,
               ),
               Coach(showAppBar: false),
-              const Settings()
+              const Settings(),
+              const VisualizationsScreen(), // NEW: Visualizations screen
             ][currentScreenIndex]));
   }
 
@@ -671,6 +673,14 @@ class _BottomNavBarState extends State<BottomNavBar> {
         colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
         semanticsLabel: 'Pencil');
 
+    final Widget svgChart = SvgPicture.asset(
+        'images/svg/bottom_nav/chart.svg',
+        height: 26,
+        width: 26,
+        fit: BoxFit.contain,
+        colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+        semanticsLabel: 'Chart');
+
     double selectedHeight = 50;
     double selectedWidth = 50;
 
@@ -710,6 +720,14 @@ class _BottomNavBarState extends State<BottomNavBar> {
         colorFilter: ColorFilter.mode(triangleColor, BlendMode.srcIn),
         semanticsLabel: 'Pencil Selected');
 
+    final Widget svgChartSelected = SvgPicture.asset(
+        'images/svg/bottom_nav/chart_selected.svg',
+        height: selectedHeight,
+        width: selectedWidth,
+        fit: BoxFit.contain,
+        colorFilter: ColorFilter.mode(triangleColor, BlendMode.srcIn),
+        semanticsLabel: 'Chart Selected');
+
     String hexShadowColor = "#CBCBCB";
 
     return Container(
@@ -727,33 +745,14 @@ class _BottomNavBarState extends State<BottomNavBar> {
           onDestinationSelected: (int index) {
             switch (index) {
               case 0:
-                if (currentScreenIndex != index) {
-                  if (kDebugMode) {
-                    print('currentScreenIndex: $currentScreenIndex');
-                  }
-                  print('index: $index');
-                  currentScreenIndex = index;
-                }
               case 1:
-                if (currentScreenIndex != index) {
-                  print('currentScreenIndex: $currentScreenIndex');
-                  print('index: $index');
-                  currentScreenIndex = index;
-                }
               case 2:
-                if (currentScreenIndex != index) {
-                  if (kDebugMode) {
-                    print('currentScreenIndex: $currentScreenIndex');
-                  }
-                  print('index: $index');
-                  currentScreenIndex = index;
-                }
               case 3:
+              case 4:
                 if (currentScreenIndex != index) {
-                  print('currentScreenIndex: $currentScreenIndex');
-                  print('index: $index');
                   currentScreenIndex = index;
                 }
+                break;
             }
             homeScreenCallback();
           },
@@ -779,6 +778,11 @@ class _BottomNavBarState extends State<BottomNavBar> {
             NavigationDestination(
               selectedIcon: svgPencilSelected,
               icon: svgPencil,
+              label: '',
+            ),
+            NavigationDestination(
+              selectedIcon: svgChartSelected,
+              icon: svgChart,
               label: '',
             ),
           ],
