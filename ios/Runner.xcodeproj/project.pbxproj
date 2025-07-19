@@ -209,7 +209,6 @@
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				E232D04116FAD9A024732F17 /* [CP] Embed Pods Frameworks */,
 				ADCF8CC074283064D9BB203C /* [CP] Copy Pods Resources */,
-				44EC4C8B2E24710B0028F2FA /* Run Script */,
 			);
 			buildRules = (
 			);
@@ -297,25 +296,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin";
-		};
-		44EC4C8B2E24710B0028F2FA /* Run Script */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Run Script";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "if [ -d \"${PROJECT_DIR}/../build/ios/Release-iphoneos/Flutter.framework.dSYM\" ]; then\n  mkdir -p \"${DWARF_DSYM_FOLDER_PATH}\"\n  cp -r \"${PROJECT_DIR}/../build/ios/Release-iphoneos/Flutter.framework.dSYM\" \"${DWARF_DSYM_FOLDER_PATH}/\"\nfi\n";
+			shellScript = "/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin\n";
 		};
 		9740EEB61CF901F6004384FC /* Run Script */ = {
 			isa = PBXShellScriptBuildPhase;
