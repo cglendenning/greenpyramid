@@ -46,7 +46,7 @@ dependencies:
   path: 1.9.1
   path_provider: ^2.1.5
   permission_handler: ^12.0.0+1
-  purchases_flutter: ^8.7.4
+  purchases_flutter: ^9.0.0
   rxdart: ^0.28.0
   sqflite: ^2.4.2
   url_launcher: ^6.3.1
@@ -179,6 +179,3 @@ flutter_launcher_icons:
   macos:
     generate: true
     image_path: "images/logo.png"
-
-dependency_overrides:
-  flutter_inappwebview: ^6.0.0

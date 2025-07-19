@@ -125,12 +125,12 @@ PODS:
   - permission_handler_apple (9.3.0):
     - Flutter
   - PromisesObjC (2.4.0)
-  - purchases_flutter (8.10.6):
+  - purchases_flutter (9.0.0):
     - Flutter
-    - PurchasesHybridCommon (= 14.2.0)
-  - PurchasesHybridCommon (14.2.0):
-    - RevenueCat (= 5.32.0)
-  - RevenueCat (5.32.0)
+    - PurchasesHybridCommon (= 15.0.0)
+  - PurchasesHybridCommon (15.0.0):
+    - RevenueCat (= 5.33.0)
+  - RevenueCat (5.33.0)
   - sqflite_darwin (0.0.4):
     - Flutter
     - FlutterMacOS
@@ -234,9 +234,9 @@ SPEC CHECKSUMS:
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
   permission_handler_apple: 9878588469a2b0d0fc1e048d9f43605f92e6cec2
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
-  purchases_flutter: 7ab81f1fa09fa531199fd23281c72a2b99b09e2c
-  PurchasesHybridCommon: f1650b33e9a1dd04d5e8a40dfe757f39e63f935c
-  RevenueCat: 7e1d0768fb287c9983173c9b28e39ccbeeb828a9
+  purchases_flutter: f9172ed5de8005287385d69d5c51788a2b7c2b08
+  PurchasesHybridCommon: 18b65ad813f50460d4af7e033abb5cc44a686a6f
+  RevenueCat: 9fd6fc0ea8a22fd9d11242feb298f3bb6f9f86db
   sqflite_darwin: 5a7236e3b501866c1c9befc6771dfd73ffb8702d
   url_launcher_ios: 5334b05cef931de560670eeae103fd3e431ac3fe
   video_player_avfoundation: 7c6c11d8470e1675df7397027218274b6d2360b3
