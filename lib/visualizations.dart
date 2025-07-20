@@ -698,7 +698,7 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
             const SizedBox(width: 10),
             Text(
               _freeCommentsRemaining > 0 
-                ? "$_freeCommentsRemaining AI insights left"
+                ? "$_freeCommentsRemaining free insights left"
                 : "Upgrade for unlimited insights",
               style: const TextStyle(
                 color: Colors.white,
