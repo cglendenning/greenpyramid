@@ -247,41 +247,17 @@ class RadarChartPainter extends CustomPainter {
     // Painting the axis for each given feature
     var angle = (2 * pi) / features.length;
 
-    double cat1Radians = vm.radians(30);
-    double cat2Radians = vm.radians(90);
-    double cat3Radians = vm.radians(-31);
-    double cat4Radians = vm.radians(35);
-    double cat5Radians = vm.radians(90);
-    double cat6Radians = vm.radians(-30);
+    vm.radians(30);
+    vm.radians(90);
+    vm.radians(-31);
+    vm.radians(35);
+    vm.radians(90);
+    vm.radians(-30);
 
-    List<double> rads = [
-      cat1Radians,
-      cat2Radians,
-      cat3Radians,
-      cat4Radians,
-      cat5Radians,
-      cat6Radians
-    ];
 
     // Adjust nudge values based on chart radius for better responsiveness
-    double nudgeScale = radius / 100; // Scale factor based on chart size
-    List<int> xRotateNudge = [
-      (10 * nudgeScale).round(),
-      (45 * nudgeScale).round(),
-      (-180 * nudgeScale).round(),
-      (-170 * nudgeScale).round(),
-      (35 * nudgeScale).round(),
-      (75 * nudgeScale).round()
-    ];
+// Scale factor based on chart size
 
-    List<int> yRotateNudge = [
-      (-50 * nudgeScale).round(),
-      (-100 * nudgeScale).round(),
-      (145 * nudgeScale).round(),
-      (-70 * nudgeScale).round(),
-      (-115 * nudgeScale).round(),
-      (-60 * nudgeScale).round()
-    ];
 
     features.asMap().forEach((index, feature) {
       // Calculate the angle for the gridline position (for axis lines and chart data)
