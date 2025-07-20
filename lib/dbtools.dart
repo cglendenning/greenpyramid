@@ -448,11 +448,11 @@ class DBTools {
     // 4. Insert 30 days of random completion logs for each task
     final allTasks = await db.queryAllTasks();
     final rand = Random();
-    for (int dayOffset = 0; dayOffset < 30; dayOffset++) {
+    for (int dayOffset = 0; dayOffset < 60; dayOffset++) {
       final date = now.subtract(Duration(days: dayOffset));
       final dateStr = intl.DateFormat('yyyy-MM-dd').format(date);
       for (var task in allTasks) {
-        final completed = rand.nextBool();
+        final completed = rand.nextDouble() < 0.75;
         await db.insertTaskLog({
           DatabaseHelper.columnTLCategory: task[DatabaseHelper.columnCategory],
           DatabaseHelper.columnTLTaskDescription: task[DatabaseHelper.columnTaskDescription],

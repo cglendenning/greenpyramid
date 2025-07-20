@@ -142,25 +142,18 @@ class _MotivationState extends State<Motivation> {
 
   /*
   Future<Widget> subscribeLink() async {
-    // Purchases.invalidateCustomerInfoCache();
-
     var link;
-
-    CustomerInfo ci = await Purchases.getCustomerInfo();
-
+    bool isSubscribed = await utils.Utils().isUserSubscribed();
     var daysRemaining = installDate
         .add(const Duration(days: 7))
         .difference(tz.TZDateTime.now(tz.local))
         .inDays;
-
     String dayString = 'days remaining';
-
     if (daysRemaining == 1) {
       dayString = 'day remaining!!';
     }
-
     // FT: No subscription and free trial days remaining > 0
-    if (ci.activeSubscriptions.isEmpty && daysRemaining > 0) {
+    if (!isSubscribed && daysRemaining > 0) {
       link = RichText(
         text: TextSpan(
             text: 'Subscribe. $daysRemaining $dayString',
@@ -175,7 +168,7 @@ class _MotivationState extends State<Motivation> {
               }),
       );
       // S: Active subscription found.
-    } else if (ci.activeSubscriptions.isNotEmpty) {
+    } else if (isSubscribed) {
       link = const Text('');
       // U: No active subscription found, and daysRemaining is 0 or less.
     } else if (paywalled == false) {

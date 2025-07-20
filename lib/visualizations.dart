@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:visibility_detector/visibility_detector.dart';
 
 class Cat {
   int categoryid;
@@ -74,26 +75,31 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
   @override
   void initState() {
     super.initState();
-    _checkPaywallAndLoad();
     _assignButtonTexts();
     _initializeCommentaryTracking();
     _loadCommentaryCountdown();
-    _checkSubscriptionStatus();
+    _loadDataFuture = _loadAllData(); // Start loading data immediately
+    _checkPaywallAndSubscription(); // Run paywall/subscription check in parallel
   }
 
-  Future<void> _checkSubscriptionStatus() async {
-    try {
-      bool subscriptionStatus = await utils.Utils().isUserSubscribed();
-      if (mounted) {
-        setState(() {
-          _isSubscribed = subscriptionStatus;
-        });
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error checking subscription status: $e');
-      }
+  Future<void> _checkPaywallAndSubscription() async {
+    // Check chat message count and subscription status in the background
+    final chatHistory = await dbHelper.getChatHistory();
+    final userMessages = chatHistory.where((m) => m['sender'] == 'user').length;
+    final isSubscribed = await utils.Utils().isUserSubscribed();
+    if (!isSubscribed && userMessages >= 10) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => Paywall()),
+        );
+      });
+      return;
     }
+    setState(() {
+      _paywalled = false;
+      _checkingPaywall = false;
+      _isSubscribed = isSubscribed;
+    });
   }
 
   void _initializeCommentaryTracking() {
@@ -724,6 +730,173 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
         body: Center(child: CircularProgressIndicator()),
       );
     }
+    final chartDefinitions = [
+      {
+        'title': 'Balance Across Categories',
+        'builder': () => Stack(
+          children: [
+            custom_radar.RadarChart(
+              ticks: radarTicks,
+              features: [radarFeatures[0], '', '', '', '', ''],
+              data: radarData[0],
+            ),
+            custom_radar.RadarChart(
+              ticks: radarTicks,
+              features: ['', radarFeatures[1], '', '', '', ''],
+              data: radarData[1],
+            ),
+            custom_radar.RadarChart(
+              ticks: radarTicks,
+              features: ['', '', radarFeatures[2], '', '', ''],
+              data: radarData[2],
+            ),
+            custom_radar.RadarChart(
+              ticks: radarTicks,
+              features: ['', '', '', radarFeatures[3], '', ''],
+              data: radarData[3],
+            ),
+            custom_radar.RadarChart(
+              ticks: radarTicks,
+              features: ['', '', '', '', radarFeatures[4], ''],
+              data: radarData[4],
+            ),
+            custom_radar.RadarChart(
+              ticks: radarTicks,
+              features: ['', '', '', '', '', radarFeatures[5]],
+              data: radarData[5],
+            ),
+          ],
+        ),
+        'gradientStart': const Color(0xFF667eea),
+        'gradientEnd': const Color(0xFF764ba2),
+        'chartHeight': 250.0,
+        'chartType': 'radar',
+      },
+      {
+        'title': 'Longest Streaks',
+        'builder': () => SfCartesianChart(
+          margin: const EdgeInsets.fromLTRB(10, 10, 10, 80),
+          primaryXAxis: CategoryAxis(
+            majorGridLines: const MajorGridLines(width: 0),
+            labelStyle: const TextStyle(
+              color: Colors.white,
+              fontSize: 8,
+              fontWeight: FontWeight.w500,
+            ),
+            labelRotation: 45,
+            labelIntersectAction: AxisLabelIntersectAction.wrap,
+            labelAlignment: LabelAlignment.start,
+          ),
+          primaryYAxis: NumericAxis(
+            majorGridLines: const MajorGridLines(width: 0),
+            labelStyle: const TextStyle(color: Colors.white),
+          ),
+          series: <CartesianSeries>[
+            ColumnSeries<StreakData, String>(
+              dataSource: streaksData,
+              xValueMapper: (StreakData data, _) => data.category,
+              yValueMapper: (StreakData data, _) => data.streak,
+              borderRadius: BorderRadius.circular(8),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.white.withValues(alpha: 0.9),
+                  Colors.white.withValues(alpha: 0.6),
+                ],
+              ),
+            ),
+          ],
+        ),
+        'gradientStart': const Color(0xFFf093fb),
+        'gradientEnd': const Color(0xFFf5576c),
+        'chartHeight': 300.0,
+        'chartType': 'streaks',
+      },
+      {
+        'title': 'Daily Completion Rate',
+        'builder': () => SfCartesianChart(
+          primaryXAxis: DateTimeAxis(
+            majorGridLines: const MajorGridLines(width: 0),
+            labelStyle: const TextStyle(color: Colors.white),
+            dateFormat: DateFormat('MMM dd'),
+          ),
+          primaryYAxis: NumericAxis(
+            majorGridLines: const MajorGridLines(width: 0),
+            labelStyle: const TextStyle(color: Colors.white),
+            numberFormat: NumberFormat.percentPattern(),
+          ),
+          series: <CartesianSeries>[
+            SplineAreaSeries<DailyCompletionData, DateTime>(
+              dataSource: dailyCompletionData,
+              xValueMapper: (DailyCompletionData data, _) => data.date,
+              yValueMapper: (DailyCompletionData data, _) => data.percentage / 100,
+              gradient: LinearGradient(
+                colors: [
+                  Colors.white.withValues(alpha: 0.6),
+                  Colors.white.withValues(alpha: 0.1),
+                ],
+              ),
+            ),
+          ],
+        ),
+        'gradientStart': const Color(0xFF4facfe),
+        'gradientEnd': const Color(0xFF00f2fe),
+        'chartHeight': 200.0,
+        'chartType': 'daily',
+      },
+      {
+        'title': 'Category Trends',
+        'builder': () => SfCartesianChart(
+          primaryXAxis: DateTimeAxis(
+            majorGridLines: const MajorGridLines(width: 0),
+            labelStyle: const TextStyle(color: Colors.white),
+            dateFormat: DateFormat('MMM dd'),
+          ),
+          primaryYAxis: NumericAxis(
+            majorGridLines: const MajorGridLines(width: 0),
+            labelStyle: const TextStyle(color: Colors.white),
+            numberFormat: NumberFormat.percentPattern(),
+          ),
+          series: categoryTrendsData.entries.map((entry) =>
+            SplineSeries<TrendData, DateTime>(
+              dataSource: entry.value,
+              xValueMapper: (TrendData data, _) => data.date,
+              yValueMapper: (TrendData data, _) => data.percentage / 100,
+              name: entry.key,
+              color: _getCategoryColor(categoryTrendsData.keys.toList().indexOf(entry.key)),
+            )
+          ).toList().cast<CartesianSeries>(),
+        ),
+        'gradientStart': const Color(0xFF43e97b),
+        'gradientEnd': const Color(0xFF38f9d7),
+        'chartHeight': 200.0,
+        'chartType': 'trends',
+      },
+      {
+        'title': 'Task Completion Overview',
+        'builder': () => SfCircularChart(
+          series: <CircularSeries>[
+            PieSeries<PieData, String>(
+              dataSource: pieData,
+              xValueMapper: (PieData data, _) => data.category,
+              yValueMapper: (PieData data, _) => data.value,
+              pointColorMapper: (PieData data, _) => data.color,
+              dataLabelSettings: const DataLabelSettings(
+                isVisible: true,
+                labelPosition: ChartDataLabelPosition.outside,
+                textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        'gradientStart': const Color(0xFFfa709a),
+        'gradientEnd': const Color(0xFFfee140),
+        'chartHeight': 200.0,
+        'chartType': 'pie',
+      },
+    ];
+
     return SafeArea(
       child: Scaffold(
         body: Stack(
@@ -749,243 +922,85 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
                       ),
                     );
                   }
-                  return ListView(
+                  return ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    children: [
-                      const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          const Color(0xFF4CAF50).withValues(alpha: 0.1),
-                          const Color(0xFF66BB6A).withValues(alpha: 0.05),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: const Color(0xFF4CAF50).withValues(alpha: 0.2),
-                        width: 1,
-                      ),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                    itemCount: chartDefinitions.length + 2,
+                    itemBuilder: (context, index) {
+                      if (index == 0) {
+                        return Column(
                           children: [
-                            Icon(
-                              Icons.analytics,
-                              color: const Color(0xFF4CAF50),
-                              size: 28,
-                            ),
-                            const SizedBox(width: 12),
-                            const Flexible(
-                              child: Text(
-                                'Your Green Pyramid Analysis',
-                                style: TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xFF2d3748),
+                            const SizedBox(height: 20),
+                            Container(
+                              padding: const EdgeInsets.all(24),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [
+                                    const Color(0xFF4CAF50).withValues(alpha: 0.1),
+                                    const Color(0xFF66BB6A).withValues(alpha: 0.05),
+                                  ],
                                 ),
-                                textAlign: TextAlign.center,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: const Color(0xFF4CAF50).withValues(alpha: 0.2),
+                                  width: 1,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        const Text(
-                          'Discover insights into your life balance, consistency patterns, and growth trends. Each chart reveals a different dimension of your personal development journey.',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Color(0xFF4a5568),
-                            height: 1.5,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 30),
-                      
-                      // Radar Chart - Stack approach like graveyard
-                      _buildChartCard(
-                        'Balance Across Categories',
-                        Stack(
-                          children: [
-                            // Category 1 overlay - renders only first category label
-                            custom_radar.RadarChart(
-                              ticks: radarTicks,
-                              features: [radarFeatures[0], '', '', '', '', ''],
-                              data: radarData[0],
-                            ),
-                            // Category 2 overlay - renders only second category label
-                            custom_radar.RadarChart(
-                              ticks: radarTicks,
-                              features: ['', radarFeatures[1], '', '', '', ''],
-                              data: radarData[1],
-                            ),
-                            // Category 3 overlay - renders only third category label
-                            custom_radar.RadarChart(
-                              ticks: radarTicks,
-                              features: ['', '', radarFeatures[2], '', '', ''],
-                              data: radarData[2],
-                            ),
-                            // Category 4 overlay - renders only fourth category label
-                            custom_radar.RadarChart(
-                              ticks: radarTicks,
-                              features: ['', '', '', radarFeatures[3], '', ''],
-                              data: radarData[3],
-                            ),
-                            // Category 5 overlay - renders only fifth category label
-                            custom_radar.RadarChart(
-                              ticks: radarTicks,
-                              features: ['', '', '', '', radarFeatures[4], ''],
-                              data: radarData[4],
-                            ),
-                            // Category 6 overlay - renders only sixth category label
-                            custom_radar.RadarChart(
-                              ticks: radarTicks,
-                              features: ['', '', '', '', '', radarFeatures[5]],
-                              data: radarData[5],
-                            ),
-                          ],
-                        ),
-                        gradientStart: const Color(0xFF667eea),
-                        gradientEnd: const Color(0xFF764ba2),
-                        chartHeight: 250, // Extra height for radar chart to accommodate labels
-                        chartType: 'radar',
-                      ),
-                      
-                      // Streaks Chart
-                      _buildChartCard(
-                        'Longest Streaks',
-                        SfCartesianChart(
-                          margin: const EdgeInsets.fromLTRB(10, 10, 10, 80), // Much more bottom margin for full names
-                          primaryXAxis: CategoryAxis(
-                            majorGridLines: const MajorGridLines(width: 0),
-                            labelStyle: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 8,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            labelRotation: 45,
-                            labelIntersectAction: AxisLabelIntersectAction.wrap,
-                            labelAlignment: LabelAlignment.start,
-                          ),
-                          primaryYAxis: NumericAxis(
-                            majorGridLines: const MajorGridLines(width: 0),
-                            labelStyle: const TextStyle(color: Colors.white),
-                          ),
-                          series: <CartesianSeries>[
-                            ColumnSeries<StreakData, String>(
-                              dataSource: streaksData,
-                              xValueMapper: (StreakData data, _) => data.category,
-                              yValueMapper: (StreakData data, _) => data.streak,
-                              borderRadius: BorderRadius.circular(8),
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  Colors.white.withValues(alpha: 0.9),
-                                  Colors.white.withValues(alpha: 0.6),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.analytics,
+                                        color: const Color(0xFF4CAF50),
+                                        size: 28,
+                                      ),
+                                      const SizedBox(width: 12),
+                                      const Flexible(
+                                        child: Text(
+                                          'Your Green Pyramid Analysis',
+                                          style: TextStyle(
+                                            fontSize: 24,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color(0xFF2d3748),
+                                          ),
+                                          textAlign: TextAlign.center,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  const Text(
+                                    'Discover insights into your life balance, consistency patterns, and growth trends. Each chart reveals a different dimension of your personal development journey.',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      color: Color(0xFF4a5568),
+                                      height: 1.5,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                  ),
                                 ],
                               ),
                             ),
+                            const SizedBox(height: 30),
                           ],
-                        ),
-                        gradientStart: const Color(0xFFf093fb),
-                        gradientEnd: const Color(0xFFf5576c),
-                        chartHeight: 300, // Increased height to accommodate full names
-                        chartType: 'streaks',
-                      ),
-                      
-                      // Daily Completion Chart
-                      _buildChartCard(
-                        'Daily Completion Rate',
-                        SfCartesianChart(
-                          primaryXAxis: DateTimeAxis(
-                            majorGridLines: const MajorGridLines(width: 0),
-                            labelStyle: const TextStyle(color: Colors.white),
-                            dateFormat: DateFormat('MMM dd'),
-                          ),
-                          primaryYAxis: NumericAxis(
-                            majorGridLines: const MajorGridLines(width: 0),
-                            labelStyle: const TextStyle(color: Colors.white),
-                            numberFormat: NumberFormat.percentPattern(),
-                          ),
-                          series: <CartesianSeries>[
-                            SplineAreaSeries<DailyCompletionData, DateTime>(
-                              dataSource: dailyCompletionData,
-                              xValueMapper: (DailyCompletionData data, _) => data.date,
-                              yValueMapper: (DailyCompletionData data, _) => data.percentage / 100,
-                              gradient: LinearGradient(
-                                colors: [
-                                  Colors.white.withValues(alpha: 0.6),
-                                  Colors.white.withValues(alpha: 0.1),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        gradientStart: const Color(0xFF4facfe),
-                        gradientEnd: const Color(0xFF00f2fe),
-                        chartType: 'daily',
-                      ),
-                      
-                      // Category Trends Chart
-                      _buildChartCard(
-                        'Category Trends',
-                        SfCartesianChart(
-                          primaryXAxis: DateTimeAxis(
-                            majorGridLines: const MajorGridLines(width: 0),
-                            labelStyle: const TextStyle(color: Colors.white),
-                            dateFormat: DateFormat('MMM dd'),
-                          ),
-                          primaryYAxis: NumericAxis(
-                            majorGridLines: const MajorGridLines(width: 0),
-                            labelStyle: const TextStyle(color: Colors.white),
-                            numberFormat: NumberFormat.percentPattern(),
-                          ),
-                          series: categoryTrendsData.entries.map((entry) =>
-                            SplineSeries<TrendData, DateTime>(
-                              dataSource: entry.value,
-                              xValueMapper: (TrendData data, _) => data.date,
-                              yValueMapper: (TrendData data, _) => data.percentage / 100,
-                              name: entry.key,
-                              color: _getCategoryColor(categoryTrendsData.keys.toList().indexOf(entry.key)),
-                            )
-                          ).toList().cast<CartesianSeries>(),
-                        ),
-                        gradientStart: const Color(0xFF43e97b),
-                        gradientEnd: const Color(0xFF38f9d7),
-                        chartType: 'trends',
-                      ),
-                      
-                      // Pie Chart
-                      _buildChartCard(
-                        'Task Completion Overview',
-                        SfCircularChart(
-                          series: <CircularSeries>[
-                            PieSeries<PieData, String>(
-                              dataSource: pieData,
-                              xValueMapper: (PieData data, _) => data.category,
-                              yValueMapper: (PieData data, _) => data.value,
-                              pointColorMapper: (PieData data, _) => data.color,
-                              dataLabelSettings: const DataLabelSettings(
-                                isVisible: true,
-                                labelPosition: ChartDataLabelPosition.outside,
-                                textStyle: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                              ),
-                            ),
-                          ],
-                        ),
-                        gradientStart: const Color(0xFFfa709a),
-                        gradientEnd: const Color(0xFFfee140),
-                        chartType: 'pie',
-                      ),
-                    ],
+                        );
+                      } else if (index == chartDefinitions.length + 1) {
+                        return const SizedBox(height: 30);
+                      }
+                      final chartDef = chartDefinitions[index - 1];
+                      return _LazyChartCard(
+                        title: chartDef['title'] as String,
+                        chartBuilder: chartDef['builder'] as Widget Function(),
+                        gradientStart: chartDef['gradientStart'] as Color?,
+                        gradientEnd: chartDef['gradientEnd'] as Color?,
+                        chartHeight: chartDef['chartHeight'] as double?,
+                        chartType: chartDef['chartType'] as String?,
+                        buildChartCard: _buildChartCard,
+                      );
+                    },
                   );
                 },
               ),
@@ -1034,4 +1049,66 @@ class PieData {
   final double value;
   final Color color;
   PieData(this.category, this.value, this.color);
+} 
+
+class _LazyChartCard extends StatefulWidget {
+  final String title;
+  final Widget Function() chartBuilder;
+  final Color? gradientStart;
+  final Color? gradientEnd;
+  final double? chartHeight;
+  final String? chartType;
+  final Widget Function(String, Widget, {Color? gradientStart, Color? gradientEnd, double? chartHeight, String? chartType}) buildChartCard;
+
+  const _LazyChartCard({
+    required this.title,
+    required this.chartBuilder,
+    this.gradientStart,
+    this.gradientEnd,
+    this.chartHeight,
+    this.chartType,
+    required this.buildChartCard,
+    Key? key,
+  }) : super(key: key);
+
+  @override
+  State<_LazyChartCard> createState() => _LazyChartCardState();
+}
+
+class _LazyChartCardState extends State<_LazyChartCard> {
+  bool _isVisible = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return VisibilityDetector(
+      key: Key(widget.title),
+      onVisibilityChanged: (info) {
+        if (!_isVisible && info.visibleFraction > 0) {
+          setState(() {
+            _isVisible = true;
+          });
+        }
+      },
+      child: _isVisible
+          ? widget.buildChartCard(
+              widget.title,
+              widget.chartBuilder(),
+              gradientStart: widget.gradientStart,
+              gradientEnd: widget.gradientEnd,
+              chartHeight: widget.chartHeight,
+              chartType: widget.chartType,
+            )
+          : Container(
+              height: widget.chartHeight ?? 200,
+              margin: const EdgeInsets.only(bottom: 20),
+              decoration: BoxDecoration(
+                color: Colors.grey[200],
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Center(
+                child: CircularProgressIndicator(),
+              ),
+            ),
+    );
+  }
 } 

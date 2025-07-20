@@ -76,8 +76,8 @@ class _CoachingState extends State<Coaching>
         log('COACHING: Error subscribing to routeObserver: $e\n$st');
       }
     });
-    fetchVideos();
-    _checkSubscriptionStatus();
+    fetchVideos(); // Start loading videos immediately
+    _checkSubscriptionStatus(); // Run subscription check in parallel
   }
 
   @override
@@ -257,7 +257,10 @@ class _CoachingState extends State<Coaching>
               videoIds.add(video.id);
               // Populate _instantCache as soon as we have 5 videos
               if (!instantCachePopulated && allVideos.length == 5) {
-                _instantCache = List.from(allVideos);
+                // Shuffle the first 5 videos for random selection
+                final List<YouTubeVideo> firstFive = List.from(allVideos);
+                firstFive.shuffle();
+                _instantCache = firstFive;
                 if (mounted) {
                   setState(() {
                     this.videos = List.from(_instantCache);
@@ -343,15 +346,20 @@ class _CoachingState extends State<Coaching>
       }
 
       if (allVideos.isNotEmpty) {
-        // Update cache
+        // Shuffle all videos to randomize the selection
+        allVideos.shuffle();
+        
+        // Update cache with shuffled videos
         _cachedVideos = List.from(allVideos);
         _lastCacheTime = DateTime.now();
-        // _instantCache is already set to the first 5 videos
-        // Update UI with new videos, skipping the first 5 already shown
+        
+        // Set instant cache to first 5 videos from shuffled list
+        _instantCache = allVideos.take(5).toList();
+        
+        // Update UI with new videos
         if (mounted) {
           setState(() {
-            this.videos =
-                _instantCache + allVideos.skip(_instantCache.length).toList();
+            this.videos = List.from(allVideos);
             _displayedVideoCount = 5;
             isLoading = false;
           });

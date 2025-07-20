@@ -193,10 +193,8 @@ class _Afternoon extends State<Afternoon> {
                                             onChanged: (bool? value) {
                                               setState(() {
                                                 var v = value.toString();
-                                                snapshot.data[index].checked =
-                                                    v;
                                                 dbHelper.rawUpdate(
-                                                    "update tasklog set checked = '${value.toString()}' "
+                                                    "update ${dbHelper.getTaskLogTable()} set checked = '${value.toString()}' "
                                                     "where taskdescription = '${snapshot.data[index].taskdescription}' "
                                                     " and category = '${snapshot.data[index].category}'"
                                                     " and taskdate = '${snapshot.data[index].taskdate}'");
@@ -310,51 +308,6 @@ class _Afternoon extends State<Afternoon> {
       utils.Utils().changeSystemColor(Brightness.light);
     });
   }
-
-  /*
-  Future<Widget> subscribeLink() async {
-
-    var link;
-    CustomerInfo ci = await Purchases.getCustomerInfo();
-
-    var daysRemaining = installDate
-        .add(const Duration(days: 7))
-        .difference(tz.TZDateTime.now(tz.local))
-        .inDays;
-
-    String dayString = 'days remaining';
-
-    if (daysRemaining == 1) {
-      dayString = 'day remaining!!';
-    }
-
-    // FT: No subscription and free trial days remaining > 0
-    if (ci.activeSubscriptions.isEmpty && daysRemaining > 0) {
-      link = RichText(
-        text: TextSpan(
-            text: 'Subscribe. $daysRemaining $dayString',
-            style: const TextStyle(
-                color: Colors.black,
-                decoration: TextDecoration.underline,
-                fontSize: 16),
-            recognizer: TapGestureRecognizer()
-              ..onTap = () {
-                navigateToPaywall();
-                setState(() {});
-              }),
-      );
-      // S: Active subscription found.
-    } else if (ci.activeSubscriptions.isNotEmpty) {
-      link = const Text('');
-      // U: No active subscription found, and daysRemaining is 0 or less.
-    } else if (paywalled == false) {
-      navigateToPaywall();
-    } else {
-      Navigator.pop(context);
-    }
-    return link;
-  }
-   */
 
   Future<List<UncheckedTask>> getUncheckedTasks() async {
     final List<Map<String, dynamic>> maps =

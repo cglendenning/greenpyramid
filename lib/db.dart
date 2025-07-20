@@ -4,13 +4,17 @@ import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart' as intl;
+import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
   static const _databaseVersion = 6; // Bumped from 5 to 6 for demo tables
 
   // DEMO MODE FLAG
-  static bool isDemoMode = false;
+  static final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
+  static bool get isDemoMode => demoModeNotifier.value;
+  static set isDemoMode(bool value) => demoModeNotifier.value = value;
+  static void toggleDemoMode() => demoModeNotifier.value = !demoModeNotifier.value;
 
   // Real tables
   static const taskTable = 'task';
@@ -665,6 +669,12 @@ class DatabaseHelper {
   // return -1 if there are no tasks at all for this category.
   Future<int> getCompletionPercentage(String cat, int days) async {
     Database db = await instance.database;
+    // First, check if there are any tasks for this category
+    final taskTable = getTaskTable();
+    final taskRes = await db.query(taskTable, where: '$columnCategory = ?', whereArgs: [cat]);
+    if (taskRes.isEmpty) {
+      return -1; // No tasks defined for this category
+    }
     final intl.DateFormat formatter = intl.DateFormat('yyyy-MM-dd');
     var fromDate = formatter
         .format(DateTime.now().subtract(Duration(days: days)))
@@ -680,7 +690,7 @@ class DatabaseHelper {
     var checked = res2.length;
     print('[RADAR][PCT] Checked logs for $cat: $checked');
     if (total == 0) {
-      return 0;
+      return 0; // Tasks exist, but no logs in range
     }
     var percentage = ((checked / total) * 100).toInt();
     print('[RADAR][PCT] Percentage for $cat: $percentage');
@@ -700,7 +710,7 @@ class DatabaseHelper {
           (c) => c['categoryid'] == i,
           orElse: () => <String, dynamic>{},
         );
-        if (match.isNotEmpty) cats.add(match['cat']);
+        if (match.isNotEmpty && match['cat'] != null) cats.add(match['cat']);
       }
     } catch (e) {
       print('[TOTAL PCT] Error loading categories: $e');

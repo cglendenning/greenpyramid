@@ -257,7 +257,7 @@ class _Morning extends State<Morning> {
                                                                             index]
                                                                         .checked = v;
                                                                     dbHelper.rawUpdate(
-                                                                        "update tasklog set checked = '${value.toString()}' "
+                                                                        "update ${dbHelper.getTaskLogTable()} set checked = '${value.toString()}' "
                                                                         "where taskdescription = '${snapshot.data[index].taskdescription}' "
                                                                         " and category = '${snapshot.data[index].category}'"
                                                                         " and taskdate = '${snapshot.data[index].taskdate}'");

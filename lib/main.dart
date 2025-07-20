@@ -12,6 +12,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:flutter/widgets.dart';
 import 'secrets.dart';
+import 'package:life_ops/utils.dart' as utils;
 
 final GlobalKey<NavigatorState> navigatorKey =
     GlobalKey(debugLabel: "Main Navigator");
@@ -68,15 +69,12 @@ Future<void> initPlatformState() async {
   await Purchases.configure(configuration);
 
   bool config = await Purchases.isConfigured;
-  CustomerInfo ci = await Purchases.getCustomerInfo();
+  bool isSubscribed = await utils.Utils().isUserSubscribed();
 
   if (kDebugMode) {
     print('Purchase configured: $config');
   }
   if (kDebugMode) {
-    print('Customer Info: $ci');
-  }
-  if (kDebugMode) {
-    print('Active Subscriptions: ${ci.activeSubscriptions}');
+    print('User is subscribed: $isSubscribed');
   }
 }

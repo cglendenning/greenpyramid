@@ -19,6 +19,8 @@ class Pyramid extends StatefulWidget {
   final Future cat5Future;
   final Future cat6Future;
   final Future totalPctCompleteFuture;
+  final ValueChanged<int>? onTimeScaleChanged;
+  final VoidCallback? onReturnFromTaskList;
 
   const Pyramid(
       this.cat1Future,
@@ -27,28 +29,17 @@ class Pyramid extends StatefulWidget {
       this.cat4Future,
       this.cat5Future,
       this.cat6Future,
-      this.totalPctCompleteFuture);
+      this.totalPctCompleteFuture,
+      {this.onTimeScaleChanged, this.onReturnFromTaskList});
 
   @override
-  State<Pyramid> createState() => _Pyramid(cat1Future, cat2Future, cat3Future,
-      cat4Future, cat5Future, cat6Future, totalPctCompleteFuture);
+  State<Pyramid> createState() => _Pyramid();
 }
 
 class _Pyramid extends State<Pyramid> {
   Calendar calendarView = Calendar.week;
 
   int pctDays = 6;
-
-  Future cat1Future;
-  Future cat2Future;
-  Future cat3Future;
-  Future cat4Future;
-  Future cat5Future;
-  Future cat6Future;
-  Future totalPctCompleteFuture;
-
-  _Pyramid(this.cat1Future, this.cat2Future, this.cat3Future, this.cat4Future,
-      this.cat5Future, this.cat6Future, this.totalPctCompleteFuture);
 
   var _dynamic1LGColor,
       _dynamic2LGColor,
@@ -267,12 +258,19 @@ class _Pyramid extends State<Pyramid> {
                   switch (calendarView) {
                     case Calendar.day:
                       pctDays = 0;
+                      break;
                     case Calendar.week:
                       pctDays = 6;
+                      break;
                     case Calendar.month:
                       pctDays = 29;
+                      break;
                     case Calendar.year:
                       pctDays = 364;
+                      break;
+                  }
+                  if (widget.onTimeScaleChanged != null) {
+                    widget.onTimeScaleChanged!(pctDays);
                   }
                   setFutures();
                 });
@@ -285,7 +283,7 @@ class _Pyramid extends State<Pyramid> {
         smallSpacer,
         Stack(children: <Widget>[
           FutureBuilder(
-              future: cat1Future,
+              future: widget.cat1Future,
               builder: (BuildContext context, AsyncSnapshot snapshot) {
                 Widget display;
                 if (!snapshot.hasData) {
@@ -321,7 +319,7 @@ class _Pyramid extends State<Pyramid> {
                 return display;
               }),
           FutureBuilder(
-              future: cat2Future,
+              future: widget.cat2Future,
               builder: (BuildContext context, AsyncSnapshot snapshot) {
                 Widget display;
                 if (!snapshot.hasData) {
@@ -357,7 +355,7 @@ class _Pyramid extends State<Pyramid> {
                 return display;
               }),
           FutureBuilder(
-              future: cat3Future,
+              future: widget.cat3Future,
               builder: (BuildContext context, AsyncSnapshot snapshot) {
                 Widget display;
                 if (!snapshot.hasData) {
@@ -393,7 +391,7 @@ class _Pyramid extends State<Pyramid> {
                 return display;
               }),
           FutureBuilder(
-              future: cat4Future,
+              future: widget.cat4Future,
               builder: (BuildContext context, AsyncSnapshot snapshot) {
                 Widget display;
                 if (!snapshot.hasData) {
@@ -429,7 +427,7 @@ class _Pyramid extends State<Pyramid> {
                 return display;
               }),
           FutureBuilder(
-              future: cat5Future,
+              future: widget.cat5Future,
               builder: (BuildContext context, AsyncSnapshot snapshot) {
                 Widget display;
                 if (!snapshot.hasData) {
@@ -465,7 +463,7 @@ class _Pyramid extends State<Pyramid> {
                 return display;
               }),
           FutureBuilder(
-              future: cat6Future,
+              future: widget.cat6Future,
               builder: (BuildContext context, AsyncSnapshot snapshot) {
                 Widget display;
                 if (!snapshot.hasData) {
@@ -503,7 +501,7 @@ class _Pyramid extends State<Pyramid> {
         ]),
         smallSpacer,
         FutureBuilder(
-            future: totalPctCompleteFuture,
+            future: widget.totalPctCompleteFuture,
             builder: (BuildContext context, AsyncSnapshot snapshot) {
               Widget display;
               if (!snapshot.hasData || snapshot.data == '') {
@@ -597,17 +595,15 @@ class _Pyramid extends State<Pyramid> {
         utils.Utils().changeSystemColor(Brightness.light);
         setFutures();
       });
+      if (widget.onReturnFromTaskList != null) {
+        widget.onReturnFromTaskList!();
+      }
     });
   }
 
   setFutures() {
-    cat1Future = getPctComplete(1, pctDays);
-    cat2Future = getPctComplete(2, pctDays);
-    cat3Future = getPctComplete(3, pctDays);
-    cat4Future = getPctComplete(4, pctDays);
-    cat5Future = getPctComplete(5, pctDays);
-    cat6Future = getPctComplete(6, pctDays);
-    totalPctCompleteFuture = getTotalPctComplete(pctDays);
+    // These are now passed as widget parameters, so we don't need to re-fetch them here.
+    // The FutureBuilders will handle their own updates.
   }
 
   Future<Cat> getPctComplete(int categoryid, int pctDays) async {
@@ -630,9 +626,10 @@ class _Pyramid extends State<Pyramid> {
   }
 
   Color setColor(int pctComplete) {
-    // If you are tempted to make the shading more
-    // granular, re-consider. I like the steps. They
-    // are more noticeable.
+    // If there are no tasks, pctComplete should be -1, so return blue
+    if (pctComplete < 0) {
+      return buildColor("#54B6FF"); // blue for no tasks
+    }
     if (pctComplete >= 0 && pctComplete < 15) {
       return buildColor("#F96E6E"); // red
     } else if (pctComplete >= 15 && pctComplete < 30) {
@@ -650,7 +647,7 @@ class _Pyramid extends State<Pyramid> {
     } else if (pctComplete >= 90 && pctComplete <= 100) {
       return buildColor("#66CC5D"); // green
     } else {
-      return buildColor("#54B6FF"); // blue
+      return buildColor("#54B6FF"); // blue (fallback)
     }
   }
 

@@ -491,26 +491,9 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   Future<void> _checkSubscriptionStatus() async {
     print('🔄 [SUBSCRIPTION CHECK] Starting RevenueCat verification...');
     try {
-      // Invalidate cache to force fresh data from RevenueCat
-      await Purchases.invalidateCustomerInfoCache();
-      print(
-          '🔄 [SUBSCRIPTION CHECK] Cache invalidated, fetching fresh data...');
-
-      CustomerInfo ci = await Purchases.getCustomerInfo();
-
-      // Log detailed subscription information
-      print('📱 [SUBSCRIPTION CHECK] Customer ID: ${ci.originalAppUserId}');
-      print(
-          '📱 [SUBSCRIPTION CHECK] Active Subscriptions: ${ci.activeSubscriptions}');
-      print(
-          '📱 [SUBSCRIPTION CHECK] All Purchased Product IDs: ${ci.allPurchasedProductIdentifiers}');
-      print(
-          '📱 [SUBSCRIPTION CHECK] Latest Expiration Date: ${ci.latestExpirationDate}');
-
-      bool newSubscriptionStatus = ci.activeSubscriptions.isNotEmpty;
+      bool newSubscriptionStatus = await utils.Utils().isUserSubscribed();
       print(
           '📱 [SUBSCRIPTION CHECK] Subscription Status: ${newSubscriptionStatus ? "SUBSCRIBED" : "NOT SUBSCRIBED"}');
-
       if (mounted) {
         setState(() {
           isSubscribed = newSubscriptionStatus;

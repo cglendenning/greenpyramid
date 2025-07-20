@@ -50,6 +50,7 @@ class Utils {
   Future<bool> isUserSubscribed() async {
     try {
       await Purchases.invalidateCustomerInfoCache();
+      await Purchases.syncPurchases();
       CustomerInfo ci = await Purchases.getCustomerInfo();
       return ci.activeSubscriptions.isNotEmpty;
     } catch (e) {

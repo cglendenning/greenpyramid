@@ -71,8 +71,10 @@ class HomeScreen extends StatelessWidget {
         }
       },
       debugShowCheckedModeBanner: false,
-      home: const Scaffold(
-        body: HomeScreenWidget(),
+      home: DemoModeOverlay(
+        child: const Scaffold(
+          body: HomeScreenWidget(),
+        ),
       ),
     );
   }
@@ -108,6 +110,8 @@ class _HomeScreen extends State<HomeScreenWidget> {
       _cat6Future,
       _totalPctComplete;
 
+  int _currentPctDays = 6; // Default to week
+
   String cat = '';
   String taskLogDate = '';
 
@@ -134,7 +138,21 @@ class _HomeScreen extends State<HomeScreenWidget> {
       dbHelper.populateTaskLogGap();
     }
     setFutures();
+    // Listen for demo mode changes and refresh data
+    DatabaseHelper.demoModeNotifier.addListener(_onDemoModeChanged);
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    DatabaseHelper.demoModeNotifier.removeListener(_onDemoModeChanged);
+    super.dispose();
+  }
+
+  void _onDemoModeChanged() {
+    setState(() {
+      setFutures();
+    });
   }
 
   final DBTools dbtools = DBTools();
@@ -142,22 +160,16 @@ class _HomeScreen extends State<HomeScreenWidget> {
 
   Future<void> toggleDemoMode(BuildContext context) async {
     if (!DatabaseHelper.isDemoMode) {
-      DatabaseHelper.isDemoMode = true;
+      DatabaseHelper.toggleDemoMode();
       await dbtools.populateDemoData();
       setState(() {
         setFutures();
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Demo Mode Activated!')),
-      );
     } else {
-      DatabaseHelper.isDemoMode = false;
+      DatabaseHelper.toggleDemoMode();
       setState(() {
         setFutures();
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Demo Mode Deactivated. Your data is restored.')),
-      );
     }
   }
 
@@ -198,7 +210,17 @@ class _HomeScreen extends State<HomeScreenWidget> {
                 homeScreenCallback),
             body: <Widget>[
               Pyramid(_cat1Future, _cat2Future, _cat3Future, _cat4Future,
-                  _cat5Future, _cat6Future, _totalPctComplete),
+                  _cat5Future, _cat6Future, _totalPctComplete,
+                  onTimeScaleChanged: (int newDays) {
+                    setState(() {
+                      setFutures(newDays);
+                    });
+                  },
+                  onReturnFromTaskList: () {
+                    setState(() {
+                      setFutures();
+                    });
+                  }),
               EditPyramid(
                 _cat1Future,
                 _cat2Future,
@@ -238,14 +260,16 @@ class _HomeScreen extends State<HomeScreenWidget> {
     }
   }
 
-  setFutures() {
-    _cat1Future = getPctComplete(1);
-    _cat2Future = getPctComplete(2);
-    _cat3Future = getPctComplete(3);
-    _cat4Future = getPctComplete(4);
-    _cat5Future = getPctComplete(5);
-    _cat6Future = getPctComplete(6);
-    _totalPctComplete = getTotalPctComplete();
+  void setFutures([int? daysOverride]) {
+    final days = daysOverride ?? _currentPctDays;
+    _cat1Future = getPctComplete(1, days);
+    _cat2Future = getPctComplete(2, days);
+    _cat3Future = getPctComplete(3, days);
+    _cat4Future = getPctComplete(4, days);
+    _cat5Future = getPctComplete(5, days);
+    _cat6Future = getPctComplete(6, days);
+    _totalPctComplete = getTotalPctComplete(days);
+    _currentPctDays = days;
   }
 
   void listenToNotification() =>
@@ -257,14 +281,14 @@ class _HomeScreen extends State<HomeScreenWidget> {
     }
   }
 
-  Future<Cat> getPctComplete(int categoryid) async {
+  Future<Cat> getPctComplete(int categoryid, int days) async {
     final cat = await getCategory(categoryid);
-    cat.pctComplete = await dbHelper.getCompletionPercentage(cat.cat, 7);
+    cat.pctComplete = await dbHelper.getCompletionPercentage(cat.cat, days);
     return cat;
   }
 
-  Future<String> getTotalPctComplete() async {
-    String totalComplete = await dbHelper.getTotalPercentage(7);
+  Future<String> getTotalPctComplete(int days) async {
+    String totalComplete = await dbHelper.getTotalPercentage(days);
     return totalComplete;
   }
 
@@ -342,17 +366,9 @@ class CustomAppBarState extends State<CustomAppBar>
 
   Future<void> _checkSubscriptionStatus() async {
     try {
-      // Invalidate cache to force fresh data from RevenueCat
-      await Purchases.invalidateCustomerInfoCache();
+      bool newSubscriptionStatus = await utils.Utils().isUserSubscribed();
       if (kDebugMode) {
-        print('🏠 [HOME SCREEN] Cache invalidated, fetching fresh data...');
-      }
-
-      CustomerInfo ci = await Purchases.getCustomerInfo();
-      bool newSubscriptionStatus = ci.activeSubscriptions.isNotEmpty;
-      if (kDebugMode) {
-        print(
-            '🏠 [HOME SCREEN] Subscription check - isSubscribed: $newSubscriptionStatus');
+        print('🏠 [HOME SCREEN] Subscription check - isSubscribed: ${newSubscriptionStatus}');
       }
       if (mounted) {
         setState(() {
@@ -361,7 +377,7 @@ class CustomAppBarState extends State<CustomAppBar>
       }
     } catch (e) {
       if (kDebugMode) {
-        print('🏠 [HOME SCREEN] Error checking subscription: $e');
+        print('🏠 [HOME SCREEN] Error checking subscription: ${e}');
       }
       if (mounted) {
         setState(() {
@@ -824,5 +840,127 @@ class _BottomNavBarState extends State<BottomNavBar> {
             ),
           ],
         ));
+  }
+}
+
+class DemoModeOverlay extends StatefulWidget {
+  final Widget child;
+  const DemoModeOverlay({required this.child, Key? key}) : super(key: key);
+
+  @override
+  State<DemoModeOverlay> createState() => _DemoModeOverlayState();
+}
+
+class _DemoModeOverlayState extends State<DemoModeOverlay> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 700),
+      vsync: this,
+    );
+    _animation = Tween<double>(begin: 0, end: 1).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+    DatabaseHelper.demoModeNotifier.addListener(_onDemoModeChanged);
+  }
+
+  void _onDemoModeChanged() async {
+    // Play flip animation
+    await _controller.forward(from: 0);
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        final isFlipping = _animation.value < 1 && _animation.value > 0;
+        final flipValue = _animation.value;
+        return Stack(
+          children: [
+            // Main content
+            Transform(
+              alignment: Alignment.center,
+              transform: (() {
+                final matrix = Matrix4.identity();
+                if (isFlipping) {
+                  matrix.setEntry(3, 2, 0.001);
+                  matrix.rotateY(3.1416 * flipValue);
+                }
+                return matrix;
+              })(),
+              child: widget.child,
+            ),
+            // Demo Mode Banner (styled like Free Tier banner)
+            if (DatabaseHelper.isDemoMode)
+              const DemoModeBanner(),
+            // Flip animation overlay
+            if (isFlipping)
+              Positioned.fill(
+                child: Container(
+                  color: Colors.black.withOpacity(0.2),
+                  child: Center(
+                    child: Transform(
+                      alignment: Alignment.center,
+                      transform: (() {
+                        final matrix = Matrix4.identity();
+                        matrix.setEntry(3, 2, 0.001);
+                        matrix.rotateY(3.1416 * flipValue);
+                        return matrix;
+                      })(),
+                      child: Icon(Icons.flip_camera_android, size: 100, color: Colors.white.withOpacity(0.7)),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    DatabaseHelper.demoModeNotifier.removeListener(_onDemoModeChanged);
+    _controller.dispose();
+    super.dispose();
+  }
+}
+
+// DemoModeBanner styled like the Free Tier banner
+class DemoModeBanner extends StatelessWidget {
+  const DemoModeBanner({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      left: -30,
+      top: 60, // Move banner further down to avoid status bar/clock
+      child: Transform.rotate(
+        angle: -0.785398, // -45 degrees in radians
+        child: Container(
+          width: 140,
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          color: Colors.redAccent, // Match 'Free Tier' banner color
+          child: const Center(
+            child: Text(
+              'DEMO MODE',
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                letterSpacing: 2,
+                decoration: TextDecoration.none,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }
