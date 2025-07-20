@@ -54,10 +54,27 @@ class _Setup7State extends State<Setup7> {
             backgroundColor: Colors.white,
             body: Center(
                 child: Column(children: [
-              LinearProgressIndicator(
-                  value: 6 / 23,
-                  color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) +
-                      0xFF000000)),
+              Stack(
+                children: [
+                  LinearProgressIndicator(
+                      value: 6 / 23,
+                      minHeight: 6.0,
+                      color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) +
+                          0xFF000000)),
+                  Positioned(
+                    left: (MediaQuery.of(context).size.width - 24) * (6 / 23),
+                    top: 0,
+                    child: Container(
+                      width: 12.0,
+                      height: 6.0,
+                      decoration: BoxDecoration(
+                        color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000),
+                        borderRadius: BorderRadius.circular(3.0),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 10),
               Text(
                 'Green is good.',

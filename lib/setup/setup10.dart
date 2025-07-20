@@ -55,10 +55,27 @@ class _Setup10State extends State<Setup10> {
             backgroundColor: Colors.white,
             body: Center(
                 child: Column(children: [
-              LinearProgressIndicator(
-                  value: 9 / 23,
-                  color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) +
-                      0xFF000000)),
+              Stack(
+                children: [
+                  LinearProgressIndicator(
+                      value: 9 / 23,
+                      minHeight: 6.0,
+                      color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) +
+                          0xFF000000)),
+                  Positioned(
+                    left: (MediaQuery.of(context).size.width - 24) * (9 / 23),
+                    top: 0,
+                    child: Container(
+                      width: 12.0,
+                      height: 6.0,
+                      decoration: BoxDecoration(
+                        color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000),
+                        borderRadius: BorderRadius.circular(3.0),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 10),
               Text(
                 'Daily Actions',
