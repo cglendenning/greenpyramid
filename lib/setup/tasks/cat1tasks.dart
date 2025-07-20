@@ -11,6 +11,7 @@ import 'package:life_ops/navbar.dart';
 import 'package:life_ops/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/secrets.dart';
+import 'package:life_ops/progress_bar.dart';
 
 String defaultText = 'Generating ideas...';
 List<String> cat1TaskChoices = <String>[defaultText];
@@ -67,10 +68,7 @@ class _Cat1TasksState extends State<Cat1Tasks> {
             ),
             body: Center(
                 child: Column(children: [
-              LinearProgressIndicator(
-                  value: 13 / 23,
-                  color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) +
-                      0xFF000000)),
+              ProgressBar(currentStep: 14, totalSteps: 23),
               const SizedBox(height: 10),
               Text(
                 cat,

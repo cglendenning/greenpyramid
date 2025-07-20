@@ -7,6 +7,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:life_ops/navbar.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/setup/setup1.dart';
+import 'package:life_ops/progress_bar.dart';
 
 class Setup13 extends StatefulWidget {
   final String dd1Value;
@@ -68,11 +69,7 @@ class _Setup13State extends State<Setup13> {
           body: Column(children: [
             Stack(
               children: [
-                LinearProgressIndicator(
-                    value: 12 / 23,
-                    minHeight: 6.0,
-                    color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) +
-                        0xFF000000)),
+                ProgressBar(currentStep: 12, totalSteps: 23),
                 Positioned(
                   left: (MediaQuery.of(context).size.width - 24) * (12 / 23),
                   top: 0,

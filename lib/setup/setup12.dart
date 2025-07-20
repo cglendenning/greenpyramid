@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:life_ops/navbar.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/setup/setup1.dart';
+import 'package:life_ops/progress_bar.dart';
 
 String otherDefault = 'Enter My Own...';
 
@@ -50,27 +51,7 @@ class _Setup12State extends State<Setup12> {
             appBar: const NavBar(),
             body: Center(
                 child: Column(children: [
-              Stack(
-                children: [
-                  LinearProgressIndicator(
-                      value: 11 / 23,
-                      minHeight: 6.0,
-                      color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) +
-                          0xFF000000)),
-                  Positioned(
-                    left: (MediaQuery.of(context).size.width - 24) * (11 / 23),
-                    top: 0,
-                    child: Container(
-                      width: 12.0,
-                      height: 6.0,
-                      decoration: BoxDecoration(
-                        color: Color(int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000),
-                        borderRadius: BorderRadius.circular(3.0),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+              ProgressBar(currentStep: 11, totalSteps: 23),
               const SizedBox(height: 10),
               Text(
                 'Foundational Values',

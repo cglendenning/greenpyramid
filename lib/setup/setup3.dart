@@ -9,6 +9,7 @@ import 'package:life_ops/setup/setup1.dart';
 import 'package:life_ops/setup/setup2.dart';
 import 'package:life_ops/setup/setup_video.dart';
 import 'package:life_ops/secrets.dart';
+import 'package:life_ops/progress_bar.dart';
 
 // add some additional behind-the-scenes directives to openAI...
 String suffix = " Do not answer with a list.";
@@ -79,11 +80,7 @@ class _Setup3State extends State<Setup3> {
       children: [
         Stack(
           children: [
-            LinearProgressIndicator(
-                value: 2 / 23,
-                minHeight: 6.0,
-                color: Color(
-                    int.parse("#66CC5D".substring(1, 7), radix: 16) + 0xFF000000)),
+            ProgressBar(currentStep: 2, totalSteps: 23),
             Positioned(
               left: (MediaQuery.of(context).size.width - 24) * (2 / 23),
               top: 0,
