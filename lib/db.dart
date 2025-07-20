@@ -7,7 +7,7 @@ import 'package:intl/intl.dart' as intl;
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 4;
+  static const _databaseVersion = 5; // Updated from 4 to 5
 
   // The task table. This stores the current view of tasks for each value.
   static const taskTable = 'task';
@@ -56,6 +56,11 @@ class DatabaseHelper {
   static const columnVisionId = 'id';
   static const columnVisionText = 'vision_text';
   static const columnVisionCreated = 'created';
+
+  // The commentary_countdown table. This stores the remaining free commentary count.
+  static const commentaryCountdownTable = 'commentary_countdown';
+  static const columnCountdownId = 'id';
+  static const columnCountdownValue = 'countdown_value';
 
   // make this a singleton class
   DatabaseHelper._privateConstructor();
@@ -210,6 +215,23 @@ class DatabaseHelper {
         print(s);
       }
     }
+
+    // Commentary countdown table
+    try {
+      await db.execute('''
+            CREATE TABLE $commentaryCountdownTable (
+              $columnCountdownId INTEGER PRIMARY KEY,
+              $columnCountdownValue INTEGER NOT NULL
+            )
+            ''');
+    } catch (e, s) {
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
+    }
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -259,6 +281,17 @@ class DatabaseHelper {
                 $columnVisionId INTEGER PRIMARY KEY AUTOINCREMENT,
                 $columnVisionText TEXT NOT NULL,
                 $columnVisionCreated TEXT NOT NULL
+              )
+            ''');
+          case 5:
+            if (kDebugMode) {
+              print('****** in _onUpgrade(): oldversion is '
+                  ' 2$oldVersion and newVersion is $newVersion');
+            }
+            await db.execute('''
+              CREATE TABLE $commentaryCountdownTable (
+                $columnCountdownId INTEGER PRIMARY KEY,
+                $columnCountdownValue INTEGER NOT NULL
               )
             ''');
         }
@@ -956,6 +989,49 @@ class DatabaseHelper {
     final db = await database;
     await db
         .delete(chatTable, where: '$chatColumnId = ?', whereArgs: [messageId]);
+  }
+
+  // Commentary countdown methods
+  Future<void> saveCommentaryCountdown(int countdown) async {
+    try {
+      Database db = await instance.database;
+      // Delete existing countdown
+      await db.delete(commentaryCountdownTable);
+      // Insert new countdown
+      await db.insert(commentaryCountdownTable, {
+        columnCountdownId: 1,
+        columnCountdownValue: countdown,
+      });
+    } catch (e, s) {
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
+    }
+  }
+
+  Future<int> getCommentaryCountdown() async {
+    try {
+      Database db = await instance.database;
+      final result = await db.query(
+        commentaryCountdownTable,
+        where: '$columnCountdownId = ?',
+        whereArgs: [1],
+      );
+      if (result.isNotEmpty) {
+        return result.first[columnCountdownValue] as int;
+      }
+    } catch (e, s) {
+      if (kDebugMode) {
+        print(e);
+      }
+      if (kDebugMode) {
+        print(s);
+      }
+    }
+    return 30; // Default value if not found
   }
 }
 

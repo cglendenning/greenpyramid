@@ -60,6 +60,7 @@ dependencies:
   youtube_player_iframe: ^5.2.1
   fl_chart: ^0.66.0
   shared_preferences: ^2.5.3
+  syncfusion_flutter_charts: ^30.1.40
 
 dev_dependencies:
   flutter_test:
@@ -107,6 +108,8 @@ flutter:
     - images/svg/bottom_nav/radar_selected.svg
     - images/svg/bottom_nav/triangle_selected.svg
     - images/svg/bottom_nav/chat_selected.svg
+    - images/svg/bottom_nav/chart.svg
+    - images/svg/bottom_nav/chart_selected.svg
     - videos/bora.mov
     - images/previews1.jpg
     - images/previews2.jpg

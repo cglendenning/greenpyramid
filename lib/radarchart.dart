@@ -2,13 +2,15 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:vector_math/vector_math.dart' as vm;
 import 'package:flutter/material.dart';
-import 'dart:math' show pi, cos, sin;
+import 'dart:math' show pi, cos, sin, atan2;
 
 const defaultGraphColors = [
-  Colors.green,
-  Colors.blue,
-  Colors.red,
-  Colors.orange,
+  Color(0xFFE91E63), // Pink
+  Color(0xFF2196F3), // Blue
+  Color(0xFF4CAF50), // Green
+  Color(0xFFFF9800), // Orange
+  Color(0xFF9C27B0), // Purple
+  Color(0xFF00BCD4), // Cyan
 ];
 
 class RadarChart extends StatefulWidget {
@@ -30,7 +32,7 @@ class RadarChart extends StatefulWidget {
     required this.data,
     this.reverseAxis = false,
     this.ticksTextStyle = const TextStyle(color: Colors.grey, fontSize: 12),
-    this.featuresTextStyle = const TextStyle(color: Colors.black, fontSize: 16),
+    this.featuresTextStyle = const TextStyle(color: Colors.black, fontSize: 16, fontFamily: 'SourceSans3', fontWeight: FontWeight.bold),
     this.outlineColor = Colors.black,
     this.axisColor = Colors.grey,
     this.graphColors = defaultGraphColors,
@@ -63,7 +65,7 @@ class RadarChart extends StatefulWidget {
         ticks: ticks,
         features: features,
         data: data,
-        featuresTextStyle: const TextStyle(color: Colors.white, fontSize: 16),
+        featuresTextStyle: const TextStyle(color: Colors.white, fontSize: 16, fontFamily: 'SourceSans3', fontWeight: FontWeight.bold),
         outlineColor: Colors.white,
         axisColor: Colors.grey,
         reverseAxis: reverseAxis,
@@ -261,37 +263,74 @@ class RadarChartPainter extends CustomPainter {
       cat6Radians
     ];
 
-    List<int> xRotateNudge = [10, 45, -180, -170, 35, 75];
+    // Adjust nudge values based on chart radius for better responsiveness
+    double nudgeScale = radius / 100; // Scale factor based on chart size
+    List<int> xRotateNudge = [
+      (10 * nudgeScale).round(),
+      (45 * nudgeScale).round(),
+      (-180 * nudgeScale).round(),
+      (-170 * nudgeScale).round(),
+      (35 * nudgeScale).round(),
+      (75 * nudgeScale).round()
+    ];
 
-    List<int> yRotateNudge = [-50, -100, 145, -70, -115, -60];
+    List<int> yRotateNudge = [
+      (-50 * nudgeScale).round(),
+      (-100 * nudgeScale).round(),
+      (145 * nudgeScale).round(),
+      (-70 * nudgeScale).round(),
+      (-115 * nudgeScale).round(),
+      (-60 * nudgeScale).round()
+    ];
 
     features.asMap().forEach((index, feature) {
-      var xAngle = cos(angle * index - pi / 2);
-      var yAngle = sin(angle * index - pi / 2);
+      // Calculate the angle for the gridline position (for axis lines and chart data)
+      var gridlineAngle = angle * index - pi / 2;
+      var gridlineXAngle = cos(gridlineAngle);
+      var gridlineYAngle = sin(gridlineAngle);
 
+      // Calculate the angle for the label position (midway between gridlines)
+      var labelAngle = gridlineAngle + angle / 2;
+      var labelXAngle = cos(labelAngle);
+      var labelYAngle = sin(labelAngle);
+
+      // Draw the axis line using gridline position
       var featureOffset =
-          Offset(centerX + radius * xAngle, centerY + radius * yAngle);
-
+          Offset(centerX + radius * gridlineXAngle, centerY + radius * gridlineYAngle);
       canvas.drawLine(centerOffset, featureOffset, ticksPaint);
 
-      var labelXOffset = xAngle > 0 ? featureOffset.dx : 0.0;
+      // Calculate label position using label angle
+      double labelRadius = radius + 30; // Position labels outside the chart
+      var labelOffset = Offset(
+        centerX + labelRadius * labelXAngle,
+        centerY + labelRadius * labelYAngle
+      );
 
-      // Excellent explanation...
-      // https://stackoverflow.com/questions/5789813/what-does-canvas-translate-do
-      canvas.save();
-      canvas.translate(labelXOffset + xRotateNudge[index],
-          featureOffset.dy + yRotateNudge[index]);
-      canvas.rotate(rads[index]);
-
-      TextPainter(
+      // Calculate text bounds to center the label properly
+      TextPainter textPainter = TextPainter(
         text: TextSpan(text: feature, style: featuresTextStyle),
-        // textAlign: xAngle < 0 ? TextAlign.right : TextAlign.left,
         textAlign: TextAlign.center,
         textDirection: TextDirection.ltr,
-      )
-        ..layout(minWidth: featureOffset.dx)
-        ..paint(canvas, const Offset(0, 0));
+      );
+      textPainter.layout();
 
+      // Adjust position based on text size and angle
+      double textWidth = textPainter.width;
+      double textHeight = textPainter.height;
+      
+      // Calculate offset to center the text
+      double xOffset = -textWidth / 2;
+      double yOffset = -textHeight / 2;
+
+      // Apply rotation based on the label angle
+      canvas.save();
+      canvas.translate(labelOffset.dx, labelOffset.dy);
+      
+      // Calculate rotation angle for proper text alignment and add 90 degrees
+      double rotationAngle = atan2(labelYAngle, labelXAngle) + pi / 2;
+      canvas.rotate(rotationAngle);
+
+      textPainter.paint(canvas, Offset(xOffset, yOffset));
       canvas.restore();
     });
 
@@ -299,7 +338,7 @@ class RadarChartPainter extends CustomPainter {
     try {
       data.asMap().forEach((index, graph) {
         var graphPaint = Paint()
-          ..color = graphColors[index % graphColors.length].withOpacity(0.3)
+          ..color = graphColors[index % graphColors.length].withOpacity(0.8) // Increased from 0.3 to 0.8
           ..style = PaintingStyle.fill;
 
         // Start the graph on the initial point
