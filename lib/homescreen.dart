@@ -111,6 +111,12 @@ class _HomeScreen extends State<HomeScreenWidget> {
   String cat = '';
   String taskLogDate = '';
 
+  // Demo mode state and backup
+  bool isDemoMode = false;
+  List<Map<String, dynamic>>? userCategoriesBackup;
+  List<Map<String, dynamic>>? userTasksBackup;
+  List<Map<String, dynamic>>? userTaskLogsBackup;
+
   String taskLogCallback(String c) {
     setState(() {
       currentScreenIndex = 4;
@@ -133,6 +139,27 @@ class _HomeScreen extends State<HomeScreenWidget> {
 
   final DBTools dbtools = DBTools();
   final dbHelper = DatabaseHelper.instance;
+
+  Future<void> toggleDemoMode(BuildContext context) async {
+    if (!DatabaseHelper.isDemoMode) {
+      DatabaseHelper.isDemoMode = true;
+      await dbtools.populateDemoData();
+      setState(() {
+        setFutures();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Demo Mode Activated!')),
+      );
+    } else {
+      DatabaseHelper.isDemoMode = false;
+      setState(() {
+        setFutures();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Demo Mode Deactivated. Your data is restored.')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -412,6 +439,12 @@ class CustomAppBarState extends State<CustomAppBar>
           case 'profile':
             navigateToProfile(context);
             break;
+          case 'demoMode':
+            final homeScreenState = context.findAncestorStateOfType<_HomeScreen>();
+            if (homeScreenState != null) {
+              homeScreenState.toggleDemoMode(context);
+            }
+            break;
           default:
         }
       },
@@ -452,6 +485,10 @@ class CustomAppBarState extends State<CustomAppBar>
           const PopupMenuItem<String>(
             value: 'profile',
             child: Text('Profile'),
+          ),
+          const PopupMenuItem<String>(
+            value: 'demoMode',
+            child: Text('Toggle Demo Mode'),
           ),
         ];
         return items;

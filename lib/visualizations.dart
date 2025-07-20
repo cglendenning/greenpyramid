@@ -365,37 +365,36 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
   Future<void> _loadRadarData() async {
     List<String> features = [];
     List<int> percentages = [];
-    
+    print('[RADAR] Loading radar data...');
     // Load all categories and their percentages
     for (var i = 1; i <= 6; i++) {
       final cat = await _getCategory(i);
+      print('[RADAR] Category $i: id=${cat.categoryid}, name=${cat.cat}');
       features.add(cat.cat);
       final pct = await dbHelper.getCompletionPercentage(cat.cat, 7);
+      print('[RADAR] Completion percentage for ${cat.cat}: $pct');
       percentages.add(pct < 0 ? 0 : pct.toInt());
     }
-    
+    print('[RADAR] Features: $features');
+    print('[RADAR] Percentages: $percentages');
     // Create data structure that matches graveyard exactly
     // Each category gets its own data structure with multiple arrays
     List<List<List<num>>> data = [];
-    
     // Category 1: [[cat1Pct, cat1Pct, 0, 0, 0, 0]]
     data.add([
       [percentages[0], percentages[0], 0, 0, 0, 0]
     ]);
-    
     // Category 2: [[0, 0, 0, 0, 0, 0], [0, cat2Pct, cat2Pct, 0, 0, 0]]
     data.add([
       [0, 0, 0, 0, 0, 0],
       [0, percentages[1], percentages[1], 0, 0, 0]
     ]);
-    
     // Category 3: [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, cat3Pct, cat3Pct, 0, 0]]
     data.add([
       [0, 0, 0, 0, 0, 0],
       [0, 0, 0, 0, 0, 0],
       [0, 0, percentages[2], percentages[2], 0, 0]
     ]);
-    
     // Category 4: [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, cat4Pct, cat4Pct, 0]]
     data.add([
       [0, 0, 0, 0, 0, 0],
@@ -403,7 +402,6 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
       [0, 0, 0, 0, 0, 0],
       [0, 0, 0, percentages[3], percentages[3], 0]
     ]);
-    
     // Category 5: [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, cat5Pct, cat5Pct]]
     data.add([
       [0, 0, 0, 0, 0, 0],
@@ -412,7 +410,6 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
       [0, 0, 0, 0, 0, 0],
       [0, 0, 0, 0, percentages[4], percentages[4]]
     ]);
-    
     // Category 6: [[0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [0, 0, 0, 0, 0, 0], [cat6Pct, 0, 0, 0, 0, cat6Pct]]
     data.add([
       [0, 0, 0, 0, 0, 0],
@@ -422,7 +419,7 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
       [0, 0, 0, 0, 0, 0],
       [percentages[5], 0, 0, 0, 0, percentages[5]]
     ]);
-    
+    print('[RADAR] radarData: $data');
     setState(() {
       radarFeatures = features;
       radarData = data;

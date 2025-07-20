@@ -7,9 +7,12 @@ import 'package:intl/intl.dart' as intl;
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 5; // Updated from 4 to 5
+  static const _databaseVersion = 6; // Bumped from 5 to 6 for demo tables
 
-  // The task table. This stores the current view of tasks for each value.
+  // DEMO MODE FLAG
+  static bool isDemoMode = false;
+
+  // Real tables
   static const taskTable = 'task';
   static const columnId = 'id';
   static const columnCategory = 'category';
@@ -61,6 +64,20 @@ class DatabaseHelper {
   static const commentaryCountdownTable = 'commentary_countdown';
   static const columnCountdownId = 'id';
   static const columnCountdownValue = 'countdown_value';
+
+  // Demo tables
+  static const demoTaskTable = 'demo_task';
+  static const demoTaskLogTable = 'demo_tasklog';
+  static const demoCategoryTable = 'demo_category';
+  static const demoQuoteTable = 'demo_quote';
+  static const demoChatTable = 'demo_chat_messages';
+
+  // Helper to get the correct table name
+  String getTaskTable() => isDemoMode ? demoTaskTable : taskTable;
+  String getTaskLogTable() => isDemoMode ? demoTaskLogTable : taskLogTable;
+  String getCategoryTable() => isDemoMode ? demoCategoryTable : categoryTable;
+  String getQuoteTable() => isDemoMode ? demoQuoteTable : quoteTable;
+  String getChatTable() => isDemoMode ? demoChatTable : chatTable;
 
   // make this a singleton class
   DatabaseHelper._privateConstructor();
@@ -232,6 +249,56 @@ class DatabaseHelper {
         print(s);
       }
     }
+
+    // DEMO TABLES
+    await db.execute('''
+          CREATE TABLE IF NOT EXISTS $demoTaskTable (
+            $columnId INTEGER PRIMARY KEY,
+            $columnCategory TEXT NOT NULL,
+            $columnTaskDescription TEXT NOT NULL,
+            $columnSunday TEXT NOT NULL DEFAULT 'true',
+            $columnMonday TEXT NOT NULL DEFAULT 'true',
+            $columnTuesday TEXT NOT NULL DEFAULT 'true',
+            $columnWednesday TEXT NOT NULL DEFAULT 'true',
+            $columnThursday TEXT NOT NULL DEFAULT 'true',
+            $columnFriday TEXT NOT NULL DEFAULT 'true',
+            $columnSaturday TEXT NOT NULL DEFAULT 'true',
+            $columnCreateDate TEXT NOT NULL,
+            UNIQUE($columnCategory, $columnTaskDescription)
+          )
+          ''');
+    await db.execute('''
+          CREATE TABLE IF NOT EXISTS $demoTaskLogTable (
+            $columnTLId INTEGER PRIMARY KEY,
+            $columnTLCategory TEXT NOT NULL,
+            $columnTLTaskDescription TEXT NOT NULL,
+            $columnTLChecked TEXT NOT NULL,
+            $columnTLTaskDate TEXT NOT NULL,
+            UNIQUE($columnTLCategory, $columnTLTaskDescription, $columnTLTaskDate)
+          )
+          ''');
+    await db.execute('''
+          CREATE TABLE IF NOT EXISTS $demoCategoryTable (
+            $columnCategoryId INTEGER PRIMARY KEY,
+            $columnCat TEXT NOT NULL,
+            UNIQUE($columnCat) ON CONFLICT IGNORE
+          )
+          ''');
+    await db.execute('''
+          CREATE TABLE IF NOT EXISTS $demoQuoteTable (
+            $columnQuoteId INTEGER PRIMARY KEY,
+            $columnQuoteText TEXT NOT NULL,
+            $columnCurrent TEXT NOT NULL
+          )
+          ''');
+    await db.execute('''
+          CREATE TABLE IF NOT EXISTS $demoChatTable (
+            $chatColumnId INTEGER PRIMARY KEY AUTOINCREMENT,
+            $chatColumnSender TEXT NOT NULL,
+            $chatColumnContent TEXT NOT NULL,
+            $chatColumnTimestamp TEXT NOT NULL
+          )
+          ''');
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -297,6 +364,55 @@ class DatabaseHelper {
         }
       }
     }
+    // Always create demo tables if missing
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $demoCategoryTable (
+        $columnCategoryId INTEGER PRIMARY KEY,
+        $columnCat TEXT NOT NULL,
+        UNIQUE($columnCat) ON CONFLICT IGNORE
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $demoTaskTable (
+        $columnId INTEGER PRIMARY KEY,
+        $columnCategory TEXT NOT NULL,
+        $columnTaskDescription TEXT NOT NULL,
+        $columnSunday TEXT NOT NULL DEFAULT 'true',
+        $columnMonday TEXT NOT NULL DEFAULT 'true',
+        $columnTuesday TEXT NOT NULL DEFAULT 'true',
+        $columnWednesday TEXT NOT NULL DEFAULT 'true',
+        $columnThursday TEXT NOT NULL DEFAULT 'true',
+        $columnFriday TEXT NOT NULL DEFAULT 'true',
+        $columnSaturday TEXT NOT NULL DEFAULT 'true',
+        $columnCreateDate TEXT NOT NULL,
+        UNIQUE($columnCategory, $columnTaskDescription)
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $demoTaskLogTable (
+        $columnTLId INTEGER PRIMARY KEY,
+        $columnTLCategory TEXT NOT NULL,
+        $columnTLTaskDescription TEXT NOT NULL,
+        $columnTLChecked TEXT NOT NULL,
+        $columnTLTaskDate TEXT NOT NULL,
+        UNIQUE($columnTLCategory, $columnTLTaskDescription, $columnTLTaskDate)
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $demoQuoteTable (
+        $columnQuoteId INTEGER PRIMARY KEY,
+        $columnQuoteText TEXT NOT NULL,
+        $columnCurrent TEXT NOT NULL
+      )
+    ''');
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $demoChatTable (
+        $chatColumnId INTEGER PRIMARY KEY AUTOINCREMENT,
+        $chatColumnSender TEXT NOT NULL,
+        $chatColumnContent TEXT NOT NULL,
+        $chatColumnTimestamp TEXT NOT NULL
+      )
+    ''');
   }
 
 // -----------------------------------------------------------------------------
@@ -478,7 +594,7 @@ class DatabaseHelper {
     int id = 0;
     try {
       Database db = await instance.database;
-      id = await db.insert(taskTable, row);
+      id = await db.insert(getTaskTable(), row);
     } catch (e, s) {
       if (kDebugMode) {
         print(e);
@@ -497,7 +613,7 @@ class DatabaseHelper {
     int id = 0;
     try {
       Database db = await instance.database;
-      id = await db.insert(categoryTable, row);
+      id = await db.insert(getCategoryTable(), row);
     } catch (e, s) {
       if (kDebugMode) {
         print(e);
@@ -516,7 +632,7 @@ class DatabaseHelper {
     int id = 0;
     try {
       Database db = await instance.database;
-      id = await db.insert(taskLogTable, row);
+      id = await db.insert(getTaskLogTable(), row);
     } catch (e, s) {
       if (kDebugMode) {
         print(e);
@@ -534,7 +650,7 @@ class DatabaseHelper {
     late List<Map<String, dynamic>> ret;
     try {
       Database db = await instance.database;
-      ret = await db.query(taskTable);
+      ret = await db.query(getTaskTable());
     } catch (e, s) {
       if (kDebugMode) {
         print(e);
@@ -549,63 +665,60 @@ class DatabaseHelper {
   // return -1 if there are no tasks at all for this category.
   Future<int> getCompletionPercentage(String cat, int days) async {
     Database db = await instance.database;
-
     final intl.DateFormat formatter = intl.DateFormat('yyyy-MM-dd');
-
     var fromDate = formatter
         .format(DateTime.now().subtract(Duration(days: days)))
         .toString();
-
-    var q1 = "select * from tasklog where category = '$cat'"
-        " and taskdate >= '$fromDate'";
-    final res1 = await db.rawQuery(q1);
+    final table = getTaskLogTable();
+    print('[RADAR][PCT] Using table: $table for category: $cat');
+    var q1 = "select * from $table where category = ? and taskdate >= ?";
+    final res1 = await db.rawQuery(q1, [cat, fromDate]);
     var total = res1.length;
-
-    var q2 = "select * from tasklog where category = '$cat'"
-        " and taskdate >= '$fromDate'"
-        " and checked = 'true'";
-    final res2 = await db.rawQuery(q2);
+    print('[RADAR][PCT] Total logs for $cat: $total');
+    var q2 = "select * from $table where category = ? and taskdate >= ? and checked = 'true'";
+    final res2 = await db.rawQuery(q2, [cat, fromDate]);
     var checked = res2.length;
-
-    // do not attempt to divide by 0
+    print('[RADAR][PCT] Checked logs for $cat: $checked');
     if (total == 0) {
-      return -1;
+      return 0;
     }
-
     var percentage = ((checked / total) * 100).toInt();
-
+    print('[RADAR][PCT] Percentage for $cat: $percentage');
     return percentage;
   }
 
   // return '' if there are no tasks at all.
   Future<String> getTotalPercentage(int days) async {
-    Database db = await instance.database;
-
+    final db = await instance.database;
     final intl.DateFormat formatter = intl.DateFormat('yyyy-MM-dd');
-
-    var fromDate = formatter
-        .format(DateTime.now().subtract(Duration(days: days)))
-        .toString();
-
-    var q1 = "select * from tasklog where "
-        "taskdate >= '$fromDate'";
-    final res1 = await db.rawQuery(q1);
-    var total = res1.length;
-
-    var q2 = "select * from tasklog where "
-        "taskdate >= '$fromDate'"
-        " and checked = 'true'";
-    final res2 = await db.rawQuery(q2);
-    var checked = res2.length;
-
-    // do not attempt to divide by 0
-    if (total == 0) {
-      return '';
+    // Get all categories (1-6)
+    List<String> cats = [];
+    try {
+      final catMaps = await queryCategories();
+      for (var i = 1; i <= 6; i++) {
+        final match = catMaps.firstWhere(
+          (c) => c['categoryid'] == i,
+          orElse: () => <String, dynamic>{},
+        );
+        if (match.isNotEmpty) cats.add(match['cat']);
+      }
+    } catch (e) {
+      print('[TOTAL PCT] Error loading categories: $e');
     }
-
-    var percentage = ((checked / total) * 100).toInt();
-
-    return percentage.toString();
+    if (cats.isEmpty) return '0';
+    int sum = 0;
+    int count = 0;
+    for (final cat in cats) {
+      final pct = await getCompletionPercentage(cat, days);
+      if (pct >= 0) {
+        sum += pct;
+        count++;
+      }
+    }
+    if (count == 0) return '0';
+    final avg = (sum / count).round();
+    print('[TOTAL PCT] Per-category: $cats, avg: $avg');
+    return avg.toString();
   }
 
   Future<List<Map<String, dynamic>>> queryUncheckedTasks(String logDate) async {
@@ -613,7 +726,7 @@ class DatabaseHelper {
     try {
       Database db = await instance.database;
       List<dynamic> whereArguments = [logDate];
-      ret = await db.query(taskLogTable,
+      ret = await db.query(getTaskLogTable(),
           where: "checked = 'false' and ${DatabaseHelper.columnTLTaskDate} = ?",
           whereArgs: whereArguments);
     } catch (e, s) {
@@ -628,7 +741,7 @@ class DatabaseHelper {
     try {
       Database db = await instance.database;
       List<dynamic> whereArguments = [logDate];
-      ret = await db.query(taskLogTable,
+      ret = await db.query(getTaskLogTable(),
           where: "checked = 'true' and ${DatabaseHelper.columnTLTaskDate} = ?",
           whereArgs: whereArguments);
     } catch (e, s) {
@@ -644,7 +757,7 @@ class DatabaseHelper {
     late List<Map<String, dynamic>> ret;
     try {
       Database db = await instance.database;
-      ret = await db.query(categoryTable);
+      ret = await db.query(getCategoryTable());
     } catch (e, s) {
       print(e);
       print(s);
@@ -657,7 +770,7 @@ class DatabaseHelper {
     try {
       Database db = await instance.database;
       List<dynamic> whereArguments = [categoryid];
-      ret = await db.query(categoryTable,
+      ret = await db.query(getCategoryTable(),
           where: "${DatabaseHelper.columnCategoryId} = ?",
           whereArgs: whereArguments);
     } catch (e, s) {
@@ -673,7 +786,7 @@ class DatabaseHelper {
     late List<Map<String, dynamic>> ret;
     try {
       Database db = await instance.database;
-      ret = await db.query(quoteTable, where: "current = 'Y'");
+      ret = await db.query(getQuoteTable(), where: "current = 'Y'");
     } catch (e, s) {
       print(e);
       print(s);
@@ -685,7 +798,7 @@ class DatabaseHelper {
     late List<Map<String, dynamic>> ret;
     try {
       Database db = await instance.database;
-      ret = await db.query(quoteTable);
+      ret = await db.query(getQuoteTable());
     } catch (e, s) {
       print(e);
       print(s);
@@ -699,7 +812,7 @@ class DatabaseHelper {
     try {
       Database db = await instance.database;
       List<dynamic> whereArguments = [cat, logDate];
-      ret = await db.query(taskLogTable,
+      ret = await db.query(getTaskLogTable(),
           where:
               '${DatabaseHelper.columnCategory} = ? and ${DatabaseHelper.columnTLTaskDate} = ?',
           whereArgs: whereArguments);
@@ -714,7 +827,7 @@ class DatabaseHelper {
     late List<Map<String, dynamic>> ret;
     try {
       Database db = await instance.database;
-      ret = await db.query(taskTable);
+      ret = await db.query(getTaskTable());
     } catch (e, s) {
       print(e);
       print(s);
@@ -736,11 +849,23 @@ class DatabaseHelper {
     try {
       Database db = await instance.database;
 
-      var query = "select * from tasklog where "
+      var query = "select * from ${getTaskLogTable()} where "
           "taskdate >= '$fromDate' and "
           "taskdate < '$toDate'"
           "order by taskdate";
       ret = await db.rawQuery(query);
+    } catch (e, s) {
+      print(e);
+      print(s);
+    }
+    return ret;
+  }
+
+  Future<List<Map<String, dynamic>>> queryAllTaskLogs() async {
+    late List<Map<String, dynamic>> ret;
+    try {
+      Database db = await instance.database;
+      ret = await db.query(getTaskLogTable());
     } catch (e, s) {
       print(e);
       print(s);
@@ -786,7 +911,7 @@ class DatabaseHelper {
     try {
       Database db = await instance.database;
       List<dynamic> whereArguments = [cat];
-      ret = await db.query(taskTable,
+      ret = await db.query(getTaskTable(),
           where: '${DatabaseHelper.columnCategory} = ?',
           whereArgs: whereArguments);
     } catch (e, s) {
@@ -802,7 +927,7 @@ class DatabaseHelper {
     try {
       Database db = await instance.database;
       List<dynamic> whereArguments = [cat, desc];
-      ret = await db.query(taskTable,
+      ret = await db.query(getTaskTable(),
           where:
               '${DatabaseHelper.columnCategory} = ? and ${DatabaseHelper.columnTaskDescription} = ?',
           whereArgs: whereArguments);
@@ -834,7 +959,7 @@ class DatabaseHelper {
     int id = 0;
     try {
       Database db = await instance.database;
-      id = await db.insert(quoteTable, row);
+      id = await db.insert(getQuoteTable(), row);
     } catch (e, s) {
       print(e);
       print(s);
@@ -868,7 +993,7 @@ class DatabaseHelper {
     Database db = await instance.database;
     int id = row[columnId];
     return await db
-        .update(taskTable, row, where: '$columnId = ?', whereArgs: [id]);
+        .update(getTaskTable(), row, where: '$columnId = ?', whereArgs: [id]);
   }
 
   // update review
@@ -901,33 +1026,33 @@ class DatabaseHelper {
   // returned. This should be 1 as long as the row exists.
   Future<int> delete(int id) async {
     Database db = await instance.database;
-    return await db.delete(taskTable, where: '$columnId = ?', whereArgs: [id]);
+    return await db.delete(getTaskTable(), where: '$columnId = ?', whereArgs: [id]);
   }
 
   Future<int> deleteByTaskDescription(String taskDescription) async {
     Database db = await instance.database;
-    return await db.delete(taskTable,
+    return await db.delete(getTaskTable(),
         where: '$columnTaskDescription = ?', whereArgs: [taskDescription]);
   }
 
   Future<int> deleteTasks() async {
     Database db = await instance.database;
-    return await db.delete(taskTable);
+    return await db.delete(getTaskTable());
   }
 
   Future<int> deleteTaskLog() async {
     Database db = await instance.database;
-    return await db.delete(taskLogTable);
+    return await db.delete(getTaskLogTable());
   }
 
   Future<int> deleteQuote() async {
     Database db = await instance.database;
-    return await db.delete(quoteTable);
+    return await db.delete(getQuoteTable());
   }
 
   Future<int> deleteCategory() async {
     Database db = await instance.database;
-    return await db.delete(categoryTable);
+    return await db.delete(getCategoryTable());
   }
 
   Future<int> insertVisionStatement(String visionText) async {
@@ -973,7 +1098,7 @@ class DatabaseHelper {
 
   Future<void> insertChatMessage(String sender, String content) async {
     final db = await database;
-    await db.insert(chatTable, {
+    await db.insert(getChatTable(), {
       chatColumnSender: sender,
       chatColumnContent: content,
       chatColumnTimestamp: DateTime.now().toIso8601String(),
@@ -982,13 +1107,13 @@ class DatabaseHelper {
 
   Future<List<Map<String, dynamic>>> getChatHistory() async {
     final db = await database;
-    return await db.query(chatTable, orderBy: '$chatColumnTimestamp ASC');
+    return await db.query(getChatTable(), orderBy: '$chatColumnTimestamp ASC');
   }
 
   Future<void> deleteOldestChatMessage(int messageId) async {
     final db = await database;
     await db
-        .delete(chatTable, where: '$chatColumnId = ?', whereArgs: [messageId]);
+        .delete(getChatTable(), where: '$chatColumnId = ?', whereArgs: [messageId]);
   }
 
   // Commentary countdown methods

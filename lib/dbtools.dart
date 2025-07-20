@@ -1,5 +1,6 @@
 import 'package:life_ops/db.dart';
 import 'package:intl/intl.dart' as intl;
+import 'dart:math';
 
 class DBTools {
   final dbHelper = DatabaseHelper.instance;
@@ -358,5 +359,111 @@ class DBTools {
           formatter.format(DateTime.now()).toString()
     };
     await dbHelper.insertTaskLog(taskLogRow);
+  }
+
+  /// Populates the database with compelling demo data for all categories and tasks, and 30 days of random completion logs.
+  Future<void> populateDemoData() async {
+    print('[DEMO] populateDemoData called. isDemoMode=${DatabaseHelper.isDemoMode}');
+    final db = dbHelper;
+    final now = DateTime.now();
+    final categories = [
+      {'id': 1, 'cat': 'Health'},
+      {'id': 2, 'cat': 'Mindset'},
+      {'id': 3, 'cat': 'Wealth'},
+      {'id': 4, 'cat': 'Parent'},
+      {'id': 5, 'cat': 'Spouse'},
+      {'id': 6, 'cat': 'Business'},
+    ];
+    final tasks = {
+      'Health': [
+        'Morning Yoga',
+        'Drink 2L Water',
+        '10,000 Steps',
+      ],
+      'Mindset': [
+        'Meditate 10 min',
+        'Gratitude Journal',
+        'Read 10 pages',
+      ],
+      'Wealth': [
+        'Invest \$10',
+        'Track Expenses',
+        'Review Budget',
+      ],
+      'Parent': [
+        'Family Dinner',
+        'Help with Homework',
+        'Read to Kids',
+      ],
+      'Spouse': [
+        'Date Night',
+        'Compliment Spouse',
+        'Share a Meal',
+      ],
+      'Business': [
+        'Plan Tomorrow',
+        'Email Follow-ups',
+        'Review Goals',
+      ],
+    };
+
+    // 1. Clear existing data
+    await db.deleteCategory();
+    await db.deleteTasks();
+    await db.deleteTaskLog();
+
+    // 2. Insert categories
+    for (var cat in categories) {
+      print('[DEMO] Inserting demo category: id=${cat['id']} cat=${cat['cat']}');
+      await db.insertCategory({
+        DatabaseHelper.columnCategoryId: cat['id'],
+        DatabaseHelper.columnCat: cat['cat'],
+      });
+    }
+    print('[DEMO] Finished inserting demo categories.');
+
+    // 3. Insert tasks
+    int taskId = 1;
+    for (var cat in categories) {
+      final catName = cat['cat'] as String;
+      for (var taskDesc in tasks[catName]!) {
+        await db.insertTask({
+          DatabaseHelper.columnId: taskId,
+          DatabaseHelper.columnCategory: catName,
+          DatabaseHelper.columnTaskDescription: taskDesc,
+          DatabaseHelper.columnSunday: 'true',
+          DatabaseHelper.columnMonday: 'true',
+          DatabaseHelper.columnTuesday: 'true',
+          DatabaseHelper.columnWednesday: 'true',
+          DatabaseHelper.columnThursday: 'true',
+          DatabaseHelper.columnFriday: 'true',
+          DatabaseHelper.columnSaturday: 'true',
+          DatabaseHelper.columnCreateDate: now.toIso8601String(),
+        });
+        taskId++;
+      }
+    }
+    print('[DEMO] Finished inserting demo tasks.');
+
+    // 4. Insert 30 days of random completion logs for each task
+    final allTasks = await db.queryAllTasks();
+    final rand = Random();
+    for (int dayOffset = 0; dayOffset < 30; dayOffset++) {
+      final date = now.subtract(Duration(days: dayOffset));
+      final dateStr = intl.DateFormat('yyyy-MM-dd').format(date);
+      for (var task in allTasks) {
+        final completed = rand.nextBool();
+        await db.insertTaskLog({
+          DatabaseHelper.columnTLCategory: task[DatabaseHelper.columnCategory],
+          DatabaseHelper.columnTLTaskDescription: task[DatabaseHelper.columnTaskDescription],
+          DatabaseHelper.columnTLChecked: completed ? 'true' : 'false',
+          DatabaseHelper.columnTLTaskDate: dateStr,
+        });
+      }
+    }
+    print('[DEMO] Finished inserting demo task logs.');
+    // Print out the demo categories for verification
+    final demoCats = await db.queryCategories();
+    print('[DEMO] Demo categories in table: $demoCats');
   }
 }
