@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:life_ops/homescreen.dart';
 import 'package:life_ops/notification.dart';
-import 'package:timezone/data/latest.dart' as tz show initializeTimeZones;
+import "package:timezone/data/latest.dart" as tz show initializeTimeZones;
 import 'package:life_ops/db.dart';
 import 'package:flutter/services.dart';
 import 'dart:io';

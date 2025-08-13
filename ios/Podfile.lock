@@ -8,11 +8,11 @@ PODS:
     - FirebaseAnalytics (~> 11.15.0)
   - Firebase/CoreOnly (11.15.0):
     - FirebaseCore (~> 11.15.0)
-  - firebase_analytics (11.5.2):
+  - firebase_analytics (11.6.0):
     - Firebase/Analytics (= 11.15.0)
     - firebase_core
     - Flutter
-  - firebase_core (3.15.1):
+  - firebase_core (3.15.2):
     - Firebase/CoreOnly (= 11.15.0)
     - Flutter
   - FirebaseAnalytics (11.15.0):
@@ -125,12 +125,12 @@ PODS:
   - permission_handler_apple (9.3.0):
     - Flutter
   - PromisesObjC (2.4.0)
-  - purchases_flutter (9.0.0):
+  - purchases_flutter (9.2.0):
     - Flutter
-    - PurchasesHybridCommon (= 15.0.0)
-  - PurchasesHybridCommon (15.0.0):
-    - RevenueCat (= 5.33.0)
-  - RevenueCat (5.33.0)
+    - PurchasesHybridCommon (= 16.2.0)
+  - PurchasesHybridCommon (16.2.0):
+    - RevenueCat (= 5.34.0)
+  - RevenueCat (5.34.0)
   - shared_preferences_foundation (0.0.1):
     - Flutter
     - FlutterMacOS
@@ -220,8 +220,8 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   app_install_date: 8d9e98cd5329ec376d38012a1cb82f37810de359
   Firebase: d99ac19b909cd2c548339c2241ecd0d1599ab02e
-  firebase_analytics: bceda3c1d0f70368de04b2dfdde58e00e37ad4e4
-  firebase_core: cf4d42a8ac915e51c0c2dc103442f3036d941a2d
+  firebase_analytics: bf93e20703c95030404d6ddbb1adf05bf5c3885b
+  firebase_core: 99a37263b3c27536063a7b601d9e2a49400a433c
   FirebaseAnalytics: 6433dfd311ba78084fc93bdfc145e8cb75740eae
   FirebaseCore: efb3893e5b94f32b86e331e3bd6dadf18b66568e
   FirebaseCoreInternal: 9afa45b1159304c963da48addb78275ef701c6b4
@@ -240,15 +240,15 @@ SPEC CHECKSUMS:
   path_provider_foundation: 2b6b4c569c0fb62ec74538f866245ac84301af46
   permission_handler_apple: 9878588469a2b0d0fc1e048d9f43605f92e6cec2
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
-  purchases_flutter: f9172ed5de8005287385d69d5c51788a2b7c2b08
-  PurchasesHybridCommon: 18b65ad813f50460d4af7e033abb5cc44a686a6f
-  RevenueCat: 9fd6fc0ea8a22fd9d11242feb298f3bb6f9f86db
+  purchases_flutter: 343211332d04ed719fbb649b7efb930f260c8666
+  PurchasesHybridCommon: 55e97b4e090015ed138988e6559def2bd4c50ebe
+  RevenueCat: eb2aa042789d9c99ad5172bd96e28b96286d6ada
   shared_preferences_foundation: fcdcbc04712aee1108ac7fda236f363274528f78
   sqflite_darwin: 5a7236e3b501866c1c9befc6771dfd73ffb8702d
   url_launcher_ios: 5334b05cef931de560670eeae103fd3e431ac3fe
   video_player_avfoundation: 7c6c11d8470e1675df7397027218274b6d2360b3
   webview_flutter_wkwebview: a4af96a051138e28e29f60101d094683b9f82188
 
-PODFILE CHECKSUM: 5aac9be49ff2a3a1c7201c717c98ef94d6209ca4
+PODFILE CHECKSUM: 592364c38cd484a9b4341c7a0d0cb2bd017c63d8
 
 COCOAPODS: 1.16.2

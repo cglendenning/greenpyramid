@@ -13,6 +13,8 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart'
 import 'package:flutter/widgets.dart';
 import 'dart:developer';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'dart:convert' show jsonDecode;
+import 'package:life_ops/secrets.dart';
 
 final RouteObserver<PageRoute> routeObserver = RouteObserver<PageRoute>();
 
@@ -50,17 +52,18 @@ class _CoachingState extends State<Coaching>
   bool isLoading = true;
   String? errorMessage;
   bool isSubscribed = false;
-  static List<YouTubeVideo> _cachedVideos = []; // Simple cache for videos
-  static DateTime _lastCacheTime =
-      DateTime.now().subtract(const Duration(hours: 1)); // Cache for 1 hour
+  // Memory management for large video lists
+  static const int _maxVideosInMemory = 200; // Keep max 200 videos in memory
+  static const int _cleanupThreshold = 150; // Start cleanup when we have 150+ videos
+  
+  // Cache for instant video loading
+  List<YouTubeVideo> _instantCache = [];
+  List<YouTubeVideo> _cachedVideos = [];
+  DateTime? _lastCacheTime;
 
   // Lazy loading variables
   int _displayedVideoCount = 5; // Show 5 videos initially
-  bool _isLoadingMore = false;
   final ScrollController _scrollController = ScrollController();
-
-  // Instant display cache - stores just first 5 videos for immediate display
-  static List<YouTubeVideo> _instantCache = [];
 
   @override
   void initState() {
@@ -108,22 +111,59 @@ class _CoachingState extends State<Coaching>
     }
   }
 
-  void _loadMoreVideos() {
-    if (!_isLoadingMore && _displayedVideoCount < videos.length) {
+  // Memory cleanup method to prevent memory leaks
+  void _cleanupVideoMemory() {
+    if (videos.length > _cleanupThreshold) {
+      if (kDebugMode) {
+        print('Memory cleanup: ${videos.length} videos, cleaning up...');
+      }
+      
+      // Keep only the most recent videos and some older ones for variety
+      final recentVideos = videos.take(100).toList(); // Keep first 100
+      final olderVideos = videos.skip(100).take(50).toList(); // Keep 50 more for variety
+      
+      // Combine and shuffle for variety
+      final cleanedVideos = [...recentVideos, ...olderVideos];
+      cleanedVideos.shuffle();
+      
+      // Update the video list
       setState(() {
-        _isLoadingMore = true;
+        this.videos = cleanedVideos;
+        _displayedVideoCount = _displayedVideoCount.clamp(0, this.videos.length);
       });
+      
+      if (kDebugMode) {
+        print('Memory cleanup complete: ${this.videos.length} videos kept');
+      }
+    }
+  }
 
-      // Simulate loading delay for better UX
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (mounted) {
-          setState(() {
-            _displayedVideoCount =
-                (_displayedVideoCount + 5).clamp(0, videos.length);
-            _isLoadingMore = false;
-          });
+  // Update displayed video count with memory management
+  void _loadMoreVideos() {
+    if (_displayedVideoCount < videos.length) {
+      if (kDebugMode) {
+        print('_loadMoreVideos: Current _displayedVideoCount: $_displayedVideoCount');
+        print('_loadMoreVideos: Total videos.length: ${videos.length}');
+        print('_loadMoreVideos: _cachedVideos.length: ${_cachedVideos.length}');
+      }
+      
+      // Check if we need memory cleanup
+      if (videos.length > _cleanupThreshold) {
+        _cleanupVideoMemory();
+      }
+      
+      setState(() {
+        _displayedVideoCount = (_displayedVideoCount + 10).clamp(0, videos.length);
+        if (kDebugMode) {
+          print('_loadMoreVideos: New _displayedVideoCount: $_displayedVideoCount');
         }
       });
+    } else {
+      if (kDebugMode) {
+        print('_loadMoreVideos: No more videos to load');
+        print('_loadMoreVideos: _displayedVideoCount: $_displayedVideoCount');
+        print('_loadMoreVideos: videos.length: ${videos.length}');
+      }
     }
   }
 
@@ -177,15 +217,15 @@ class _CoachingState extends State<Coaching>
       // Check if we have cached videos that are still fresh (less than 1 hour old)
       final now = DateTime.now();
       if (_cachedVideos.isNotEmpty &&
-          now.difference(_lastCacheTime).inHours < 1) {
+          now.difference(_lastCacheTime!).inHours < 1) {
         setState(() {
           this.videos = List.from(_cachedVideos)..shuffle();
           _displayedVideoCount = 5; // Reset to show first 5 videos
           isLoading = false;
         });
 
-        // Pre-load remaining videos in background
-        _preloadRemainingVideos();
+        // Pre-load fresh data in background
+        _preloadFreshVideos();
         return;
       }
 
@@ -233,125 +273,239 @@ class _CoachingState extends State<Coaching>
   }
 
   Future<void> _preloadFreshVideos() async {
+    // ROBUST YOUTUBE API STRATEGY: Test API first, handle quotas, better fallbacks
+    // This approach tests what actually works before proceeding
+    
     try {
       List<YouTubeVideo> allVideos = [];
       Set<String> videoIds = {};
       bool instantCachePopulated = false;
 
-      // Method 1: Try RSS feed with different parameters (this has proper metadata)
+      // Test the YouTube API first to see what we can actually get
       try {
-        final response = await http.get(
-          Uri.parse(
-              'https://www.youtube.com/feeds/videos.xml?channel_id=UCLLThMzPSIa7ckEISQfhycw&max-results=50'),
-          headers: {
-            'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-          },
-        );
-
-        if (response.statusCode == 200) {
-          final parsedVideos = parseRSSFeed(response.body);
-          for (final video in parsedVideos) {
-            if (!videoIds.contains(video.id)) {
-              allVideos.add(video);
-              videoIds.add(video.id);
-              // Populate _instantCache as soon as we have 5 videos
-              if (!instantCachePopulated && allVideos.length == 5) {
-                // Shuffle the first 5 videos for random selection
-                final List<YouTubeVideo> firstFive = List.from(allVideos);
-                firstFive.shuffle();
-                _instantCache = firstFive;
-                if (mounted) {
-                  setState(() {
-                    this.videos = List.from(_instantCache);
-                    _displayedVideoCount = 5;
-                    isLoading = false;
-                  });
-                }
-                instantCachePopulated = true;
+        if (kDebugMode) {
+          print('Testing YouTube Data API v3...');
+        }
+        
+        const apiKey = Secrets.youtubeApiKey;
+        
+        // First, test if we can access the channel
+        final channelResponse = await http.get(
+          Uri.parse('https://www.googleapis.com/youtube/v3/channels?part=contentDetails&id=UCLLThMzPSIa7ckEISQfhycw&key=$apiKey'),
+        ).timeout(const Duration(seconds: 20));
+        
+        if (channelResponse.statusCode == 200) {
+          final channelData = jsonDecode(channelResponse.body);
+          final uploadsPlaylistId = channelData['items']?[0]?['contentDetails']?['relatedPlaylists']?['uploads'];
+          
+          if (uploadsPlaylistId != null) {
+            if (kDebugMode) {
+              print('✅ YouTube API working! Found uploads playlist: $uploadsPlaylistId');
+            }
+            
+            // Try to get videos from the playlist
+            final playlistResponse = await http.get(
+              Uri.parse('https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=$uploadsPlaylistId&maxResults=50&key=$apiKey'),
+            ).timeout(const Duration(seconds: 20));
+            
+            if (playlistResponse.statusCode == 200) {
+              final playlistData = jsonDecode(playlistResponse.body);
+              final items = playlistData['items'] as List?;
+              final totalResults = playlistData['pageInfo']?['totalResults'];
+              
+              if (kDebugMode) {
+                print('✅ Playlist API working! Total videos in channel: $totalResults');
+                print('First page returned: ${items?.length ?? 0} videos');
               }
-            }
-          }
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          print('Error with RSS feed method: $e');
-        }
-      }
-
-      // Method 2: Try alternative RSS feed format
-      try {
-        final altResponse = await http.get(
-          Uri.parse(
-              'https://www.youtube.com/feeds/videos.xml?channel_id=UCLLThMzPSIa7ckEISQfhycw&orderby=published&max-results=50'),
-          headers: {
-            'User-Agent':
-                'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-          },
-        );
-
-        if (altResponse.statusCode == 200) {
-          final altParsedVideos = parseRSSFeed(altResponse.body);
-          for (final video in altParsedVideos) {
-            if (!videoIds.contains(video.id)) {
-              allVideos.add(video);
-              videoIds.add(video.id);
-            }
-          }
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          print('Error with alternative RSS feed method: $e');
-        }
-      }
-
-      // Method 3: Fetch additional videos if we have less than 50
-      if (allVideos.length < 50) {
-        try {
-          final channelResponse = await http.get(
-            Uri.parse(
-                'https://www.youtube.com/channel/UCLLThMzPSIa7ckEISQfhycw/videos'),
-            headers: {
-              'User-Agent':
-                  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-            },
-          );
-
-          if (channelResponse.statusCode == 200) {
-            final channelVideoIds =
-                parseChannelPageForVideoIds(channelResponse.body);
-            int fetchCount = 0;
-            for (final videoId in channelVideoIds) {
-              if (!videoIds.contains(videoId) && fetchCount < 25) {
-                try {
-                  final videoMetadata = await fetchVideoMetadata(videoId);
-                  if (videoMetadata != null) {
-                    allVideos.add(videoMetadata);
+              
+              if (items != null && items.isNotEmpty) {
+                // Process first page of videos
+                for (final item in items) {
+                  final snippet = item['snippet'];
+                  final videoId = snippet?['resourceId']?['videoId'];
+                  final title = snippet?['title'];
+                  
+                  if (videoId != null && title != null && !videoIds.contains(videoId)) {
+                    allVideos.add(YouTubeVideo(
+                      id: videoId,
+                      title: _cleanTitle(title),
+                      thumbnail: 'https://img.youtube.com/vi/$videoId/mqdefault.jpg',
+                      description: _cleanTitle(snippet?['description'] ?? ''),
+                    ));
                     videoIds.add(videoId);
-                    fetchCount++;
+                    
+                    // Populate _instantCache as soon as we have 5 videos
+                    if (!instantCachePopulated && allVideos.length == 5) {
+                      final List<YouTubeVideo> firstFive = List.from(allVideos);
+                      firstFive.shuffle();
+                      _instantCache = firstFive;
+                      if (mounted) {
+                        setState(() {
+                          this.videos = List.from(_instantCache);
+                          _displayedVideoCount = 5;
+                          isLoading = false;
+                        });
+                      }
+                      instantCachePopulated = true;
+                    }
                   }
-                } catch (e) {
+                }
+                
+                // If there are more videos, try to get them (but be careful with quotas)
+                if (totalResults != null && totalResults > 50) {
                   if (kDebugMode) {
-                    print('Error fetching metadata for video $videoId: $e');
+                    print('More videos available. Getting all videos...');
+                  }
+                  
+                  // Get all remaining videos using pagination
+                  String? nextPageToken = playlistData['nextPageToken'];
+                  int totalVideos = items.length;
+                  
+                  while (nextPageToken != null) {
+                    try {
+                      final nextPageResponse = await http.get(
+                        Uri.parse('https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&playlistId=$uploadsPlaylistId&maxResults=50&pageToken=$nextPageToken&key=$apiKey'),
+                      ).timeout(const Duration(seconds: 20));
+                      
+                      if (nextPageResponse.statusCode == 200) {
+                        final nextPageData = jsonDecode(nextPageResponse.body);
+                        final nextItems = nextPageData['items'] as List?;
+                        
+                        if (nextItems != null && nextItems.isNotEmpty) {
+                          if (kDebugMode) {
+                            print('Fetched ${nextItems.length} more videos. Total so far: ${totalVideos + nextItems.length}');
+                          }
+                          
+                          // Add videos from this page
+                          for (final item in nextItems) {
+                            final snippet = item['snippet'];
+                            final videoId = snippet?['resourceId']?['videoId'];
+                            final title = snippet?['title'];
+                            
+                            if (videoId != null && title != null && !videoIds.contains(videoId)) {
+                              allVideos.add(YouTubeVideo(
+                                id: videoId,
+                                title: _cleanTitle(title),
+                                thumbnail: 'https://img.youtube.com/vi/$videoId/mqdefault.jpg',
+                                description: _cleanTitle(snippet?['description'] ?? ''),
+                              ));
+                              videoIds.add(videoId);
+                              totalVideos++;
+                            }
+                          }
+                          
+                          // Get next page token for pagination
+                          nextPageToken = nextPageData['nextPageToken'];
+                          
+                          if (nextPageToken != null) {
+                            if (kDebugMode) {
+                              print('More pages available, continuing...');
+                            }
+                            // Small delay between API calls to be respectful
+                            await Future.delayed(const Duration(milliseconds: 200));
+                          }
+                        } else {
+                          if (kDebugMode) {
+                            print('No more items in this page');
+                          }
+                          break;
+                        }
+                      } else {
+                        if (kDebugMode) {
+                          print('Page request failed: ${nextPageResponse.statusCode}');
+                        }
+                        break;
+                      }
+                    } catch (e) {
+                      if (kDebugMode) {
+                        print('Error fetching page: $e');
+                      }
+                      break;
+                    }
+                  }
+                  
+                  if (kDebugMode) {
+                    print('Pagination complete. Total videos fetched: $totalVideos');
                   }
                 }
               }
+            } else {
+              if (kDebugMode) {
+                print('❌ Playlist API failed: ${playlistResponse.statusCode}');
+              }
+            }
+          } else {
+            if (kDebugMode) {
+              print('❌ Could not find uploads playlist ID');
             }
           }
-        } catch (e) {
+        } else {
           if (kDebugMode) {
-            print('Error with channel page scraping method: $e');
+            print('❌ Channel API failed: ${channelResponse.statusCode}');
+            print('Response: ${channelResponse.body}');
           }
         }
+      } catch (e) {
+        if (kDebugMode) {
+          print('❌ YouTube API error: $e');
+        }
+      }
+
+      if (kDebugMode) {
+        print('YouTube API found ${allVideos.length} videos');
+      }
+
+      // If we didn't get enough videos from API, try alternative methods
+      if (allVideos.length < 30) {
+        if (kDebugMode) {
+          print('API only gave ${allVideos.length} videos, trying alternative methods...');
+        }
+        
+        // Try to get more videos using a different approach
+        await _tryAlternativeVideoDiscovery(allVideos, videoIds);
+      }
+
+      if (kDebugMode) {
+        print('Total unique videos found: ${allVideos.length}');
       }
 
       if (allVideos.isNotEmpty) {
         // Shuffle all videos to randomize the selection
         allVideos.shuffle();
         
+        // Memory management: Limit the number of videos kept in memory
+        if (allVideos.length > _maxVideosInMemory) {
+          if (kDebugMode) {
+            print('Memory limit reached: ${allVideos.length} videos, limiting to $_maxVideosInMemory');
+          }
+          
+          // Keep a diverse selection of videos
+          final recentVideos = allVideos.take(100).toList();
+          final olderVideos = allVideos.skip(100).take(100).toList();
+          
+          // Combine and shuffle for variety
+          allVideos = [...recentVideos, ...olderVideos];
+          allVideos.shuffle();
+          
+          if (kDebugMode) {
+            print('Memory management complete: ${allVideos.length} videos kept');
+          }
+        }
+        
         // Update cache with shuffled videos
         _cachedVideos = List.from(allVideos);
         _lastCacheTime = DateTime.now();
+        
+        // DEBUG: Show all videos in _cachedVideos
+        if (kDebugMode) {
+          print('=== ALL VIDEOS IN _cachedVideos ===');
+          for (int i = 0; i < _cachedVideos.length; i++) {
+            final video = _cachedVideos[i];
+            print('${i + 1}. ID: ${video.id}, Title: ${video.title}');
+          }
+          print('=== END VIDEOS LIST ===');
+          print('Total videos in _cachedVideos: ${_cachedVideos.length}');
+        }
         
         // Set instant cache to first 5 videos from shuffled list
         _instantCache = allVideos.take(5).toList();
@@ -364,36 +518,22 @@ class _CoachingState extends State<Coaching>
             isLoading = false;
           });
         }
+        
+        if (kDebugMode) {
+          print('Final video count: ${allVideos.length}');
+          print('videos.length in setState: ${this.videos.length}');
+          print('_displayedVideoCount set to: $_displayedVideoCount');
+        }
       } else {
-        // Fallback: Create some sample videos for testing
-        final sampleVideos = [
-          YouTubeVideo(
-            id: 'sample1',
-            title: 'Green Pyramid Coaching - Getting Started',
-            thumbnail: 'https://img.youtube.com/vi/sample1/mqdefault.jpg',
-            description: 'Learn the basics of the Green Pyramid method',
-          ),
-          YouTubeVideo(
-            id: 'sample2',
-            title: 'Building Your Foundation',
-            thumbnail: 'https://img.youtube.com/vi/sample2/mqdefault.jpg',
-            description: 'How to build a strong foundation for success',
-          ),
-          YouTubeVideo(
-            id: 'sample3',
-            title: 'Advanced Pyramid Strategies',
-            thumbnail: 'https://img.youtube.com/vi/sample3/mqdefault.jpg',
-            description: 'Take your pyramid to the next level',
-          ),
-        ];
-        sampleVideos.shuffle();
-        _instantCache = sampleVideos.take(5).toList();
+        // If all methods failed, show error
         if (mounted) {
           setState(() {
-            this.videos = List.from(_instantCache);
-            _displayedVideoCount = 5;
+            errorMessage = 'Failed to load videos from all sources';
             isLoading = false;
           });
+        }
+        if (kDebugMode) {
+          print('All video loading methods failed');
         }
       }
     } catch (e, st) {
@@ -407,149 +547,161 @@ class _CoachingState extends State<Coaching>
     }
   }
 
-  void _preloadRemainingVideos() {
-    // This method can be used to pre-load additional data if needed
-    // For now, it's a placeholder for future optimizations
-  }
-
-  List<YouTubeVideo> parseRSSFeed(String xmlData) {
-    List<YouTubeVideo> videos = [];
-
-    try {
-      // Simple XML parsing for RSS feed
-      final entries = xmlData.split('<entry>');
-
-      for (int i = 1; i < entries.length; i++) {
-        // Skip first empty entry
-        final entry = entries[i];
-
-        // Extract video ID
-        final videoIdMatch =
-            RegExp(r'<yt:videoId>([^<]+)</yt:videoId>').firstMatch(entry);
-        if (videoIdMatch == null) continue;
-        final videoId = videoIdMatch.group(1);
-
-        // Extract title
-        final titleMatch = RegExp(r'<title>([^<]+)</title>').firstMatch(entry);
-        if (titleMatch == null) continue;
-        final title = titleMatch.group(1);
-
-        // Extract description from media:group
-        final mediaGroupMatch =
-            RegExp(r'<media:group>([\\s\\S]*?)</media:group>')
-                .firstMatch(entry);
-        String description = '';
-        if (mediaGroupMatch != null) {
-          final mediaGroup = mediaGroupMatch.group(1)!;
-          final descMatch =
-              RegExp(r'<media:description>([\\s\\S]*?)</media:description>')
-                  .firstMatch(mediaGroup);
-          description = descMatch
-                  ?.group(1)
-                  ?.replaceAll('&quot;', '"')
-                  .replaceAll('&amp;', '&') ??
-              '';
-        }
-
-        // Create thumbnail URL using hqdefault for better quality
-        final thumbnail = 'https://img.youtube.com/vi/$videoId/hqdefault.jpg';
-
-        videos.add(YouTubeVideo(
-          id: videoId!,
-          title: title!,
-          thumbnail: thumbnail,
-          description: description,
-        ));
-      }
-    } catch (e, st) {
-      debugPrint('Error parsing RSS feed: $e\n$st');
+  // Try alternative methods to discover more videos
+  Future<void> _tryAlternativeVideoDiscovery(List<YouTubeVideo> allVideos, Set<String> videoIds) async {
+    if (kDebugMode) {
+      print('Trying alternative video discovery methods...');
     }
-
-    return videos;
-  }
-
-  List<String> parseChannelPageForVideoIds(String htmlData) {
-    List<String> videoIds = [];
-
+    
+    // Method 1: Try RSS feed as backup
     try {
-      // Look for video IDs in the channel page HTML
-      // YouTube stores video IDs in various data attributes
-      final videoIdPatterns = [
-        RegExp(r'"videoId":"([^"]+)"'),
-        RegExp(r'data-video-id="([^"]+)"'),
-        RegExp(r'watch\?v=([^"&]+)'),
-        RegExp(r'/watch\?v=([^"&]+)'),
-      ];
-
-      for (final pattern in videoIdPatterns) {
-        final matches = pattern.allMatches(htmlData);
-        for (final match in matches) {
-          final videoId = match.group(1);
-          if (videoId != null &&
-              videoId.length == 11 &&
-              !videoIds.contains(videoId)) {
+      final rssResponse = await http.get(
+        Uri.parse('https://www.youtube.com/feeds/videos.xml?channel_id=UCLLThMzPSIa7ckEISQfhycw&max-results=100'),
+      ).timeout(const Duration(seconds: 15));
+      
+      if (rssResponse.statusCode == 200) {
+        final rssVideos = _parseRSSFeedSimple(rssResponse.body);
+        if (kDebugMode) {
+          print('RSS backup found ${rssVideos.length} videos');
+        }
+        
+        for (final video in rssVideos) {
+          if (!videoIds.contains(video.id)) {
+            allVideos.add(video);
+            videoIds.add(video.id);
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print('RSS backup failed: $e');
+      }
+    }
+    
+    // Method 2: Try channel page parsing
+    try {
+      final channelResponse = await http.get(
+        Uri.parse('https://www.youtube.com/channel/UCLLThMzPSIa7ckEISQfhycw/videos'),
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        },
+      ).timeout(const Duration(seconds: 15));
+      
+      if (channelResponse.statusCode == 200) {
+        final additionalVideoIds = _extractVideoIdsFromChannelPage(channelResponse.body);
+        if (kDebugMode) {
+          print('Channel page parsing found ${additionalVideoIds.length} additional video IDs');
+        }
+        
+        for (final videoId in additionalVideoIds) {
+          if (!videoIds.contains(videoId)) {
+            allVideos.add(YouTubeVideo(
+              id: videoId,
+              title: 'Video $videoId',
+              thumbnail: 'https://img.youtube.com/vi/$videoId/mqdefault.jpg',
+              description: '',
+            ));
             videoIds.add(videoId);
           }
         }
       }
-    } catch (e, st) {
-      debugPrint('Error parsing channel page for video IDs: $e\n$st');
+    } catch (e) {
+      if (kDebugMode) {
+        print('Channel page parsing failed: $e');
+      }
     }
-
-    return videoIds;
   }
 
-  Future<YouTubeVideo?> fetchVideoMetadata(String videoId) async {
+  // Simple RSS parsing for backup method
+  List<YouTubeVideo> _parseRSSFeedSimple(String xmlData) {
+    List<YouTubeVideo> videos = [];
+    
     try {
-      // Try to get metadata from the video page HTML with timeout
-      final response = await http.get(
-        Uri.parse('https://www.youtube.com/watch?v=$videoId'),
-        headers: {
-          'User-Agent':
-              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        },
-      ).timeout(const Duration(seconds: 5)); // Add 5-second timeout
-
-      if (response.statusCode == 200) {
-        final htmlData = response.body;
-
-        // Extract title from meta tags
-        String? title;
-        final titleMatch =
-            RegExp(r'<meta property="og:title" content="([^"]+)"')
-                .firstMatch(htmlData);
-        if (titleMatch != null) {
-          title = titleMatch.group(1);
-        } else {
-          // Fallback: try to find title in other meta tags
-          final titleMatch2 =
-              RegExp(r'<title>([^<]+)</title>').firstMatch(htmlData);
-          if (titleMatch2 != null) {
-            title = titleMatch2.group(1);
-            // Clean up the title (remove " - YouTube" suffix)
-            if (title != null && title.contains(' - YouTube')) {
-              title = title.replaceAll(' - YouTube', '');
+      final entries = RegExp(r'<entry>([\s\S]*?)</entry>').allMatches(xmlData);
+      
+      for (final entry in entries) {
+        try {
+          final entryContent = entry.group(1)!;
+          final linkMatch = RegExp(r'<link[^>]*href="[^"]*watch\?v=([^"&]+)"').firstMatch(entryContent);
+          
+          if (linkMatch != null) {
+            final videoId = linkMatch.group(1);
+            if (videoId != null && videoId.length == 11) {
+              final titleMatch = RegExp(r'<title>([^<]+)</title>').firstMatch(entryContent);
+              final title = titleMatch?.group(1) ?? 'Video $videoId';
+              
+              videos.add(YouTubeVideo(
+                id: videoId,
+                title: _cleanTitle(title),
+                thumbnail: 'https://img.youtube.com/vi/$videoId/mqdefault.jpg',
+                description: '',
+              ));
             }
           }
+        } catch (e) {
+          // Skip problematic entries
         }
-
-        // Only extract description if we need it (we're not showing it anymore)
-        String description =
-            ''; // Empty since we're not displaying descriptions
-
-        return YouTubeVideo(
-          id: videoId,
-          title: title ?? 'Video $videoId',
-          thumbnail: 'https://img.youtube.com/vi/$videoId/mqdefault.jpg',
-          description: description,
-        );
       }
     } catch (e) {
       if (kDebugMode) {
-        print('Error fetching video metadata for $videoId: $e');
+        print('Error parsing RSS feed: $e');
       }
     }
-    return null;
+    
+    return videos;
+  }
+
+  // Fallback method if YouTube API is not configured
+
+  // Clean up video titles from YouTube's data
+  String _cleanTitle(String title) {
+    return title
+        .replaceAll('\\"', '"')
+        .replaceAll('\\/', '/')
+        .replaceAll('\\n', ' ')
+        .replaceAll('\\t', ' ')
+        .trim();
+  }
+
+  // Extract video IDs from a YouTube channel page HTML
+  List<String> _extractVideoIdsFromChannelPage(String html) {
+    List<String> videoIds = [];
+    
+    try {
+      // Look for video IDs in the channel page HTML
+      final videoIdPatterns = [
+        RegExp(r'"videoId":"([^"]{11})"'),
+        RegExp(r'data-video-id="([^"]{11})"'),
+        RegExp(r'watch\?v=([^"&]{11})'),
+        RegExp(r'/watch\?v=([^"&]{11})'),
+      ];
+      
+      Set<String> foundIds = {};
+      for (final pattern in videoIdPatterns) {
+        final matches = pattern.allMatches(html);
+        for (final match in matches) {
+          final videoId = match.group(1);
+          if (videoId != null && 
+              videoId.length == 11 && 
+              !foundIds.contains(videoId) &&
+              videoId != 'UCLLThMzPSIa7ckEISQfhycw') { // Exclude channel ID
+            foundIds.add(videoId);
+            videoIds.add(videoId);
+          }
+        }
+      }
+      
+      if (kDebugMode) {
+        print('Channel page HTML parsing found ${videoIds.length} video IDs');
+      }
+      
+    } catch (e) {
+      if (kDebugMode) {
+        print('Error parsing channel page HTML: $e');
+      }
+    }
+    
+    return videoIds;
   }
 
   @override
@@ -674,20 +826,20 @@ class _CoachingState extends State<Coaching>
       widgets.add(_buildVideoCard(videosToShow[i], i + 1));
       widgets.add(const SizedBox(height: 24));
 
-      // Add CTA after every 2-3 videos
-      if (i == 4) {
+      // Add CTA after every 10 videos (reduced frequency)
+      if (i == 9) {
         widgets.add(_buildPersonalCoachingCTA());
         widgets.add(const SizedBox(height: 32));
-      } else if (i == 8) {
+      } else if (i == 19) {
         widgets.add(_buildPersonalCoachingCTA2());
         widgets.add(const SizedBox(height: 32));
-      } else if (i == 12 && !isSubscribed) {
+      } else if (i == 29 && !isSubscribed) {
         // Only show "Mindset Mastery" section if not subscribed
         widgets.add(_buildAICoachingCTA3());
         widgets.add(const SizedBox(height: 32));
-      } else if (i % 5 == 0 && i > 8) {
-        // Every 5 videos - alternating CTAs
-        if ((i / 3) % 2 == 0 && !isSubscribed) {
+      } else if (i % 10 == 9 && i > 29) {
+        // Every 10 videos after the first 30 - alternating CTAs
+        if ((i / 10) % 2 == 0 && !isSubscribed) {
           // Only show AI coaching CTAs if not subscribed
           widgets.add(_buildAICoachingCTA4());
         } else {
@@ -703,8 +855,82 @@ class _CoachingState extends State<Coaching>
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: Center(
-            child: const CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xff1782FF)),
+            child: Column(
+              children: [
+                const CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xff1782FF)),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Loading more videos...',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Showing $_displayedVideoCount of ${videos.length} videos',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[500],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    
+    // Show discovery status only when we're actively discovering videos
+    // Hide it once all videos are loaded and displayed
+    if (videos.length > 30 && _displayedVideoCount < videos.length) {
+      widgets.add(
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.search,
+                        size: 16,
+                        color: Colors.blue[600],
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Discovering videos...',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Found ${videos.length} videos from your channel',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: Colors.blue[600],
+                      fontWeight: FontWeight.w400,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1615,3 +1841,4 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen>
     log('VIDEO PLAYER: super.dispose() completed');
   }
 }
+

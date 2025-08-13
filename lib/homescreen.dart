@@ -20,7 +20,6 @@ import 'package:life_ops/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/faq.dart';
 import 'package:life_ops/cancel.dart';
-import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:life_ops/subscription_status.dart';
 import 'package:life_ops/coaching.dart';
 import 'package:life_ops/are_we_a_fit.dart';

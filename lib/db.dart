@@ -699,8 +699,7 @@ class DatabaseHelper {
 
   // return '' if there are no tasks at all.
   Future<String> getTotalPercentage(int days) async {
-    final db = await instance.database;
-    final intl.DateFormat formatter = intl.DateFormat('yyyy-MM-dd');
+    await instance.database;
     // Get all categories (1-6)
     List<String> cats = [];
     try {
@@ -910,7 +909,9 @@ class DatabaseHelper {
       maps = await db.rawQuery(query);
     } catch (e, s) {
       print(e);
-      print(s);
+      if (kDebugMode) {
+        print(s);
+      }
     }
 
     return await maps[0]['defaults'];

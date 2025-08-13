@@ -192,7 +192,7 @@ class _Afternoon extends State<Afternoon> {
                                                 snapshot.data[index].checked),
                                             onChanged: (bool? value) {
                                               setState(() {
-                                                var v = value.toString();
+                                                value.toString();
                                                 dbHelper.rawUpdate(
                                                     "update ${dbHelper.getTaskLogTable()} set checked = '${value.toString()}' "
                                                     "where taskdescription = '${snapshot.data[index].taskdescription}' "

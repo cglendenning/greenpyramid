@@ -8,7 +8,6 @@ import 'package:life_ops/secrets.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:visibility_detector/visibility_detector.dart';
 
 class Cat {
@@ -325,25 +324,6 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
     }
   }
 
-  Future<void> _checkPaywallAndLoad() async {
-    // Check chat message count and subscription status
-    final chatHistory = await dbHelper.getChatHistory();
-    final userMessages = chatHistory.where((m) => m['sender'] == 'user').length;
-    final isSubscribed = await utils.Utils().isUserSubscribed();
-    if (!isSubscribed && userMessages >= 10) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => Paywall()),
-        );
-      });
-      return;
-    }
-    setState(() {
-      _paywalled = false;
-      _checkingPaywall = false;
-      _loadDataFuture = _loadAllData();
-    });
-  }
 
   Future<void> _loadAllData() async {
     await _loadRadarData();
