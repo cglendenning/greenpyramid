@@ -5,8 +5,8 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 
 class Utils {
   void changeSystemColor(Brightness mode) {
-    SystemChrome.setSystemUIOverlayStyle(
-        SystemUiOverlayStyle(statusBarBrightness: mode));
+    // SystemChrome.setSystemUIOverlayStyle(
+    //     SystemUiOverlayStyle(statusBarBrightness: mode));
   }
 
   String taskPrompt(String cat) {
