@@ -7,8 +7,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/setup/setup1.dart';
 import 'package:life_ops/setup/setup2.dart';
-import 'package:life_ops/setup/setup_video.dart';
+import 'package:life_ops/setup/setup4.dart';
 import 'package:life_ops/secrets.dart';
+import 'package:life_ops/services/ai_guard.dart';
 import 'package:life_ops/progress_bar.dart';
 
 // add some additional behind-the-scenes directives to openAI...
@@ -128,11 +129,18 @@ class _Setup3State extends State<Setup3> {
   }
 
   Future<void> _onSubmitted(String message) async {
+    final clamped = AiGuard.clampMessage(message);
+    if (clamped.isEmpty) return;
     setState(() {
-      _messages.add(ChatMessage(message + suffix, OpenAIChatMessageRole.user));
+      _messages.add(ChatMessage(clamped + suffix, OpenAIChatMessageRole.user));
       _awaitingResponse = true;
     });
-    final response = await widget.chatApi.completeChat(_messages);
+    String response;
+    try {
+      response = await widget.chatApi.completeChat(_messages);
+    } on AiBudgetException catch (e) {
+      response = e.message;
+    }
     setState(() {
       _messages.add(ChatMessage(response, OpenAIChatMessageRole.assistant));
       _awaitingResponse = false;
@@ -140,7 +148,10 @@ class _Setup3State extends State<Setup3> {
   }
 
   Future<String> firstCompletion() async {
-    final String cats = categories.map((c) => '"' + c + '"').join('|') + '~~';
+    final String cats = categories
+            .map((c) => '"' + AiGuard.sanitizeField(c, maxChars: 60) + '"')
+            .join('|') +
+        '~~';
     OpenAI.apiKey = openAIApiKey;
     String system =
         "You are a seasoned, wise mindset and life coach with decades of experience helping people transform their lives through the Green Pyramid methodology. You have a laid-back, approachable personality with a subtle sense of humor - you're the kind of coach who can make someone laugh while delivering profound insights. You have mastered the art of delivering profound insights in just a few powerful words. Keep your responses to 100 words or less. Your client provided this data: $cats. The data is ranked in order of importance. Speak with the wisdom of experience - be conversational, supportive, and deliver specific, actionable guidance rather than generic advice. Your words should carry weight and inspire reflection.";
@@ -150,9 +161,11 @@ class _Setup3State extends State<Setup3> {
     String chatResult =
         "Epic fail. please hit the back arrow in the upper left to try building your vision again.";
     try {
+      await AiGuard.instance.acquire();
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
         model: "gpt-4.1-2025-04-14",
+        maxTokens: 350,
         topP: 1,
         temperature: 1,
         messages: [
@@ -174,6 +187,8 @@ class _Setup3State extends State<Setup3> {
           (chatCompletion.choices[0].message.content?.first.text ?? '').trim();
       // Store the vision statement in the database
       await dbHelper.insertVisionStatement(chatResult);
+    } on AiBudgetException catch (e) {
+      chatResult = e.message;
     } catch (e, s) {
       if (kDebugMode) {
         print(e);
@@ -257,8 +272,7 @@ class MessageComposer extends StatelessWidget {
   void navigateToSetup4() async {
     await Navigator.push(
       ctx,
-      MaterialPageRoute(
-          builder: (context) => SetupVideo(categories: categories)),
+      MaterialPageRoute(builder: (context) => Setup4(categories)),
     );
   }
 }
@@ -335,15 +349,18 @@ class ChatApi {
   Future<String> completeChat(List<ChatMessage> messages) async {
     const int timeout = 60;
 
+    await AiGuard.instance.acquire();
+
     final chatCompletion = await OpenAI.instance.chat
         .create(
           model: _model,
-          messages: messages
+          maxTokens: 350,
+          messages: AiGuard.tailHistory(messages)
               .map((e) => OpenAIChatCompletionChoiceMessageModel(
                     role: e.msgType,
                     content: [
                       OpenAIChatCompletionChoiceMessageContentItemModel.text(
-                          e.content),
+                          AiGuard.clampMessage(e.content, maxChars: 4000)),
                     ],
                   ))
               .toList(),

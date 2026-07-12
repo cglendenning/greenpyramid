@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/services.dart';
+import 'package:life_ops/services/ai_guard.dart';
 import 'package:life_ops/setup/setup1.dart';
-import 'package:purchases_flutter/purchases_flutter.dart';
 
 class Utils {
   void changeSystemColor(Brightness mode) {
@@ -10,10 +10,14 @@ class Utils {
   }
 
   String taskPrompt(String cat) {
+    // Category names and existing task descriptions are user-entered
+    // ("Enter My Own..."), so they are sanitized before being embedded in
+    // the prompt to keep injected instructions out of it.
+    cat = AiGuard.sanitizeField(cat, maxChars: 60);
     String blacklist = '';
 
     for (var element in tasks) {
-      blacklist += '${element.taskdescription},';
+      blacklist += '${AiGuard.sanitizeField(element.taskdescription, maxChars: 40)},';
     }
 
     // HACK to remove the trailing comma
@@ -45,19 +49,5 @@ class Utils {
 
   bool toBoolean(String s) {
     return s != '0' && s != 'false' && s != '';
-  }
-
-  Future<bool> isUserSubscribed() async {
-    try {
-      await Purchases.invalidateCustomerInfoCache();
-      await Purchases.syncPurchases();
-      CustomerInfo ci = await Purchases.getCustomerInfo();
-      return ci.activeSubscriptions.isNotEmpty;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error checking subscription status: $e');
-      }
-      return false;
-    }
   }
 }

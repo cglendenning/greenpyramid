@@ -2,17 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:life_ops/db.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:life_ops/dbtools.dart';
-import 'package:life_ops/paywall.dart';
 import 'package:life_ops/navbar.dart';
-import 'package:life_ops/utils.dart' as utils;
+import 'package:life_ops/theme/app_colors.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:life_ops/coach.dart';
 import 'package:sqflite/sqflite.dart';
-// import 'package:purchases_flutter/purchases_flutter.dart';
-// import 'package:timezone/timezone.dart' as tz;
-// import 'package:life_ops/main.dart';
-// import 'package:flutter/gestures.dart';
 
 class Evening extends StatefulWidget {
   const Evening({
@@ -39,7 +34,6 @@ class _Evening extends State<Evening> {
 
   final dbHelper = DatabaseHelper.instance;
   final DBTools dbtools = DBTools();
-  bool paywalled = false;
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
   @override
@@ -56,14 +50,14 @@ class _Evening extends State<Evening> {
                       builder: (context) => Coach(showAppBar: true)),
                 );
               },
-              backgroundColor: Colors.white,
+              backgroundColor: AppColors.surfaceHigh,
               child: SvgPicture.asset(
                 'images/svg/bottom_nav/chat.svg',
                 height: 26,
                 width: 26,
                 fit: BoxFit.contain,
                 colorFilter:
-                    const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                    const ColorFilter.mode(AppColors.textPrimary, BlendMode.srcIn),
                 semanticsLabel: 'Chat',
               ),
             ),
@@ -101,11 +95,10 @@ class _Evening extends State<Evening> {
                             } else if (snapshot.hasData) {
                               children = <Widget>[
                                 Container(
-                                    // color: Colors.white.withOpacity(0.5),
                                     decoration: BoxDecoration(
                                         borderRadius: const BorderRadius.all(
                                             Radius.circular(20)),
-                                        color: Colors.white.withOpacity(0.8)),
+                                        color: AppColors.surface.withOpacity(0.85)),
                                     padding: const EdgeInsets.all(10.0),
                                     child: Text(
                                       '${snapshot.data?[0].quotetext}',
@@ -165,31 +158,6 @@ class _Evening extends State<Evening> {
                     ])))));
   }
 
-  void navigateToPaywall() async {
-    // Check if user is already subscribed
-    bool isSubscribed = await utils.Utils().isUserSubscribed();
-    if (isSubscribed) {
-      // Show a message that they're already subscribed
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You already have an active subscription!'),
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return;
-    }
-
-    utils.Utils().changeSystemColor(Brightness.dark);
-
-    await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => Paywall()));
-    paywalled = true;
-
-    setState(() {
-      utils.Utils().changeSystemColor(Brightness.light);
-    });
-  }
-
   Widget _buildEveningSummary(List<CheckedTask> checkedTasks) {
     return FutureBuilder<List<Map<String, dynamic>>>(
       future: _getAllTasksForToday(),
@@ -217,7 +185,7 @@ class _Evening extends State<Evening> {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: AppColors.textPrimary,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -226,7 +194,7 @@ class _Evening extends State<Evening> {
                   'You didn\'t have any tasks scheduled for today, or you\'re taking a well-deserved break.',
                   style: TextStyle(
                     fontSize: 16,
-                    color: Colors.black,
+                    color: AppColors.textPrimary,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -234,10 +202,10 @@ class _Evening extends State<Evening> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
+                    color: AppColors.surface.withOpacity(0.9),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.white.withOpacity(0.15),
                     ),
                   ),
                   child: const Column(
@@ -253,7 +221,7 @@ class _Evening extends State<Evening> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       SizedBox(height: 4),
@@ -261,7 +229,7 @@ class _Evening extends State<Evening> {
                         'Use this time to recharge and prepare for what\'s ahead.',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.black87,
+                          color: AppColors.textSecondary,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -290,7 +258,7 @@ class _Evening extends State<Evening> {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black,
+                    color: AppColors.textPrimary,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -299,7 +267,7 @@ class _Evening extends State<Evening> {
                   'You had tasks scheduled for today but didn\'t complete any of them. That\'s okay - every day is a fresh start.',
                   style: TextStyle(
                     fontSize: 16,
-                    color: Colors.black,
+                    color: AppColors.textPrimary,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -307,7 +275,7 @@ class _Evening extends State<Evening> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
+                    color: AppColors.surface.withOpacity(0.9),
                     borderRadius: BorderRadius.circular(12),
                     border: Border.all(
                       color: Colors.orange.withOpacity(0.3),
@@ -326,7 +294,7 @@ class _Evening extends State<Evening> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black,
+                          color: AppColors.textPrimary,
                         ),
                       ),
                       SizedBox(height: 4),
@@ -334,7 +302,7 @@ class _Evening extends State<Evening> {
                         'Take a moment to think about what you want to accomplish tomorrow.',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.black87,
+                          color: AppColors.textSecondary,
                         ),
                         textAlign: TextAlign.center,
                       ),
@@ -403,7 +371,7 @@ class _Evening extends State<Evening> {
                           style: TextStyle(
                             fontSize: allFoundationalCompleted ? 28 : 24,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                            color: AppColors.textPrimary,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -414,7 +382,7 @@ class _Evening extends State<Evening> {
                             : 'You made progress today. Here\'s what you accomplished:',
                           style: const TextStyle(
                             fontSize: 16,
-                            color: Colors.black,
+                            color: AppColors.textPrimary,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -440,7 +408,7 @@ class _Evening extends State<Evening> {
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.9),
+                        color: AppColors.surface.withOpacity(0.9),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: allFoundationalCompleted ? Colors.amber : Colors.orange,
@@ -462,7 +430,7 @@ class _Evening extends State<Evening> {
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
-                              color: Colors.black,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                           const SizedBox(height: 4),
@@ -474,7 +442,7 @@ class _Evening extends State<Evening> {
                                 : 'Focus on your foundational categories tomorrow. These are your foundation for success.',
                             style: const TextStyle(
                               fontSize: 14,
-                              color: Colors.black87,
+                              color: AppColors.textSecondary,
                             ),
                             textAlign: TextAlign.center,
                           ),
@@ -495,7 +463,7 @@ class _Evening extends State<Evening> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
+        color: AppColors.surface.withOpacity(0.9),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: color.withOpacity(0.3)),
       ),
@@ -553,7 +521,7 @@ class _Evening extends State<Evening> {
                         tasks[index].taskdescription,
                         style: const TextStyle(
                           fontSize: 14,
-                          color: Colors.black87,
+                          color: AppColors.textSecondary,
                         ),
                       ),
                     ),

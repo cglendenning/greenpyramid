@@ -2,6 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:life_ops/db.dart';
 import 'package:life_ops/dbtools.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:life_ops/theme/app_colors.dart';
+import 'package:life_ops/pyramid.dart' as pyr;
+
+// Normal blocks render the main-screen stone+glow look in the brand
+// green; a pressed block flips to the muted state via a white gradient.
+const LinearGradient _kGreenLG =
+    LinearGradient(colors: [Color(0xFF66CC5D), Color(0xFF66CC5D)]);
+const LinearGradient _kWhiteLG =
+    LinearGradient(colors: [Colors.white, Colors.white]);
 
 class EditPyramid extends StatefulWidget {
   final Future cat1Future;
@@ -32,17 +41,9 @@ class _EditPyramid extends State<EditPyramid> {
   _EditPyramid(this.cat1Future, this.cat2Future, this.cat3Future,
       this.cat4Future, this.cat5Future, this.cat6Future);
 
-  var _ts;
-
   @override
   void initState() {
     super.initState();
-
-    _ts = const TextStyle(
-      color: Colors.blue,
-      decoration: TextDecoration.underline,
-      fontSize: 14,
-    );
   }
 
   final DBTools dbtools = DBTools();
@@ -54,59 +55,17 @@ class _EditPyramid extends State<EditPyramid> {
   bool _cat5ColorToggled = false;
   bool _cat6ColorToggled = false;
 
-  DrawCat1 _drawCat1 = DrawCat1(
-      Colors.transparent,
-      'default',
-      const TextStyle(
-        color: Colors.blue,
-        decoration: TextDecoration.underline,
-        fontSize: 14,
-      ));
+  pyr.DrawCat1 _drawCat1 = pyr.DrawCat1(_kGreenLG, 'default', 0);
 
-  DrawCat2 _drawCat2 = DrawCat2(
-      Colors.transparent,
-      'default',
-      const TextStyle(
-        color: Colors.blue,
-        decoration: TextDecoration.underline,
-        fontSize: 14,
-      ));
+  pyr.DrawCat2 _drawCat2 = pyr.DrawCat2(_kGreenLG, 'default', 0);
 
-  DrawCat3 _drawCat3 = DrawCat3(
-      Colors.transparent,
-      'default',
-      const TextStyle(
-        color: Colors.blue,
-        decoration: TextDecoration.underline,
-        fontSize: 14,
-      ));
+  pyr.DrawCat3 _drawCat3 = pyr.DrawCat3(_kGreenLG, 'default', 0);
 
-  DrawCat4 _drawCat4 = DrawCat4(
-      Colors.transparent,
-      'default',
-      const TextStyle(
-        color: Colors.blue,
-        decoration: TextDecoration.underline,
-        fontSize: 14,
-      ));
+  pyr.DrawCat4 _drawCat4 = pyr.DrawCat4(_kGreenLG, 'default', 0);
 
-  DrawCat5 _drawCat5 = DrawCat5(
-      Colors.transparent,
-      'default',
-      const TextStyle(
-        color: Colors.blue,
-        decoration: TextDecoration.underline,
-        fontSize: 14,
-      ));
+  pyr.DrawCat5 _drawCat5 = pyr.DrawCat5(_kGreenLG, 'default', 0);
 
-  DrawCat6 _drawCat6 = DrawCat6(
-      Colors.transparent,
-      'default',
-      const TextStyle(
-        color: Colors.blue,
-        decoration: TextDecoration.underline,
-        fontSize: 14,
-      ));
+  pyr.DrawCat6 _drawCat6 = pyr.DrawCat6(_kGreenLG, 'default', 0);
 
   bool _cat1Edited = false;
   bool _cat2Edited = false;
@@ -115,24 +74,18 @@ class _EditPyramid extends State<EditPyramid> {
   bool _cat5Edited = false;
   bool _cat6Edited = false;
 
-  Color cat1Color = Colors.transparent;
-  Color cat2Color = Colors.transparent;
-  Color cat3Color = Colors.transparent;
-  Color cat4Color = Colors.transparent;
-  Color cat5Color = Colors.transparent;
-  Color cat6Color = Colors.transparent;
 
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
   @override
   Widget build(BuildContext context) {
     analytics.logEvent(name: 'editpyramid');
-    cat1Color = _cat1ColorToggled ? Colors.grey : Colors.transparent;
-    cat2Color = _cat2ColorToggled ? Colors.grey : Colors.transparent;
-    cat3Color = _cat3ColorToggled ? Colors.grey : Colors.transparent;
-    cat4Color = _cat4ColorToggled ? Colors.grey : Colors.transparent;
-    cat5Color = _cat5ColorToggled ? Colors.grey : Colors.transparent;
-    cat6Color = _cat6ColorToggled ? Colors.grey : Colors.transparent;
+    final lg1 = _cat1ColorToggled ? _kWhiteLG : _kGreenLG;
+    final lg2 = _cat2ColorToggled ? _kWhiteLG : _kGreenLG;
+    final lg3 = _cat3ColorToggled ? _kWhiteLG : _kGreenLG;
+    final lg4 = _cat4ColorToggled ? _kWhiteLG : _kGreenLG;
+    final lg5 = _cat5ColorToggled ? _kWhiteLG : _kGreenLG;
+    final lg6 = _cat6ColorToggled ? _kWhiteLG : _kGreenLG;
 
     double pyramidWidth = MediaQuery.of(context).size.width * 0.87;
     double pyramidHeight = MediaQuery.of(context).size.width * 0.82;
@@ -140,7 +93,7 @@ class _EditPyramid extends State<EditPyramid> {
     SizedBox bigSpacer = SizedBox(height: pyramidHeight * .2);
 
     var mainTextStyle = const TextStyle(
-        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'SourceSans3');
+        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
 
     return Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
       smallSpacer,
@@ -157,10 +110,10 @@ class _EditPyramid extends State<EditPyramid> {
               if (!snapshot.hasData) {
                 display = CustomPaint(
                     size: Size(pyramidWidth, pyramidHeight),
-                    painter: DrawCat1(cat1Color, 'Cat1...', _ts));
+                    painter: pyr.DrawCat1(lg1, 'Cat1...', 0));
               } else {
                 if (!_cat1Edited) {
-                  _drawCat1 = DrawCat1(cat1Color, snapshot.data.cat, _ts);
+                  _drawCat1 = pyr.DrawCat1(lg1, snapshot.data.cat, 0);
                 }
                 display = GestureDetector(
                     onTapDown: (details) {
@@ -177,7 +130,7 @@ class _EditPyramid extends State<EditPyramid> {
                     child: CustomPaint(
                         size: Size(pyramidWidth, pyramidHeight),
                         painter: _drawCat1));
-                // DrawCat1(cat1Color, snapshot.data.cat, _ts)));
+                // pyr.DrawCat1(lg1, snapshot.data.cat, 0)));
               }
               return display;
             }),
@@ -188,10 +141,10 @@ class _EditPyramid extends State<EditPyramid> {
               if (!snapshot.hasData) {
                 display = CustomPaint(
                     size: Size(pyramidWidth, pyramidHeight),
-                    painter: DrawCat2(cat2Color, 'Cat2...', _ts));
+                    painter: pyr.DrawCat2(lg2, 'Cat2...', 0));
               } else {
                 if (!_cat2Edited) {
-                  _drawCat2 = DrawCat2(cat2Color, snapshot.data.cat, _ts);
+                  _drawCat2 = pyr.DrawCat2(lg2, snapshot.data.cat, 0);
                 }
                 display = GestureDetector(
                     onTapDown: (details) {
@@ -208,7 +161,7 @@ class _EditPyramid extends State<EditPyramid> {
                     child: CustomPaint(
                         size: Size(pyramidWidth, pyramidHeight),
                         painter: _drawCat2));
-                // DrawCat2(cat2Color, snapshot.data.cat, _ts)));
+                // pyr.DrawCat2(lg2, snapshot.data.cat, 0)));
               }
               return display;
             }),
@@ -219,10 +172,10 @@ class _EditPyramid extends State<EditPyramid> {
               if (!snapshot.hasData) {
                 display = CustomPaint(
                     size: Size(pyramidWidth, pyramidHeight),
-                    painter: DrawCat3(cat3Color, 'Cat3...', _ts));
+                    painter: pyr.DrawCat3(lg3, 'Cat3...', 0));
               } else {
                 if (!_cat3Edited) {
-                  _drawCat3 = DrawCat3(cat3Color, snapshot.data.cat, _ts);
+                  _drawCat3 = pyr.DrawCat3(lg3, snapshot.data.cat, 0);
                 }
                 display = GestureDetector(
                     onTapDown: (details) {
@@ -239,7 +192,7 @@ class _EditPyramid extends State<EditPyramid> {
                     child: CustomPaint(
                         size: Size(pyramidWidth, pyramidHeight),
                         painter: _drawCat3));
-                // DrawCat3(cat3Color, snapshot.data.cat, _ts)));
+                // pyr.DrawCat3(lg3, snapshot.data.cat, 0)));
               }
               return display;
             }),
@@ -250,10 +203,10 @@ class _EditPyramid extends State<EditPyramid> {
               if (!snapshot.hasData) {
                 display = CustomPaint(
                     size: Size(pyramidWidth, pyramidHeight),
-                    painter: DrawCat4(cat4Color, 'Cat4...', _ts));
+                    painter: pyr.DrawCat4(lg4, 'Cat4...', 0));
               } else {
                 if (!_cat4Edited) {
-                  _drawCat4 = DrawCat4(cat4Color, snapshot.data.cat, _ts);
+                  _drawCat4 = pyr.DrawCat4(lg4, snapshot.data.cat, 0);
                 }
                 display = GestureDetector(
                     onTapDown: (details) {
@@ -270,7 +223,7 @@ class _EditPyramid extends State<EditPyramid> {
                     child: CustomPaint(
                         size: Size(pyramidWidth, pyramidHeight),
                         painter: _drawCat4));
-                // DrawCat4(cat4Color, snapshot.data.cat, _ts)));
+                // pyr.DrawCat4(lg4, snapshot.data.cat, 0)));
               }
               return display;
             }),
@@ -281,10 +234,10 @@ class _EditPyramid extends State<EditPyramid> {
               if (!snapshot.hasData) {
                 display = CustomPaint(
                     size: Size(pyramidWidth, pyramidHeight),
-                    painter: DrawCat5(cat5Color, 'Cat5...', _ts));
+                    painter: pyr.DrawCat5(lg5, 'Cat5...', 0));
               } else {
                 if (!_cat5Edited) {
-                  _drawCat5 = DrawCat5(cat5Color, snapshot.data.cat, _ts);
+                  _drawCat5 = pyr.DrawCat5(lg5, snapshot.data.cat, 0);
                 }
                 display = GestureDetector(
                     onTapDown: (details) {
@@ -301,7 +254,7 @@ class _EditPyramid extends State<EditPyramid> {
                     child: CustomPaint(
                         size: Size(pyramidWidth, pyramidHeight),
                         painter: _drawCat5));
-                // DrawCat5(cat5Color, snapshot.data.cat, _ts)));
+                // pyr.DrawCat5(lg5, snapshot.data.cat, 0)));
               }
               return display;
             }),
@@ -312,10 +265,10 @@ class _EditPyramid extends State<EditPyramid> {
               if (!snapshot.hasData) {
                 display = CustomPaint(
                     size: Size(pyramidWidth, pyramidHeight),
-                    painter: DrawCat6(cat6Color, 'Cat6...', _ts));
+                    painter: pyr.DrawCat6(lg6, 'Cat6...', 0));
               } else {
                 if (!_cat6Edited) {
-                  _drawCat6 = DrawCat6(cat6Color, snapshot.data.cat, _ts);
+                  _drawCat6 = pyr.DrawCat6(lg6, snapshot.data.cat, 0);
                 }
                 display = GestureDetector(
                     onTapDown: (details) {
@@ -332,7 +285,7 @@ class _EditPyramid extends State<EditPyramid> {
                     child: CustomPaint(
                         size: Size(pyramidWidth, pyramidHeight),
                         painter: _drawCat6));
-                // DrawCat6(cat6Color, snapshot.data.cat, _ts)));
+                // pyr.DrawCat6(lg6, snapshot.data.cat, 0)));
               }
               return display;
             }),
@@ -343,7 +296,7 @@ class _EditPyramid extends State<EditPyramid> {
         child: Text(
           '*NOTE: If a category name is changed, all tasks and task log entries for the previous category name will be deleted.',
           style: TextStyle(
-            color: Colors.black,
+            color: AppColors.textPrimary,
             fontSize: 15,
           ),
           textAlign: TextAlign.center,
@@ -379,22 +332,22 @@ class _EditPyramid extends State<EditPyramid> {
         switch (categoryid) {
           case 1:
             _cat1Edited = true;
-            _drawCat1 = DrawCat1(cat1Color, categoryText.text, _ts);
+            _drawCat1 = pyr.DrawCat1(_kGreenLG, categoryText.text, 0);
           case 2:
             _cat2Edited = true;
-            _drawCat2 = DrawCat2(cat2Color, categoryText.text, _ts);
+            _drawCat2 = pyr.DrawCat2(_kGreenLG, categoryText.text, 0);
           case 3:
             _cat3Edited = true;
-            _drawCat3 = DrawCat3(cat3Color, categoryText.text, _ts);
+            _drawCat3 = pyr.DrawCat3(_kGreenLG, categoryText.text, 0);
           case 4:
             _cat4Edited = true;
-            _drawCat4 = DrawCat4(cat4Color, categoryText.text, _ts);
+            _drawCat4 = pyr.DrawCat4(_kGreenLG, categoryText.text, 0);
           case 5:
             _cat5Edited = true;
-            _drawCat5 = DrawCat5(cat5Color, categoryText.text, _ts);
+            _drawCat5 = pyr.DrawCat5(_kGreenLG, categoryText.text, 0);
           case 6:
             _cat6Edited = true;
-            _drawCat6 = DrawCat6(cat6Color, categoryText.text, _ts);
+            _drawCat6 = pyr.DrawCat6(_kGreenLG, categoryText.text, 0);
           default:
         }
         Navigator.pop(context);
@@ -456,610 +409,5 @@ class Cat {
   Cat.fromMap(dynamic obj) {
     categoryid = obj["categoryid"];
     cat = obj["cat"];
-  }
-}
-
-// -----------------------------------------------------------------------------
-//                                                                    DrawCat1()
-// -----------------------------------------------------------------------------
-class DrawCat1 extends CustomPainter {
-  final Color color;
-  final String cat1;
-  final TextStyle ts;
-
-  DrawCat1(this.color, this.cat1, this.ts);
-
-  final ephPath = Path();
-
-  String hexOutlineColor = "#EBEBEB";
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final ephPaint = Paint()
-      ..color = Color(
-          int.parse(hexOutlineColor.substring(1, 7), radix: 16) + 0xFF000000)
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke;
-
-    // Midpoint formula
-    // (x₁ + x₂)/2, (y₁ + y₂)/2
-
-    var halfWidth = size.width * 1 / 2;
-    var bottomLeftX = 0;
-    var ephX = ((bottomLeftX + halfWidth) / 3);
-    ephPath.moveTo(ephX, size.height * 2 / 3);
-    ephPath.lineTo(0, size.height);
-    ephPath.lineTo((size.width / 3), size.height);
-    ephPath.lineTo((size.width / 3), size.height * 2 / 3);
-    ephPath.close();
-
-    canvas.drawPath(ephPath, ephPaint);
-
-    Paint ephFill = Paint()..style = PaintingStyle.fill;
-    ephFill.color = color;
-    canvas.drawPath(ephPath, ephFill);
-
-    var textSpan = TextSpan(
-      text: ' $cat1', // Note the space to pad the left.
-      style: ts,
-    );
-    final textPainter = TextPainter(
-      maxLines: 2,
-      text: textSpan,
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center,
-    );
-    textPainter.layout(
-      minWidth: 0,
-      maxWidth: 70,
-    );
-    final xCenter = (size.width / 5) / 2;
-    final yCenter = (size.height * 4 / 5);
-    final offset = Offset(xCenter, yCenter);
-    textPainter.paint(canvas, offset);
-  }
-
-  @override
-  bool hitTest(Offset position) {
-    if (ephPath.contains(position)) {
-      return true;
-    }
-    return false;
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) {
-    // if (oldDelegate is DrawCat1 && oldDelegate.color == color) {
-    //      return false;
-    // }
-    return true;
-  }
-}
-
-// -----------------------------------------------------------------------------
-//                                                                    DrawCat2()
-// -----------------------------------------------------------------------------
-class DrawCat2 extends CustomPainter {
-  final Color color;
-  final String cat2;
-  final TextStyle ts;
-
-  DrawCat2(this.color, this.cat2, this.ts);
-
-  final emhPath = Path();
-
-  String hexOutlineColor = "#EBEBEB";
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final emhPaint = Paint()
-      ..color = Color(
-          int.parse(hexOutlineColor.substring(1, 7), radix: 16) + 0xFF000000)
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke;
-
-    // Midpoint formula
-    // (x₁ + x₂)/2, (y₁ + y₂)/2
-
-    var emhX = (size.width * 1 / 3);
-    emhPath.moveTo(emhX, size.height * 2 / 3);
-    emhPath.lineTo(emhX, size.height);
-    emhPath.lineTo(size.width * 2 / 3, size.height);
-    emhPath.lineTo(size.width * 2 / 3, size.height * 2 / 3);
-    emhPath.close();
-
-    canvas.drawPath(emhPath, emhPaint);
-
-    Paint emhFill = Paint()..style = PaintingStyle.fill;
-    emhFill.color = color;
-    canvas.drawPath(emhPath, emhFill);
-
-    var textSpan = TextSpan(
-      text: cat2,
-      style: ts,
-    );
-    final textPainter = TextPainter(
-      maxLines: 2,
-      text: textSpan,
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center,
-    );
-    textPainter.layout(
-      minWidth: 0,
-      maxWidth: 70,
-    );
-    final xCenter = size.width / 2.5;
-    final yCenter = (size.height * 4 / 5);
-    final offset = Offset(xCenter, yCenter);
-    textPainter.paint(canvas, offset);
-  }
-
-  @override
-  bool hitTest(Offset position) {
-    if (emhPath.contains(position)) {
-      return true;
-    }
-    return false;
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) {
-    // if (oldDelegate is DrawCat2 && oldDelegate.color == color) {
-    //   return false;
-    // }
-    return true;
-  }
-}
-
-// -----------------------------------------------------------------------------
-//                                                                    DrawCat3()
-// -----------------------------------------------------------------------------
-class DrawCat3 extends CustomPainter {
-  final Color color;
-  final String cat3;
-  final TextStyle ts;
-
-  DrawCat3(this.color, this.cat3, this.ts);
-
-  final efhPath = Path();
-
-  String hexOutlineColor = "#EBEBEB";
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final efhPaint = Paint()
-      ..color = Color(
-          int.parse(hexOutlineColor.substring(1, 7), radix: 16) + 0xFF000000)
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke;
-
-    var halfWidth = size.width * 1 / 2;
-    var bottomLeftX = 0;
-    var ephX = ((bottomLeftX + halfWidth) / 3);
-    var efhX = (size.width * 2 / 3);
-    efhPath.moveTo(efhX, size.height * 2 / 3);
-    efhPath.lineTo(efhX, size.height);
-    efhPath.lineTo(size.width, size.height);
-    efhPath.lineTo(size.width - ephX, size.height * 2 / 3);
-    efhPath.close();
-
-    canvas.drawPath(efhPath, efhPaint);
-
-    Paint efhFill = Paint()..style = PaintingStyle.fill;
-    efhFill.color = color;
-    canvas.drawPath(efhPath, efhFill);
-
-    var textSpan = TextSpan(
-      text: cat3,
-      style: ts,
-    );
-    final textPainter = TextPainter(
-      maxLines: 2,
-      text: textSpan,
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center,
-    );
-    textPainter.layout(
-      minWidth: 0,
-      maxWidth: 70,
-    );
-    final xCenter = size.width / 1.45;
-    final yCenter = (size.height * 4 / 5);
-    final offset = Offset(xCenter, yCenter);
-    textPainter.paint(canvas, offset);
-  }
-
-  @override
-  bool hitTest(Offset position) {
-    if (efhPath.contains(position)) {
-      return true;
-    }
-    return false;
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) {
-    // if (oldDelegate is DrawCat3 && oldDelegate.color == color) {
-    // return false;
-    // }
-    return true;
-  }
-}
-
-// -----------------------------------------------------------------------------
-//                                                                    DrawCat4()
-// -----------------------------------------------------------------------------
-class DrawCat4 extends CustomPainter {
-  final Color color;
-  final String cat4;
-  final TextStyle ts;
-
-  DrawCat4(this.color, this.cat4, this.ts);
-
-  final efPath = Path();
-
-  String hexOutlineColor = "#EBEBEB";
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final efPaint = Paint()
-      ..color = Color(
-          int.parse(hexOutlineColor.substring(1, 7), radix: 16) + 0xFF000000)
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke;
-
-    var halfWidth = size.width * 1 / 2;
-    var bottomLeftX = 0;
-    var ephX = ((bottomLeftX + halfWidth) / 3);
-    var efX = ((ephX + halfWidth) / 2);
-
-    efPath.moveTo(efX, size.height * 1 / 3);
-    efPath.lineTo(ephX, size.height * 2 / 3);
-    efPath.lineTo(halfWidth, size.height * 2 / 3);
-    efPath.lineTo(halfWidth, size.height * 1 / 3);
-    efPath.close();
-
-    canvas.drawPath(efPath, efPaint);
-
-    Paint efFill = Paint()..style = PaintingStyle.fill;
-    efFill.color = color;
-    canvas.drawPath(efPath, efFill);
-
-    var textSpan = TextSpan(
-      text: cat4,
-      style: ts,
-    );
-    final textPainter = TextPainter(
-      maxLines: 2,
-      text: textSpan,
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center,
-    );
-    textPainter.layout(
-      minWidth: 0,
-      maxWidth: 70,
-    );
-    final xCenter = size.width / 3.2;
-    final yCenter = (size.height * 1 / 2.1);
-    final offset = Offset(xCenter, yCenter);
-    textPainter.paint(canvas, offset);
-  }
-
-  @override
-  bool hitTest(Offset position) {
-    if (efPath.contains(position)) {
-      return true;
-    }
-    return false;
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) {
-    // if (oldDelegate is DrawCat4 && oldDelegate.color == color) {
-    //  return false;
-    // }
-    return true;
-  }
-}
-
-// -----------------------------------------------------------------------------
-//                                                                    DrawCat5()
-// -----------------------------------------------------------------------------
-class DrawCat5 extends CustomPainter {
-  final Color color;
-  final String cat5;
-  final TextStyle ts;
-
-  DrawCat5(this.color, this.cat5, this.ts);
-
-  final ehPath = Path();
-
-  String hexOutlineColor = "#EBEBEB";
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final ehPaint = Paint()
-      ..color = Color(
-          int.parse(hexOutlineColor.substring(1, 7), radix: 16) + 0xFF000000)
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke;
-
-    var halfWidth = size.width * 1 / 2;
-    var bottomLeftX = 0;
-    var ephX = ((bottomLeftX + halfWidth) / 3);
-    var efX = ((ephX + halfWidth) / 2);
-
-    ehPath.moveTo(halfWidth, size.height * 1 / 3);
-    ehPath.lineTo(halfWidth, size.height * 2 / 3);
-    ehPath.lineTo(size.width - ephX, size.height * 2 / 3);
-    ehPath.lineTo(size.width - efX, size.height * 1 / 3);
-    ehPath.close();
-
-    canvas.drawPath(ehPath, ehPaint);
-
-    Paint ehFill = Paint()..style = PaintingStyle.fill;
-    ehFill.color = color;
-    canvas.drawPath(ehPath, ehFill);
-
-    var textSpan = TextSpan(
-      text: cat5,
-      style: ts,
-    );
-    final textPainter = TextPainter(
-      maxLines: 2,
-      text: textSpan,
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center,
-    );
-    textPainter.layout(
-      minWidth: 0,
-      maxWidth: 70,
-    );
-    final xCenter = size.width / 1.85;
-    final yCenter = (size.height * 1 / 2.1);
-    final offset = Offset(xCenter, yCenter);
-    textPainter.paint(canvas, offset);
-  }
-
-  @override
-  bool hitTest(Offset position) {
-    if (ehPath.contains(position)) {
-      return true;
-    }
-    return false;
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) {
-    // if (oldDelegate is DrawCat5 && oldDelegate.color == color) {
-    //  return false;
-    // }
-    return true;
-  }
-}
-
-// -----------------------------------------------------------------------------
-//                                                                    DrawCat6()
-// -----------------------------------------------------------------------------
-class DrawCat6 extends CustomPainter {
-  final Color color;
-  final String cat6;
-  final TextStyle ts;
-
-  DrawCat6(this.color, this.cat6, this.ts);
-
-  final flowPath = Path();
-
-  String hexOutlineColor = "#EBEBEB";
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final flowPaint = Paint()
-      ..color = Color(
-          int.parse(hexOutlineColor.substring(1, 7), radix: 16) + 0xFF000000)
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke;
-
-    var halfWidth = size.width * 1 / 2;
-    var bottomLeftX = 0;
-    var ephX = ((bottomLeftX + halfWidth) / 3);
-    var efX = ((ephX + halfWidth) / 2);
-
-    flowPath.moveTo(halfWidth, 0);
-    flowPath.lineTo(efX, size.height * 1 / 3);
-    flowPath.lineTo(size.width - efX, size.height * 1 / 3);
-    flowPath.close();
-
-    canvas.drawPath(flowPath, flowPaint);
-
-    Paint flowFill = Paint()..style = PaintingStyle.fill;
-    flowFill.color = color;
-    canvas.drawPath(flowPath, flowFill);
-
-    var textSpan = TextSpan(
-      text: cat6,
-      style: ts,
-    );
-    final textPainter = TextPainter(
-      maxLines: 2,
-      text: textSpan,
-      textDirection: TextDirection.ltr,
-      textAlign: TextAlign.center,
-    );
-    textPainter.layout(
-      minWidth: 0,
-      maxWidth: 70,
-    );
-    final xCenter = size.width / 2.4;
-    final yCenter = (size.height / 5);
-    final offset = Offset(xCenter, yCenter);
-    textPainter.paint(canvas, offset);
-  }
-
-  @override
-  bool hitTest(Offset position) {
-    if (flowPath.contains(position)) {
-      return true;
-    }
-    return false;
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) {
-    // if (oldDelegate is DrawCat6 && oldDelegate.color == color) {
-    //  return false;
-    // }
-    return true;
-  }
-}
-
-// -----------------------------------------------------------------------------
-//                                                                  DrawTriangle
-// -----------------------------------------------------------------------------
-
-class DrawTriangle extends CustomPainter {
-  final Color color;
-
-  DrawTriangle(this.color);
-
-  final ephPath = Path();
-  final emhPath = Path();
-  final efhPath = Path();
-  final efPath = Path();
-  final ehPath = Path();
-  final flowPath = Path();
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Set up a triangle Paint & Path
-    final trianglePaint = Paint()
-      ..color = Colors.black
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke;
-
-    final trianglePath = Path();
-
-    // Draw the Triangle
-    trianglePath.moveTo(size.width * 1 / 2, 0);
-    trianglePath.lineTo(0, size.height);
-    trianglePath.lineTo(size.height, size.width);
-    trianglePath.close();
-    canvas.drawPath(trianglePath, trianglePaint);
-
-    // Now let's Construct Each Block based on the measurements
-    // that we have from the triangle and the square above.
-
-    final ephPaint = Paint()
-      ..color = Colors.blue
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke;
-
-    // Midpoint formula
-    // (x₁ + x₂)/2, (y₁ + y₂)/2
-
-    var halfWidth = size.width * 1 / 2;
-    var bottomLeftX = 0;
-    var ephX = ((bottomLeftX + halfWidth) / 3);
-    ephPath.moveTo(ephX, size.height * 2 / 3);
-    ephPath.lineTo(0, size.height);
-    ephPath.lineTo((size.width / 3), size.height);
-    ephPath.lineTo((size.width / 3), size.height * 2 / 3);
-    ephPath.close();
-
-    canvas.drawPath(ephPath, ephPaint);
-
-    final emhPaint = Paint()
-      ..color = Colors.blue
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke;
-
-    // Midpoint formula
-    // (x₁ + x₂)/2, (y₁ + y₂)/2
-
-    var emhX = (size.width * 1 / 3);
-    emhPath.moveTo(emhX, size.height * 2 / 3);
-    emhPath.lineTo(emhX, size.height);
-    emhPath.lineTo(size.width * 2 / 3, size.height);
-    emhPath.lineTo(size.width * 2 / 3, size.height * 2 / 3);
-    emhPath.close();
-
-    canvas.drawPath(emhPath, emhPaint);
-
-    final efhPaint = Paint()
-      ..color = Colors.orange
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke;
-
-    // Midpoint formula
-    // (x₁ + x₂)/2, (y₁ + y₂)/2
-
-    var efhX = (size.width * 2 / 3);
-    efhPath.moveTo(efhX, size.height * 2 / 3);
-    efhPath.lineTo(efhX, size.height);
-    efhPath.lineTo(size.width, size.height);
-    efhPath.lineTo(size.width - ephX, size.height * 2 / 3);
-    efhPath.close();
-
-    canvas.drawPath(efhPath, efhPaint);
-
-    final efPaint = Paint()
-      ..color = Colors.purple
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke;
-
-    // Midpoint formula
-    // (x₁ + x₂)/2, (y₁ + y₂)/2
-
-    var efX = ((ephX + halfWidth) / 2);
-    efPath.moveTo(efX, size.height * 1 / 3);
-    efPath.lineTo(ephX, size.height * 2 / 3);
-    efPath.lineTo(halfWidth, size.height * 2 / 3);
-    efPath.lineTo(halfWidth, size.height * 1 / 3);
-    efPath.close();
-
-    canvas.drawPath(efPath, efPaint);
-
-    final ehPaint = Paint()
-      ..color = Colors.yellow
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke;
-
-    // Midpoint formula
-    // (x₁ + x₂)/2, (y₁ + y₂)/2
-
-    ehPath.moveTo(halfWidth, size.height * 1 / 3);
-    ehPath.lineTo(halfWidth, size.height * 2 / 3);
-    ehPath.lineTo(size.width - ephX, size.height * 2 / 3);
-    ehPath.lineTo(size.width - efX, size.height * 1 / 3);
-    ehPath.close();
-
-    canvas.drawPath(ehPath, ehPaint);
-
-    final flowPaint = Paint()
-      ..color = Colors.teal
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke;
-
-    // Midpoint formula
-    // (x₁ + x₂)/2, (y₁ + y₂)/2
-
-    flowPath.moveTo(halfWidth, 0);
-    flowPath.lineTo(efX, size.height * 1 / 3);
-    flowPath.lineTo(size.width - efX, size.height * 1 / 3);
-    flowPath.close();
-
-    canvas.drawPath(flowPath, flowPaint);
-
-    Paint paint1Fill = Paint()..style = PaintingStyle.fill;
-    paint1Fill.color = color;
-    canvas.drawPath(flowPath, paint1Fill);
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) {
-    if (oldDelegate is DrawTriangle && oldDelegate.color == color) {
-      return false;
-    }
-    return true;
   }
 }

@@ -1,18 +1,16 @@
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:life_ops/homescreen.dart';
 import 'package:life_ops/notification.dart';
 import "package:timezone/data/latest.dart" as tz show initializeTimeZones;
 import 'package:life_ops/db.dart';
 import 'package:flutter/services.dart';
-import 'dart:io';
 import 'package:app_install_date/app_install_date.dart';
-import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:flutter/widgets.dart';
-import 'secrets.dart';
-import 'package:life_ops/utils.dart' as utils;
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'package:life_ops/pyramid_painting.dart';
+import 'package:life_ops/services/ad_service.dart';
 
 final GlobalKey<NavigatorState> navigatorKey =
     GlobalKey(debugLabel: "Main Navigator");
@@ -25,7 +23,10 @@ bool interventionShown = false;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  initPlatformState();
+
+  // Decode the pyramid's stone texture in the background so it's ready by
+  // the time any pyramid paints (they fall back to a gradient until then).
+  PyramidPainting.ensureStoneLoaded();
 
   try {
     installDate = await AppInstallDate().installDate;
@@ -46,9 +47,23 @@ Future<void> main() async {
   // app launch.
   await Future.delayed(const Duration(seconds: 1));
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+  } on FirebaseException catch (e) {
+    // The native side can already have "[DEFAULT]" registered if the Dart
+    // entrypoint runs more than once against the same engine (e.g. a hot
+    // restart) — that's not a real failure, just a no-op.
+    if (e.code != 'duplicate-app') {
+      rethrow;
+    }
+    debugPrint('Firebase already initialized, continuing.');
+  }
+
+  await MobileAds.instance.initialize();
+  AdService.instance.preload();
+  AdService.instance.startActivityPacing();
 
   int defaultCats = await dbHelper.queryLaunchSetup();
 
@@ -56,25 +71,4 @@ Future<void> main() async {
     routeToGo = '/setup';
   }
   runApp(HomeScreen());
-}
-
-Future<void> initPlatformState() async {
-  await Purchases.setLogLevel(LogLevel.debug);
-  var configuration;
-  if (Platform.isAndroid) {
-    configuration = PurchasesConfiguration(revenuecatAndroidKey);
-  } else if (Platform.isIOS) {
-    configuration = PurchasesConfiguration(revenuecatIOSKey);
-  }
-  await Purchases.configure(configuration);
-
-  bool config = await Purchases.isConfigured;
-  bool isSubscribed = await utils.Utils().isUserSubscribed();
-
-  if (kDebugMode) {
-    print('Purchase configured: $config');
-  }
-  if (kDebugMode) {
-    print('User is subscribed: $isSubscribed');
-  }
 }

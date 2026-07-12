@@ -4,6 +4,7 @@ import 'package:intl/intl.dart' as intl;
 import 'package:life_ops/dbtools.dart';
 import 'package:life_ops/quote.dart';
 import 'package:life_ops/navbar.dart';
+import 'package:life_ops/theme/app_colors.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:life_ops/coach.dart';
@@ -48,14 +49,14 @@ class _Morning extends State<Morning> {
                       builder: (context) => Coach(showAppBar: true)),
                 );
               },
-              backgroundColor: Colors.white,
+              backgroundColor: AppColors.surfaceHigh,
               child: SvgPicture.asset(
                 'images/svg/bottom_nav/chat.svg',
                 height: 26,
                 width: 26,
                 fit: BoxFit.contain,
                 colorFilter:
-                    const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                    const ColorFilter.mode(AppColors.textPrimary, BlendMode.srcIn),
                 semanticsLabel: 'Chat',
               ),
             ),
@@ -144,7 +145,7 @@ class _Morning extends State<Morning> {
                                                       fontSize: 24,
                                                       fontWeight:
                                                           FontWeight.bold,
-                                                      color: Colors.black,
+                                                      color: AppColors.textPrimary,
                                                     ),
                                                     textAlign: TextAlign.center,
                                                   ),
@@ -153,7 +154,7 @@ class _Morning extends State<Morning> {
                                                     'You completed all your tasks for $taskLogDate, or you didn\'t have any tasks scheduled for that day.',
                                                     style: const TextStyle(
                                                       fontSize: 16,
-                                                      color: Colors.black,
+                                                      color: AppColors.textPrimary,
                                                     ),
                                                     textAlign: TextAlign.center,
                                                   ),
@@ -163,14 +164,14 @@ class _Morning extends State<Morning> {
                                                         const EdgeInsets.all(
                                                             16),
                                                     decoration: BoxDecoration(
-                                                      color: Colors.white
+                                                      color: AppColors.surface
                                                           .withOpacity(0.9),
                                                       borderRadius:
                                                           BorderRadius.circular(
                                                               12),
                                                       border: Border.all(
-                                                        color: Colors.black
-                                                            .withOpacity(0.2),
+                                                        color: Colors.white
+                                                            .withOpacity(0.15),
                                                       ),
                                                     ),
                                                     child: const Column(
@@ -187,7 +188,7 @@ class _Morning extends State<Morning> {
                                                             fontSize: 18,
                                                             fontWeight:
                                                                 FontWeight.bold,
-                                                            color: Colors.black,
+                                                            color: AppColors.textPrimary,
                                                           ),
                                                         ),
                                                         SizedBox(height: 4),
@@ -196,7 +197,7 @@ class _Morning extends State<Morning> {
                                                           style: TextStyle(
                                                             fontSize: 14,
                                                             color:
-                                                                Colors.black87,
+                                                                AppColors.textSecondary,
                                                           ),
                                                           textAlign:
                                                               TextAlign.center,

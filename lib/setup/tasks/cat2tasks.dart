@@ -11,6 +11,7 @@ import 'package:life_ops/navbar.dart';
 import 'package:life_ops/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/secrets.dart';
+import 'package:life_ops/services/ai_guard.dart';
 import 'package:life_ops/progress_bar.dart';
 
 String defaultText = 'Generating ideas...';
@@ -51,7 +52,7 @@ class _Cat2TasksState extends State<Cat2Tasks> {
         fit: BoxFit.scaleDown, semanticsLabel: 'forward');
 
     var mainTextStyle = const TextStyle(
-        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'SourceSans3');
+        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
 
     return SafeArea(
         child: Scaffold(
@@ -361,9 +362,11 @@ class _Cat2TasksState extends State<Cat2Tasks> {
     String chatResult = "";
 
     try {
+      await AiGuard.instance.acquire();
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
         model: "gpt-4.1-2025-04-14",
+        maxTokens: 400,
         // My understanding of top_p and temperature:
         // https://community.openai.com/t/a-better-explanation-of-top-p/2426/10
         topP: 1,

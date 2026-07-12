@@ -2,16 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:life_ops/db.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:life_ops/dbtools.dart';
-import 'package:life_ops/paywall.dart';
 import 'package:life_ops/navbar.dart';
-import 'package:life_ops/utils.dart' as utils;
+import 'package:life_ops/theme/app_colors.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:life_ops/coach.dart';
-// import 'package:flutter/gestures.dart';
-// import 'package:purchases_flutter/purchases_flutter.dart';
-// import 'package:timezone/timezone.dart' as tz;
-// import 'package:life_ops/main.dart';
 
 class Afternoon extends StatefulWidget {
   const Afternoon({
@@ -32,7 +27,6 @@ class _Afternoon extends State<Afternoon> {
   }
 
   String taskLogDate = intl.DateFormat('yyyy-MM-dd').format(DateTime.now());
-  bool paywalled = false;
 
   _Afternoon();
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
@@ -54,14 +48,14 @@ class _Afternoon extends State<Afternoon> {
                       builder: (context) => Coach(showAppBar: true)),
                 );
               },
-              backgroundColor: Colors.white,
+              backgroundColor: AppColors.surfaceHigh,
               child: SvgPicture.asset(
                 'images/svg/bottom_nav/chat.svg',
                 height: 26,
                 width: 26,
                 fit: BoxFit.contain,
                 colorFilter:
-                    const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+                    const ColorFilter.mode(AppColors.textPrimary, BlendMode.srcIn),
                 semanticsLabel: 'Chat',
               ),
             ),
@@ -104,7 +98,7 @@ class _Afternoon extends State<Afternoon> {
                                         style: TextStyle(
                                           fontSize: 24,
                                           fontWeight: FontWeight.bold,
-                                          color: Colors.black,
+                                          color: AppColors.textPrimary,
                                         ),
                                         textAlign: TextAlign.center,
                                       ),
@@ -113,7 +107,7 @@ class _Afternoon extends State<Afternoon> {
                                         'You\'ve completed all your tasks for $taskLogDate, or you didn\'t have any tasks scheduled for today.',
                                         style: const TextStyle(
                                           fontSize: 16,
-                                          color: Colors.black,
+                                          color: AppColors.textPrimary,
                                         ),
                                         textAlign: TextAlign.center,
                                       ),
@@ -121,12 +115,12 @@ class _Afternoon extends State<Afternoon> {
                                       Container(
                                         padding: const EdgeInsets.all(16),
                                         decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.9),
+                                          color: AppColors.surface.withOpacity(0.9),
                                           borderRadius:
                                               BorderRadius.circular(12),
                                           border: Border.all(
                                             color:
-                                                Colors.black.withOpacity(0.2),
+                                                Colors.white.withOpacity(0.15),
                                           ),
                                         ),
                                         child: const Column(
@@ -142,7 +136,7 @@ class _Afternoon extends State<Afternoon> {
                                               style: TextStyle(
                                                 fontSize: 18,
                                                 fontWeight: FontWeight.bold,
-                                                color: Colors.black,
+                                                color: AppColors.textPrimary,
                                               ),
                                             ),
                                             SizedBox(height: 4),
@@ -150,7 +144,7 @@ class _Afternoon extends State<Afternoon> {
                                               'Use this energy to tackle tomorrow\'s challenges with confidence.',
                                               style: TextStyle(
                                                 fontSize: 14,
-                                                color: Colors.black87,
+                                                color: AppColors.textSecondary,
                                               ),
                                               textAlign: TextAlign.center,
                                             ),
@@ -221,11 +215,10 @@ class _Afternoon extends State<Afternoon> {
                               children = <Widget>[
                                 const SizedBox(height: 10),
                                 Container(
-                                    // color: Colors.white.withOpacity(0.5),
                                     decoration: BoxDecoration(
                                         borderRadius: const BorderRadius.all(
                                             Radius.circular(20)),
-                                        color: Colors.white.withOpacity(0.8)),
+                                        color: AppColors.surface.withOpacity(0.85)),
                                     padding: const EdgeInsets.all(10.0),
                                     child: Text(
                                       '${snapshot.data?[0].quotetext}',
@@ -284,29 +277,6 @@ class _Afternoon extends State<Afternoon> {
 
                       const SizedBox(height: 10),
                     ])))));
-  }
-
-  void navigateToPaywall() async {
-    // Check if user is already subscribed
-    bool isSubscribed = await utils.Utils().isUserSubscribed();
-    if (isSubscribed) {
-      // Show a message that they're already subscribed
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You already have an active subscription!'),
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return;
-    }
-
-    utils.Utils().changeSystemColor(Brightness.dark);
-    await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => Paywall()));
-    paywalled = true;
-    setState(() {
-      utils.Utils().changeSystemColor(Brightness.light);
-    });
   }
 
   Future<List<UncheckedTask>> getUncheckedTasks() async {

@@ -2,7 +2,9 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:life_ops/db.dart';
 import 'package:life_ops/navbar.dart';
+import 'package:life_ops/theme/app_colors.dart';
 import 'package:life_ops/secrets.dart';
+import 'package:life_ops/services/ai_guard.dart';
 import 'package:dart_openai/dart_openai.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -48,17 +50,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
       newVisionStatement = null;
     });
     final categories = await dbHelper.queryCategories();
-    final cats =
-        categories.map((c) => '"' + (c['cat'] ?? '') + '"').join('|') + '~~';
+    final cats = categories
+            .map((c) =>
+                '"' + AiGuard.sanitizeField(c['cat'] ?? '', maxChars: 60) + '"')
+            .join('|') +
+        '~~';
     String system =
-        "You are a seasoned, wise mindset and life coach with decades of experience helping people transform their lives through the Green Pyramid methodology. You have a laid-back, approachable personality with a subtle sense of humor - you're the kind of coach who can make someone laugh while delivering profound insights. You have mastered the art of delivering profound insights in just a few powerful words. Keep your responses to 100 words or less. Your client provided this data: $cats. The data is ranked in order of importance. Speak with the wisdom of experience - be conversational, supportive, and deliver specific, actionable guidance rather than generic advice. Your words should carry weight and inspire reflection.";
+        "You are a seasoned, wise mindset and life coach with decades of experience helping people transform their lives through the Green Pyramid methodology. You have a laid-back, approachable personality with a subtle sense of humor - you're the kind of coach who can make someone laugh while delivering profound insights. You have mastered the art of delivering profound insights in just a few powerful words. Keep your responses to 100 words or less. Your client provided this data: $cats. The data is ranked in order of importance. Speak with the wisdom of experience - be conversational, supportive, and deliver specific, actionable guidance rather than generic advice. Your words should carry weight and inspire reflection."
+        "${AiGuard.untrustedDataNotice}";
     String prompt =
         "Build a vision statement for this person starting with the phrase 'I will become the kind of person that ...' and make it inspiring, concise, and personal.";
     try {
       OpenAI.apiKey = openAIApiKey;
+      await AiGuard.instance.acquire();
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
         model: "gpt-4.1-2025-04-14",
+        maxTokens: 350,
         topP: 1,
         temperature: 1,
         messages: [
@@ -110,28 +118,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final taskLogs = await dbHelper.queryTaskLogs(30);
     final List<String> categories = taskLogs
         .map((cat) =>
-            '"' +
-            (cat['category'] ?? '') +
-            '"|' +
-            '"' +
-            (cat['taskdescription'] ?? '') +
-            '"|' +
-            '"' +
-            (cat['checked'] ?? '') +
-            '"|' +
-            '"' +
-            (cat['taskdate'] ?? '') +
-            '"~~')
+            '"${AiGuard.sanitizeField(cat['category'] ?? '', maxChars: 60)}"|'
+            '"${AiGuard.sanitizeField(cat['taskdescription'] ?? '')}"|'
+            '"${AiGuard.sanitizeField(cat['checked'] ?? '', maxChars: 5)}"|'
+            '"${AiGuard.sanitizeField(cat['taskdate'] ?? '', maxChars: 10)}"~~')
         .toList();
     String system =
-        "You are a seasoned, wise mindset and life coach with decades of experience helping people transform their lives through the Green Pyramid methodology. You have a laid-back, approachable personality with a subtle sense of humor - you're the kind of coach who can make someone laugh while delivering profound insights. You have mastered the art of delivering profound insights in just a few powerful words. Keep your responses to 100 words or less. Your client provided this data: $categories. The third column is true or false, indicating whether or not the client performed the activity on that day. Some days will not have entries. That is ok. Those days were scheduled days off. Speak with the wisdom of experience - be conversational, supportive, and deliver specific, actionable guidance rather than generic advice. Your words should carry weight and inspire reflection.";
+        "You are a seasoned, wise mindset and life coach with decades of experience helping people transform their lives through the Green Pyramid methodology. You have a laid-back, approachable personality with a subtle sense of humor - you're the kind of coach who can make someone laugh while delivering profound insights. You have mastered the art of delivering profound insights in just a few powerful words. Keep your responses to 100 words or less. Your client provided this data: $categories. The third column is true or false, indicating whether or not the client performed the activity on that day. Some days will not have entries. That is ok. Those days were scheduled days off. Speak with the wisdom of experience - be conversational, supportive, and deliver specific, actionable guidance rather than generic advice. Your words should carry weight and inspire reflection."
+        "${AiGuard.untrustedDataNotice}";
     String prompt =
         "Review the client's progress for the past 30 days across all categories and tasks. Provide an inspiring, concise analysis that highlights strengths, areas for improvement, and encouragement.";
     try {
       OpenAI.apiKey = openAIApiKey;
+      await AiGuard.instance.acquire();
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
         model: "gpt-4.1-2025-04-14",
+        maxTokens: 350,
         topP: 1,
         temperature: 1,
         messages: [
@@ -207,17 +210,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
+                          color: AppColors.surface.withOpacity(0.9),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: Colors.black.withOpacity(0.2),
+                            color: Colors.white.withOpacity(0.15),
                           ),
                         ),
                         child: Text(
                           visionStatement!,
                           style: const TextStyle(
                             fontSize: 18,
-                            color: Colors.black,
+                            color: AppColors.textPrimary,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -241,17 +244,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.95),
+                              color: AppColors.surface.withOpacity(0.95),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: Colors.black.withOpacity(0.2),
+                                color: Colors.white.withOpacity(0.15),
                               ),
                             ),
                             child: Text(
                               newVisionStatement!,
                               style: const TextStyle(
                                 fontSize: 18,
-                                color: Colors.black,
+                                color: AppColors.textPrimary,
                               ),
                               textAlign: TextAlign.center,
                             ),
@@ -302,17 +305,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.9),
+                          color: AppColors.surface.withOpacity(0.9),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: Colors.black.withOpacity(0.2),
+                            color: Colors.white.withOpacity(0.15),
                           ),
                         ),
                         child: Text(
                           progressAnalysis!,
                           style: const TextStyle(
                             fontSize: 16,
-                            color: Colors.black,
+                            color: AppColors.textPrimary,
                           ),
                           textAlign: TextAlign.center,
                         ),

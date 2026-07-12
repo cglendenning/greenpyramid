@@ -11,6 +11,7 @@ import 'package:life_ops/setup/setup1.dart';
 import 'package:life_ops/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/secrets.dart';
+import 'package:life_ops/services/ai_guard.dart';
 import 'package:life_ops/progress_bar.dart';
 
 String defaultText = 'Generating ideas...';
@@ -51,7 +52,7 @@ class _Cat3TasksState extends State<Cat3Tasks> {
         fit: BoxFit.scaleDown, semanticsLabel: 'forward');
 
     var mainTextStyle = const TextStyle(
-        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'SourceSans3');
+        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
 
     return SafeArea(
         child: Scaffold(
@@ -361,9 +362,11 @@ class _Cat3TasksState extends State<Cat3Tasks> {
     String chatResult = "";
 
     try {
+      await AiGuard.instance.acquire();
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
         model: "gpt-4o",
+        maxTokens: 400,
         messages: [
           OpenAIChatCompletionChoiceMessageModel(
             content: [

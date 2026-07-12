@@ -3,16 +3,22 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:life_ops/db.dart';
-import 'package:life_ops/paywall.dart';
-import 'package:life_ops/utils.dart' as utils;
 import 'package:life_ops/navbar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/rendering.dart';
 import 'package:life_ops/secrets.dart';
+import 'package:life_ops/services/ad_service.dart';
+import 'package:life_ops/services/ai_guard.dart';
 
 // add some additional behind-the-scenes directives to openAI...
 String suffix = " Do not answer with a list.";
+
+// Every this-many-th message, give the AdService a chance to show an
+// interstitial (subject to its own 5-minute cooldown) before the message
+// goes out. Coach chat is otherwise unlimited and by far the most expensive
+// OpenAI usage in the app, so its cost needs to stay tied to ad revenue.
+const int _adGateMessageInterval = 3;
 
 class Coach extends StatefulWidget {
   final bool showAppBar;
@@ -29,13 +35,10 @@ class Coach extends StatefulWidget {
 
 class _CoachState extends State<Coach> with WidgetsBindingObserver {
   final dbHelper = DatabaseHelper.instance;
-  bool paywalled = false;
   String cat = '';
   List<ChatMessage> _chatHistory = [];
   bool _hasLoadedHistory = false;
   late FocusNode _focusNode;
-  int freeMessageLimit = 10;
-  bool isSubscribed = true; // Start as true to prevent banner flash
   final GlobalKey<_MessageComposerState> _messageComposerKey =
       GlobalKey<_MessageComposerState>();
 
@@ -43,6 +46,7 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
     CoachMessage('Give me just a moment...', OpenAIChatMessageRole.assistant),
   ];
 
+  int _messagesSentThisSession = 0;
   var _awaitingResponse = false;
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
@@ -52,11 +56,6 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    if (kDebugMode) {
-      print(
-          '🚀 [COACH SCREEN] initState() - Triggering initial subscription check');
-    }
-    _checkSubscriptionStatus();
     WidgetsBinding.instance.addObserver(this);
     _focusNode = FocusNode();
     _focusNode.addListener(_onFocusChange);
@@ -69,18 +68,14 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
           widget.category!.isNotEmpty) {
         _injectedMoodCategory = true;
         String prompt =
-            "The area of my life I am most ${widget.mood} about is: ${widget.category}.";
+            "The area of my life I am most ${AiGuard.sanitizeField(widget.mood!, maxChars: 40)} "
+            "about is: ${AiGuard.sanitizeField(widget.category!, maxChars: 60)}.";
         _messages.add(CoachMessage(prompt, OpenAIChatMessageRole.user));
         await _saveMessage(prompt, 'user');
         setState(() {
           _awaitingResponse = true;
         });
-        final response = await widget.chatApi.completeChat(_messages);
-        _messages.add(CoachMessage(response, OpenAIChatMessageRole.assistant));
-        await _saveMessage(response, 'assistant');
-        setState(() {
-          _awaitingResponse = false;
-        });
+        await _sendAssistantResponse();
       } else if (_chatHistory.isEmpty) {
         // Only call chatSetup if there's no existing history and no mood/category injection
         _awaitingResponse = true;
@@ -101,25 +96,16 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
 
   void _onFocusChange() {
     if (_focusNode.hasFocus) {
-      // Reload chat history and check subscription when screen gains focus
-      if (kDebugMode) {
-        print(
-            '🎯 [COACH SCREEN] Screen gained focus - Triggering subscription check');
-      }
+      // Reload chat history when screen gains focus
       _loadChatHistory();
-      _checkSubscriptionStatus();
     }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      // Reload chat history and check subscription when app becomes visible
-      if (kDebugMode) {
-        print('📱 [COACH SCREEN] App resumed - Triggering subscription check');
-      }
+      // Reload chat history when app becomes visible
       _loadChatHistory();
-      _checkSubscriptionStatus();
     }
   }
 
@@ -185,44 +171,13 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     analytics.logEvent(name: 'coach_chat');
-    if (kDebugMode) {
-      print('🏗️ [COACH SCREEN] Building UI - isSubscribed: $isSubscribed');
-    }
 
     return SafeArea(
       child: Focus(
         focusNode: _focusNode,
         child: Scaffold(
           appBar: widget.showAppBar ? const NavBar() : null,
-          body: Stack(
-            children: [
-              chatScreen(),
-              if (!isSubscribed)
-                Positioned(
-                  left: -30,
-                  top: 20,
-                  child: Transform.rotate(
-                    angle: -0.785398, // -45 degrees in radians
-                    child: Container(
-                      width: 140,
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      color: Colors.redAccent,
-                      child: const Center(
-                        child: Text(
-                          'FREE TIER',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                            letterSpacing: 2,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          body: chatScreen(),
         ),
       ),
     );
@@ -303,61 +258,23 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
   }
 
   Future<void> _onSubmitted(String message) async {
-    // Check subscription status before processing message
-    if (kDebugMode) {
-      print(
-          '💬 [COACH SCREEN] Message submitted - Triggering subscription check');
-    }
-    await _checkSubscriptionStatus();
+    final clamped = AiGuard.clampMessage(message);
+    if (clamped.isEmpty) return;
 
-    // Count user messages (excluding assistant messages)
-    int userMessageCount =
-        _messages.where((m) => m.msgType == OpenAIChatMessageRole.user).length;
-    if (!isSubscribed && userMessageCount >= freeMessageLimit) {
-      // Show paywall before allowing the 11th message
-      await navigateToPaywall();
-      return;
+    _messagesSentThisSession++;
+    if (_messagesSentThisSession % _adGateMessageInterval == 0) {
+      await AdService.instance.showInterstitialIfEligible();
     }
 
     // Clear the text field immediately after submission
     _messageComposerKey.currentState?.clearText();
 
     setState(() {
-      _messages.add(CoachMessage(message + suffix, OpenAIChatMessageRole.user));
+      _messages.add(CoachMessage(clamped + suffix, OpenAIChatMessageRole.user));
       _awaitingResponse = true;
     });
-    await _saveMessage(message + suffix, 'user');
+    await _saveMessage(clamped + suffix, 'user');
     await _sendAssistantResponse();
-  }
-
-  Future<void> navigateToPaywall() async {
-    // Check if user is already subscribed
-    bool isSubscribed = await utils.Utils().isUserSubscribed();
-    if (isSubscribed) {
-      // Show a message that they're already subscribed
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You already have an active subscription!'),
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return;
-    }
-
-    utils.Utils().changeSystemColor(Brightness.dark);
-    await Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => Paywall()),
-    );
-    // Check subscription status after returning from paywall
-    if (kDebugMode) {
-      print(
-          '💰 [COACH SCREEN] Returning from paywall - Triggering subscription check');
-    }
-    await _checkSubscriptionStatus();
-    setState(() {
-      utils.Utils().changeSystemColor(Brightness.light);
-    });
   }
 
   Future<void> _sendAssistantResponse() async {
@@ -372,31 +289,41 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
           taskdate: maps[i]['taskdate']);
     });
 
+    // Sanitized (delimiters stripped, fields capped) and row-capped so
+    // crafted task names can't inject instructions or forge records, and
+    // the context stays a bounded size.
+    if (allTaskLogs.length > AiGuard.maxTaskLogRows) {
+      allTaskLogs =
+          allTaskLogs.sublist(allTaskLogs.length - AiGuard.maxTaskLogRows);
+    }
     final List<String> categories = allTaskLogs
         .map((cat) =>
-            '"' +
-            cat.category +
-            '"|' +
-            '"' +
-            cat.taskdescription +
-            '"|' +
-            '"' +
-            cat.checked +
-            '"|' +
-            '"' +
-            cat.taskdate +
-            '"~~')
+            '"${AiGuard.sanitizeField(cat.category, maxChars: 60)}"|'
+            '"${AiGuard.sanitizeField(cat.taskdescription)}"|'
+            '"${AiGuard.sanitizeField(cat.checked, maxChars: 5)}"|'
+            '"${AiGuard.sanitizeField(cat.taskdate, maxChars: 10)}"~~')
         .toList();
 
-    // Create messages with categories data always included
+    // System context plus only the most recent turns; sending the whole
+    // stored history (up to 200 messages) made each request cost more
+    // than the entire conversation before it.
     List<CoachMessage> messagesWithContext = [
       CoachMessage(
-          "You are a seasoned, wise mindset and life coach with decades of experience helping people transform their lives through the Green Pyramid methodology. You have a laid-back, approachable personality with a subtle sense of humor - you're the kind of coach who can make someone laugh while delivering profound insights. You have mastered the art of delivering profound insights in just a few powerful words. Keep your responses to 100 words or less. Your client provided this data: $categories. The third column is true or false, indicating whether or not the client performed the activity on that day. Some days will not have entries. That is ok. Those days were scheduled days off. Speak with the wisdom of experience - be conversational, supportive, and deliver specific, actionable guidance rather than generic advice. Your words should carry weight and inspire reflection.",
+          "You are a seasoned, wise mindset and life coach with decades of experience helping people transform their lives through the Green Pyramid methodology. You have a laid-back, approachable personality with a subtle sense of humor - you're the kind of coach who can make someone laugh while delivering profound insights. You have mastered the art of delivering profound insights in just a few powerful words. Keep your responses to 100 words or less. Your client provided this data: $categories. The third column is true or false, indicating whether or not the client performed the activity on that day. Some days will not have entries. That is ok. Those days were scheduled days off. Speak with the wisdom of experience - be conversational, supportive, and deliver specific, actionable guidance rather than generic advice. Your words should carry weight and inspire reflection.${AiGuard.untrustedDataNotice}",
           OpenAIChatMessageRole.system),
-      ..._messages
+      ...AiGuard.tailHistory(_messages)
     ];
 
-    final response = await widget.chatApi.completeChat(messagesWithContext);
+    String response;
+    try {
+      response = await widget.chatApi.completeChat(messagesWithContext);
+    } on AiBudgetException catch (e) {
+      setState(() {
+        _messages.add(CoachMessage(e.message, OpenAIChatMessageRole.assistant));
+        _awaitingResponse = false;
+      });
+      return;
+    }
     setState(() {
       _messages.add(CoachMessage(response, OpenAIChatMessageRole.assistant));
       _awaitingResponse = false;
@@ -420,20 +347,16 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
           taskdate: maps[i]['taskdate']);
     });
 
+    if (allTaskLogs.length > AiGuard.maxTaskLogRows) {
+      allTaskLogs =
+          allTaskLogs.sublist(allTaskLogs.length - AiGuard.maxTaskLogRows);
+    }
     final List<String> categories = allTaskLogs
         .map((cat) =>
-            '"' +
-            cat.category +
-            '"|' +
-            '"' +
-            cat.taskdescription +
-            '"|' +
-            '"' +
-            cat.checked +
-            '"|' +
-            '"' +
-            cat.taskdate +
-            '"~~')
+            '"${AiGuard.sanitizeField(cat.category, maxChars: 60)}"|'
+            '"${AiGuard.sanitizeField(cat.taskdescription)}"|'
+            '"${AiGuard.sanitizeField(cat.checked, maxChars: 5)}"|'
+            '"${AiGuard.sanitizeField(cat.taskdate, maxChars: 10)}"~~')
         .toList();
 
     OpenAI.apiKey = openAIApiKey;
@@ -445,7 +368,8 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
         "Burns and TEAM-CBT, Dan Sullivan, Simon Sinek, James Clear, Greg "
         "Glassman and other deep thinkers in the areas of mindset, "
         "self-improvement, fitness and entrepreneurship. You have an informal "
-        "style and are genuinely inquisitive about your client's needs.";
+        "style and are genuinely inquisitive about your client's needs."
+        "${AiGuard.untrustedDataNotice}";
 
     String prompt = "Your client provided this data: $categories.  The third "
         "column is true or false, indicating whether or not the client "
@@ -460,9 +384,11 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
         "right now. You can go back to the home screen and try again.";
 
     try {
+      await AiGuard.instance.acquire();
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
         model: "gpt-4.1-2025-04-14",
+        maxTokens: 350,
         messages: [
           OpenAIChatCompletionChoiceMessageModel(
             role: OpenAIChatMessageRole.system,
@@ -479,6 +405,8 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
         ],
       ).timeout(const Duration(seconds: timeout));
       chatResult = chatCompletion.choices[0].message.content?.first.text ?? '';
+    } on AiBudgetException catch (e) {
+      chatResult = e.message;
     } catch (e, s) {
       print(e);
       print(s);
@@ -487,34 +415,6 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
     return chatResult;
   }
 
-  Future<void> _checkSubscriptionStatus() async {
-    print('🔄 [SUBSCRIPTION CHECK] Starting RevenueCat verification...');
-    try {
-      bool newSubscriptionStatus = await utils.Utils().isUserSubscribed();
-      print(
-          '📱 [SUBSCRIPTION CHECK] Subscription Status: ${newSubscriptionStatus ? "SUBSCRIBED" : "NOT SUBSCRIBED"}');
-      if (mounted) {
-        setState(() {
-          isSubscribed = newSubscriptionStatus;
-        });
-        print(
-            '📱 [SUBSCRIPTION CHECK] UI updated - isSubscribed: $isSubscribed');
-      } else {
-        print('📱 [SUBSCRIPTION CHECK] Widget not mounted, skipping UI update');
-      }
-    } catch (e) {
-      print('❌ [SUBSCRIPTION CHECK] Error checking subscription: $e');
-      // If error, default to not subscribed
-      if (mounted) {
-        setState(() {
-          isSubscribed = false;
-        });
-        print(
-            '📱 [SUBSCRIPTION CHECK] Error fallback - isSubscribed set to false');
-      }
-    }
-    print('🔄 [SUBSCRIPTION CHECK] Verification complete');
-  }
 }
 
 class TaskLog {
@@ -596,11 +496,13 @@ class _MessageComposerState extends State<MessageComposer> {
                       child: TextField(
                         focusNode: _focusNode,
                         maxLines: null,
+                        maxLength: AiGuard.maxUserMessageChars,
                         controller: _messageController,
                         onSubmitted: widget.onSubmitted,
                         decoration: const InputDecoration(
                           hintText: 'Write your message here...',
                           border: InputBorder.none,
+                          counterText: '',
                         ),
                       ),
                     )
@@ -721,6 +623,14 @@ class CoachMessage {
 class ChatApi {
   static const _model = 'gpt-4.1-2025-04-14';
 
+  // Responses are prompted to stay under 100 words; this hard-caps the
+  // spend even if an injected instruction asks for a novel.
+  static const int _maxResponseTokens = 350;
+
+  // Defense in depth: individual messages are also clamped at the input
+  // layer, but nothing longer than this ever goes over the wire.
+  static const int _maxMessageChars = 4000;
+
   ChatApi() {
     OpenAI.apiKey = openAIApiKey;
   }
@@ -728,15 +638,19 @@ class ChatApi {
   Future<String> completeChat(List<CoachMessage> messages) async {
     const int timeout = 25;
 
+    await AiGuard.instance.acquire();
+
     final chatCompletion = await OpenAI.instance.chat
         .create(
           model: _model,
+          maxTokens: _maxResponseTokens,
           messages: messages
               .map((e) => OpenAIChatCompletionChoiceMessageModel(
                     role: e.msgType,
                     content: [
                       OpenAIChatCompletionChoiceMessageContentItemModel.text(
-                          e.content),
+                          AiGuard.clampMessage(e.content,
+                              maxChars: _maxMessageChars)),
                     ],
                   ))
               .toList(),

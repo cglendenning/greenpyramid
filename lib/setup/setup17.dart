@@ -61,7 +61,7 @@ class _Setup17State extends State<Setup17> {
     double pyramidHeight = MediaQuery.of(context).size.width * 0.82;
 
     var mainTextStyle = const TextStyle(
-        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'SourceSans3');
+        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
 
     return Container(
         color: Colors.black,

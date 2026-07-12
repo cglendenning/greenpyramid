@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:life_ops/radarchart.dart' as custom_radar;
 import 'package:life_ops/db.dart';
-import 'package:life_ops/paywall.dart';
-import 'package:life_ops/utils.dart' as utils;
 import 'package:life_ops/secrets.dart';
+import 'package:life_ops/services/ai_guard.dart';
+import 'package:life_ops/theme/app_colors.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -26,12 +26,8 @@ class VisualizationsScreen extends StatefulWidget {
 class _VisualizationsScreenState extends State<VisualizationsScreen> {
   final dbHelper = DatabaseHelper.instance;
   late Future<void> _loadDataFuture;
-  bool _checkingPaywall = true;
-  bool _paywalled = false;
-  bool _isSubscribed = false; // Add subscription status
 
   // Commentary system state
-  int _freeCommentsRemaining = 30; // Start with 30 free comments
   Map<String, bool> _commentaryShown = {}; // Track which charts have shown commentary
   Map<String, String> _commentaryText = {}; // Store generated commentary
   Map<String, String> _buttonTexts = {}; // Store button text for each chart
@@ -76,29 +72,7 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
     super.initState();
     _assignButtonTexts();
     _initializeCommentaryTracking();
-    _loadCommentaryCountdown();
     _loadDataFuture = _loadAllData(); // Start loading data immediately
-    _checkPaywallAndSubscription(); // Run paywall/subscription check in parallel
-  }
-
-  Future<void> _checkPaywallAndSubscription() async {
-    // Check chat message count and subscription status in the background
-    final chatHistory = await dbHelper.getChatHistory();
-    final userMessages = chatHistory.where((m) => m['sender'] == 'user').length;
-    final isSubscribed = await utils.Utils().isUserSubscribed();
-    if (!isSubscribed && userMessages >= 10) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => Paywall()),
-        );
-      });
-      return;
-    }
-    setState(() {
-      _paywalled = false;
-      _checkingPaywall = false;
-      _isSubscribed = isSubscribed;
-    });
   }
 
   void _initializeCommentaryTracking() {
@@ -119,28 +93,13 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
     };
   }
 
-  Future<void> _loadCommentaryCountdown() async {
-    try {
-      final countdown = await dbHelper.getCommentaryCountdown();
-      setState(() {
-        _freeCommentsRemaining = countdown;
-      });
-    } catch (e) {
-      // If no countdown exists, start with 30
-      await dbHelper.saveCommentaryCountdown(30);
-    }
-  }
-
-  Future<void> _saveCommentaryCountdown() async {
-    await dbHelper.saveCommentaryCountdown(_freeCommentsRemaining);
-  }
-
   Future<String> _callOpenAI(String prompt) async {
     // Use the API key from secrets.dart
     const String apiKey = openAIApiKey;
     const String apiUrl = 'https://api.openai.com/v1/chat/completions';
     
     try {
+      await AiGuard.instance.acquire();
       final response = await http.post(
         Uri.parse(apiUrl),
         headers: {
@@ -152,7 +111,7 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
           'messages': [
             {
               'role': 'system',
-              'content': 'You are a supportive life coach who provides encouraging, personalized insights about personal development data. Keep responses under 100 words and focus on positive reinforcement and actionable advice.'
+              'content': 'You are a supportive life coach who provides encouraging, personalized insights about personal development data. Keep responses under 100 words and focus on positive reinforcement and actionable advice.${AiGuard.untrustedDataNotice}'
             },
             {
               'role': 'user',
@@ -170,6 +129,8 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
       } else {
         throw Exception('Failed to get commentary: ${response.statusCode}');
       }
+    } on AiBudgetException catch (e) {
+      return e.message;
     } catch (e) {
       // Return a meaningful error message without decrementing the counter
       return "I'm having trouble analyzing your data right now, but keep up the great work!";
@@ -268,15 +229,6 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
   }
 
   Future<void> _generateCommentary(String chartType) async {
-    // If subscribed, allow unlimited commentary without checking countdown
-    if (!_isSubscribed && _freeCommentsRemaining <= 0) {
-      // Show paywall only for non-subscribed users
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => Paywall()),
-      );
-      return;
-    }
-
     // Set loading state
     setState(() {
       _isLoadingCommentary[chartType] = true;
@@ -285,41 +237,18 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
     try {
       // Build prompt for this chart type
       String prompt = _buildPromptForChart(chartType);
-      
+
       // Call OpenAI
       String commentary = await _callOpenAI(prompt);
-      
-      // Only proceed if we got a valid response (not an error message)
-      if (!commentary.contains("I'm having trouble analyzing")) {
-        // Update state with commentary
-        setState(() {
-          _commentaryText[chartType] = commentary;
-          _commentaryShown[chartType] = true;
-          _isLoadingCommentary[chartType] = false;
-          // Only decrement countdown for non-subscribed users
-          if (!_isSubscribed) {
-            _freeCommentsRemaining--;
-          }
-        });
-        
-        // Save countdown to database only for non-subscribed users
-        if (!_isSubscribed) {
-          await _saveCommentaryCountdown();
-        }
-      } else {
-        // Don't decrement counter on error, just show the error message
-        setState(() {
-          _commentaryText[chartType] = commentary;
-          _commentaryShown[chartType] = true;
-          _isLoadingCommentary[chartType] = false;
-          // Don't decrement _freeCommentsRemaining
-        });
-      }
-      
+
+      setState(() {
+        _commentaryText[chartType] = commentary;
+        _commentaryShown[chartType] = true;
+        _isLoadingCommentary[chartType] = false;
+      });
     } catch (e) {
       setState(() {
         _isLoadingCommentary[chartType] = false;
-        // Don't decrement counter on exception either
       });
     }
   }
@@ -645,102 +574,39 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
     );
   }
 
-  Widget _buildFloatingCountdown() {
-    // Don't show countdown for subscribed users
-    if (_isSubscribed) {
-      return const SizedBox.shrink();
-    }
-    
-    return Positioned(
-      top: 120,
-      right: 20,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: _freeCommentsRemaining > 0 
-              ? [const Color(0xFF667eea), const Color(0xFF764ba2)]
-              : [Colors.grey.shade400, Colors.grey.shade600],
-          ),
-          borderRadius: BorderRadius.circular(25),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.15),
-              blurRadius: 15,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              _freeCommentsRemaining > 0 ? Icons.psychology : Icons.lock,
-              color: Colors.white,
-              size: 20,
-            ),
-            const SizedBox(width: 10),
-            Text(
-              _freeCommentsRemaining > 0 
-                ? "$_freeCommentsRemaining free insights left"
-                : "Upgrade for unlimited insights",
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
-    if (_checkingPaywall) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-    if (_paywalled) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
     final chartDefinitions = [
       {
         'title': 'Balance Across Categories',
         'builder': () => Stack(
           children: [
-            custom_radar.RadarChart(
+            custom_radar.RadarChart.dark(
               ticks: radarTicks,
               features: [radarFeatures[0], '', '', '', '', ''],
               data: radarData[0],
             ),
-            custom_radar.RadarChart(
+            custom_radar.RadarChart.dark(
               ticks: radarTicks,
               features: ['', radarFeatures[1], '', '', '', ''],
               data: radarData[1],
             ),
-            custom_radar.RadarChart(
+            custom_radar.RadarChart.dark(
               ticks: radarTicks,
               features: ['', '', radarFeatures[2], '', '', ''],
               data: radarData[2],
             ),
-            custom_radar.RadarChart(
+            custom_radar.RadarChart.dark(
               ticks: radarTicks,
               features: ['', '', '', radarFeatures[3], '', ''],
               data: radarData[3],
             ),
-            custom_radar.RadarChart(
+            custom_radar.RadarChart.dark(
               ticks: radarTicks,
               features: ['', '', '', '', radarFeatures[4], ''],
               data: radarData[4],
             ),
-            custom_radar.RadarChart(
+            custom_radar.RadarChart.dark(
               ticks: radarTicks,
               features: ['', '', '', '', '', radarFeatures[5]],
               data: radarData[5],
@@ -887,8 +753,8 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [
-                    Color(0xFFf5f7fa),
-                    Color(0xFFc3cfe2),
+                    AppColors.background,
+                    AppColors.surface,
                   ],
                 ),
               ),
@@ -944,7 +810,7 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
                                           style: TextStyle(
                                             fontSize: 24,
                                             fontWeight: FontWeight.bold,
-                                            color: Color(0xFF2d3748),
+                                            color: AppColors.textPrimary,
                                           ),
                                           textAlign: TextAlign.center,
                                         ),
@@ -956,7 +822,7 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
                                     'Discover insights into your life balance, consistency patterns, and growth trends. Each chart reveals a different dimension of your personal development journey.',
                                     style: TextStyle(
                                       fontSize: 16,
-                                      color: Color(0xFF4a5568),
+                                      color: AppColors.textSecondary,
                                       height: 1.5,
                                     ),
                                     textAlign: TextAlign.center,
@@ -985,7 +851,6 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
                 },
               ),
             ),
-            _buildFloatingCountdown(),
           ],
         ),
       ),
@@ -1082,7 +947,7 @@ class _LazyChartCardState extends State<_LazyChartCard> {
               height: widget.chartHeight ?? 200,
               margin: const EdgeInsets.only(bottom: 20),
               decoration: BoxDecoration(
-                color: Colors.grey[200],
+                color: AppColors.surface,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: const Center(

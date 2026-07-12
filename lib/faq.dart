@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:life_ops/navbar.dart';
+import 'package:life_ops/theme/app_colors.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
 class FAQ extends StatefulWidget {
@@ -95,7 +96,7 @@ class _FAQState extends State<FAQ> {
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
-                  fontFamily: 'SourceSans3',
+                  fontFamily: 'Exo2',
                 ),
               ),
             ),
@@ -144,7 +145,7 @@ class _FAQExpansionTileState extends State<FAQExpansionTile> {
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w600,
-            fontFamily: 'SourceSans3',
+            fontFamily: 'Exo2',
             color: Colors.black87,
           ),
         ),
@@ -155,9 +156,9 @@ class _FAQExpansionTileState extends State<FAQExpansionTile> {
               widget.faqItem.answer,
               style: const TextStyle(
                 fontSize: 14,
-                fontFamily: 'SourceSans3',
+                fontFamily: 'Exo2',
                 height: 1.4,
-                color: Colors.black,
+                color: AppColors.textPrimary,
               ),
             ),
           ),

@@ -2,17 +2,12 @@ import 'package:dart_openai/dart_openai.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:life_ops/db.dart';
-import 'package:life_ops/paywall.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:life_ops/utils.dart' as utils;
 import 'package:life_ops/navbar.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/secrets.dart';
-// import 'package:life_ops/main.dart';
-// import 'package:purchases_flutter/purchases_flutter.dart';
-// import 'package:timezone/timezone.dart' as tz;
-// import 'package:flutter/gestures.dart';
-// import 'package:life_ops/main.dart';
+import 'package:life_ops/services/ad_service.dart';
+import 'package:life_ops/services/ai_guard.dart';
 
 class Motivation extends StatefulWidget {
   const Motivation();
@@ -22,17 +17,21 @@ class Motivation extends StatefulWidget {
 }
 
 class _MotivationState extends State<Motivation> {
+  // Created once: handing FutureBuilder a fresh generateCompletion() call
+  // on every build meant every rebuild (like the ad button's setState)
+  // fired another paid OpenAI request.
+  late final Future<String> _completionFuture;
+
   @override
   void initState() {
     super.initState();
+    _completionFuture = generateCompletion();
   }
 
   _MotivationState();
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
   final dbHelper = DatabaseHelper.instance;
-
-  bool paywalled = false;
 
   @override
   Widget build(BuildContext context) {
@@ -56,7 +55,7 @@ class _MotivationState extends State<Motivation> {
                   ),
                   const SizedBox(height: 10),
                   FutureBuilder(
-                      future: generateCompletion(),
+                      future: _completionFuture,
                       builder: (context, AsyncSnapshot snapshot) {
                         if (!snapshot.hasData) {
                           return const Center(
@@ -86,99 +85,17 @@ class _MotivationState extends State<Motivation> {
                   const SizedBox(height: 30),
                   IconButton(
                     icon: svgBack,
-                    onPressed: () {
-                      // adInstance.loadAndShowInterstitialAd();
+                    onPressed: () async {
+                      await AdService.instance.showInterstitialIfEligible();
                       setState(() {
                         Navigator.pop(context);
                       });
                     },
                   ),
                   const SizedBox(height: 20),
-
-                  /*
-          FutureBuilder(
-              future: subscribeLink(),
-              builder: (context, AsyncSnapshot snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(
-                      child: Column(children: <Widget>[
-                    Text(''),
-                  ]));
-                } else {
-                  return snapshot.data;
-                }
-              }),
-          */
-
                   const SizedBox(height: 10),
                 ]))));
   }
-
-  void navigateToPaywall() async {
-    // Check if user is already subscribed
-    bool isSubscribed = await utils.Utils().isUserSubscribed();
-    if (isSubscribed) {
-      // Show a message that they're already subscribed
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You already have an active subscription!'),
-          duration: Duration(seconds: 3),
-        ),
-      );
-      return;
-    }
-
-    utils.Utils().changeSystemColor(Brightness.dark);
-
-    await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => Paywall()));
-    // This will ensure that when someone goes back from the paywall
-    // screen, the motivation screen gets popped immediately.
-    paywalled = true;
-    setState(() {
-      utils.Utils().changeSystemColor(Brightness.light);
-    });
-  }
-
-  /*
-  Future<Widget> subscribeLink() async {
-    var link;
-    bool isSubscribed = await utils.Utils().isUserSubscribed();
-    var daysRemaining = installDate
-        .add(const Duration(days: 7))
-        .difference(tz.TZDateTime.now(tz.local))
-        .inDays;
-    String dayString = 'days remaining';
-    if (daysRemaining == 1) {
-      dayString = 'day remaining!!';
-    }
-    // FT: No subscription and free trial days remaining > 0
-    if (!isSubscribed && daysRemaining > 0) {
-      link = RichText(
-        text: TextSpan(
-            text: 'Subscribe. $daysRemaining $dayString',
-            style: const TextStyle(
-                color: Colors.blue,
-                decoration: TextDecoration.underline,
-                fontSize: 16),
-            recognizer: TapGestureRecognizer()
-              ..onTap = () {
-                navigateToPaywall();
-                setState(() {});
-              }),
-      );
-      // S: Active subscription found.
-    } else if (isSubscribed) {
-      link = const Text('');
-      // U: No active subscription found, and daysRemaining is 0 or less.
-    } else if (paywalled == false) {
-      navigateToPaywall();
-    } else {
-      Navigator.pop(context);
-    }
-    return link;
-  }
-   */
 
   Future<String> generateCompletion() async {
     final List<Map<String, dynamic>> maps = await dbHelper.queryTaskLogs(7);
@@ -194,27 +111,24 @@ class _MotivationState extends State<Motivation> {
           taskdate: maps[i]['taskdate']);
     });
 
+    if (allTaskLogs.length > AiGuard.maxTaskLogRows) {
+      allTaskLogs =
+          allTaskLogs.sublist(allTaskLogs.length - AiGuard.maxTaskLogRows);
+    }
     final List<String> categories = allTaskLogs
         .map((cat) =>
-            '"' +
-            cat.category +
-            '"|' +
-            '"' +
-            cat.taskdescription +
-            '"|' +
-            '"' +
-            cat.checked +
-            '"|' +
-            '"' +
-            cat.taskdate +
-            '"~~')
+            '"${AiGuard.sanitizeField(cat.category, maxChars: 60)}"|'
+            '"${AiGuard.sanitizeField(cat.taskdescription)}"|'
+            '"${AiGuard.sanitizeField(cat.checked, maxChars: 5)}"|'
+            '"${AiGuard.sanitizeField(cat.taskdate, maxChars: 10)}"~~')
         .toList();
 
     OpenAI.apiKey = openAIApiKey;
 
     // prompt v1
     String system =
-        "You are Jocko Willink as a life coach but do not identify yourself.";
+        "You are Jocko Willink as a life coach but do not identify yourself."
+        "${AiGuard.untrustedDataNotice}";
 
     // prompt v1
     String prompt = "Your client provided this data: $categories.  The third "
@@ -240,9 +154,11 @@ class _MotivationState extends State<Motivation> {
         "link to try again.";
 
     try {
+      await AiGuard.instance.acquire();
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
         model: "gpt-4o",
+        maxTokens: 400,
         messages: [
           OpenAIChatCompletionChoiceMessageModel(
             role: OpenAIChatMessageRole.system,
@@ -267,6 +183,8 @@ class _MotivationState extends State<Motivation> {
       chatResult =
           (chatCompletion.choices[0].message.content?.first.text ?? '') +
               postScript;
+    } on AiBudgetException catch (e) {
+      chatResult = e.message;
     } catch (e, s) {
       if (kDebugMode) {
         print(e);

@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'dart:ui';
 import 'package:life_ops/navbar.dart';
+import 'package:life_ops/theme/app_colors.dart';
 import 'package:life_ops/progress_bar.dart';
 
 final List<String> categories = [
@@ -62,13 +63,15 @@ class _Setup2State extends State<Setup2> {
 
     var descStyle = const TextStyle(
       fontSize: 20,
-      color: Colors.black,
+      color: AppColors.textPrimary,
     );
 
     return SafeArea(
         child: Container(
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
                 image: DecorationImage(
+              colorFilter: ColorFilter.mode(
+                  Colors.black.withOpacity(0.5), BlendMode.dstATop),
               image: const AssetImage("images/morning_1.jpg"),
               fit: BoxFit.cover,
             )),
@@ -258,11 +261,11 @@ class _ValueListState extends State<ValueList> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppColors.surface,
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black12,
+                      color: Colors.black45,
                       blurRadius: 4,
                       offset: Offset(0, 2),
                     ),
@@ -271,7 +274,7 @@ class _ValueListState extends State<ValueList> {
                 child: const Text(
                   'Tap, hold and drag to re-order the list',
                   style: TextStyle(
-                      color: Colors.black,
+                      color: AppColors.textPrimary,
                       fontSize: 14,
                       fontWeight: FontWeight.bold),
                 ),

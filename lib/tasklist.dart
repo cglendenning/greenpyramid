@@ -34,7 +34,7 @@ class _TaskListState extends State<TaskList> {
   final dbHelper = DatabaseHelper.instance;
 
   var pctCompleteTextStyle = const TextStyle(
-      fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'SourceSans3');
+      fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
 
   @override
   Widget build(BuildContext context) {

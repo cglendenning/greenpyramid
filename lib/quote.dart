@@ -2,6 +2,7 @@ import "dart:math";
 import 'package:dart_openai/dart_openai.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:life_ops/secrets.dart';
+import 'package:life_ops/services/ai_guard.dart';
 
 class Quote {
   String randomQuote() {
@@ -55,9 +56,11 @@ class Quote {
     String chatResult = "You've got this.";
 
     try {
+      await AiGuard.instance.acquire();
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
         model: "gpt-4o",
+        maxTokens: 150,
         messages: [
           OpenAIChatCompletionChoiceMessageModel(
             role: OpenAIChatMessageRole.system,
@@ -76,6 +79,8 @@ class Quote {
 
       chatResult =
           (chatCompletion.choices[0].message.content?.first.text ?? '');
+    } on AiBudgetException catch (e) {
+      chatResult = e.message;
     } catch (e, s) {
       if (kDebugMode) {
         print(e);

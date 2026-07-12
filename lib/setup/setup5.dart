@@ -5,6 +5,7 @@ import 'package:life_ops/setup/setup6.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/navbar.dart';
+import 'package:life_ops/theme/app_colors.dart';
 import 'package:life_ops/setup/setup1.dart';
 import 'package:life_ops/progress_bar.dart';
 
@@ -46,15 +47,15 @@ class _Setup5State extends State<Setup5> {
         fit: BoxFit.scaleDown, semanticsLabel: 'forward');
 
     var mainTextStyle = const TextStyle(
-        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'SourceSans3');
+        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
 
     var explainTextStyle = const TextStyle(
-        fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'SourceSans3');
+        fontSize: 16, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
 
     return SafeArea(
         child: Scaffold(
             appBar: const NavBar(),
-            backgroundColor: Colors.white,
+            backgroundColor: AppColors.background,
             body: Center(
                 child: Column(children: [
               ProgressBar(currentStep: 4, totalSteps: 23),

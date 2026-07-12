@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:life_ops/theme/app_colors.dart';
 
 class NavBar extends StatefulWidget implements PreferredSizeWidget {
   final Widget? title;
@@ -31,15 +32,12 @@ class NavBarState extends State<NavBar> {
 
   @override
   Widget build(BuildContext context) {
-    String hexLogoColor = "#66CC5D";
-    Color logoColor =
-        Color(int.parse(hexLogoColor.substring(1, 7), radix: 16) + 0xFF000000);
     const String logo = 'images/svg/logo_green.svg';
     final Widget svgLogo = SvgPicture.asset(logo,
         height: 40,
         width: 40,
         fit: BoxFit.scaleDown,
-        colorFilter: ColorFilter.mode(logoColor, BlendMode.srcIn),
+        colorFilter: const ColorFilter.mode(AppColors.brandGreen, BlendMode.srcIn),
         semanticsLabel: 'Green Pyramid Logo');
 
     Widget? navBarLeading;
@@ -60,11 +58,7 @@ class NavBarState extends State<NavBar> {
           gradient: LinearGradient(
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
-            colors: [
-              Color(0xffC35DCC),
-              Color(0xff000A61),
-              Color(0xff1782FF),
-            ],
+            colors: AppColors.appBarGradient,
           ),
         ),
         child: AppBar(

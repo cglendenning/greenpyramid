@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:life_ops/db.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:life_ops/navbar.dart';
+import 'package:life_ops/theme/app_colors.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
 class EditTaskDetail extends StatefulWidget {
@@ -281,7 +282,7 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
           child: Text(
         '*NOTE: If a task name is changed, all task log entries for the previous task name will be deleted.',
         style: TextStyle(
-          color: Colors.black,
+          color: AppColors.textPrimary,
           fontSize: 15,
         ),
         textAlign: TextAlign.center,

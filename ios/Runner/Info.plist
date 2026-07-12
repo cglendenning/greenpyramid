@@ -5,7 +5,7 @@
     <key>GADApplicationIdentifier</key>
     <string>ca-app-pub-4402198490627677~1066120376</string>
     <key>UIUserInterfaceStyle</key>
-    <string>Light</string>
+    <string>Dark</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <true/>
     <key>NSPhotoLibraryUsageDescription</key>

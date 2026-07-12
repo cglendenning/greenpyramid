@@ -120,7 +120,7 @@ class _SettingsState extends State<Settings> {
     SizedBox smallSpacer = SizedBox(height: pyramidHeight * .1);
 
     var mainTextStyle = const TextStyle(
-        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'SourceSans3');
+        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
 
     List<Map<String, String>> notifications = [];
     notifications = [

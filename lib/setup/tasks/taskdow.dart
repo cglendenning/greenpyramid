@@ -31,7 +31,7 @@ class _SetupTaskDowState extends State<SetupTaskDow> {
   Widget build(BuildContext context) {
     analytics.logEvent(name: '${setupVersion}_taskdow');
     var mainTextStyle = const TextStyle(
-        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'SourceSans3');
+        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
     return SafeArea(
         child: Scaffold(
             appBar: const NavBar(),

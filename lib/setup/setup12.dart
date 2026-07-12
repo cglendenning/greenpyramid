@@ -44,7 +44,7 @@ class _Setup12State extends State<Setup12> {
         fit: BoxFit.scaleDown, semanticsLabel: 'forward');
 
     var mainTextStyle = const TextStyle(
-        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'SourceSans3');
+        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
 
     return SafeArea(
         child: Scaffold(

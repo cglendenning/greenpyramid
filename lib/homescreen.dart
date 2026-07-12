@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:life_ops/notification.dart';
 import 'package:life_ops/db.dart';
@@ -19,12 +18,9 @@ import 'package:life_ops/editpyramid.dart';
 import 'package:life_ops/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/faq.dart';
-import 'package:life_ops/cancel.dart';
-import 'package:life_ops/subscription_status.dart';
-import 'package:life_ops/coaching.dart';
-import 'package:life_ops/are_we_a_fit.dart';
 import 'package:life_ops/profile.dart';
 import 'package:life_ops/visualizations.dart';
+import 'package:life_ops/theme/app_colors.dart';
 
 int currentScreenIndex = 0;
 
@@ -37,12 +33,20 @@ class HomeScreen extends StatelessWidget {
       title: 'Green Pyramid',
       navigatorKey: navigatorKey,
       theme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: AppColors.background,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AppColors.brandGreen,
+          brightness: Brightness.dark,
+          primary: AppColors.brandGreen,
+          secondary: AppColors.brandPurple,
+          surface: AppColors.surface,
+        ),
         textTheme: Theme.of(context).textTheme.apply(
-            bodyColor: const Color(0xff555555),
-            displayColor: const Color(0xff555555)),
+            bodyColor: AppColors.textPrimary,
+            displayColor: AppColors.textPrimary),
         useMaterial3: true,
-        fontFamily: 'SourceSans3',
-        primarySwatch: Colors.blue,
+        fontFamily: 'Exo2',
       ),
       initialRoute: routeToGo,
       onGenerateRoute: (RouteSettings settings) {
@@ -334,74 +338,23 @@ class CustomAppBar extends StatefulWidget implements PreferredSizeWidget {
   Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
-class CustomAppBarState extends State<CustomAppBar>
-    with WidgetsBindingObserver {
+class CustomAppBarState extends State<CustomAppBar> {
   final String currentScreen;
   final double elevation;
-  bool isSubscribed = false;
 
   CustomAppBarState(this.currentScreen, this.elevation);
 
   @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _checkSubscriptionStatus();
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      // Check subscription when app becomes visible
-      _checkSubscriptionStatus();
-    }
-  }
-
-  Future<void> _checkSubscriptionStatus() async {
-    try {
-      bool newSubscriptionStatus = await utils.Utils().isUserSubscribed();
-      if (kDebugMode) {
-        print('🏠 [HOME SCREEN] Subscription check - isSubscribed: ${newSubscriptionStatus}');
-      }
-      if (mounted) {
-        setState(() {
-          isSubscribed = newSubscriptionStatus;
-        });
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('🏠 [HOME SCREEN] Error checking subscription: ${e}');
-      }
-      if (mounted) {
-        setState(() {
-          isSubscribed = false;
-        });
-      }
-    }
-  }
-
-  @override
   Widget build(BuildContext context) {
-    String hexLogoColor = "#66CC5D";
-    Color logoColor =
-        Color(int.parse(hexLogoColor.substring(1, 7), radix: 16) + 0xFF000000);
     const String logo = 'images/svg/logo_green.svg';
     final Widget svgLogo = SvgPicture.asset(logo,
         height: 40,
         width: 40,
         fit: BoxFit.scaleDown,
-        colorFilter: ColorFilter.mode(logoColor, BlendMode.srcIn),
+        colorFilter: const ColorFilter.mode(AppColors.brandGreen, BlendMode.srcIn),
         semanticsLabel: 'Green Pyramid Logo');
 
-    String hexBarsColor = "#FFFFFF";
-    Color barsColor =
-        Color(int.parse(hexBarsColor.substring(1, 7), radix: 16) + 0xFF000000);
+    Color barsColor = Colors.white;
     const String bars = 'images/svg/bars.svg';
     final Widget svgBars = SvgPicture.asset(bars,
         height: 80,
@@ -439,18 +392,6 @@ class CustomAppBarState extends State<CustomAppBar>
               navigateToFAQ(context);
             }
             break;
-          case 'subscriptionStatus':
-            navigateToSubscriptionStatus(context);
-            break;
-          case 'cancel':
-            navigateToCancel(context);
-            break;
-          case 'coaching':
-            navigateToCoaching(context);
-            break;
-          case 'areWeAFit':
-            navigateToAreWeAFit(context);
-            break;
           case 'profile':
             navigateToProfile(context);
             break;
@@ -486,18 +427,6 @@ class CustomAppBarState extends State<CustomAppBar>
             child: Text('FAQ'),
           ),
           const PopupMenuItem<String>(
-            value: 'subscriptionStatus',
-            child: Text('Subscription Status'),
-          ),
-          const PopupMenuItem<String>(
-            value: 'coaching',
-            child: Text('Coaching'),
-          ),
-          const PopupMenuItem<String>(
-            value: 'areWeAFit',
-            child: Text('Are We A Fit?'),
-          ),
-          const PopupMenuItem<String>(
             value: 'profile',
             child: Text('Profile'),
           ),
@@ -519,11 +448,7 @@ class CustomAppBarState extends State<CustomAppBar>
           gradient: LinearGradient(
             begin: Alignment.centerLeft,
             end: Alignment.centerRight,
-            colors: [
-              Color(0xffC35DCC),
-              Color(0xff000A61),
-              Color(0xff1782FF),
-            ],
+            colors: AppColors.appBarGradient,
           ),
         ),
         child: AppBar(
@@ -578,48 +503,6 @@ class CustomAppBarState extends State<CustomAppBar>
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(
             context, MaterialPageRoute(builder: (context) => const FAQ()))
-        .then((value) {});
-    utils.Utils().changeSystemColor(Brightness.light);
-    setState(() {});
-  }
-
-  void navigateToSubscriptionStatus(BuildContext context) async {
-    utils.Utils().changeSystemColor(Brightness.dark);
-    await Navigator.push(
-        context, MaterialPageRoute(builder: (context) => SubscriptionStatus()));
-    utils.Utils().changeSystemColor(Brightness.light);
-    setState(() {});
-  }
-
-  void navigateToCancel(BuildContext context) async {
-    utils.Utils().changeSystemColor(Brightness.dark);
-    await Navigator.push(
-            context, MaterialPageRoute(builder: (context) => Cancel()))
-        .then((value) {
-      // Refresh subscription status when returning from cancel screen
-      if (kDebugMode) {
-        print(
-            '🏠 [HOME SCREEN] Returning from cancel screen - checking subscription');
-      }
-      _checkSubscriptionStatus();
-    });
-    utils.Utils().changeSystemColor(Brightness.light);
-    setState(() {});
-  }
-
-  void navigateToCoaching(BuildContext context) async {
-    utils.Utils().changeSystemColor(Brightness.dark);
-    await Navigator.push(
-            context, MaterialPageRoute(builder: (context) => const Coaching()))
-        .then((value) {});
-    utils.Utils().changeSystemColor(Brightness.light);
-    setState(() {});
-  }
-
-  void navigateToAreWeAFit(BuildContext context) async {
-    utils.Utils().changeSystemColor(Brightness.dark);
-    await Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const AreWeAFitScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
@@ -700,21 +583,21 @@ class _BottomNavBarState extends State<BottomNavBar> {
         height: 26,
         width: 26,
         fit: BoxFit.contain,
-        colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+        colorFilter: const ColorFilter.mode(AppColors.textSecondary, BlendMode.srcIn),
         semanticsLabel: 'Triangle');
 
     final Widget svgList = SvgPicture.asset('images/svg/bottom_nav/list.svg',
         height: 21,
         width: 21,
         fit: BoxFit.contain,
-        colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+        colorFilter: const ColorFilter.mode(AppColors.textSecondary, BlendMode.srcIn),
         semanticsLabel: 'List');
 
     final Widget svgChat = SvgPicture.asset('images/svg/bottom_nav/chat.svg',
         height: 26,
         width: 26,
         fit: BoxFit.contain,
-        colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+        colorFilter: const ColorFilter.mode(AppColors.textSecondary, BlendMode.srcIn),
         semanticsLabel: 'Chat');
 
     final Widget svgPencil = SvgPicture.asset(
@@ -722,7 +605,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
         height: 26,
         width: 26,
         fit: BoxFit.contain,
-        colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+        colorFilter: const ColorFilter.mode(AppColors.textSecondary, BlendMode.srcIn),
         semanticsLabel: 'Pencil');
 
     final Widget svgChart = SvgPicture.asset(
@@ -730,7 +613,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
         height: 26,
         width: 26,
         fit: BoxFit.contain,
-        colorFilter: const ColorFilter.mode(Colors.black, BlendMode.srcIn),
+        colorFilter: const ColorFilter.mode(AppColors.textSecondary, BlendMode.srcIn),
         semanticsLabel: 'Chart');
 
     double selectedHeight = 50;
@@ -780,15 +663,11 @@ class _BottomNavBarState extends State<BottomNavBar> {
         colorFilter: ColorFilter.mode(triangleColor, BlendMode.srcIn),
         semanticsLabel: 'Chart Selected');
 
-    String hexShadowColor = "#CBCBCB";
-
     return Container(
         decoration: BoxDecoration(
           boxShadow: <BoxShadow>[
             BoxShadow(
-              color: Color(
-                  int.parse(hexShadowColor.substring(1, 7), radix: 16) +
-                      0xFF000000),
+              color: Colors.black.withOpacity(0.4),
               blurRadius: 5,
             ),
           ],
@@ -810,7 +689,7 @@ class _BottomNavBarState extends State<BottomNavBar> {
           },
           indicatorColor: Colors.transparent,
           selectedIndex: currentScreenIndex,
-          backgroundColor: Colors.white,
+          backgroundColor: AppColors.surface,
           destinations: <Widget>[
             NavigationDestination(
               selectedIcon: svgTriangleSelected,
