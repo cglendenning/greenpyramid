@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:life_ops/services/usage_ledger.dart';
+
 // Thrown when an OpenAI call is refused because the device has exhausted
 // its local request budget. The message is user-presentable.
 class AiBudgetException implements Exception {
@@ -43,9 +45,18 @@ class AiGuard {
 
   final List<DateTime> _recentCalls = [];
 
-  // Reserves one API call or throws AiBudgetException. [at] exists for
-  // deterministic tests; production callers omit it.
-  Future<void> acquire({DateTime? at}) async {
+  // Reserves one API call or throws AiBudgetException. Enforces three
+  // layers, cheapest first: a per-minute burst limit, a per-day volume cap,
+  // and the economic gate (the ad-funded UsageLedger) that keeps API spend
+  // from ever exceeding ad revenue. [costMicros] is the ledger charge for
+  // this call; leave it at the default unless a call is unusually cheap or
+  // expensive. [at] exists for deterministic tests; production callers omit
+  // it. The ledger is only charged once all limits pass, so a refused call
+  // never consumes a slot or spends credit.
+  Future<void> acquire({
+    DateTime? at,
+    int costMicros = UsageLedger.defaultCallCostMicros,
+  }) async {
     final now = at ?? DateTime.now();
 
     _recentCalls
@@ -65,6 +76,14 @@ class AiGuard {
       debugPrint('AiGuard: refused call, daily budget reached');
       throw AiBudgetException(
           'You have used up today\'s AI requests. They reset tomorrow.');
+    }
+
+    // Economic gate: refuse unless ad revenue has funded this call.
+    if (!await UsageLedger.instance.tryDebit(costMicros)) {
+      debugPrint('AiGuard: refused call, ad-funded balance exhausted');
+      throw AiBudgetException(
+          'You have used all the AI that the ads you have seen so far cover.'
+          ' Keep using the app and it frees up as more ads are shown.');
     }
 
     _recentCalls.add(now);

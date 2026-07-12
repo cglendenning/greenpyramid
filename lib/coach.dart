@@ -387,7 +387,7 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
       await AiGuard.instance.acquire();
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
-        model: "gpt-4.1-2025-04-14",
+        model: "gpt-4.1-mini-2025-04-14",
         maxTokens: 350,
         messages: [
           OpenAIChatCompletionChoiceMessageModel(
@@ -621,7 +621,7 @@ class CoachMessage {
 }
 
 class ChatApi {
-  static const _model = 'gpt-4.1-2025-04-14';
+  static const _model = 'gpt-4.1-mini-2025-04-14';
 
   // Responses are prompted to stay under 100 words; this hard-caps the
   // spend even if an injected instruction asks for a novel.

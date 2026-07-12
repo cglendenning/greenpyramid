@@ -365,7 +365,7 @@ class _Cat2TasksState extends State<Cat2Tasks> {
       await AiGuard.instance.acquire();
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
-        model: "gpt-4.1-2025-04-14",
+        model: "gpt-4.1-mini-2025-04-14",
         maxTokens: 400,
         // My understanding of top_p and temperature:
         // https://community.openai.com/t/a-better-explanation-of-top-p/2426/10

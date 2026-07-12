@@ -1040,10 +1040,23 @@ class DatabaseHelper {
     return await db.delete(getTaskTable(), where: '$columnId = ?', whereArgs: [id]);
   }
 
-  Future<int> deleteByTaskDescription(String taskDescription) async {
+  // Deletes a task and every task-log entry it produced — including the
+  // current day's already-generated entry — in a single transaction, scoped
+  // to [category] so an identically named task in another category is left
+  // untouched. Previously only the task row was removed, so today's log
+  // entry survived and the deleted task kept appearing in the day's Log
+  // (it can't regenerate once the task row is gone, since the day's log is
+  // rebuilt from the task table).
+  Future<void> deleteTaskAndLog(String category, String taskDescription) async {
     Database db = await instance.database;
-    return await db.delete(getTaskTable(),
-        where: '$columnTaskDescription = ?', whereArgs: [taskDescription]);
+    await db.transaction((txn) async {
+      await txn.delete(getTaskTable(),
+          where: '$columnCategory = ? and $columnTaskDescription = ?',
+          whereArgs: [category, taskDescription]);
+      await txn.delete(getTaskLogTable(),
+          where: '$columnTLCategory = ? and $columnTLTaskDescription = ?',
+          whereArgs: [category, taskDescription]);
+    });
   }
 
   Future<int> deleteTasks() async {

@@ -59,7 +59,7 @@ class Quote {
       await AiGuard.instance.acquire();
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         maxTokens: 150,
         messages: [
           OpenAIChatCompletionChoiceMessageModel(

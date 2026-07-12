@@ -132,10 +132,13 @@ class _EditTaskListState extends State<EditTaskList> {
     );
     Widget continueButton = TextButton(
       child: const Text("Delete!"),
-      onPressed: () {
-        setState(() {});
-        dbHelper.deleteByTaskDescription(taskdescription);
-        Navigator.pop(context);
+      onPressed: () async {
+        final nav = Navigator.of(context);
+        // Await the delete so the list rebuild below reflects the removal
+        // (including today's log entry), instead of racing an unawaited call.
+        await dbHelper.deleteTaskAndLog(category, taskdescription);
+        nav.pop();
+        if (mounted) setState(() {});
       },
     );
     // set up the AlertDialog

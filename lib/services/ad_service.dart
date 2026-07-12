@@ -5,10 +5,19 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/widgets.dart' show AppLifecycleListener, AppLifecycleState;
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:life_ops/services/ad_pacer.dart';
+import 'package:life_ops/services/usage_ledger.dart';
 
-// TODO: swap these for the real AdMob interstitial ad unit IDs (created
-// under the app's existing AdMob App ID) before release. These are
-// Google's official test unit IDs and only ever serve harmless test ads.
+// Real production interstitial ad unit IDs from the AdMob console, under
+// this app's registered AdMob apps (publisher 4402198490627677).
+const String _iosInterstitialUnitId =
+    'ca-app-pub-4402198490627677/6515271064';
+const String _androidInterstitialUnitId =
+    'ca-app-pub-4402198490627677/3511486167';
+
+// Google's official test unit IDs — they only ever serve harmless test ads.
+// Debug builds use these so live ads are never requested or tapped during
+// development, which AdMob treats as invalid traffic and can suspend the
+// account for.
 const String _androidTestInterstitialUnitId =
     'ca-app-pub-3940256099942544/1033173712';
 const String _iosTestInterstitialUnitId =
@@ -59,8 +68,16 @@ class AdService {
     _lifecycleListener = null;
   }
 
-  String get _adUnitId =>
-      Platform.isAndroid ? _androidTestInterstitialUnitId : _iosTestInterstitialUnitId;
+  // Real ad units in release, Google's test units in debug (see the unit-id
+  // comments above for why).
+  String get _adUnitId {
+    if (Platform.isAndroid) {
+      return kDebugMode
+          ? _androidTestInterstitialUnitId
+          : _androidInterstitialUnitId;
+    }
+    return kDebugMode ? _iosTestInterstitialUnitId : _iosInterstitialUnitId;
+  }
 
   void preload() {
     InterstitialAd.load(
@@ -97,6 +114,11 @@ class AdService {
 
     _interstitialAd = null;
     ad.fullScreenContentCallback = FullScreenContentCallback(
+      // Credit the ledger only on a confirmed impression (the revenue
+      // event), so a failed or unshown ad never funds AI usage.
+      onAdImpression: (ad) {
+        UsageLedger.instance.creditAdImpression();
+      },
       onAdDismissedFullScreenContent: (ad) {
         ad.dispose();
         preload();

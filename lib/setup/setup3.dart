@@ -164,7 +164,7 @@ class _Setup3State extends State<Setup3> {
       await AiGuard.instance.acquire();
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
-        model: "gpt-4.1-2025-04-14",
+        model: "gpt-4.1-mini-2025-04-14",
         maxTokens: 350,
         topP: 1,
         temperature: 1,
@@ -340,7 +340,7 @@ class ChatMessage {
 }
 
 class ChatApi {
-  static const _model = 'gpt-4.1-2025-04-14';
+  static const _model = 'gpt-4.1-mini-2025-04-14';
 
   ChatApi() {
     OpenAI.apiKey = openAIApiKey;

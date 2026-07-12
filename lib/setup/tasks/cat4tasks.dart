@@ -365,7 +365,7 @@ class _Cat4TasksState extends State<Cat4Tasks> {
       await AiGuard.instance.acquire();
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
-        model: "gpt-4o",
+        model: "gpt-4o-mini",
         maxTokens: 400,
         messages: [
           OpenAIChatCompletionChoiceMessageModel(

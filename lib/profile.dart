@@ -65,7 +65,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await AiGuard.instance.acquire();
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
-        model: "gpt-4.1-2025-04-14",
+        model: "gpt-4.1-mini-2025-04-14",
         maxTokens: 350,
         topP: 1,
         temperature: 1,
@@ -133,7 +133,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       await AiGuard.instance.acquire();
       OpenAIChatCompletionModel chatCompletion =
           await OpenAI.instance.chat.create(
-        model: "gpt-4.1-2025-04-14",
+        model: "gpt-4.1-mini-2025-04-14",
         maxTokens: 350,
         topP: 1,
         temperature: 1,
