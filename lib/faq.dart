@@ -146,7 +146,10 @@ class _FAQExpansionTileState extends State<FAQExpansionTile> {
             fontSize: 16,
             fontWeight: FontWeight.w600,
             fontFamily: 'Exo2',
-            color: Colors.black87,
+            // The app runs in dark mode, so the question sat as near-black
+            // text on a dark card and was invisible; use the same light
+            // primary text color the answer already uses.
+            color: AppColors.textPrimary,
           ),
         ),
         children: [
