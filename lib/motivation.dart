@@ -1,11 +1,10 @@
-import 'package:dart_openai/dart_openai.dart';
+import 'package:life_ops/services/ai_proxy_client.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:life_ops/db.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:life_ops/navbar.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:life_ops/secrets.dart';
 import 'package:life_ops/services/ad_service.dart';
 import 'package:life_ops/services/ai_guard.dart';
 
@@ -123,8 +122,6 @@ class _MotivationState extends State<Motivation> {
             '"${AiGuard.sanitizeField(cat.taskdate, maxChars: 10)}"~~')
         .toList();
 
-    OpenAI.apiKey = openAIApiKey;
-
     // prompt v1
     String system =
         "You are Jocko Willink as a life coach but do not identify yourself."
@@ -155,35 +152,25 @@ class _MotivationState extends State<Motivation> {
 
     try {
       await AiGuard.instance.acquire();
-      OpenAIChatCompletionModel chatCompletion =
-          await OpenAI.instance.chat.create(
+      final reply = await AiProxy.instance.chatText(
         model: "gpt-4o-mini",
         maxTokens: 400,
+        timeout: const Duration(seconds: timeout),
         messages: [
-          OpenAIChatCompletionChoiceMessageModel(
-            role: OpenAIChatMessageRole.system,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(system),
-            ],
-          ),
-          OpenAIChatCompletionChoiceMessageModel(
-            role: OpenAIChatMessageRole.user,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(prompt),
-            ],
-          ),
+          {'role': 'system', 'content': system},
+          {'role': 'user', 'content': prompt},
         ],
-      ).timeout(const Duration(seconds: timeout));
+      );
 
       String postScript =
           " Please take 5 minutes right now to really ponder the question above. "
           "Do not take it lightly, and you will find something new that "
           "will drive you forward!";
 
-      chatResult =
-          (chatCompletion.choices[0].message.content?.first.text ?? '') +
-              postScript;
+      chatResult = reply + postScript;
     } on AiBudgetException catch (e) {
+      chatResult = e.message;
+    } on AiProxyException catch (e) {
       chatResult = e.message;
     } catch (e, s) {
       if (kDebugMode) {

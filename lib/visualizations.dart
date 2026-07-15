@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 import 'package:life_ops/radarchart.dart' as custom_radar;
 import 'package:life_ops/db.dart';
-import 'package:life_ops/secrets.dart';
 import 'package:life_ops/services/ai_guard.dart';
+import 'package:life_ops/services/ai_proxy_client.dart';
 import 'package:life_ops/theme/app_colors.dart';
 import 'package:intl/intl.dart';
 import 'dart:convert';
@@ -94,42 +94,24 @@ class _VisualizationsScreenState extends State<VisualizationsScreen> {
   }
 
   Future<String> _callOpenAI(String prompt) async {
-    // Use the API key from secrets.dart
-    const String apiKey = openAIApiKey;
-    const String apiUrl = 'https://api.openai.com/v1/chat/completions';
-    
     try {
       await AiGuard.instance.acquire();
-      final response = await http.post(
-        Uri.parse(apiUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $apiKey',
-        },
-        body: jsonEncode({
-          'model': 'gpt-4o-mini',
-          'messages': [
-            {
-              'role': 'system',
-              'content': 'You are a supportive life coach who provides encouraging, personalized insights about personal development data. Keep responses under 100 words and focus on positive reinforcement and actionable advice.${AiGuard.untrustedDataNotice}'
-            },
-            {
-              'role': 'user',
-              'content': prompt
-            }
-          ],
-          'max_tokens': 150,
-          'temperature': 0.7,
-        }),
+      return await AiProxy.instance.chatText(
+        model: 'gpt-4o-mini',
+        maxTokens: 150,
+        temperature: 0.7,
+        messages: [
+          {
+            'role': 'system',
+            'content':
+                'You are a supportive life coach who provides encouraging, personalized insights about personal development data. Keep responses under 100 words and focus on positive reinforcement and actionable advice.${AiGuard.untrustedDataNotice}'
+          },
+          {'role': 'user', 'content': prompt},
+        ],
       );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return data['choices'][0]['message']['content'].trim();
-      } else {
-        throw Exception('Failed to get commentary: ${response.statusCode}');
-      }
     } on AiBudgetException catch (e) {
+      return e.message;
+    } on AiProxyException catch (e) {
       return e.message;
     } catch (e) {
       // Return a meaningful error message without decrementing the counter

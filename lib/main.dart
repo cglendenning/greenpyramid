@@ -6,11 +6,20 @@ import 'package:life_ops/db.dart';
 import 'package:flutter/services.dart';
 import 'package:app_install_date/app_install_date.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/widgets.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:life_ops/pyramid_painting.dart';
 import 'package:life_ops/services/ad_service.dart';
+
+// Forces the App Check *debug* provider even in a release/OTA build, so a
+// sideloaded test build can authenticate with a registered debug token
+// (App Attest only works reliably via TestFlight/App Store). Keep false for
+// production so it uses App Attest / Play Integrity. To OTA-test on device,
+// flip this to true AND set a known token via setenv in ios AppDelegate.
+const bool kForceAppCheckDebug = false;
 
 final GlobalKey<NavigatorState> navigatorKey =
     GlobalKey(debugLabel: "Main Navigator");
@@ -59,6 +68,23 @@ Future<void> main() async {
       rethrow;
     }
     debugPrint('Firebase already initialized, continuing.');
+  }
+
+  // App Check gates the backend AI proxy: it proves requests come from the
+  // genuine app binary, so the OpenAI key never has to live in the app.
+  // Debug builds use the debug providers (register the printed debug token
+  // in the Firebase console to test).
+  try {
+    final useDebugProvider = kDebugMode || kForceAppCheckDebug;
+    await FirebaseAppCheck.instance.activate(
+      appleProvider:
+          useDebugProvider ? AppleProvider.debug : AppleProvider.appAttest,
+      androidProvider: useDebugProvider
+          ? AndroidProvider.debug
+          : AndroidProvider.playIntegrity,
+    );
+  } catch (e, st) {
+    debugPrint('App Check setup failed: $e\n$st');
   }
 
   await MobileAds.instance.initialize();

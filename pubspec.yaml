@@ -36,8 +36,9 @@ dependencies:
   dart_openai: ^5.1.0
   firebase_analytics: ^12.0.0
   firebase_core: ^4.0.0
-  firebase_analytics_web: ^0.6.0
-  firebase_core_web: ^3.0.0
+  # The web implementations come in transitively at matching versions. They
+  # were previously pinned to old majors, which capped
+  # firebase_core_platform_interface below the version App Check needs.
   flutter_animate: ^4.5.2
   flutter_email_sender: ^7.0.0
   flutter_local_notifications: ^19.1.0
@@ -60,6 +61,7 @@ dependencies:
   syncfusion_flutter_charts: ^30.1.40
   visibility_detector: ^0.4.0
   google_mobile_ads: ^9.0.0
+  firebase_app_check: ^0.4.5+1
 
 dev_dependencies:
   flutter_test:

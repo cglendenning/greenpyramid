@@ -8,7 +8,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/setup/setup1.dart';
 import 'package:life_ops/setup/setup2.dart';
 import 'package:life_ops/setup/setup4.dart';
-import 'package:life_ops/secrets.dart';
+import 'package:life_ops/services/ai_proxy_client.dart';
 import 'package:life_ops/services/ai_guard.dart';
 import 'package:life_ops/progress_bar.dart';
 
@@ -140,6 +140,8 @@ class _Setup3State extends State<Setup3> {
       response = await widget.chatApi.completeChat(_messages);
     } on AiBudgetException catch (e) {
       response = e.message;
+    } on AiProxyException catch (e) {
+      response = e.message;
     }
     setState(() {
       _messages.add(ChatMessage(response, OpenAIChatMessageRole.assistant));
@@ -152,7 +154,6 @@ class _Setup3State extends State<Setup3> {
             .map((c) => '"' + AiGuard.sanitizeField(c, maxChars: 60) + '"')
             .join('|') +
         '~~';
-    OpenAI.apiKey = openAIApiKey;
     String system =
         "You are a seasoned, wise mindset and life coach with decades of experience helping people transform their lives through the Green Pyramid methodology. You have a laid-back, approachable personality with a subtle sense of humor - you're the kind of coach who can make someone laugh while delivering profound insights. You have mastered the art of delivering profound insights in just a few powerful words. Keep your responses to 100 words or less. Your client provided this data: $cats. The data is ranked in order of importance. Speak with the wisdom of experience - be conversational, supportive, and deliver specific, actionable guidance rather than generic advice. Your words should carry weight and inspire reflection.";
     String prompt =
@@ -162,32 +163,23 @@ class _Setup3State extends State<Setup3> {
         "Epic fail. please hit the back arrow in the upper left to try building your vision again.";
     try {
       await AiGuard.instance.acquire();
-      OpenAIChatCompletionModel chatCompletion =
-          await OpenAI.instance.chat.create(
+      chatResult = (await AiProxy.instance.chatText(
         model: "gpt-4.1-mini-2025-04-14",
         maxTokens: 350,
         topP: 1,
         temperature: 1,
+        timeout: const Duration(seconds: timeout),
         messages: [
-          OpenAIChatCompletionChoiceMessageModel(
-            role: OpenAIChatMessageRole.system,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(system),
-            ],
-          ),
-          OpenAIChatCompletionChoiceMessageModel(
-            role: OpenAIChatMessageRole.user,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(prompt),
-            ],
-          ),
+          {'role': 'system', 'content': system},
+          {'role': 'user', 'content': prompt},
         ],
-      ).timeout(const Duration(seconds: timeout));
-      chatResult =
-          (chatCompletion.choices[0].message.content?.first.text ?? '').trim();
+      ))
+          .trim();
       // Store the vision statement in the database
       await dbHelper.insertVisionStatement(chatResult);
     } on AiBudgetException catch (e) {
+      chatResult = e.message;
+    } on AiProxyException catch (e) {
       chatResult = e.message;
     } catch (e, s) {
       if (kDebugMode) {
@@ -342,30 +334,27 @@ class ChatMessage {
 class ChatApi {
   static const _model = 'gpt-4.1-mini-2025-04-14';
 
-  ChatApi() {
-    OpenAI.apiKey = openAIApiKey;
+  ChatApi();
+
+  static String _role(OpenAIChatMessageRole r) {
+    if (r == OpenAIChatMessageRole.system) return 'system';
+    if (r == OpenAIChatMessageRole.assistant) return 'assistant';
+    return 'user';
   }
 
   Future<String> completeChat(List<ChatMessage> messages) async {
     const int timeout = 60;
-
     await AiGuard.instance.acquire();
-
-    final chatCompletion = await OpenAI.instance.chat
-        .create(
-          model: _model,
-          maxTokens: 350,
-          messages: AiGuard.tailHistory(messages)
-              .map((e) => OpenAIChatCompletionChoiceMessageModel(
-                    role: e.msgType,
-                    content: [
-                      OpenAIChatCompletionChoiceMessageContentItemModel.text(
-                          AiGuard.clampMessage(e.content, maxChars: 4000)),
-                    ],
-                  ))
-              .toList(),
-        )
-        .timeout(const Duration(seconds: timeout));
-    return chatCompletion.choices.first.message.content?.first.text ?? '';
+    return await AiProxy.instance.chatText(
+      model: _model,
+      maxTokens: 350,
+      timeout: const Duration(seconds: timeout),
+      messages: AiGuard.tailHistory(messages)
+          .map((e) => {
+                'role': _role(e.msgType),
+                'content': AiGuard.clampMessage(e.content, maxChars: 4000),
+              })
+          .toList(),
+    );
   }
 }

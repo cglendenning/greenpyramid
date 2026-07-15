@@ -1,7 +1,6 @@
 import "dart:math";
-import 'package:dart_openai/dart_openai.dart';
+import 'package:life_ops/services/ai_proxy_client.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
-import 'package:life_ops/secrets.dart';
 import 'package:life_ops/services/ai_guard.dart';
 
 class Quote {
@@ -26,8 +25,6 @@ class Quote {
   }
 
   Future<String> getCommentary(String quote, String cType) async {
-    OpenAI.apiKey = openAIApiKey;
-
     String system = '';
     String prompt = '';
 
@@ -57,29 +54,18 @@ class Quote {
 
     try {
       await AiGuard.instance.acquire();
-      OpenAIChatCompletionModel chatCompletion =
-          await OpenAI.instance.chat.create(
+      chatResult = await AiProxy.instance.chatText(
         model: "gpt-4o-mini",
         maxTokens: 150,
+        timeout: const Duration(seconds: timeout),
         messages: [
-          OpenAIChatCompletionChoiceMessageModel(
-            role: OpenAIChatMessageRole.system,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(system),
-            ],
-          ),
-          OpenAIChatCompletionChoiceMessageModel(
-            role: OpenAIChatMessageRole.user,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(prompt),
-            ],
-          ),
+          {'role': 'system', 'content': system},
+          {'role': 'user', 'content': prompt},
         ],
-      ).timeout(const Duration(seconds: timeout));
-
-      chatResult =
-          (chatCompletion.choices[0].message.content?.first.text ?? '');
+      );
     } on AiBudgetException catch (e) {
+      chatResult = e.message;
+    } on AiProxyException catch (e) {
       chatResult = e.message;
     } catch (e, s) {
       if (kDebugMode) {

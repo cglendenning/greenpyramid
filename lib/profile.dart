@@ -3,9 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:life_ops/db.dart';
 import 'package:life_ops/navbar.dart';
 import 'package:life_ops/theme/app_colors.dart';
-import 'package:life_ops/secrets.dart';
 import 'package:life_ops/services/ai_guard.dart';
-import 'package:dart_openai/dart_openai.dart';
+import 'package:life_ops/services/ai_proxy_client.dart';
 
 class ProfileScreen extends StatefulWidget {
   @override
@@ -61,32 +60,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String prompt =
         "Build a vision statement for this person starting with the phrase 'I will become the kind of person that ...' and make it inspiring, concise, and personal.";
     try {
-      OpenAI.apiKey = openAIApiKey;
       await AiGuard.instance.acquire();
-      OpenAIChatCompletionModel chatCompletion =
-          await OpenAI.instance.chat.create(
+      final reply = await AiProxy.instance.chatText(
         model: "gpt-4.1-mini-2025-04-14",
         maxTokens: 350,
         topP: 1,
         temperature: 1,
+        timeout: const Duration(seconds: 45),
         messages: [
-          OpenAIChatCompletionChoiceMessageModel(
-            role: OpenAIChatMessageRole.system,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(system),
-            ],
-          ),
-          OpenAIChatCompletionChoiceMessageModel(
-            role: OpenAIChatMessageRole.user,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(prompt),
-            ],
-          ),
+          {'role': 'system', 'content': system},
+          {'role': 'user', 'content': prompt},
         ],
-      ).timeout(const Duration(seconds: 45));
+      );
       setState(() {
         newVisionStatement =
-            (chatCompletion.choices[0].message.content?.first.text ?? '')
+            (reply)
                 .trim();
         isReviewing = true;
         isRegenerating = false;
@@ -129,32 +117,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
     String prompt =
         "Review the client's progress for the past 30 days across all categories and tasks. Provide an inspiring, concise analysis that highlights strengths, areas for improvement, and encouragement.";
     try {
-      OpenAI.apiKey = openAIApiKey;
       await AiGuard.instance.acquire();
-      OpenAIChatCompletionModel chatCompletion =
-          await OpenAI.instance.chat.create(
+      final reply = await AiProxy.instance.chatText(
         model: "gpt-4.1-mini-2025-04-14",
         maxTokens: 350,
         topP: 1,
         temperature: 1,
+        timeout: const Duration(seconds: 45),
         messages: [
-          OpenAIChatCompletionChoiceMessageModel(
-            role: OpenAIChatMessageRole.system,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(system),
-            ],
-          ),
-          OpenAIChatCompletionChoiceMessageModel(
-            role: OpenAIChatMessageRole.user,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(prompt),
-            ],
-          ),
+          {'role': 'system', 'content': system},
+          {'role': 'user', 'content': prompt},
         ],
-      ).timeout(const Duration(seconds: 45));
+      );
       setState(() {
         progressAnalysis =
-            (chatCompletion.choices[0].message.content?.first.text ?? '')
+            (reply)
                 .trim();
         isLoadingAnalysis = false;
       });

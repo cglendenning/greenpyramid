@@ -7,7 +7,7 @@ import 'package:life_ops/navbar.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/rendering.dart';
-import 'package:life_ops/secrets.dart';
+import 'package:life_ops/services/ai_proxy_client.dart';
 import 'package:life_ops/services/ad_service.dart';
 import 'package:life_ops/services/ai_guard.dart';
 
@@ -323,6 +323,12 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
         _awaitingResponse = false;
       });
       return;
+    } on AiProxyException catch (e) {
+      setState(() {
+        _messages.add(CoachMessage(e.message, OpenAIChatMessageRole.assistant));
+        _awaitingResponse = false;
+      });
+      return;
     }
     setState(() {
       _messages.add(CoachMessage(response, OpenAIChatMessageRole.assistant));
@@ -359,7 +365,6 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
             '"${AiGuard.sanitizeField(cat.taskdate, maxChars: 10)}"~~')
         .toList();
 
-    OpenAI.apiKey = openAIApiKey;
 
     String system =
         "You are an empathetic life coach with a deep background in health, "
@@ -385,27 +390,18 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
 
     try {
       await AiGuard.instance.acquire();
-      OpenAIChatCompletionModel chatCompletion =
-          await OpenAI.instance.chat.create(
+      chatResult = await AiProxy.instance.chatText(
         model: "gpt-4.1-mini-2025-04-14",
         maxTokens: 350,
+        timeout: const Duration(seconds: timeout),
         messages: [
-          OpenAIChatCompletionChoiceMessageModel(
-            role: OpenAIChatMessageRole.system,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(system)
-            ],
-          ),
-          OpenAIChatCompletionChoiceMessageModel(
-            role: OpenAIChatMessageRole.user,
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(prompt)
-            ],
-          ),
+          {'role': 'system', 'content': system},
+          {'role': 'user', 'content': prompt},
         ],
-      ).timeout(const Duration(seconds: timeout));
-      chatResult = chatCompletion.choices[0].message.content?.first.text ?? '';
+      );
     } on AiBudgetException catch (e) {
+      chatResult = e.message;
+    } on AiProxyException catch (e) {
       chatResult = e.message;
     } catch (e, s) {
       print(e);
@@ -631,31 +627,28 @@ class ChatApi {
   // layer, but nothing longer than this ever goes over the wire.
   static const int _maxMessageChars = 4000;
 
-  ChatApi() {
-    OpenAI.apiKey = openAIApiKey;
+  ChatApi();
+
+  static String _role(OpenAIChatMessageRole r) {
+    if (r == OpenAIChatMessageRole.system) return 'system';
+    if (r == OpenAIChatMessageRole.assistant) return 'assistant';
+    return 'user';
   }
 
   Future<String> completeChat(List<CoachMessage> messages) async {
     const int timeout = 25;
-
     await AiGuard.instance.acquire();
-
-    final chatCompletion = await OpenAI.instance.chat
-        .create(
-          model: _model,
-          maxTokens: _maxResponseTokens,
-          messages: messages
-              .map((e) => OpenAIChatCompletionChoiceMessageModel(
-                    role: e.msgType,
-                    content: [
-                      OpenAIChatCompletionChoiceMessageContentItemModel.text(
-                          AiGuard.clampMessage(e.content,
-                              maxChars: _maxMessageChars)),
-                    ],
-                  ))
-              .toList(),
-        )
-        .timeout(const Duration(seconds: timeout));
-    return chatCompletion.choices.first.message.content?.first.text ?? '';
+    return await AiProxy.instance.chatText(
+      model: _model,
+      maxTokens: _maxResponseTokens,
+      timeout: const Duration(seconds: timeout),
+      messages: messages
+          .map((e) => {
+                'role': _role(e.msgType),
+                'content':
+                    AiGuard.clampMessage(e.content, maxChars: _maxMessageChars),
+              })
+          .toList(),
+    );
   }
 }

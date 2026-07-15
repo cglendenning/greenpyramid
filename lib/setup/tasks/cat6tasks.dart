@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
-import 'package:dart_openai/dart_openai.dart';
+import 'package:life_ops/services/ai_proxy_client.dart';
 import 'package:life_ops/setup/setup18.dart';
 import 'package:life_ops/setup/tasks/taskdow.dart';
 import 'package:intl/intl.dart' as intl;
@@ -10,7 +10,6 @@ import 'package:life_ops/navbar.dart';
 import 'package:life_ops/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/setup/setup1.dart';
-import 'package:life_ops/secrets.dart';
 import 'package:life_ops/services/ai_guard.dart';
 import 'package:life_ops/progress_bar.dart';
 
@@ -350,8 +349,6 @@ class _Cat6TasksState extends State<Cat6Tasks> {
       cat6TasksGenerating = true;
     });
 
-    OpenAI.apiKey = openAIApiKey;
-
     var prompt = utils.Utils().taskPrompt(cat);
     const int timeout = 20;
 
@@ -359,22 +356,14 @@ class _Cat6TasksState extends State<Cat6Tasks> {
 
     try {
       await AiGuard.instance.acquire();
-      OpenAIChatCompletionModel chatCompletion =
-          await OpenAI.instance.chat.create(
+      chatResult = await AiProxy.instance.chatText(
         model: "gpt-4o-mini",
         maxTokens: 400,
+        timeout: const Duration(seconds: timeout),
         messages: [
-          OpenAIChatCompletionChoiceMessageModel(
-            content: [
-              OpenAIChatCompletionChoiceMessageContentItemModel.text(prompt),
-            ],
-            role: OpenAIChatMessageRole.user,
-          ),
+          {'role': 'user', 'content': prompt},
         ],
-      ).timeout(const Duration(seconds: timeout));
-
-      chatResult =
-          chatCompletion.choices.first.message.content?.first.text ?? '';
+      );
     } catch (e, s) {
       if (kDebugMode) {
         print(e);
