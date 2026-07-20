@@ -50,3 +50,6 @@ app.*.map.json
 lib/secrets.dart
 
 .cache_ggshield
+
+# Firebase hosting deploy cache
+.firebase/
