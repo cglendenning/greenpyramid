@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/Users/craig/development/flutter/bin/flutter analyze *)",
+      "Bash(/Users/craig/development/flutter/bin/flutter test *)",
+      "Bash(firebase functions:log *)",
+      "Bash(xcrun simctl list *)",
+      "Bash(xcrun simctl runtime *)",
+      "Bash(gcloud auth list)",
+      "Bash(flutter analyze *)",
+      "Bash(flutter test *)",
+      "Bash(flutter doctor *)",
+      "Bash(export PATH=\"/Users/craig/development/flutter/bin:$PATH\")",
+      "Bash(host *)",
+      "Bash(gem list *)",
+      "Bash(xcrun simctl io booted screenshot *)",
+      "Bash(dig *)",
+      "Bash(plutil -extract *)",
+      "Bash(plutil -lint *)"
+    ]
+  }
+}

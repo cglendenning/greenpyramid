@@ -74,16 +74,21 @@ class _Evening extends State<Evening> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                      FutureBuilder(
-                          future: getCheckedTasks(),
-                          builder: (context, AsyncSnapshot snapshot) {
-                            if (!snapshot.hasData) {
-                              return const Center(
-                                  child: CircularProgressIndicator());
-                            } else {
-                              return _buildEveningSummary(snapshot.data);
-                            }
-                          }),
+                      // Flexible bounds the summary's SingleChildScrollView to
+                      // the space left in this Column: without it the scroll
+                      // view sizes to its content and overflows on days with
+                      // many completed tasks.
+                      Flexible(
+                          child: FutureBuilder(
+                              future: getCheckedTasks(),
+                              builder: (context, AsyncSnapshot snapshot) {
+                                if (!snapshot.hasData) {
+                                  return const Center(
+                                      child: CircularProgressIndicator());
+                                } else {
+                                  return _buildEveningSummary(snapshot.data);
+                                }
+                              })),
                       FutureBuilder(
                           future: _currentQuote,
                           builder:
