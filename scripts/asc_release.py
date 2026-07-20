@@ -147,6 +147,26 @@ def set_notes(version: str, notes_file: str) -> None:
     print(f"set What's New for {version} ({len(notes)} chars)")
 
 
+def set_privacy_url(url: str) -> None:
+    infos = api("GET", f"/v1/apps/{APP_ID}/appInfos")
+    for info in infos["data"]:
+        state = info["attributes"].get("appStoreState") or info["attributes"].get("state")
+        locs = api("GET", f"/v1/appInfos/{info['id']}/appInfoLocalizations")
+        for loc in locs["data"]:
+            if not loc["attributes"]["locale"].startswith("en"):
+                continue
+            body = {"data": {"type": "appInfoLocalizations", "id": loc["id"],
+                             "attributes": {"privacyPolicyUrl": url}}}
+            try:
+                api("PATCH", f"/v1/appInfoLocalizations/{loc['id']}", body)
+                print(f"set privacy URL on appInfo {info['id']} ({state}) "
+                      f"{loc['attributes']['locale']}")
+            except SystemExit as e:
+                # The live appInfo is read-only; only the editable one accepts
+                # the change. Report and continue.
+                print(f"skipped appInfo {info['id']} ({state}): not editable")
+
+
 def screenshot_sets(version: str) -> None:
     loc_id = localization_id(version)
     sets = api("GET", f"/v1/appStoreVersionLocalizations/{loc_id}/appScreenshotSets")
@@ -219,6 +239,8 @@ def main() -> None:
         set_notes(sys.argv[2], sys.argv[3])
     elif cmd == "version-info":
         version_info(sys.argv[2])
+    elif cmd == "set-privacy-url":
+        set_privacy_url(sys.argv[2])
     elif cmd == "screenshot-sets":
         screenshot_sets(sys.argv[2])
     elif cmd == "upload-screenshots":
