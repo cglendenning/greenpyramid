@@ -15,11 +15,16 @@ import 'package:life_ops/pyramid_painting.dart';
 import 'package:life_ops/services/ad_service.dart';
 
 // Forces the App Check *debug* provider even in a release/OTA build, so a
-// sideloaded test build can authenticate with a registered debug token
-// (App Attest only works reliably via TestFlight/App Store). Keep false for
-// production so it uses App Attest / Play Integrity. To OTA-test on device,
-// flip this to true AND set a known token via setenv in ios AppDelegate.
-const bool kForceAppCheckDebug = false;
+// sideloaded test build can authenticate with a registered debug token.
+// App Attest works fine for ad-hoc iOS sideloads (it attests the device, not
+// the install channel), but Play Integrity refuses to attest an Android APK
+// that wasn't installed via Google Play (error: "App attestation failed"),
+// so any Android build distributed via direct OTA (not the Play Store) needs
+// this on. Default stays false so App Store / Play Store builds use the real
+// attestation providers; set via `--dart-define=FORCE_APP_CHECK_DEBUG=true`
+// for an OTA build instead of editing this file.
+const bool kForceAppCheckDebug =
+    bool.fromEnvironment('FORCE_APP_CHECK_DEBUG', defaultValue: false);
 
 final GlobalKey<NavigatorState> navigatorKey =
     GlobalKey(debugLabel: "Main Navigator");
