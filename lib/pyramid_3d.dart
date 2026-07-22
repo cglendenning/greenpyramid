@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:life_ops/pyramid_3d_geometry.dart';
@@ -45,6 +46,17 @@ class _Pyramid3DState extends State<Pyramid3D>
   double _settleFrom = 0;
   double _settleTo = 0;
 
+  // Every wall shows identical content (blocks, glow, stone, labels) — only
+  // the perspective transform and a cheap shade overlay differ per face —
+  // so it's rendered once into a bitmap and blitted per frame instead of
+  // repainting ~60 GPU blur passes every frame. Measured on a low-end
+  // Android device: this was the entire jank cause (raster thread averaged
+  // 69ms/frame, 100% of frames missed the 16ms budget) while the UI thread
+  // was never the bottleneck.
+  ui.Image? _wallImage;
+  String? _wallCacheKey;
+  int _wallRenderToken = 0;
+
   @override
   void initState() {
     super.initState();
@@ -64,6 +76,7 @@ class _Pyramid3DState extends State<Pyramid3D>
 
   @override
   void dispose() {
+    _wallImage?.dispose();
     _settleCurve.dispose();
     _settle.dispose();
     super.dispose();
@@ -117,8 +130,50 @@ class _Pyramid3DState extends State<Pyramid3D>
     }
   }
 
+  // Bitmap resolution for the cached wall: sized to the widget's actual
+  // on-screen physical pixels (with the same ~10% overscan
+  // Pyramid3DGeometry.pixelScale allows) so it stays crisp from phones up
+  // to tablets, clamped so a huge display doesn't force an oversized cache.
+  static int _resolutionFor(double size, double devicePixelRatio) {
+    final physicalPixels = size * devicePixelRatio * 1.15;
+    return physicalPixels.clamp(Pyramid3DGeometry.textureSize, 2048).round();
+  }
+
+  static String _keyFor(
+      List<PyramidCategoryData> categories, bool stoneReady, int resolution) {
+    final cats = categories.map((c) => '${c.label}#${c.color.value}').join('|');
+    return '$cats#$stoneReady#$resolution';
+  }
+
+  void _syncWallCache() {
+    if (widget.size <= 0) return;
+    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+    final resolution = _resolutionFor(widget.size, devicePixelRatio);
+    final key = _keyFor(
+        widget.categories, PyramidPainting.stoneImage != null, resolution);
+    if (key == _wallCacheKey) return;
+    _wallCacheKey = key;
+
+    final token = ++_wallRenderToken;
+    final categories = widget.categories;
+    final recorder = ui.PictureRecorder();
+    final canvas = Canvas(recorder);
+    canvas.scale(resolution / Pyramid3DGeometry.textureSize);
+    paintPyramidWallContent(canvas, categories);
+    recorder.endRecording().toImage(resolution, resolution).then((image) {
+      if (!mounted || token != _wallRenderToken) {
+        image.dispose();
+        return;
+      }
+      final old = _wallImage;
+      setState(() => _wallImage = image);
+      old?.dispose();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
+    _syncWallCache();
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onHorizontalDragStart: _onDragStart,
@@ -130,8 +185,30 @@ class _Pyramid3DState extends State<Pyramid3D>
         painter: _Pyramid3DPainter(
           rotation: _rotation,
           categories: widget.categories,
+          wallImage: _wallImage,
         ),
       ),
+    );
+  }
+}
+
+// The full stepped six-block stone-and-glow wall content, shared by the
+// cache-rendering pass (drawn once into a bitmap) and the live painter's
+// one-time fallback for the handful of frames before that bitmap is ready.
+void paintPyramidWallContent(
+    Canvas canvas, List<PyramidCategoryData> categories) {
+  for (int i = 0; i < categories.length && i < 6; i++) {
+    final path = PyramidFaceLayout.segmentPaths[i];
+    final (anchor, maxWidth, fontSize) = PyramidFaceLayout.labelAnchors[i];
+    PyramidPainting.paintGlowingSegment(canvas, path, categories[i].color);
+    final textWidth = PyramidPainting.measureWidth(categories[i].label,
+        maxWidth: maxWidth, fontSize: fontSize);
+    PyramidPainting.paintReadableLabel(
+      canvas,
+      categories[i].label,
+      Offset(anchor.dx - textWidth / 2, anchor.dy),
+      maxWidth: maxWidth,
+      fontSize: fontSize,
     );
   }
 }
@@ -139,9 +216,15 @@ class _Pyramid3DState extends State<Pyramid3D>
 class _Pyramid3DPainter extends CustomPainter {
   final double rotation;
   final List<PyramidCategoryData> categories;
-  final bool stoneReady = PyramidPainting.stoneImage != null;
+  final ui.Image? wallImage;
 
-  _Pyramid3DPainter({required this.rotation, required this.categories});
+  _Pyramid3DPainter(
+      {required this.rotation, required this.categories, this.wallImage});
+
+  static const Rect _dstRect = Rect.fromLTWH(
+      0, 0, Pyramid3DGeometry.textureSize, Pyramid3DGeometry.textureSize);
+  static final Paint _imagePaint = Paint()
+    ..filterQuality = FilterQuality.medium;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -149,42 +232,36 @@ class _Pyramid3DPainter extends CustomPainter {
       final matrix = Pyramid3DGeometry.faceMatrix(face, rotation, size.width);
       canvas.save();
       canvas.transform(matrix.storage);
-      _paintWall(canvas, face);
+      final image = wallImage;
+      if (image != null) {
+        final srcRect =
+            Rect.fromLTWH(0, 0, image.width.toDouble(), image.height.toDouble());
+        canvas.drawImageRect(image, srcRect, _dstRect, _imagePaint);
+      } else {
+        // Cache not ready yet (first frame or two) — paint directly so
+        // there's never a blank wall while it renders.
+        paintPyramidWallContent(canvas, categories);
+      }
+
+      // Directional lighting: darken walls angled away from the light so
+      // the solid form reads while spinning. Left as a live per-frame draw
+      // (cheap: one solid path fill) since it depends on rotation, unlike
+      // everything else on the wall.
+      final shade = Pyramid3DGeometry.shadeAmount(face, rotation);
+      if (shade > 0.01) {
+        canvas.drawPath(
+          PyramidFaceLayout.faceTriangle,
+          Paint()..color = Colors.black.withOpacity(0.32 * shade),
+        );
+      }
       canvas.restore();
-    }
-  }
-
-  void _paintWall(Canvas canvas, int face) {
-    for (int i = 0; i < categories.length && i < 6; i++) {
-      final path = PyramidFaceLayout.segmentPaths[i];
-      final (anchor, maxWidth, fontSize) = PyramidFaceLayout.labelAnchors[i];
-      PyramidPainting.paintGlowingSegment(canvas, path, categories[i].color);
-      final textWidth = PyramidPainting.measureWidth(categories[i].label,
-          maxWidth: maxWidth, fontSize: fontSize);
-      PyramidPainting.paintReadableLabel(
-        canvas,
-        categories[i].label,
-        Offset(anchor.dx - textWidth / 2, anchor.dy),
-        maxWidth: maxWidth,
-        fontSize: fontSize,
-      );
-    }
-
-    // Directional lighting: darken walls angled away from the light so the
-    // solid form reads while spinning.
-    final shade = Pyramid3DGeometry.shadeAmount(face, rotation);
-    if (shade > 0.01) {
-      canvas.drawPath(
-        PyramidFaceLayout.faceTriangle,
-        Paint()..color = Colors.black.withOpacity(0.32 * shade),
-      );
     }
   }
 
   @override
   bool shouldRepaint(_Pyramid3DPainter oldDelegate) {
     if (oldDelegate.rotation != rotation) return true;
-    if (oldDelegate.stoneReady != stoneReady) return true;
+    if (oldDelegate.wallImage != wallImage) return true;
     if (oldDelegate.categories.length != categories.length) return true;
     for (int i = 0; i < categories.length; i++) {
       if (oldDelegate.categories[i].label != categories[i].label ||
