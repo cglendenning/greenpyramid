@@ -26,6 +26,25 @@ import 'package:life_ops/services/ad_service.dart';
 const bool kForceAppCheckDebug =
     bool.fromEnvironment('FORCE_APP_CHECK_DEBUG', defaultValue: false);
 
+// AdMob device IDs for our own phones. Registering them makes the SDK serve
+// *test* ads on these devices even from the genuine store build, so opening the
+// app on a personal phone can never generate the self-inflicted invalid traffic
+// that got ad serving suspended. Capture a device's id by running any build on
+// it and reading the logged line:
+//   "Use RequestConfiguration.Builder().setTestDeviceIds(Arrays.asList("<ID>"))"
+// then add the id below (or pass --dart-define=ADMOB_TEST_DEVICE_IDS=id1,id2).
+const List<String> _bakedInTestDeviceIds = <String>[
+  '8A715648427E7AB282E4663FDF931373', // Craig's moto g play - 2023 (Android)
+  'e8ff905da6280ea4d94e113a103328e4', // Craig's iPhone 12 mini (iOS)
+];
+final List<String> _adMobTestDeviceIds = <String>[
+  ..._bakedInTestDeviceIds,
+  ...const String.fromEnvironment('ADMOB_TEST_DEVICE_IDS')
+      .split(',')
+      .map((id) => id.trim())
+      .where((id) => id.isNotEmpty),
+];
+
 final GlobalKey<NavigatorState> navigatorKey =
     GlobalKey(debugLabel: "Main Navigator");
 
@@ -92,6 +111,15 @@ Future<void> main() async {
     debugPrint('App Check setup failed: $e\n$st');
   }
 
+  if (_adMobTestDeviceIds.isNotEmpty) {
+    MobileAds.instance.updateRequestConfiguration(
+      RequestConfiguration(testDeviceIds: _adMobTestDeviceIds),
+    );
+    debugPrint(
+      'AdMob: registered ${_adMobTestDeviceIds.length} test device(s); '
+      'they will receive test ads instead of live ads.',
+    );
+  }
   await MobileAds.instance.initialize();
   AdService.instance.preload();
   AdService.instance.startActivityPacing();

@@ -23,6 +23,64 @@ const String _androidTestInterstitialUnitId =
 const String _iosTestInterstitialUnitId =
     'ca-app-pub-3940256099942544/4411468910';
 
+// Forces Google's *test* ad units even in a release build. Any artifact that
+// isn't the real Play Store / App Store download — i.e. an OTA/sideload we hand
+// to one of our own phones — must serve test ads, otherwise the SDK requests
+// *live* ads and every impression or tap from our own device is invalid traffic
+// that AdMob can (and did) suspend the account over. Kept in lockstep with the
+// OTA App Check debug flag: every OTA build already passes
+// FORCE_APP_CHECK_DEBUG, so it can't accidentally serve live ads even if the
+// dedicated flag is forgotten. Pass `--dart-define=ADMOB_TEST=true` to force it
+// on independently.
+const bool _forceTestAds =
+    bool.fromEnvironment('ADMOB_TEST', defaultValue: false) ||
+    bool.fromEnvironment('FORCE_APP_CHECK_DEBUG', defaultValue: false);
+
+/// Pure selection of the interstitial ad unit id, extracted so it can be
+/// unit-tested without a running engine. [useTestUnits] folds together debug
+/// mode and the force-test-ads signal; [isAndroid] picks the platform's unit.
+String resolveInterstitialUnitId({
+  required bool isAndroid,
+  required bool useTestUnits,
+}) {
+  if (isAndroid) {
+    return useTestUnits
+        ? _androidTestInterstitialUnitId
+        : _androidInterstitialUnitId;
+  }
+  return useTestUnits ? _iosTestInterstitialUnitId : _iosInterstitialUnitId;
+}
+
+/// Outcome of the lifecycle reducer below: the updated backgrounded flag and
+/// whether a pacing-due interstitial should be flushed on this transition.
+class ResumeFlushDecision {
+  const ResumeFlushDecision({
+    required this.wasBackgrounded,
+    required this.flush,
+  });
+  final bool wasBackgrounded;
+  final bool flush;
+}
+
+/// Pure lifecycle reducer for transition-gated interstitials. A due ad may only
+/// flush on a genuine background->foreground resume — a natural transition —
+/// never on a cold start (nothing has accrued) and never while the app simply
+/// stays foregrounded. This is what keeps an interstitial from popping
+/// mid-interaction, the placement that generates invalid impressions.
+ResumeFlushDecision decideResumeFlush({
+  required bool resumed,
+  required bool wasBackgrounded,
+  required bool adDue,
+}) {
+  if (!resumed) {
+    return const ResumeFlushDecision(wasBackgrounded: true, flush: false);
+  }
+  return ResumeFlushDecision(
+    wasBackgrounded: false,
+    flush: wasBackgrounded && adDue,
+  );
+}
+
 class AdService {
   AdService._();
   static final AdService instance = AdService._();
@@ -36,27 +94,35 @@ class AdService {
   final InterstitialPacer _pacer = InterstitialPacer();
   Timer? _pacerTimer;
   AppLifecycleListener? _lifecycleListener;
+  bool _wasBackgrounded = false;
 
-  // Guarantees an interstitial at minimum every 5 minutes of foreground
-  // activity, independent of which screens the user visits: a periodic
-  // tick accrues foreground time on the pacer and shows an ad as soon as
-  // one is due (retrying on later ticks if no ad was loaded yet).
-  // Event-driven triggers (chat messages, screen exits) still call
-  // showInterstitialIfEligible directly; a show from any path resets the
-  // pacer so the user never gets two ads back to back.
+  // Accrues at most one interstitial per 5 minutes of foreground activity, but
+  // only ever *shows* it at a natural transition — never mid-interaction, which
+  // is the placement AdMob treats as an invalid impression. The periodic tick
+  // just accrues foreground time on the pacer; a due ad is flushed either when
+  // the user brings the app back to the foreground (handled here) or via the
+  // event-driven triggers (chat messages, screen exits) that call
+  // showInterstitialIfEligible directly. A show from any path resets the pacer
+  // so the user never gets two ads back to back.
   void startActivityPacing() {
     if (_pacerTimer != null) return;
     _lifecycleListener = AppLifecycleListener(
       onStateChange: (state) {
-        _pacer.foreground = state == AppLifecycleState.resumed;
+        final resumed = state == AppLifecycleState.resumed;
+        _pacer.foreground = resumed;
+        final decision = decideResumeFlush(
+          resumed: resumed,
+          wasBackgrounded: _wasBackgrounded,
+          adDue: _pacer.adDue,
+        );
+        _wasBackgrounded = decision.wasBackgrounded;
+        if (decision.flush) {
+          unawaited(showInterstitialIfEligible());
+        }
       },
     );
-    _pacerTimer = Timer.periodic(_pacerTick, (_) async {
-      _pacer.onTick(_pacerTick);
-      if (_pacer.adDue) {
-        await showInterstitialIfEligible();
-      }
-    });
+    // Timer only accrues time; it no longer shows an ad on the raw tick.
+    _pacerTimer = Timer.periodic(_pacerTick, (_) => _pacer.onTick(_pacerTick));
   }
 
   // Visible for completeness; the singleton normally lives for the whole
@@ -68,16 +134,12 @@ class AdService {
     _lifecycleListener = null;
   }
 
-  // Real ad units in release, Google's test units in debug (see the unit-id
-  // comments above for why).
-  String get _adUnitId {
-    if (Platform.isAndroid) {
-      return kDebugMode
-          ? _androidTestInterstitialUnitId
-          : _androidInterstitialUnitId;
-    }
-    return kDebugMode ? _iosTestInterstitialUnitId : _iosInterstitialUnitId;
-  }
+  // Real ad units only in a genuine store release; Google's test units in debug
+  // and in any OTA/sideload build (see the unit-id comments above for why).
+  String get _adUnitId => resolveInterstitialUnitId(
+        isAndroid: Platform.isAndroid,
+        useTestUnits: kDebugMode || _forceTestAds,
+      );
 
   void preload() {
     InterstitialAd.load(
