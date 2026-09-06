@@ -16,6 +16,8 @@ import admin from 'firebase-admin';
 import { buildAdvisorTurnPrompt, extractReplyText } from './lib/council.js';
 import { checkSpendLimit, recordCost, SpendLimitError } from './lib/billing.js';
 import { getCouncilModel } from './lib/model_config.js';
+import { guardAndCountSetupCall, SetupCallLimitError } from './lib/setup_guard.js';
+import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, CATEGORIES_TOOL, HABITS_TOOL } from './lib/setup_derivation.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -123,25 +125,50 @@ function claude() {
   return anthropicClient;
 }
 
+// D-017/D-072: setup is free — bounded by a 40-model-call count per
+// session, never by the D-087 dollar cap. Every other Council use (D-016)
+// is gated by spend instead. Shared by every setup-conversation route
+// (turns and the two derivation endpoints below) so the bound is uniform
+// regardless of which kind of call it is.
+async function guardCouncilCall(req, res, { isSetup, sessionId }) {
+  if (isSetup) {
+    try {
+      await guardAndCountSetupCall(req.uid, sessionId);
+      return true;
+    } catch (e) {
+      if (e instanceof SetupCallLimitError) {
+        res.status(409).json({ error: 'setup_call_limit_exceeded', count: e.count });
+        return false;
+      }
+      throw e;
+    }
+  }
+  try {
+    await checkSpendLimit(req.uid);
+    return true;
+  } catch (e) {
+    if (e instanceof SpendLimitError) {
+      res.status(402).json({
+        error: 'spend_limit_exceeded',
+        totalSpendUsd: e.totalSpendUsd,
+        spendCapUsd: e.spendCapUsd,
+      });
+      return false;
+    }
+    throw e;
+  }
+}
+
 app.post('/boardAdvisorTurn', requireFirebaseAuth, async (req, res) => {
   const built = buildAdvisorTurnPrompt(req.body || {});
   if (!built) return res.status(400).json({ error: 'Invalid advisorKey' });
   const { advisor, systemText, userMessage } = built;
 
-  // D-087: refused before the model is ever called — the cap protects
-  // against cost, not against a request that already spent money.
-  try {
-    await checkSpendLimit(req.uid);
-  } catch (e) {
-    if (e instanceof SpendLimitError) {
-      return res.status(402).json({
-        error: 'spend_limit_exceeded',
-        totalSpendUsd: e.totalSpendUsd,
-        spendCapUsd: e.spendCapUsd,
-      });
-    }
-    throw e;
-  }
+  // D-087/D-072: refused before the model is ever called — the guard
+  // protects against cost/overuse, not against a request that already
+  // spent money.
+  const { isSetup, sessionId } = req.body || {};
+  if (!(await guardCouncilCall(req, res, { isSetup, sessionId }))) return;
 
   const model = await getCouncilModel();
   try {
@@ -160,8 +187,13 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, async (req, res) => {
       system: [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: userMessage }],
     });
-    recordCost(req.uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
-      .catch((e) => console.error('recordCost error:', e.message));
+    // D-017: setup is free — its cost is never recorded against the D-087
+    // dollar ledger, only counted against D-072's call limit (already done
+    // above, before the model call).
+    if (!isSetup) {
+      recordCost(req.uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
+        .catch((e) => console.error('recordCost error:', e.message));
+    }
     const reply = extractReplyText(msg.content);
     if (!reply) {
       console.error('boardAdvisorTurn: no text block in response — advisor:', advisor.name, 'stop_reason:', msg.stop_reason);
@@ -173,6 +205,83 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, async (req, res) => {
     });
   } catch (e) {
     console.error('boardAdvisorTurn error:', e.message, '— advisor:', advisor.name, '— model:', model);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// ── Setup derivation (D-051/D-052/D-055) ────────────────────────────────────
+// All three are setup-only: always free (D-017), always bounded by D-072's
+// call count, never by D-087's spend cap.
+
+app.post('/deriveCategories', requireFirebaseAuth, async (req, res) => {
+  const { sessionId, transcript } = req.body || {};
+  if (!(await guardCouncilCall(req, res, { isSetup: true, sessionId }))) return;
+
+  const { system, user } = buildDeriveCategoriesPrompt(transcript);
+  const model = await getCouncilModel();
+  try {
+    const msg = await claude().messages.create({
+      model,
+      max_tokens: 400,
+      thinking: { type: 'disabled' },
+      system: [{ type: 'text', text: system }],
+      messages: [{ role: 'user', content: user }],
+      tools: [CATEGORIES_TOOL],
+      tool_choice: { type: 'tool', name: CATEGORIES_TOOL.name },
+    });
+    const toolUse = msg.content.find((b) => b.type === 'tool_use');
+    if (!toolUse) return res.status(502).json({ error: 'no_tool_use_in_response' });
+    res.json({ categories: toolUse.input.categories });
+  } catch (e) {
+    console.error('deriveCategories error:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+app.post('/deriveHabits', requireFirebaseAuth, async (req, res) => {
+  const { sessionId, categoryName, essence, existingHabits } = req.body || {};
+  if (!(await guardCouncilCall(req, res, { isSetup: true, sessionId }))) return;
+
+  const { system, user } = buildDeriveHabitsPrompt({ categoryName, essence, existingHabits });
+  const model = await getCouncilModel();
+  try {
+    const msg = await claude().messages.create({
+      model,
+      max_tokens: 300,
+      thinking: { type: 'disabled' },
+      system: [{ type: 'text', text: system }],
+      messages: [{ role: 'user', content: user }],
+      tools: [HABITS_TOOL],
+      tool_choice: { type: 'tool', name: HABITS_TOOL.name },
+    });
+    const toolUse = msg.content.find((b) => b.type === 'tool_use');
+    if (!toolUse) return res.status(502).json({ error: 'no_tool_use_in_response' });
+    res.json({ habits: toolUse.input.habits });
+  } catch (e) {
+    console.error('deriveHabits error:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+app.post('/deriveVisionStatement', requireFirebaseAuth, async (req, res) => {
+  const { sessionId, essences, transcript } = req.body || {};
+  if (!(await guardCouncilCall(req, res, { isSetup: true, sessionId }))) return;
+
+  const { system, user } = buildVisionStatementPrompt({ essences, transcript });
+  const model = await getCouncilModel();
+  try {
+    const msg = await claude().messages.create({
+      model,
+      max_tokens: 300,
+      thinking: { type: 'disabled' },
+      system: [{ type: 'text', text: system }],
+      messages: [{ role: 'user', content: user }],
+    });
+    const vision = extractReplyText(msg.content);
+    if (!vision) return res.status(502).json({ error: 'empty_reply' });
+    res.json({ vision });
+  } catch (e) {
+    console.error('deriveVisionStatement error:', e.message);
     res.status(502).json({ error: e.message });
   }
 });
