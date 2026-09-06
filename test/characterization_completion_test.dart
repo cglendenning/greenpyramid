@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart' as intl;
-import 'package:life_ops/db.dart';
+import 'package:life_ops/services/db.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:sqflite/sqflite.dart';

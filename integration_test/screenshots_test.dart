@@ -17,14 +17,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:life_ops/coach.dart';
-import 'package:life_ops/db.dart';
-import 'package:life_ops/dbtools.dart';
+import 'package:life_ops/screens/coach.dart';
+import 'package:life_ops/services/db.dart';
+import 'package:life_ops/services/dbtools.dart';
 import 'package:life_ops/firebase_options.dart';
-import 'package:life_ops/homescreen.dart';
+import 'package:life_ops/screens/homescreen.dart';
 import 'package:life_ops/main.dart' show navigatorKey;
-import 'package:life_ops/pyramid_painting.dart';
-import 'package:life_ops/visualizations.dart';
+import 'package:life_ops/widgets/pyramid_painting.dart';
+import 'package:life_ops/screens/visualizations.dart';
 import 'package:timezone/data/latest.dart' as tz show initializeTimeZones;
 
 // Screenshots are captured host-side: this prints a marker the host watcher

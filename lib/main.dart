@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:life_ops/homescreen.dart';
-import 'package:life_ops/notification.dart';
+import 'package:life_ops/screens/homescreen.dart';
+import 'package:life_ops/services/notification.dart';
 import "package:timezone/data/latest.dart" as tz show initializeTimeZones;
-import 'package:life_ops/db.dart';
+import 'package:life_ops/services/db.dart';
 import 'package:flutter/services.dart';
 import 'package:app_install_date/app_install_date.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -10,7 +10,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/widgets.dart';
-import 'package:life_ops/pyramid_painting.dart';
+import 'package:life_ops/widgets/pyramid_painting.dart';
 
 // Forces the App Check *debug* provider even in a release/OTA build, so a
 // sideloaded test build can authenticate with a registered debug token.

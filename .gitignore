@@ -47,7 +47,7 @@ app.*.map.json
 
 /ios/build
 
-lib/secrets.dart
+lib/services/secrets.dart
 
 .cache_ggshield
 

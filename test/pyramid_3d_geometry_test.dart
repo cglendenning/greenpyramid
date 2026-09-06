@@ -1,7 +1,7 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:life_ops/pyramid_3d_geometry.dart';
+import 'package:life_ops/models/pyramid_3d_geometry.dart';
 
 import 'test_helpers.dart';
 

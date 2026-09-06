@@ -79,8 +79,14 @@ void main() {
   });
 
   group('R1: dead code removed', () {
-    test('D-019: the dead setColorAndShade is gone from homescreen', () {
-      expect(read('lib/homescreen.dart').contains('setColorAndShade'), isFalse);
+    test('D-019: the dead setColorAndShade is gone', () {
+      // Located by search rather than a fixed path, so the layered restructure
+      // (D-024) and any later move cannot silently neuter this assertion.
+      final offenders = dartSources('lib')
+          .where((f) => f.readAsStringSync().contains('setColorAndShade'))
+          .map((f) => f.path)
+          .toList();
+      expect(offenders, isEmpty);
     });
 
     test('R1: lib/graveyard is deleted', () {

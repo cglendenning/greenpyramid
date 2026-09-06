@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:life_ops/pyramid.dart';
+import 'package:life_ops/widgets/pyramid.dart';
 
 /// Characterization tests for the pyramid's block coloring.
 ///

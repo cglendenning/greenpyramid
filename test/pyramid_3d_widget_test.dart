@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:life_ops/pyramid_3d.dart';
-import 'package:life_ops/pyramid_3d_geometry.dart';
-import 'package:life_ops/pyramid_painting.dart';
+import 'package:life_ops/widgets/pyramid_3d.dart';
+import 'package:life_ops/models/pyramid_3d_geometry.dart';
+import 'package:life_ops/widgets/pyramid_painting.dart';
 
 import 'test_helpers.dart';
 

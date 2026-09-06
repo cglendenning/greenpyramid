@@ -1,6 +1,6 @@
 import 'dart:ui';
 
-import 'package:life_ops/pyramid_3d_geometry.dart';
+import 'package:life_ops/models/pyramid_3d_geometry.dart';
 import 'package:vector_math/vector_math_64.dart';
 
 // Projects a texture-space point on [face] through the pyramid's full

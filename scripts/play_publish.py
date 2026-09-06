@@ -10,6 +10,11 @@ Subcommands:
       Read-only: open a throwaway edit, list tracks + current production
       version codes, then delete the edit. Proves auth + app access without
       changing anything.
+  check-upload-key KEY_JSON AAB
+      Non-destructive: open an edit, upload AAB (forces Play to validate its
+      signing certificate), then delete the edit WITHOUT committing. A
+      successful upload means the upload key is accepted (reset approved);
+      a signing-cert error means it is not yet in effect. Ships nothing.
   publish KEY_JSON AAB NOTES_FILE [--track production]
       Upload AAB to the track (default production) as a completed release with
       NOTES_FILE as the en-US release notes, then commit the edit (goes live to
@@ -81,6 +86,24 @@ def verify(key_path: str) -> None:
     print("deleted throwaway edit; no changes made")
 
 
+def check_upload_key(key_path: str, aab: str) -> None:
+    token = access_token(key_path)
+    edit = call(token, "POST", f"{API}/applications/{PACKAGE}/edits")
+    eid = edit["id"]
+    print(f"opened edit {eid}; uploading bundle to validate signing cert...")
+    blob = open(aab, "rb").read()
+    try:
+        up = call(token, "POST",
+                  f"{UPLOAD}/applications/{PACKAGE}/edits/{eid}/bundles?uploadType=media",
+                  raw=blob, content_type="application/octet-stream")
+    finally:
+        # Always discard the edit so this check never ships anything.
+        call(token, "DELETE", f"{API}/applications/{PACKAGE}/edits/{eid}")
+        print("deleted edit; nothing committed")
+    print(f"UPLOAD KEY ACCEPTED: reset is approved. "
+          f"versionCode={up['versionCode']} sha256={up.get('sha256','')[:16]}...")
+
+
 def publish(key_path: str, aab: str, notes_file: str, track: str) -> None:
     notes = open(notes_file).read().strip()
     token = access_token(key_path)
@@ -107,6 +130,8 @@ def main() -> None:
     cmd = sys.argv[1] if len(sys.argv) > 1 else "help"
     if cmd == "verify":
         verify(sys.argv[2])
+    elif cmd == "check-upload-key":
+        check_upload_key(sys.argv[2], sys.argv[3])
     elif cmd == "publish":
         track = "production"
         if "--track" in sys.argv:

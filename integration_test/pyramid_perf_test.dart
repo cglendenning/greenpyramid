@@ -13,7 +13,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_test/src/frame_timing_summarizer.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:life_ops/pyramid_3d.dart';
+import 'package:life_ops/widgets/pyramid_3d.dart';
 
 void main() {
   final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();

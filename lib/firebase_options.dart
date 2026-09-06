@@ -3,7 +3,7 @@
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
-import 'package:life_ops/secrets.dart';
+import 'package:life_ops/services/secrets.dart';
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
