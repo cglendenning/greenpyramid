@@ -12,11 +12,13 @@ import 'package:flutter/services.dart';
 import 'package:app_install_date/app_install_date.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'firebase_options.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/widgets.dart';
 import 'package:life_ops/widgets/pyramid_painting.dart';
+import 'package:life_ops/services/push_messaging_service.dart';
 
 // Forces the App Check *debug* provider even in a release/OTA build, so a
 // sideloaded test build can authenticate with a registered debug token.
@@ -96,6 +98,22 @@ Future<void> main() async {
     debugPrint('App Check setup failed: $e\n$st');
   }
 
+  // D-036: a push arriving while the app is foregrounded isn't
+  // auto-displayed by the OS on most platforms — show it via the same
+  // local-notification channel. Registered unconditionally; it simply
+  // never fires for an account with no FCM token registered.
+  try {
+    FirebaseMessaging.onMessage.listen((message) {
+      final notification = message.notification;
+      if (notification == null) return;
+      LocalNotificationService().showImmediateNotification(
+        title: notification.title ?? 'Green Pyramid',
+        body: notification.body ?? '',
+      );
+    });
+  } catch (e, st) {
+    debugPrint('Failed to register foreground FCM listener: $e\n$st');
+  }
 
   // D-086: migration is best-effort. If the database cannot be opened or
   // migrated, tell the user plainly rather than crashing on a null database
@@ -144,4 +162,16 @@ Future<void> _bootstrapAccountSync({required bool setupComplete}) async {
   }
 
   await SyncService.instance.syncAll(uid, setupComplete: setupComplete);
+
+  // D-036/D-039: keeps the FCM token and local fallback current on every
+  // launch. Only for accounts that have already been through D-065's
+  // permission screen — a brand-new install reaches this for the first
+  // time from PushPermissionScreen, right after setup completes, not here.
+  if (setupComplete) {
+    try {
+      await PushMessagingService.instance.syncNotificationState();
+    } catch (e, st) {
+      debugPrint('Failed to sync notification state: $e\n$st');
+    }
+  }
 }

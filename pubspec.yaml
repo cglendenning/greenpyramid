@@ -36,6 +36,7 @@ dependencies:
   dart_openai: ^5.1.0
   firebase_analytics: ^12.0.0
   firebase_core: ^4.0.0
+  firebase_messaging: ^16.6.0
   # The web implementations come in transitively at matching versions. They
   # were previously pinned to old majors, which capped
   # firebase_core_platform_interface below the version App Check needs.

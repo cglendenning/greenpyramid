@@ -419,7 +419,8 @@ class LocalNotificationService {
       required String title,
       required int hour,
       required int minute,
-      required String payload}) async {
+      required String payload,
+      String? body}) async {
     final scheduleMode = await _getOptimalScheduleMode();
     bool idFound = false;
     var pending = await _localNotificationService.pendingNotificationRequests();
@@ -434,7 +435,9 @@ class LocalNotificationService {
     }
     if (!idFound) {
       // Generate dynamic message based on notification ID
-      String dynamicBody = _generateNotificationMessage(id);
+      // D-038: an explicit body (cached server content, or the D-063
+      // static pool) overrides the built-in generic message pool.
+      String dynamicBody = body ?? _generateNotificationMessage(id);
       // Create iOS details with the question as the body
       final DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
         sound: 'doublebeep.aiff',
@@ -494,6 +497,41 @@ class LocalNotificationService {
     }
 
     return scheduledDate;
+  }
+
+  /// D-038: lets a caller refresh or clear a previously-scheduled fallback
+  /// notification (cancel before reschedule, since [scheduleDailyNotification]
+  /// no-ops when the id is already pending).
+  Future<void> cancelDailyNotification(int id) =>
+      _localNotificationService.cancel(id);
+
+  /// D-036: a push arriving while the app is in the foreground is not
+  /// auto-displayed by the OS on most platforms — this shows it
+  /// immediately via the same local-notification channel.
+  Future<void> showImmediateNotification({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'green_pyramid_channel',
+      'Green Pyramid Notifications',
+      channelDescription: 'Notifications for Green Pyramid app',
+      importance: Importance.max,
+      priority: Priority.max,
+    );
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    await _localNotificationService.show(
+      DateTime.now().millisecondsSinceEpoch.remainder(100000),
+      title,
+      body,
+      const NotificationDetails(android: androidDetails, iOS: iosDetails),
+      payload: payload,
+    );
   }
 
   void onDidReceiveLocalNotification(

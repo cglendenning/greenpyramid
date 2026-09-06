@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/notification.dart';
+import '../services/push_messaging_service.dart';
 import '../theme/app_colors.dart';
 
 /// D-065: push permission is requested exactly once, immediately after
@@ -15,6 +16,9 @@ class PushPermissionScreen extends StatelessWidget {
   Future<void> _requestAndContinue(BuildContext context) async {
     try {
       await LocalNotificationService().requestPermissions();
+      // D-036/D-038: registers the FCM token if granted, or schedules the
+      // local fallback if not — either way, degrades nothing on failure.
+      await PushMessagingService.instance.syncNotificationState();
     } catch (_) {
       // D-038: a failure here degrades nothing — proceed regardless.
     }

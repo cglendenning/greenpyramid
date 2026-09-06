@@ -6,6 +6,7 @@
 // Firebase ID token (proves an app-minted identity). Mirrors the goal-executor
 // backend, plus App Check.
 import { onRequest } from 'firebase-functions/v2/https';
+import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { setGlobalOptions } from 'firebase-functions/v2';
 import { defineSecret } from 'firebase-functions/params';
 import express from 'express';
@@ -15,9 +16,11 @@ import Anthropic from '@anthropic-ai/sdk';
 import admin from 'firebase-admin';
 import { buildAdvisorTurnPrompt, extractReplyText } from './lib/council.js';
 import { checkSpendLimit, recordCost, SpendLimitError } from './lib/billing.js';
-import { getCouncilModel } from './lib/model_config.js';
+import { getCouncilModel, getNotificationModel } from './lib/model_config.js';
 import { guardAndCountSetupCall, SetupCallLimitError } from './lib/setup_guard.js';
 import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, CATEGORIES_TOOL, HABITS_TOOL } from './lib/setup_derivation.js';
+import { isEligibleForTailoredNotification } from './lib/notification_schedule.js';
+import { buildNotificationPrompt, NOTIFICATION_TOOL } from './lib/notification_derivation.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -294,4 +297,102 @@ export const api = onRequest(
     invoker: 'public',
   },
   app,
+);
+
+// ── Notifications (D-036/D-037/D-039) ───────────────────────────────────────
+//
+// D-037: exactly this context, read from profile/main — the array already
+// synced by the client (SyncService), never a separate model call to
+// assemble it.
+async function sendTailoredNotification(uid, profileData) {
+  const db = admin.firestore();
+  const categories = (profileData.categories || []).map((c) => ({
+    name: c.cat,
+    tier: c.position <= 3 ? 1 : c.position <= 5 ? 2 : 3,
+    essence: c.activeEssence ?? null,
+  }));
+
+  const recentSnap = await db
+      .collection('users').doc(uid).collection('recentActivity').get();
+  const recentActivity = recentSnap.docs.map((d) => d.data());
+
+  const { system, user } = buildNotificationPrompt({
+    categories,
+    visionStatement: profileData.visionStatement,
+    recentActivity,
+  });
+
+  const model = await getNotificationModel();
+  const msg = await claude().messages.create({
+    model,
+    max_tokens: 200,
+    thinking: { type: 'disabled' },
+    system: [{ type: 'text', text: system }],
+    messages: [{ role: 'user', content: user }],
+    tools: [NOTIFICATION_TOOL],
+    tool_choice: { type: 'tool', name: NOTIFICATION_TOOL.name },
+  });
+  const toolUse = msg.content.find((b) => b.type === 'tool_use');
+  if (!toolUse) throw new Error('no_tool_use_in_response');
+  const { title, body } = toolUse.input;
+
+  recordCost(uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
+      .catch((e) => console.error('recordCost error:', e.message));
+
+  // D-038: cached so the client's local fallback has the most recent
+  // server-generated content if push was never granted or delivery fails.
+  await db.collection('users').doc(uid).collection('profile').doc('main').set({
+    lastNotificationTitle: title,
+    lastNotificationBody: body,
+    lastNotificationAt: admin.firestore.FieldValue.serverTimestamp(),
+  }, { merge: true });
+
+  const fcmToken = profileData.fcmToken;
+  if (!fcmToken) {
+    console.log(`notificationJob: ${uid} has no fcmToken registered — relying on the client's local fallback.`);
+    return;
+  }
+
+  try {
+    await admin.messaging().send({ token: fcmToken, notification: { title, body } });
+  } catch (e) {
+    // D-038: a delivery failure is logged and surfaced, never swallowed —
+    // lastNotificationTitle/Body above is what lets the client recover.
+    console.error(`notificationJob: FCM send failed for ${uid}:`, e.message);
+  }
+}
+
+// D-036: runs every 15 minutes (D-039's timezone-bucketing granularity,
+// notification_schedule.js); D-036's exclusion of lapsed accounts is
+// enforced in isEligibleForTailoredNotification, which also implements
+// R7's "every account is entitled until R8" carve-out. A full
+// collectionGroup scan every 15 minutes is the simplest correct
+// implementation for the current account volume; revisit with
+// timezone-bucketed queries or a fan-out if volume grows enough to matter.
+export const notificationJob = onSchedule(
+  {
+    schedule: 'every 15 minutes',
+    secrets: [sAnthropic],
+    timeoutSeconds: 300,
+    memory: '256MiB',
+  },
+  async () => {
+    ensureAdmin();
+    const db = admin.firestore();
+    const now = new Date();
+
+    const snapshot = await db.collectionGroup('profile').get();
+    for (const doc of snapshot.docs) {
+      if (doc.id !== 'main') continue;
+      const data = doc.data();
+      if (!isEligibleForTailoredNotification(data, now)) continue;
+
+      const uid = doc.ref.parent.parent.id;
+      try {
+        await sendTailoredNotification(uid, data);
+      } catch (e) {
+        console.error(`notificationJob: failed for ${uid}:`, e.message);
+      }
+    }
+  },
 );
