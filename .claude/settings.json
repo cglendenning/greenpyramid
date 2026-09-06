@@ -16,7 +16,25 @@
       "Bash(xcrun simctl io booted screenshot *)",
       "Bash(dig *)",
       "Bash(plutil -extract *)",
-      "Bash(plutil -lint *)"
+      "Bash(plutil -lint *)",
+      "Bash(go test *)",
+      "Bash(go vet *)",
+      "Bash(go doc *)",
+      "Bash(go env *)",
+      "Bash(go list *)",
+      "Bash(dart analyze *)",
+      "Bash(launchctl print *)",
+      "Bash(plutil -p *)",
+      "Bash(adb devices)",
+      "Bash(adb devices *)",
+      "Bash(security find-identity *)",
+      "Bash(flutter devices)",
+      "Bash(flutter devices *)",
+      "Bash(xcrun devicectl device info *)",
+      "Bash(gcloud logging read *)",
+      "Bash(firebase login:list *)",
+      "Bash(md5 -q *)",
+      "Bash(sips -g *)"
     ]
   }
 }

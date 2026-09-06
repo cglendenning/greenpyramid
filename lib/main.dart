@@ -10,9 +10,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'firebase_options.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/widgets.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:life_ops/pyramid_painting.dart';
-import 'package:life_ops/services/ad_service.dart';
 
 // Forces the App Check *debug* provider even in a release/OTA build, so a
 // sideloaded test build can authenticate with a registered debug token.
@@ -25,25 +23,6 @@ import 'package:life_ops/services/ad_service.dart';
 // for an OTA build instead of editing this file.
 const bool kForceAppCheckDebug =
     bool.fromEnvironment('FORCE_APP_CHECK_DEBUG', defaultValue: false);
-
-// AdMob device IDs for our own phones. Registering them makes the SDK serve
-// *test* ads on these devices even from the genuine store build, so opening the
-// app on a personal phone can never generate the self-inflicted invalid traffic
-// that got ad serving suspended. Capture a device's id by running any build on
-// it and reading the logged line:
-//   "Use RequestConfiguration.Builder().setTestDeviceIds(Arrays.asList("<ID>"))"
-// then add the id below (or pass --dart-define=ADMOB_TEST_DEVICE_IDS=id1,id2).
-const List<String> _bakedInTestDeviceIds = <String>[
-  '8A715648427E7AB282E4663FDF931373', // Craig's moto g play - 2023 (Android)
-  'e8ff905da6280ea4d94e113a103328e4', // Craig's iPhone 12 mini (iOS)
-];
-final List<String> _adMobTestDeviceIds = <String>[
-  ..._bakedInTestDeviceIds,
-  ...const String.fromEnvironment('ADMOB_TEST_DEVICE_IDS')
-      .split(',')
-      .map((id) => id.trim())
-      .where((id) => id.isNotEmpty),
-];
 
 final GlobalKey<NavigatorState> navigatorKey =
     GlobalKey(debugLabel: "Main Navigator");
@@ -111,18 +90,6 @@ Future<void> main() async {
     debugPrint('App Check setup failed: $e\n$st');
   }
 
-  if (_adMobTestDeviceIds.isNotEmpty) {
-    MobileAds.instance.updateRequestConfiguration(
-      RequestConfiguration(testDeviceIds: _adMobTestDeviceIds),
-    );
-    debugPrint(
-      'AdMob: registered ${_adMobTestDeviceIds.length} test device(s); '
-      'they will receive test ads instead of live ads.',
-    );
-  }
-  await MobileAds.instance.initialize();
-  AdService.instance.preload();
-  AdService.instance.startActivityPacing();
 
   int defaultCats = await dbHelper.queryLaunchSetup();
 

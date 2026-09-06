@@ -238,31 +238,6 @@ class _HomeScreen extends State<HomeScreenWidget> {
             ][currentScreenIndex]));
   }
 
-  (dynamic, dynamic) setColorAndShade(int pctComplete) {
-    // If you are tempted to make the shading more
-    // granular, re-consider. I like the steps. They
-    // are more noticeable.
-    if (pctComplete >= 0 && pctComplete < 15) {
-      return (Colors.red, 500);
-    } else if (pctComplete >= 15 && pctComplete < 30) {
-      return (Colors.red, 400);
-    } else if (pctComplete >= 30 && pctComplete < 42) {
-      return (Colors.red, 300);
-    } else if (pctComplete >= 42 && pctComplete < 55) {
-      return (Colors.red, 200);
-    } else if (pctComplete >= 55 && pctComplete < 67) {
-      return (Colors.yellow, 500);
-    } else if (pctComplete >= 67 && pctComplete < 80) {
-      return (Colors.yellow, 200);
-    } else if (pctComplete >= 80 && pctComplete < 90) {
-      return (Colors.green, 100);
-    } else if (pctComplete >= 90 && pctComplete <= 100) {
-      return (Colors.green, 500);
-    } else {
-      return (Colors.blue, 100);
-    }
-  }
-
   void setFutures([int? daysOverride]) {
     final days = daysOverride ?? _currentPctDays;
     _cat1Future = getPctComplete(1, days);

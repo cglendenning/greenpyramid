@@ -8,16 +8,11 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:flutter/rendering.dart';
 import 'package:life_ops/services/ai_proxy_client.dart';
-import 'package:life_ops/services/ad_service.dart';
 import 'package:life_ops/services/ai_guard.dart';
 
 // add some additional behind-the-scenes directives to openAI...
 String suffix = " Do not answer with a list.";
 
-// Every this-many-th message, give the AdService a chance to show an
-// interstitial (subject to its own 5-minute cooldown) before the message
-// goes out. Coach chat is otherwise unlimited and by far the most expensive
-// OpenAI usage in the app, so its cost needs to stay tied to ad revenue.
 const int _adGateMessageInterval = 3;
 
 class Coach extends StatefulWidget {
@@ -263,7 +258,6 @@ class _CoachState extends State<Coach> with WidgetsBindingObserver {
 
     _messagesSentThisSession++;
     if (_messagesSentThisSession % _adGateMessageInterval == 0) {
-      await AdService.instance.showInterstitialIfEligible();
     }
 
     // Clear the text field immediately after submission

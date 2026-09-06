@@ -338,35 +338,41 @@ class _Pyramid extends State<Pyramid> {
     return Cat(categoryid: maps[0]['categoryid'], cat: maps[0]['cat']);
   }
 
-  Color setColor(int pctComplete) {
-    // If there are no tasks, pctComplete should be -1, so return blue
-    if (pctComplete < 0) {
-      return buildColor("#54B6FF"); // blue for no tasks
-    }
-    if (pctComplete >= 0 && pctComplete < 15) {
-      return buildColor("#F96E6E"); // red
-    } else if (pctComplete >= 15 && pctComplete < 30) {
-      return buildColor("#F96E6E"); // red
-    } else if (pctComplete >= 30 && pctComplete < 42) {
-      return buildColor("#F96E6E"); // red
-    } else if (pctComplete >= 42 && pctComplete < 55) {
-      return buildColor("#F96E6E"); // red
-    } else if (pctComplete >= 55 && pctComplete < 67) {
-      return buildColor("#FFE177"); // yellow
-    } else if (pctComplete >= 67 && pctComplete < 80) {
-      return buildColor("#FFE177"); // yellow
-    } else if (pctComplete >= 80 && pctComplete < 90) {
-      return buildColor("#66CC5D"); // green
-    } else if (pctComplete >= 90 && pctComplete <= 100) {
-      return buildColor("#66CC5D"); // green
-    } else {
-      return buildColor("#54B6FF"); // blue (fallback)
-    }
-  }
+}
 
-  Color buildColor(String hex) {
-    return Color(int.parse(hex.substring(1, 7), radix: 16) + 0xFF000000);
+/// Maps a category completion percentage to its pyramid block color.
+///
+/// D-019 protects this function: tiered weighting must not change block
+/// color. Despite eight branches this is effectively a four-band scale
+/// (II-B). A negative [pctComplete] means no tasks are defined.
+Color setColor(int pctComplete) {
+  // If there are no tasks, pctComplete should be -1, so return blue
+  if (pctComplete < 0) {
+    return buildColor("#54B6FF"); // blue for no tasks
   }
+  if (pctComplete >= 0 && pctComplete < 15) {
+    return buildColor("#F96E6E"); // red
+  } else if (pctComplete >= 15 && pctComplete < 30) {
+    return buildColor("#F96E6E"); // red
+  } else if (pctComplete >= 30 && pctComplete < 42) {
+    return buildColor("#F96E6E"); // red
+  } else if (pctComplete >= 42 && pctComplete < 55) {
+    return buildColor("#F96E6E"); // red
+  } else if (pctComplete >= 55 && pctComplete < 67) {
+    return buildColor("#FFE177"); // yellow
+  } else if (pctComplete >= 67 && pctComplete < 80) {
+    return buildColor("#FFE177"); // yellow
+  } else if (pctComplete >= 80 && pctComplete < 90) {
+    return buildColor("#66CC5D"); // green
+  } else if (pctComplete >= 90 && pctComplete <= 100) {
+    return buildColor("#66CC5D"); // green
+  } else {
+    return buildColor("#54B6FF"); // blue (fallback)
+  }
+}
+
+Color buildColor(String hex) {
+  return Color(int.parse(hex.substring(1, 7), radix: 16) + 0xFF000000);
 }
 
 class Cat {

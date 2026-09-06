@@ -53,3 +53,10 @@ lib/secrets.dart
 
 # Firebase hosting deploy cache
 .firebase/
+
+# Private product specification — pricing, monetization strategy, compliance
+# analysis and sibling-app internals. Deliberately not published: this repo is
+# public. Rendered artifact lives on claude.ai instead.
+GREEN_PYRAMID_SPECIFICATION.md
+GREEN_PYRAMID_SPECIFICATION.html
+SPEC_INDEX.md

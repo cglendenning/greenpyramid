@@ -5,7 +5,6 @@ import 'package:life_ops/db.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:life_ops/navbar.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:life_ops/services/ad_service.dart';
 import 'package:life_ops/services/ai_guard.dart';
 
 class Motivation extends StatefulWidget {
@@ -85,7 +84,6 @@ class _MotivationState extends State<Motivation> {
                   IconButton(
                     icon: svgBack,
                     onPressed: () async {
-                      await AdService.instance.showInterstitialIfEligible();
                       setState(() {
                         Navigator.pop(context);
                       });
