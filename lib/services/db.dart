@@ -8,8 +8,11 @@ import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 7; // 7: R3 schema — position, essences,
-  // domain findings, account state (Part IV)
+  static const _databaseVersion = 8; // 7: R3 schema — position, essences,
+  // domain findings, account state (Part IV). 8: R6/D-062 — discards an
+  // incomplete old-flow setup so the user starts the new Council setup
+  // fresh instead of landing on a half-populated pyramid with no way back
+  // into the (now-deleted) wizard.
 
   // DEMO MODE FLAG
   static final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
@@ -227,6 +230,33 @@ class DatabaseHelper {
         '$columnEntitlementSyncedAt TEXT)');
     await db.execute(
         'INSERT OR IGNORE INTO $accountStateTable ($columnAccountId) VALUES (1)');
+  }
+
+  /// D-062: a user whose old-flow setup was incomplete when this build
+  /// lands starts the new Council setup fresh, discarding their partial
+  /// rows. "Complete" is six categories existing **and** at least one
+  /// task existing — anything less is incomplete. A user who meets the
+  /// definition is untouched (D-002, D-034). Runs once, gated by the
+  /// version bump to 8, so it never re-triggers for an account created
+  /// after this migration already ran.
+  static Future<void> applyV8Migration(Database db) async {
+    final categoryCount = Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM $categoryTable')) ??
+        0;
+    final taskCount = Sqflite.firstIntValue(
+            await db.rawQuery('SELECT COUNT(*) FROM $taskTable')) ??
+        0;
+    final complete = categoryCount >= 6 && taskCount >= 1;
+    if (complete) return;
+
+    // Never silent at the data layer, per D-062's acceptance criteria.
+    print('D-062: incomplete old-flow setup found ($categoryCount '
+        'categories, $taskCount tasks) — discarding partial rows, '
+        'starting the new Council setup fresh.');
+
+    await db.delete(taskTable);
+    await db.delete(taskLogTable);
+    await db.delete(categoryTable);
   }
 
   Future _onCreate(Database db, int version) async {
@@ -498,6 +528,10 @@ class DatabaseHelper {
             // sqflite runs onUpgrade in a transaction, so a failure here
             // leaves the database at version 6 and the app fully functional.
             await applyV7Schema(db);
+            break;
+          case 8:
+            // D-062: runs once, after v7 is guaranteed present above.
+            await applyV8Migration(db);
             break;
         }
       }
