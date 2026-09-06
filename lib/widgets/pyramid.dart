@@ -5,8 +5,6 @@ import 'package:life_ops/services/dbtools.dart';
 import 'package:life_ops/screens/tasklist.dart';
 import 'package:life_ops/services/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:life_ops/screens/coach.dart';
-import 'package:life_ops/screens/mindset_select.dart';
 import 'package:life_ops/widgets/pyramid_3d.dart';
 import 'package:life_ops/widgets/pyramid_painting.dart';
 
@@ -206,71 +204,8 @@ class _Pyramid extends State<Pyramid> {
               }
               return display;
             }),
-        Container(
-            padding: const EdgeInsets.all(10.0),
-            child: const Text("Need to work on your mindset?")),
-
-        // Mindset button instead of dropdowns
-        Row(mainAxisAlignment: MainAxisAlignment.center, children: <Widget>[
-          ElevatedButton.icon(
-            icon: const Icon(Icons.psychology, color: Colors.white),
-            label: const Text(
-              'Mindset',
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white),
-            ),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF66CC5D), // #66CC5D
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 32, vertical: 12.8),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30.0),
-              ),
-              elevation: 4,
-            ),
-            onPressed: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => MindsetSelect(
-                          categories: [
-                            cat1String,
-                            cat2String,
-                            cat3String,
-                            cat4String,
-                            cat5String,
-                            cat6String
-                          ].where((cat) => cat.isNotEmpty).toList(),
-                        )),
-              );
-              if (result != null && result is List && result.length == 2) {
-                final mood = result[0] as String;
-                final category = result[1] as String;
-                navigateToChat(context, mood, category);
-              }
-            },
-          ),
-        ]),
       ]),
     );
-  }
-
-  void navigateToChat(
-      BuildContext context, String mood, String category) async {
-    utils.Utils().changeSystemColor(Brightness.dark);
-    await Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) =>
-                    Coach(mood: mood, category: category, showAppBar: true)))
-        .then((_) {
-      setState(() {
-        utils.Utils().changeSystemColor(Brightness.light);
-        setFutures();
-      });
-    });
   }
 
   // The photo-real jungle clearing the pyramid sits inside: the backdrop

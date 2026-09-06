@@ -9,10 +9,8 @@ import 'package:life_ops/main.dart';
 import 'package:life_ops/widgets/pyramid.dart';
 import 'package:life_ops/screens/coach.dart';
 import 'package:life_ops/screens/settings.dart';
-import 'package:life_ops/screens/setup/setup1.dart';
+import 'package:life_ops/screens/setup_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:life_ops/screens/motivation.dart';
-import 'package:life_ops/screens/tutorial/tutorial1.dart';
 import 'package:life_ops/services/email.dart';
 import 'package:life_ops/screens/editpyramid.dart';
 import 'package:life_ops/services/utils.dart' as utils;
@@ -68,7 +66,7 @@ class HomeScreen extends StatelessWidget {
               builder: (context) => const Evening(),
             );
           case '/setup':
-            return MaterialPageRoute(builder: (context) => const Setup1());
+            return MaterialPageRoute(builder: (context) => const SetupScreen());
           default:
             return _errorRoute();
         }
@@ -342,16 +340,6 @@ class CustomAppBarState extends State<CustomAppBar> {
       icon: svgBars,
       onSelected: (String result) {
         switch (result) {
-          case 'learnMore':
-            if (currentScreen != 'learnMore') {
-              navigateToTutorial(context);
-            }
-            break;
-          case 'motivation':
-            if (currentScreen != 'motivation') {
-              navigateToMotivation(context);
-            }
-            break;
           case 'feedback':
             if (currentScreen != 'feedback') {
               navigateToFeedback(context);
@@ -381,14 +369,6 @@ class CustomAppBarState extends State<CustomAppBar> {
       },
       itemBuilder: (BuildContext context) {
         List<PopupMenuEntry<String>> items = [
-          const PopupMenuItem<String>(
-            value: 'learnMore',
-            child: Text('Learn More'),
-          ),
-          const PopupMenuItem<String>(
-            value: 'motivation',
-            child: Text('Motivation'),
-          ),
           const PopupMenuItem<String>(
             value: 'feedback',
             child: Text('App Feedback'),
@@ -438,24 +418,6 @@ class CustomAppBarState extends State<CustomAppBar> {
     );
   }
 
-  void navigateToMotivation(BuildContext context) async {
-    utils.Utils().changeSystemColor(Brightness.dark);
-    await Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const Motivation()))
-        .then((value) {});
-    utils.Utils().changeSystemColor(Brightness.light);
-    setState(() {});
-  }
-
-  void navigateToTutorial(BuildContext context) async {
-    utils.Utils().changeSystemColor(Brightness.dark);
-    await Navigator.push(
-            context, MaterialPageRoute(builder: (context) => const Tutorial1()))
-        .then((value) {});
-    utils.Utils().changeSystemColor(Brightness.light);
-    setState(() {});
-  }
-
   void navigateToFeedback(BuildContext context) async {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(context,
@@ -467,8 +429,8 @@ class CustomAppBarState extends State<CustomAppBar> {
 
   void navigateToSetup(BuildContext context) async {
     utils.Utils().changeSystemColor(Brightness.dark);
-    await Navigator.push(
-            context, MaterialPageRoute(builder: (context) => const Setup1()))
+    await Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const SetupScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
