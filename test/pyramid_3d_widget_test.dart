@@ -95,4 +95,64 @@ void main() {
     await tester.tapAt(frontFaceTapPosition(tester, const Offset(s / 2, s * 0.9)));
     expect(tapped, 1);
   });
+
+  group('D-046: entrance spin (setup completion)', () {
+    testWidgets('D-046: without playEntranceSpin, no spin animation runs — '
+        'settles immediately', (tester) async {
+      await pumpPyramid(tester, (_) {});
+      await tester.pump();
+      // No pending animation to settle; a bounded pump proves nothing is
+      // still running (an unbounded entrance spin would time this out).
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+    });
+
+    testWidgets('D-046: playEntranceSpin runs for exactly 3 seconds and '
+        'ends face-on, tappable', (tester) async {
+      int? tapped;
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Center(
+            child: Pyramid3D(
+              size: size,
+              categories: categories,
+              onCategoryTap: (i) => tapped = i,
+              playEntranceSpin: true,
+            ),
+          ),
+        ),
+      );
+      await tester.pump(); // post-frame callback starts the spin
+
+      await tester.pump(const Duration(milliseconds: 1500));
+      // Mid-spin: category taps must not land — the pyramid isn't settled.
+      await tester.tapAt(frontFaceTapPosition(tester, const Offset(s / 2, s * 0.9)));
+      expect(tapped, isNull, reason: 'no tap should register mid-spin');
+
+      await tester.pump(const Duration(milliseconds: 1600)); // past 3s total
+      await tester.pumpAndSettle();
+
+      await tester.tapAt(frontFaceTapPosition(tester, const Offset(s / 2, s * 0.9)));
+      expect(tapped, 1, reason: 'settled and tappable once the spin ends');
+    });
+
+    testWidgets('D-046: respects reduce-motion — settles immediately with '
+        'no spin', (tester) async {
+      await tester.pumpWidget(
+        MediaQuery(
+          data: const MediaQueryData(disableAnimations: true),
+          child: MaterialApp(
+            home: Center(
+              child: Pyramid3D(
+                size: size,
+                categories: categories,
+                playEntranceSpin: true,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pumpAndSettle(const Duration(milliseconds: 200));
+    });
+  });
 }

@@ -24,19 +24,27 @@ class Pyramid3D extends StatefulWidget {
   final double size;
   final ValueChanged<int>? onCategoryTap;
 
+  // D-046: the setup completion moment. When true, plays a one-time
+  // decelerating spin from several full turns down to face-on, over
+  // exactly 3 seconds, then behaves exactly like a normal settled pyramid.
+  // Independent of the drag/settle machinery below — it never touches
+  // [_settle], so normal drag behavior is unaffected whether or not this
+  // is set.
+  final bool playEntranceSpin;
+
   const Pyramid3D({
     super.key,
     required this.categories,
     required this.size,
     this.onCategoryTap,
+    this.playEntranceSpin = false,
   });
 
   @override
   State<Pyramid3D> createState() => _Pyramid3DState();
 }
 
-class _Pyramid3DState extends State<Pyramid3D>
-    with SingleTickerProviderStateMixin {
+class _Pyramid3DState extends State<Pyramid3D> with TickerProviderStateMixin {
   // One full widget-width drag spins the pyramid half a revolution.
   static const double _radiansPerWidgetWidth = math.pi;
 
@@ -57,6 +65,10 @@ class _Pyramid3DState extends State<Pyramid3D>
   String? _wallCacheKey;
   int _wallRenderToken = 0;
 
+  // D-046: entrance spin, entirely separate from [_settle] above.
+  AnimationController? _entranceSpin;
+  static const double _entranceSpinStart = -12 * math.pi; // several full turns
+
   @override
   void initState() {
     super.initState();
@@ -72,6 +84,25 @@ class _Pyramid3DState extends State<Pyramid3D>
             _settleFrom + (_settleTo - _settleFrom) * _settleCurve.value;
       });
     });
+
+    if (widget.playEntranceSpin) {
+      _rotation = _entranceSpinStart;
+      final spin = AnimationController(
+          vsync: this, duration: const Duration(seconds: 3));
+      final curve = CurvedAnimation(parent: spin, curve: Curves.easeOutQuint);
+      spin.addListener(() {
+        setState(() => _rotation = _entranceSpinStart * (1 - curve.value));
+      });
+      _entranceSpin = spin;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        if (MediaQuery.of(context).disableAnimations) {
+          setState(() => _rotation = 0);
+        } else {
+          spin.forward();
+        }
+      });
+    }
   }
 
   @override
@@ -79,6 +110,7 @@ class _Pyramid3DState extends State<Pyramid3D>
     _wallImage?.dispose();
     _settleCurve.dispose();
     _settle.dispose();
+    _entranceSpin?.dispose();
     super.dispose();
   }
 
