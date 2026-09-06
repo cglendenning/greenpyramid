@@ -22,12 +22,6 @@ class _TaskListState extends State<TaskList> {
   DateFormat dowFmt = DateFormat('EEEE');
   String todayFmt = '';
 
-  @override
-  void initState() {
-    todayFmt = dowFmt.format(DateTime.now()).toString();
-    super.initState();
-  }
-
   _TaskListState(this.category, this.taskLogDate);
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
@@ -35,6 +29,55 @@ class _TaskListState extends State<TaskList> {
 
   var pctCompleteTextStyle = const TextStyle(
       fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
+  static const _categoryNameStyle =
+      TextStyle(fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
+  static const _essenceStyle = TextStyle(fontSize: 15, fontStyle: FontStyle.italic);
+
+  late Future<(int?, String?)> _essenceContext;
+
+  @override
+  void initState() {
+    todayFmt = dowFmt.format(DateTime.now()).toString();
+    _essenceContext = _loadEssenceContext();
+    super.initState();
+  }
+
+  // D-047: the category name and its full essence, in that order, above
+  // the habit checkboxes. A category with no essence yet (D-005/D-010)
+  // renders neither a placeholder nor a prompt to add one — this returns
+  // null and the caller skips the block entirely.
+  Future<(int?, String?)> _loadEssenceContext() async {
+    final categoryId = await dbHelper.getCategoryIdByName(category);
+    if (categoryId == null) return (null, null);
+    final essence = await dbHelper.getLatestEssenceForCategory(categoryId);
+    return (categoryId, essence);
+  }
+
+  Future<void> _editEssence(int categoryId, String currentEssence) async {
+    final controller = TextEditingController(text: currentEssence);
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Your essence'),
+        content: TextField(controller: controller, maxLines: 4, autofocus: true),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Save')),
+        ],
+      ),
+    );
+    if (saved != true) return;
+    final text = controller.text.trim();
+    if (text.isEmpty) return;
+    // D-061: essences are versioned, never overwritten — this appends a
+    // new version rather than updating the existing row.
+    await dbHelper.insertCategoryEssence(categoryId: categoryId, essence: text);
+    setState(() => _essenceContext = _loadEssenceContext());
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +90,31 @@ class _TaskListState extends State<TaskList> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                  Text('$category Log'),
+                  Text(category, style: _categoryNameStyle),
+                  FutureBuilder<(int?, String?)>(
+                    future: _essenceContext,
+                    builder: (context, snapshot) {
+                      final data = snapshot.data;
+                      if (data == null || data.$1 == null || data.$2 == null) {
+                        return const SizedBox.shrink();
+                      }
+                      final categoryId = data.$1!;
+                      final essence = data.$2!;
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(24, 8, 24, 4),
+                        child: Column(
+                          children: [
+                            Text(essence,
+                                textAlign: TextAlign.center, style: _essenceStyle),
+                            TextButton(
+                              onPressed: () => _editEssence(categoryId, essence),
+                              child: const Text('Edit'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                   FutureBuilder(
                       future: getTaskLog(),
                       builder: (context, AsyncSnapshot snapshot) {

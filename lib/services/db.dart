@@ -1479,6 +1479,17 @@ class DatabaseHelper {
     return db.query(categoryEssenceTable);
   }
 
+  /// D-047: resolves a category's id from its name — the category detail
+  /// screen is addressed by name, but essence lookup keys on id (D-084).
+  /// Null if no category with this name exists.
+  Future<int?> getCategoryIdByName(String cat) async {
+    final db = await database;
+    final rows = await db.query(getCategoryTable(),
+        where: '$columnCat = ?', whereArgs: [cat], limit: 1);
+    if (rows.isEmpty) return null;
+    return rows.first[columnCategoryId] as int?;
+  }
+
   /// D-028/D-061: the active (most recent) essence for one category, the
   /// context a Council re-clarification session opens with. Null if the
   /// category has never had an essence captured — a first-class state
