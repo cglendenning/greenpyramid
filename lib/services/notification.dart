@@ -290,9 +290,17 @@ class LocalNotificationService {
       onDidReceiveNotificationResponse: onSelectNotification,
     );
 
-    // Request notification permissions for Android
-    await _requestNotificationPermissions();
+    // D-038/D-065: permission is requested explicitly, by the setup flow
+    // right after the completion moment settles — never here. Calling
+    // intialize() wires up the plugin (timezone, tap routing) so scheduling
+    // works once permission exists; it must never itself prompt on launch.
   }
+
+  /// D-065: called once, immediately after D-046's completion moment
+  /// settles. D-038: denial degrades nothing and this is never re-asked on
+  /// a schedule — callers should not invoke this more than once per
+  /// install.
+  Future<void> requestPermissions() => _requestNotificationPermissions();
 
   Future<void> _requestNotificationPermissions() async {
     try {

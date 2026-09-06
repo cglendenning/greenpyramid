@@ -10,6 +10,7 @@ import '../theme/app_colors.dart';
 import '../widgets/advisor.dart';
 import '../widgets/setup_progress_indicator.dart';
 import 'setup_completion_screen.dart';
+import 'push_permission_screen.dart';
 
 /// D-042/D-043: the app's first screen and setup in full — one continuous
 /// Council conversation (D-082's `setup`-typed session), never a
@@ -385,8 +386,15 @@ class _SetupScreenState extends State<SetupScreen> {
       if (!mounted) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute(
         builder: (context) => SetupCompletionScreen(
-          onDone: () => Navigator.of(context)
-              .pushNamedAndRemoveUntil('/', (route) => false),
+          // D-065: push permission is requested here — immediately after
+          // the completion moment settles, before the home screen, never
+          // on first launch.
+          onDone: () => Navigator.of(context).pushReplacement(MaterialPageRoute(
+            builder: (context) => PushPermissionScreen(
+              onDone: () => Navigator.of(context)
+                  .pushNamedAndRemoveUntil('/', (route) => false),
+            ),
+          )),
         ),
       ));
     } finally {
