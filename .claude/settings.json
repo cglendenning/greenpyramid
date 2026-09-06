@@ -36,5 +36,20 @@
       "Bash(md5 -q *)",
       "Bash(sips -g *)"
     ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Read|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR/.claude/hooks/guard-spec-read.sh\"",
+            "timeout": 10,
+            "statusMessage": "Checking spec read scope"
+          }
+        ]
+      }
+    ]
   }
 }
