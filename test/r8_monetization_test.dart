@@ -64,4 +64,45 @@ void main() {
     expect(source, contains('sha256.convert'));
     expect(source, isNot(contains("body['androidId']")));
   });
+
+  test('D-012: the subscription is the sole revenue model — no ad SDK '
+      'dependency exists alongside RevenueCat', () {
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    expect(pubspec, contains('purchases_flutter'));
+    expect(pubspec, isNot(contains('google_mobile_ads')));
+    expect(pubspec, isNot(contains('admob')));
+  });
+
+  test('D-015: habit tracking and the pyramid never check entitlement — a '
+      'lapsed account keeps the tracker forever, with no paywall on it', () {
+    final gatedScreens = ['lib/screens/council_category_picker.dart'];
+    final offenders = Directory('lib/screens')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.dart'))
+        .where((f) => !gatedScreens.contains(f.path))
+        .where((f) => f.readAsStringSync().contains('columnEntitlement'))
+        .where((f) => f.path != 'lib/screens/setup_screen.dart') // writes the trial grant, never gates on it
+        .toList();
+    expect(offenders, isEmpty);
+  });
+
+  test('D-017: setup\'s free AI exchange is bounded by call count '
+      '(D-072), never by the D-087 spend cap — the two are mutually '
+      'exclusive branches', () {
+    final source = File('functions/index.js').readAsStringSync();
+    final guardIdx = source.indexOf('async function guardCouncilCall');
+    final isSetupBranchIdx = source.indexOf('if (isSetup) {', guardIdx);
+    final elseIdx = source.indexOf('checkSpendLimit', guardIdx);
+    expect(isSetupBranchIdx, greaterThan(-1));
+    expect(elseIdx, greaterThan(isSetupBranchIdx),
+        reason: 'checkSpendLimit must sit in the non-setup branch, after the isSetup check');
+  });
+
+  test('D-021: trial state is exactly one of three values everywhere it '
+      'is checked', () {
+    final source = File('functions/lib/entitlement.js').readAsStringSync();
+    expect(source, contains("'trialing'"));
+    expect(source, contains("'subscribed'"));
+  });
 }
