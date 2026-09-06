@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:life_ops/screens/homescreen.dart';
+import 'package:life_ops/screens/database_recovery_screen.dart';
 import 'package:life_ops/services/notification.dart';
 import "package:timezone/data/latest.dart" as tz show initializeTimeZones;
 import 'package:life_ops/services/db.dart';
@@ -91,7 +92,17 @@ Future<void> main() async {
   }
 
 
-  int defaultCats = await dbHelper.queryLaunchSetup();
+  // D-086: migration is best-effort. If the database cannot be opened or
+  // migrated, tell the user plainly rather than crashing on a null database
+  // or wiping their data without saying so.
+  int defaultCats;
+  try {
+    defaultCats = await dbHelper.queryLaunchSetup();
+  } catch (e, st) {
+    debugPrint('Database unavailable, showing recovery screen: $e\n$st');
+    runApp(const DatabaseRecoveryScreen());
+    return;
+  }
 
   if (defaultCats == 6) {
     routeToGo = '/setup';

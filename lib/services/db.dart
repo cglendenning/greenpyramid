@@ -8,7 +8,8 @@ import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 6; // Bumped from 5 to 6 for demo tables
+  static const _databaseVersion = 7; // 7: R3 schema — position, essences,
+  // domain findings, account state (Part IV)
 
   // DEMO MODE FLAG
   static final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
@@ -48,6 +49,47 @@ class DatabaseHelper {
 
   // The category table. This stores the categories that tasks belong to.
   static const categoryTable = 'category';
+
+  // --- R3 / Part IV additions -------------------------------------------
+  // Pyramid slot, 1..6. Tier is derived: 1-3 foundational, 4-5 essential,
+  // 6 peak. Replaces tier-implied-by-ordinal so D-051's drag-to-reorder is
+  // expressible.
+  static const columnPosition = 'position';
+  static const columnCategoryCreated = 'created';
+
+  // Versioned per-category essence (D-005, D-061). Keys on categoryid, not
+  // the category name, so a rename cannot orphan it (D-084, II-N).
+  static const categoryEssenceTable = 'category_essence';
+  static const columnEssenceId = 'id';
+  static const columnEssenceCategoryId = 'categoryid';
+  static const columnEssenceText = 'essence';
+  static const columnEssenceCreated = 'created';
+  static const columnEssenceSourceSession = 'source_session_id';
+
+  // Accumulating four-domain findings (D-048).
+  static const domainFindingTable = 'domain_finding';
+  static const columnFindingId = 'id';
+  static const columnFindingCategoryId = 'categoryid';
+  static const columnFindingDomain = 'domain';
+  static const columnFindingNote = 'note';
+  static const columnFindingCreated = 'created';
+  static const columnFindingSourceSession = 'source_session_id';
+
+  static const Set<String> domains = {
+    'biological', 'psychological', 'relational', 'environmental'
+  };
+
+  // Single-row cache of server-authoritative entitlement (D-057). Never
+  // authoritative itself: it can report a trial, never extend one.
+  static const accountStateTable = 'account_state';
+  static const columnAccountId = 'id';
+  static const columnAccountUid = 'uid';
+  static const columnEntitlement = 'entitlement';
+  static const columnTrialStartedAt = 'trial_started_at';
+  static const columnTrialExpiresAt = 'trial_expires_at';
+  static const columnAccountTimezone = 'timezone';
+  static const columnEntitlementSyncedAt = 'entitlement_synced_at';
+
   static const columnCategoryId = 'categoryid';
   static const columnCat = 'cat';
 
@@ -98,11 +140,93 @@ class DatabaseHelper {
   }
 
   // this opens the database (and creates it if it doesn't exist)
+  /// Set when the database cannot be opened or migrated (D-086). The app shows
+  /// [DatabaseRecoveryScreen] instead of starting, rather than crashing or
+  /// failing silently.
+  static Object? openFailure;
+
   _initDatabase() async {
     Directory documentsDirectory = await getApplicationDocumentsDirectory();
     String path = join(documentsDirectory.path, _databaseName);
-    return await openDatabase(path,
-        version: _databaseVersion, onCreate: _onCreate, onUpgrade: _onUpgrade);
+    try {
+      final db = await openDatabase(path,
+          version: _databaseVersion, onCreate: _onCreate, onUpgrade: _onUpgrade);
+      openFailure = null;
+      return db;
+    } catch (e, stack) {
+      // D-086: migration is best-effort. A database we cannot open is not
+      // silently discarded and does not crash the app — it is surfaced so the
+      // user can be told plainly what to do.
+      openFailure = e;
+      if (kDebugMode) {
+        print('DatabaseHelper: cannot open or migrate the database: $e');
+        print(stack);
+      }
+      rethrow;
+    }
+  }
+
+
+  /// The R3 schema additions (Part IV), written idempotently so the v7
+  /// migration is safe to interrupt and retry (MIG-4). Shared by _onCreate
+  /// and _onUpgrade so a fresh install and an upgraded install converge on
+  /// exactly the same schema.
+  static Future<void> applyV7Schema(Database db) async {
+    // category.position — the pyramid slot. Added only if absent, because
+    // ALTER TABLE ADD COLUMN is not idempotent.
+    final cols = await db.rawQuery('PRAGMA table_info($categoryTable)');
+    final names = cols.map((c) => c['name'] as String).toSet();
+    if (!names.contains(columnPosition)) {
+      await db.execute('ALTER TABLE $categoryTable '
+          'ADD COLUMN $columnPosition INTEGER NOT NULL DEFAULT 0');
+    }
+    if (!names.contains(columnCategoryCreated)) {
+      await db.execute(
+          'ALTER TABLE $categoryTable ADD COLUMN $columnCategoryCreated TEXT');
+    }
+
+    // Backfill position from existing row order so every existing pyramid
+    // renders identically (MIG-3). Only rows still at the 0 default are
+    // touched, which keeps this safe to re-run.
+    await db.execute(
+        'UPDATE $categoryTable SET $columnPosition = $columnCategoryId '
+        'WHERE $columnPosition = 0');
+
+    await db.execute(
+        'CREATE TABLE IF NOT EXISTS $categoryEssenceTable ('
+        '$columnEssenceId INTEGER PRIMARY KEY AUTOINCREMENT, '
+        '$columnEssenceCategoryId INTEGER NOT NULL, '
+        '$columnEssenceText TEXT NOT NULL, '
+        '$columnEssenceCreated TEXT NOT NULL, '
+        '$columnEssenceSourceSession TEXT)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_essence_cat_created ON '
+        '$categoryEssenceTable ($columnEssenceCategoryId, $columnEssenceCreated DESC)');
+
+    await db.execute(
+        'CREATE TABLE IF NOT EXISTS $domainFindingTable ('
+        '$columnFindingId INTEGER PRIMARY KEY AUTOINCREMENT, '
+        '$columnFindingCategoryId INTEGER NOT NULL, '
+        '$columnFindingDomain TEXT NOT NULL, '
+        '$columnFindingNote TEXT NOT NULL, '
+        '$columnFindingCreated TEXT NOT NULL, '
+        '$columnFindingSourceSession TEXT)');
+    await db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_finding_cat ON '
+        '$domainFindingTable ($columnFindingCategoryId)');
+
+    // CHECK (id = 1) enforces the single-row invariant at the schema level.
+    await db.execute(
+        'CREATE TABLE IF NOT EXISTS $accountStateTable ('
+        "$columnAccountId INTEGER PRIMARY KEY CHECK ($columnAccountId = 1), "
+        '$columnAccountUid TEXT, '
+        "$columnEntitlement TEXT NOT NULL DEFAULT 'pre_trial', "
+        '$columnTrialStartedAt TEXT, '
+        '$columnTrialExpiresAt TEXT, '
+        '$columnAccountTimezone TEXT, '
+        '$columnEntitlementSyncedAt TEXT)');
+    await db.execute(
+        'INSERT OR IGNORE INTO $accountStateTable ($columnAccountId) VALUES (1)');
   }
 
   Future _onCreate(Database db, int version) async {
@@ -303,6 +427,9 @@ class DatabaseHelper {
             $chatColumnTimestamp TEXT NOT NULL
           )
           ''');
+
+    // R3 / Part IV schema, shared with the v7 migration.
+    await applyV7Schema(db);
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -365,6 +492,13 @@ class DatabaseHelper {
                 $columnCountdownValue INTEGER NOT NULL
               )
             ''');
+            break;
+          case 7:
+            // R3 / Part IV. Idempotent (MIG-4): safe to interrupt and retry.
+            // sqflite runs onUpgrade in a transaction, so a failure here
+            // leaves the database at version 6 and the app fully functional.
+            await applyV7Schema(db);
+            break;
         }
       }
     }
@@ -1074,6 +1208,45 @@ class DatabaseHelper {
       'ON CONFLICT ($columnCategoryId) DO UPDATE SET $columnCat = ?',
       [categoryid, cat, cat],
     );
+  }
+
+  /// Renames a category and cascades the new name into `task` and `tasklog`.
+  ///
+  /// D-084. `task` and `tasklog` key on the category *name*, so renaming
+  /// without cascading orphans every habit and log row under that category —
+  /// the shipped defect recorded in II-N. All three writes happen in one
+  /// transaction: either the rename lands everywhere or nowhere.
+  ///
+  /// Tables added by R3 key on `categoryid` and need no update here.
+  Future<void> renameCategoryCascading({
+    required int categoryid,
+    required String newName,
+  }) async {
+    final db = await instance.database;
+    await db.transaction((txn) async {
+      final existing = await txn.query(
+        getCategoryTable(),
+        columns: [columnCat],
+        where: '$columnCategoryId = ?',
+        whereArgs: [categoryid],
+      );
+      final oldName =
+          existing.isEmpty ? null : existing.first[columnCat] as String?;
+
+      await txn.rawInsert(
+        'INSERT INTO ${getCategoryTable()} ($columnCategoryId, $columnCat) '
+        'VALUES (?, ?) '
+        'ON CONFLICT ($columnCategoryId) DO UPDATE SET $columnCat = ?',
+        [categoryid, newName, newName],
+      );
+
+      if (oldName == null || oldName == newName) return;
+
+      await txn.update(getTaskTable(), {columnCategory: newName},
+          where: '$columnCategory = ?', whereArgs: [oldName]);
+      await txn.update(getTaskLogTable(), {columnTLCategory: newName},
+          where: '$columnTLCategory = ?', whereArgs: [oldName]);
+    });
   }
 
   /// Marks a habit checked or unchecked for a given date. Parameterized.

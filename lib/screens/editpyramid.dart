@@ -323,7 +323,10 @@ class _EditPyramid extends State<EditPyramid> {
         if (category != categoryText.text) {
           dbHelper.deleteCategoryContents(category);
         }
-        dbHelper.upsertCategoryAt(categoryid, categoryText.text);
+        dbHelper.renameCategoryCascading(
+          categoryid: categoryid,
+          newName: categoryText.text,
+        );
         setState(() {});
         switch (categoryid) {
           case 1:
