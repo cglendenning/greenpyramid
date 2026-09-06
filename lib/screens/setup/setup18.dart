@@ -146,46 +146,27 @@ class _Setup18State extends State<Setup18> {
 
     for (var category in cats) {
       // populate the category table...
-      await dbHelper.rawInsert("insert into category(categoryid, cat) values "
-          "(${category.categoryid}, '${category.cat}') "
-          " on conflict (categoryid) do update set cat = '${category.cat}'");
+      await dbHelper.upsertCategoryAt(category.categoryid, category.cat);
       for (var task in tasks) {
         if (kDebugMode) {
           print('task.id: ${task.id} task.category: ${task.category} '
               'task.taskdescription: ${task.taskdescription}');
         }
-        // HACK: This is a very simple sanitization because chatGPT can not
-        // guarantee that it will not produce single quotes in it's output.
-        task.taskdescription = task.taskdescription.replaceAll('\'', '');
         // failsafe: only insert tasks for existing categories.
         if (task.category == category.cat) {
-          await dbHelper.rawInsert("insert into task ("
-              "id, category, taskdescription, sunday, monday, tuesday, "
-              "wednesday, thursday, friday, saturday, createdate) "
-              "values ( "
-              "${task.id},"
-              "'${task.category}',"
-              "'${task.taskdescription}',"
-              "'${task.sunday}',"
-              "'${task.monday}',"
-              "'${task.tuesday}',"
-              "'${task.wednesday}',"
-              "'${task.thursday}',"
-              "'${task.friday}',"
-              "'${task.saturday}',"
-              "'${task.createDate}'"
-              ") "
-              "on conflict (category, taskdescription) do update set "
-              "category = '${task.category}',"
-              "taskdescription = '${task.taskdescription}',"
-              "sunday = '${task.sunday}',"
-              "monday = '${task.monday}',"
-              "tuesday = '${task.tuesday}',"
-              "wednesday = '${task.wednesday}',"
-              "thursday = '${task.thursday}',"
-              "friday = '${task.friday}',"
-              "saturday = '${task.saturday}',"
-              "createdate = '${task.createDate}'");
+          await dbHelper.upsertTaskAt(
+            id: task.id,
+            category: task.category,
+            taskDescription: task.taskdescription,
+            sunday: task.sunday,
+            monday: task.monday,
+            tuesday: task.tuesday,
+            wednesday: task.wednesday,
+            thursday: task.thursday,
+            friday: task.friday,
+            saturday: task.saturday,
+            createDate: task.createDate,
+          );
         }
       }
     }

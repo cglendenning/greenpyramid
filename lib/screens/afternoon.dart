@@ -187,11 +187,12 @@ class _Afternoon extends State<Afternoon> {
                                             onChanged: (bool? value) {
                                               setState(() {
                                                 value.toString();
-                                                dbHelper.rawUpdate(
-                                                    "update ${dbHelper.getTaskLogTable()} set checked = '${value.toString()}' "
-                                                    "where taskdescription = '${snapshot.data[index].taskdescription}' "
-                                                    " and category = '${snapshot.data[index].category}'"
-                                                    " and taskdate = '${snapshot.data[index].taskdate}'");
+                                                dbHelper.setTaskLogChecked(
+  category: snapshot.data[index].category,
+  taskDescription: snapshot.data[index].taskdescription,
+  taskDate: snapshot.data[index].taskdate,
+  checked: value ?? false,
+);
                                               });
                                             },
                                           );

@@ -1210,6 +1210,45 @@ class DatabaseHelper {
     );
   }
 
+  /// Inserts or updates a task at an explicit id. Parameterized.
+  ///
+  /// D-024: extracted from lib/screens/setup/setup18.dart, which built this
+  /// statement by interpolating model-generated text into SQL and stripped
+  /// apostrophes to stop it breaking the query. Binding the arguments removes
+  /// both the injection path and the need to mangle the text.
+  Future<int> upsertTaskAt({
+    required int id,
+    required String category,
+    required String taskDescription,
+    required String sunday,
+    required String monday,
+    required String tuesday,
+    required String wednesday,
+    required String thursday,
+    required String friday,
+    required String saturday,
+    required String createDate,
+  }) async {
+    final db = await instance.database;
+    return db.insert(
+      getTaskTable(),
+      {
+        columnId: id,
+        columnCategory: category,
+        columnTaskDescription: taskDescription,
+        columnSunday: sunday,
+        columnMonday: monday,
+        columnTuesday: tuesday,
+        columnWednesday: wednesday,
+        columnThursday: thursday,
+        columnFriday: friday,
+        columnSaturday: saturday,
+        columnCreateDate: createDate,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
+    );
+  }
+
   /// Renames a category and cascades the new name into `task` and `tasklog`.
   ///
   /// D-084. `task` and `tasklog` key on the category *name*, so renaming
