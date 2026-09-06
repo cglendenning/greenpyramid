@@ -2,12 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:life_ops/services/notification.dart';
 import 'package:life_ops/services/db.dart';
 import 'package:life_ops/services/dbtools.dart';
-import 'package:life_ops/screens/morning.dart';
-import 'package:life_ops/screens/afternoon.dart';
-import 'package:life_ops/screens/evening.dart';
 import 'package:life_ops/main.dart';
 import 'package:life_ops/widgets/pyramid.dart';
-import 'package:life_ops/screens/coach.dart';
 import 'package:life_ops/screens/settings.dart';
 import 'package:life_ops/screens/setup_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -53,17 +49,16 @@ class HomeScreen extends StatelessWidget {
             return MaterialPageRoute(
               builder: (_) => const HomeScreenWidget(),
             );
+          // D-083: morning/afternoon/evening are deleted, replaced by
+          // D-036's server-generated notifications. These three cases stay
+          // only so a stale local notification already scheduled on a
+          // device before the upgrade lands on the pyramid rather than an
+          // error route.
           case '/morning':
-            return MaterialPageRoute(
-              builder: (context) => const Morning(),
-            );
           case '/afternoon':
-            return MaterialPageRoute(
-              builder: (context) => const Afternoon(),
-            );
           case '/evening':
             return MaterialPageRoute(
-              builder: (context) => const Evening(),
+              builder: (_) => const HomeScreenWidget(),
             );
           case '/setup':
             return MaterialPageRoute(builder: (context) => const SetupScreen());
@@ -230,7 +225,6 @@ class _HomeScreen extends State<HomeScreenWidget> {
                 _cat5Future,
                 _cat6Future,
               ),
-              Coach(showAppBar: false),
               const Settings(),
               const VisualizationsScreen(), // NEW: Visualizations screen
             ][currentScreenIndex]));
@@ -530,13 +524,6 @@ class _BottomNavBarState extends State<BottomNavBar> {
         colorFilter: const ColorFilter.mode(AppColors.textSecondary, BlendMode.srcIn),
         semanticsLabel: 'List');
 
-    final Widget svgChat = SvgPicture.asset('images/svg/bottom_nav/chat.svg',
-        height: 26,
-        width: 26,
-        fit: BoxFit.contain,
-        colorFilter: const ColorFilter.mode(AppColors.textSecondary, BlendMode.srcIn),
-        semanticsLabel: 'Chat');
-
     final Widget svgPencil = SvgPicture.asset(
         'images/svg/bottom_nav/pencil.svg',
         height: 26,
@@ -576,14 +563,6 @@ class _BottomNavBarState extends State<BottomNavBar> {
         colorFilter: ColorFilter.mode(triangleColor, BlendMode.srcIn),
         semanticsLabel: 'List Selected');
 
-    final Widget svgChatSelected = SvgPicture.asset(
-        'images/svg/bottom_nav/chat_selected.svg',
-        height: selectedHeight,
-        width: selectedWidth,
-        fit: BoxFit.contain,
-        colorFilter: ColorFilter.mode(triangleColor, BlendMode.srcIn),
-        semanticsLabel: 'Chat Selected');
-
     final Widget svgPencilSelected = SvgPicture.asset(
         'images/svg/bottom_nav/pencil_selected.svg',
         height: selectedHeight,
@@ -616,7 +595,6 @@ class _BottomNavBarState extends State<BottomNavBar> {
               case 1:
               case 2:
               case 3:
-              case 4:
                 if (currentScreenIndex != index) {
                   currentScreenIndex = index;
                 }
@@ -636,11 +614,6 @@ class _BottomNavBarState extends State<BottomNavBar> {
             NavigationDestination(
               selectedIcon: svgListSelected,
               icon: svgList,
-              label: '',
-            ),
-            NavigationDestination(
-              selectedIcon: svgChatSelected,
-              icon: svgChat,
               label: '',
             ),
             NavigationDestination(

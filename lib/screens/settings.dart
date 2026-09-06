@@ -3,10 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:life_ops/services/notification.dart';
-import 'package:life_ops/screens/morning.dart';
-import 'package:life_ops/screens/afternoon.dart';
-import 'package:life_ops/screens/evening.dart';
-import 'package:life_ops/services/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:life_ops/screens/council_category_picker.dart';
@@ -184,19 +180,13 @@ class _SettingsState extends State<Settings> {
               child: ListView.builder(
                   itemCount: notifications.length,
                   itemBuilder: (BuildContext context, int index) {
+                    // D-083: these were previews of the time-of-day AI
+                    // commentary screens, now deleted and replaced by
+                    // D-036's server-generated notifications — the row
+                    // stays as a plain display of when notifications fire.
                     return ListTile(
                       title: Text('${notifications[index]['desc']}'),
                       subtitle: Text('${notifications[index]['timeofday']}'),
-                      onTap: () {
-                        switch (index) {
-                          case 0:
-                            navigateToMorning(context);
-                          case 1:
-                            navigateToAfternoon(context);
-                          case 2:
-                            navigateToEvening(context);
-                        }
-                      },
                     );
                   }))),
       // D-061: Council re-clarification entry point.
@@ -234,40 +224,6 @@ class _SettingsState extends State<Settings> {
     ]))));
   }
 
-  void navigateToMorning(BuildContext context) async {
-    utils.Utils().changeSystemColor(Brightness.dark);
-    await Navigator.push(
-            context, MaterialPageRoute(builder: (context) => const Morning()))
-        .then((_) {
-      setState(() {
-        utils.Utils().changeSystemColor(Brightness.light);
-      });
-    });
-  }
-
-  void navigateToAfternoon(BuildContext context) async {
-    utils.Utils().changeSystemColor(Brightness.dark);
-
-    await Navigator.push(
-            context, MaterialPageRoute(builder: (context) => const Afternoon()))
-        .then((_) {
-      setState(() {
-        utils.Utils().changeSystemColor(Brightness.light);
-      });
-    });
-  }
-
-  void navigateToEvening(BuildContext context) async {
-    utils.Utils().changeSystemColor(Brightness.dark);
-
-    await Navigator.push(
-            context, MaterialPageRoute(builder: (context) => const Evening()))
-        .then((_) {
-      setState(() {
-        utils.Utils().changeSystemColor(Brightness.light);
-      });
-    });
-  }
 }
 
 class NotificationSwitch extends StatefulWidget {
@@ -329,21 +285,21 @@ class _NotificationSwitchState extends State<NotificationSwitch> {
         title: 'Morning Review',
         hour: 9,
         minute: 00,
-        payload: '/morning');
+        payload: '/');
 
     lns.scheduleDailyNotification(
         id: 1,
         title: 'Afternoon Review',
         hour: 12,
         minute: 00,
-        payload: '/afternoon');
+        payload: '/');
 
     lns.scheduleDailyNotification(
         id: 2,
         title: 'Evening Review',
         hour: 20,
         minute: 00,
-        payload: '/evening');
+        payload: '/');
   }
 
   turnOffNotificationsDialog() {

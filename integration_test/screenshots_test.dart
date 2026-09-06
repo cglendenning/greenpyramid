@@ -17,7 +17,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:life_ops/screens/coach.dart';
 import 'package:life_ops/services/db.dart';
 import 'package:life_ops/services/dbtools.dart';
 import 'package:life_ops/firebase_options.dart';
@@ -122,9 +121,5 @@ Future<void> main() async {
     await _shot(tester, '04-visualizations');
     nav.pop();
     await _settle(tester, total: const Duration(seconds: 1));
-
-    nav.push(MaterialPageRoute(builder: (_) => Coach()));
-    await _settle(tester);
-    await _shot(tester, '05-coach');
   });
 }
