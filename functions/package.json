@@ -3,10 +3,14 @@
   "version": "1.0.0",
   "type": "module",
   "main": "index.js",
+  "scripts": {
+    "test": "node --test lib/*.test.js"
+  },
   "engines": {
     "node": "22"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.124.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "firebase-admin": "^13.4.0",

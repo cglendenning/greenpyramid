@@ -1479,6 +1479,37 @@ class DatabaseHelper {
     return db.query(categoryEssenceTable);
   }
 
+  /// D-028/D-061: the active (most recent) essence for one category, the
+  /// context a Council re-clarification session opens with. Null if the
+  /// category has never had an essence captured — a first-class state
+  /// (D-005), not an error.
+  Future<String?> getLatestEssenceForCategory(int categoryId) async {
+    final db = await database;
+    final rows = await db.query(categoryEssenceTable,
+        where: '$columnEssenceCategoryId = ?',
+        whereArgs: [categoryId],
+        orderBy: '$columnEssenceCreated DESC',
+        limit: 1);
+    if (rows.isEmpty) return null;
+    return rows.first[columnEssenceText] as String?;
+  }
+
+  /// D-028/D-061: appends a new essence version for a category (essences are
+  /// versioned, never overwritten — D-061).
+  Future<void> insertCategoryEssence({
+    required int categoryId,
+    required String essence,
+    String? sourceSessionId,
+  }) async {
+    final db = await database;
+    await db.insert(categoryEssenceTable, {
+      columnEssenceCategoryId: categoryId,
+      columnEssenceText: essence,
+      columnEssenceCreated: DateTime.now().toIso8601String(),
+      columnEssenceSourceSession: sourceSessionId,
+    });
+  }
+
   /// D-075: accumulated four-domain findings — part of the synced set.
   Future<List<Map<String, dynamic>>> queryAllDomainFindings() async {
     final db = await database;

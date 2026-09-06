@@ -9,6 +9,7 @@ import 'package:life_ops/screens/evening.dart';
 import 'package:life_ops/services/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:life_ops/screens/council_category_picker.dart';
 import 'dart:io' show Platform;
 
 Future<void> showPreviewWarningDialog(BuildContext context) async {
@@ -198,6 +199,20 @@ class _SettingsState extends State<Settings> {
                       },
                     );
                   }))),
+      // D-061: Council re-clarification entry point.
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4.0),
+        child: TextButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const CouncilCategoryPicker()),
+            );
+          },
+          child: const Text('Revisit a category with the Council'),
+        ),
+      ),
       // Adjust Previews link - only show on iOS
       if (Platform.isIOS)
         Padding(

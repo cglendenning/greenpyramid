@@ -11,11 +11,16 @@ import { defineSecret } from 'firebase-functions/params';
 import express from 'express';
 import cors from 'cors';
 import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 import admin from 'firebase-admin';
+import { buildAdvisorTurnPrompt } from './lib/council.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
-// OPENAI_API_KEY), never in source.
+// OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
+// legacy coach/commentary surfaces until D-083 (R6) retires them; Anthropic
+// backs the Council (D-040, D-050).
 const sOpenAI = defineSecret('OPENAI_API_KEY');
+const sAnthropic = defineSecret('ANTHROPIC_API_KEY');
 
 setGlobalOptions({ region: 'us-central1' });
 
@@ -87,9 +92,47 @@ app.post('/v1/chat/completions', async (req, res) => {
   }
 });
 
+// ── The Council of Advisors (D-027/D-028/D-040/D-050) ──────────────────────
+// Prompt-building logic lives in lib/council.js so it's testable without
+// spinning up Express or Firebase Admin (node --test lib/*.test.js).
+
+// D-041: the one place the Council's model identifier is configured.
+const COUNCIL_MODEL = 'claude-opus-5';
+
+let anthropicClient;
+function claude() {
+  if (!anthropicClient) anthropicClient = new Anthropic({ apiKey: sAnthropic.value() });
+  return anthropicClient;
+}
+
+app.post('/boardAdvisorTurn', async (req, res) => {
+  const built = buildAdvisorTurnPrompt(req.body || {});
+  if (!built) return res.status(400).json({ error: 'Invalid advisorKey' });
+  const { advisor, systemText, userMessage } = built;
+
+  try {
+    const msg = await claude().messages.create({
+      model: COUNCIL_MODEL,
+      max_tokens: 120,
+      // D-041: this block is the stable prefix — constant per advisor while
+      // the intensity slider stays at its default (D-073) — so it carries
+      // the cache breakpoint. Nothing user-derived is in this block.
+      system: [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: userMessage }],
+    });
+    res.json({
+      reply: msg.content[0].text,
+      usage: { inputTokens: msg.usage.input_tokens, outputTokens: msg.usage.output_tokens },
+    });
+  } catch (e) {
+    console.error('boardAdvisorTurn error:', e.message, '— advisor:', advisor.name);
+    res.status(502).json({ error: e.message });
+  }
+});
+
 export const api = onRequest(
   {
-    secrets: [sOpenAI],
+    secrets: [sOpenAI, sAnthropic],
     timeoutSeconds: 60,
     memory: '256MiB',
     invoker: 'public',
