@@ -1,0 +1,15 @@
+rules_version = '2';
+
+// IV-D: everything Green Pyramid writes to Firestore lives under
+// users/{uid}/... A user may only read or write their own tree — this is
+// the client-side enforcement of D-031 (data is used only to serve the
+// user who produced it) and D-075 (nothing outside the enumerated set is
+// written). Server-side jobs (D-036's notification generator) run under
+// the Admin SDK, which bypasses these rules entirely.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
