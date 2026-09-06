@@ -6,6 +6,12 @@ import { queryTwoBits, updateTwoBits } from './device_check.js';
 
 export const TRIAL_DAYS = 3; // D-057
 export const MIGRATION_TRIAL_DAYS = 30; // D-071
+// D-060/D-064: the Android hash is retained 24 months from last write, then
+// purged — long enough to defeat trial farming, bounded enough to be
+// defensible under GDPR data-minimisation. After 24 months the device can
+// claim a trial again; that expiry is the deliberate trade the spec's own
+// rationale accepts, not an oversight.
+export const DEVICE_TRIAL_RETENTION_DAYS = 730;
 
 export class DeviceTrialError extends Error {
   constructor(message) {
@@ -50,7 +56,12 @@ async function grantAndroidTrial(uid, androidIdHash, { _store, _now }) {
       return { granted: false, entitlement: 'lapsed' };
     }
     const { trialStartedAt, trialExpiresAt } = trialWindow(TRIAL_DAYS, _now);
-    tx.set(trialRef, { uid, createdAt: admin.firestore.Timestamp.fromDate(_now) });
+    const retainUntil = new Date(_now.getTime() + DEVICE_TRIAL_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    tx.set(trialRef, {
+      uid,
+      createdAt: admin.firestore.Timestamp.fromDate(_now),
+      ttlAt: admin.firestore.Timestamp.fromDate(retainUntil),
+    });
     tx.set(profileRef, {
       entitlement: 'trialing',
       trialStartedAt: admin.firestore.Timestamp.fromDate(trialStartedAt),

@@ -225,8 +225,6 @@ class SyncService {
     final entitlement = account[DatabaseHelper.columnEntitlement];
     final everSubscribed = entitlement != 'pre_trial';
     final incompleteSetupEligible = !setupComplete && !everSubscribed;
-    // Not reachable yet: nothing sets entitlement to 'lapsed' until R8's
-    // trial/subscription lifecycle exists.
     final lapsedEligible = entitlement == 'lapsed';
 
     if (!incompleteSetupEligible && !lapsedEligible) {

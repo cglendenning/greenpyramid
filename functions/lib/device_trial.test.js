@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { grantTrialIfEligible, grantMigrationTrial, DeviceTrialError, TRIAL_DAYS, MIGRATION_TRIAL_DAYS } from './device_trial.js';
+import { grantTrialIfEligible, grantMigrationTrial, DeviceTrialError, TRIAL_DAYS, MIGRATION_TRIAL_DAYS, DEVICE_TRIAL_RETENTION_DAYS } from './device_trial.js';
 
 class FakeDoc {
   constructor(store, path) { this.store = store; this.path = path; }
@@ -49,6 +49,18 @@ test('D-059: a fresh Android device is granted a 3-day trial and marked '
   assert.ok(store.data[trialPath('hash1')]);
   const expiresAt = store.data[profilePath('u1')].trialExpiresAt.toDate();
   assert.equal(expiresAt.getTime() - now.getTime(), TRIAL_DAYS * 24 * 60 * 60 * 1000);
+});
+
+test('D-060/D-064: the device trial marker carries a 24-month ttlAt so '
+    + 'Firestore purges it — retained, not kept forever', () => {
+  const store = new FakeFirestore();
+  return grantTrialIfEligible(
+    'u1', { platform: 'android', androidIdHash: 'hash1' }, store, now,
+  ).then(() => {
+    const ttlAt = store.data[trialPath('hash1')].ttlAt.toDate();
+    assert.equal(ttlAt.getTime() - now.getTime(), DEVICE_TRIAL_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    assert.equal(DEVICE_TRIAL_RETENTION_DAYS, 730, 'D-064 specifies 24 months');
+  });
 });
 
 test('D-059: an Android device that already consumed its trial lands a '
