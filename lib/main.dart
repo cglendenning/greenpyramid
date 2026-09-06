@@ -19,6 +19,8 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/widgets.dart';
 import 'package:life_ops/widgets/pyramid_painting.dart';
 import 'package:life_ops/services/push_messaging_service.dart';
+import 'package:life_ops/services/subscription_service.dart';
+import 'package:life_ops/services/entitlement_service.dart';
 
 // Forces the App Check *debug* provider even in a release/OTA build, so a
 // sideloaded test build can authenticate with a registered debug token.
@@ -80,6 +82,11 @@ Future<void> main() async {
     }
     debugPrint('Firebase already initialized, continuing.');
   }
+
+  // D-070: configuring RevenueCat doesn't depend on the app's own account
+  // (it's re-tied to the Firebase uid via login() in _bootstrapAccountSync)
+  // and must never block first frame — started here, awaited nowhere.
+  unawaited(SubscriptionService.initialize());
 
   // App Check gates the backend AI proxy: it proves requests come from the
   // genuine app binary, so the OpenAI key never has to live in the app.
@@ -162,6 +169,31 @@ Future<void> _bootstrapAccountSync({required bool setupComplete}) async {
   }
 
   await SyncService.instance.syncAll(uid, setupComplete: setupComplete);
+
+  try {
+    await SubscriptionService.login(uid);
+  } catch (e, st) {
+    debugPrint('Failed to log in to RevenueCat: $e\n$st');
+  }
+
+  // D-057: pulls the server-authoritative entitlement into the local cache
+  // on every launch — a subscription confirmed via the RevenueCat webhook
+  // never touches this device directly, so this is how it reaches the
+  // local gate CouncilCategoryPicker reads.
+  await EntitlementService.instance.pullFromServer(uid);
+
+  // D-071: an account that reached setup completion under the old flow (no
+  // Council setup, so no device-bound trial was ever requested) is the
+  // D-034 migration cohort — it gets the one-time 30-day grant here, on
+  // the first launch of this build. A brand-new user who just finished the
+  // new Council setup already has a real entitlement by this point
+  // (requested at setup completion, D-058), so this never double-grants.
+  if (setupComplete) {
+    final account = await dbHelper.getAccountState();
+    if (account[DatabaseHelper.columnEntitlement] == 'pre_trial') {
+      await EntitlementService.instance.requestMigrationTrial();
+    }
+  }
 
   // D-036/D-039: keeps the FCM token and local fallback current on every
   // launch. Only for accounts that have already been through D-065's

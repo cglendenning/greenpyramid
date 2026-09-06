@@ -9,6 +9,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.3.77"
+  android_id:
+    dependency: "direct main"
+    description:
+      name: android_id
+      sha256: "543bbfcf316de69d3ac36601d74eeaacd0248178a2671b00ad30d09f35bd3581"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.5.2+1"
   android_intent_plus:
     dependency: "direct main"
     description:
@@ -162,7 +170,7 @@ packages:
     source: hosted
     version: "0.3.4+2"
   crypto:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: crypto
       sha256: "1e445881f28f22d6140f181e07737b22f1e099a5e1ff94b0af2f9e4a463f4855"
@@ -209,6 +217,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.11"
+  device_check:
+    dependency: "direct main"
+    description:
+      name: device_check
+      sha256: a76320121d37b30b1ea46533e1280fbde0cac69d653681fdab8756ec3661eb1f
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   equatable:
     dependency: transitive
     description:
@@ -975,6 +991,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  purchases_flutter:
+    dependency: "direct main"
+    description:
+      name: purchases_flutter
+      sha256: "7608be2dc1f48cf34f15cc5830af256b89d2d7966d5da63788a87a7a8925ff87"
+      url: "https://pub.dev"
+    source: hosted
+    version: "9.16.1"
   record_use:
     dependency: transitive
     description:

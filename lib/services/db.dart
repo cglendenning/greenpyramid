@@ -1506,6 +1506,29 @@ class DatabaseHelper {
         where: '$columnAccountId = ?', whereArgs: [1]);
   }
 
+  /// D-057: writes the server-authoritative entitlement into the local
+  /// cache. Called only by EntitlementService, after a real server response
+  /// (a /requestTrial reply or a profile/main pull) — never from anything
+  /// derived purely on-device, since this row "can report a trial, never
+  /// extend one."
+  Future<void> setAccountEntitlement({
+    required String entitlement,
+    String? trialStartedAt,
+    String? trialExpiresAt,
+  }) async {
+    final db = await database;
+    await db.update(
+        accountStateTable,
+        {
+          columnEntitlement: entitlement,
+          columnTrialStartedAt: trialStartedAt,
+          columnTrialExpiresAt: trialExpiresAt,
+          columnEntitlementSyncedAt: DateTime.now().toIso8601String(),
+        },
+        where: '$columnAccountId = ?',
+        whereArgs: [1]);
+  }
+
   /// D-075: every version of every category's essence — part of the synced
   /// set.
   Future<List<Map<String, dynamic>>> queryAllCategoryEssences() async {

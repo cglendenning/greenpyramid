@@ -66,6 +66,16 @@ dependencies:
   uuid: ^4.6.0
   firebase_auth: ^6.5.6
   sign_in_with_apple: ^8.1.0
+  # D-070: RevenueCat, ported from Kansei. Pinned to the same major version
+  # Kansei's already-tested integration uses (D-070's acceptance criterion),
+  # not the latest — 10.x carries breaking API changes not yet verified here.
+  purchases_flutter: ^9.0.0
+  # D-059: iOS DeviceCheck token generation (DCDevice.generateToken()).
+  device_check: ^1.0.0
+  # D-059: Android's per-app-signing-key device identifier, hashed before
+  # it ever leaves the device.
+  android_id: ^0.5.2+1
+  crypto: ^3.0.0
 
 dev_dependencies:
   flutter_test:

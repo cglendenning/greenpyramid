@@ -95,13 +95,16 @@ class SyncService {
     final vision = await _db.getLatestVisionStatement();
     final account = await _db.getAccountState();
 
+    // D-057: entitlement/trialStartedAt/trialExpiresAt are server-authoritative
+    // (granted by /requestTrial, transitioned by the RevenueCat webhook) —
+    // never uploaded here. The local account_state copy is a downstream cache
+    // (EntitlementService pulls it down), not a source pushed back up; pushing
+    // it would let a stale client cache clobber a real subscribed/lapsed
+    // transition on the next launch.
     await userDoc.collection('profile').doc('main').set(
         {
           'categories': categories,
           if (vision != null) 'visionStatement': vision,
-          'entitlement': account[DatabaseHelper.columnEntitlement],
-          'trialStartedAt': account[DatabaseHelper.columnTrialStartedAt],
-          'trialExpiresAt': account[DatabaseHelper.columnTrialExpiresAt],
           'timezone': account[DatabaseHelper.columnAccountTimezone],
         },
         SetOptions(merge: true));

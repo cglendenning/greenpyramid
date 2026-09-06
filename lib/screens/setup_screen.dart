@@ -4,6 +4,8 @@ import '../models/board_session.dart';
 import '../services/ai_guard.dart';
 import '../services/council_client.dart';
 import '../services/council_service.dart';
+import '../services/db.dart';
+import '../services/entitlement_service.dart';
 import '../services/resonance_service.dart';
 import '../services/setup_service.dart';
 import '../theme/app_colors.dart';
@@ -11,6 +13,7 @@ import '../widgets/advisor.dart';
 import '../widgets/setup_progress_indicator.dart';
 import 'setup_completion_screen.dart';
 import 'push_permission_screen.dart';
+import 'trial_disclosure_screen.dart';
 
 /// D-042/D-043: the app's first screen and setup in full — one continuous
 /// Council conversation (D-082's `setup`-typed session), never a
@@ -383,16 +386,28 @@ class _SetupScreenState extends State<SetupScreen> {
           .toList();
       await _setup.closeSynthesis(session: session, essences: essences);
       await _setup.syncAfterSetup();
+      // D-058: the trial clock starts here, at the pyramid reveal — awaited
+      // before navigating so the D-014 disclosure screen below can show the
+      // real outcome (a device that already consumed its trial lands in
+      // 'lapsed', not 'trialing').
+      await EntitlementService.instance.requestTrialAfterSetup();
+      final account = await DatabaseHelper.instance.getAccountState();
+      final entitlement = account[DatabaseHelper.columnEntitlement] as String?;
       if (!mounted) return;
       Navigator.of(context).pushReplacement(MaterialPageRoute(
         builder: (context) => SetupCompletionScreen(
-          // D-065: push permission is requested here — immediately after
-          // the completion moment settles, before the home screen, never
-          // on first launch.
           onDone: () => Navigator.of(context).pushReplacement(MaterialPageRoute(
-            builder: (context) => PushPermissionScreen(
-              onDone: () => Navigator.of(context)
-                  .pushNamedAndRemoveUntil('/', (route) => false),
+            builder: (context) => TrialDisclosureScreen(
+              entitlement: entitlement,
+              // D-065: push permission is requested here — immediately
+              // after the completion moment settles, before the home
+              // screen, never on first launch.
+              onDone: () => Navigator.of(context).pushReplacement(MaterialPageRoute(
+                builder: (context) => PushPermissionScreen(
+                  onDone: () => Navigator.of(context)
+                      .pushNamedAndRemoveUntil('/', (route) => false),
+                ),
+              )),
             ),
           )),
         ),

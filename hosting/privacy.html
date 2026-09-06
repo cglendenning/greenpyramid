@@ -17,83 +17,119 @@
 </head>
 <body>
 <h1>Green Pyramid Privacy Policy</h1>
-<p class="meta">Effective July 19, 2026</p>
+<p class="meta">Effective September 6, 2026</p>
 
 <p>This policy describes how Green Pyramid ("the app"), published by Craig
-Glendenning, handles your information. Green Pyramid is a personal development
-app in which you organize life categories, track daily tasks, and receive
-AI-assisted coaching. The app does not require an account, and the personal
-content you create is stored on your device.</p>
+Glendenning, handles your information. Green Pyramid is a personal
+clarification app: you name six life categories, capture what each one
+means to you with an AI advisory Council, and track daily habits against
+that. The app shows no advertising and holds no data-broker relationships.</p>
 
-<h2>Information stored on your device</h2>
-<p>Your life categories, tasks, task completion history, vision statement,
-chat conversations, and settings are stored in a local database on your
-device. This data stays on your device: we operate no account system and no
-server-side database of user content. Deleting the app deletes this data.</p>
+<h2>Your account</h2>
+<p>The app creates an anonymous account for you automatically — you are
+never asked for an email address or password to use it. If you choose to
+back up your account (for example, before switching devices), you may link
+it to Sign in with Apple; this only adds a recovery credential to the same
+anonymous account and does not create a separate profile.</p>
 
-<h2>Information processed by our AI features</h2>
-<p>When you use AI-powered features (the coach chat, generated motivations
-and quotes, task suggestions, vision statement help, and progress insights),
-the app sends the relevant content to our secure backend, which forwards it
-to OpenAI to generate a response. Depending on the feature, this content can
-include your chat messages, category and task names, task completion
-statistics, and text you provide such as your vision statement.</p>
+<h2>Information stored on your device and synced to our servers</h2>
+<p>Your categories, their essences (what each category means to you),
+vision statement, habit definitions, and recent completion history are
+stored locally on your device and also synced to our Firebase backend under
+your account, so they survive a reinstall or device change and so
+notifications can be tailored to them. We operate no separate marketing or
+analytics database of this content — it exists solely to run the app for
+you.</p>
+
+<h2>The Council (AI-assisted clarification)</h2>
+<p>When you use the Council — during initial setup or when revisiting a
+category — the app sends the relevant conversation, category context, and
+(where applicable) your existing essence to our backend, which forwards it
+to Anthropic's Claude models to generate a response.</p>
 <ul>
-  <li>Our backend processes these requests transiently. It does not store
-      your content and holds no database of it.</li>
+  <li>Our backend processes these requests transiently. It does not
+      maintain its own copy of your conversations beyond what is described
+      above.</li>
   <li>Requests are verified with Firebase App Check to confirm they come
-      from a genuine copy of the app.</li>
-  <li>OpenAI processes the content as an API data processor under its
-      <a href="https://openai.com/policies/api-data-usage-policies">API data
-      usage policies</a>, which state that API data is not used to train
-      OpenAI models.</li>
+      from a genuine copy of the app, and with Firebase Authentication to
+      confirm which account is asking.</li>
+  <li>Anthropic processes this content under its own
+      <a href="https://www.anthropic.com/legal/privacy">privacy policy</a>
+      and does not use API content to train its models by default.</li>
 </ul>
-<p>Do not include information in chats that you do not want processed by
-these services.</p>
-
-<h2>Advertising</h2>
-<p>The app shows ads served by Google AdMob, which help keep the app and its
-AI features free. To serve and measure ads, Google may collect device
-identifiers, IP address (used to estimate approximate location), and
-information about your interactions with ads. The app does not use Apple's
-App Tracking Transparency framework and does not request permission to track
-you across other companies' apps or websites; ads are served on a contextual
-basis. For details on how Google uses this data, see
-<a href="https://policies.google.com/technologies/partner-sites">How Google
-uses information from sites or apps that use its services</a> and the
-<a href="https://policies.google.com/privacy">Google Privacy Policy</a>.</p>
-
-<h2>Analytics and diagnostics</h2>
-<p>We use Firebase Analytics to understand aggregate app usage, such as which
-screens are visited and general device characteristics. This helps us improve
-the app. Advertising and analytics SDKs may also collect crash logs and
-performance data.</p>
+<p>Do not include information in Council conversations that you do not want
+processed by these services.</p>
 
 <h2>Notifications</h2>
-<p>If you allow notifications, the app schedules daily reminders locally on
-your device. Notification scheduling does not send data off your device.</p>
+<p>If you allow notifications, the app schedules reminders and, for
+trialing and subscribed accounts, tailored messages generated from your
+categories and recent activity, delivered via Firebase Cloud Messaging. If
+notifications are declined, reminders are scheduled locally on your device
+instead, and nothing about their content leaves the device.</p>
+
+<h2>Subscription and free trial</h2>
+<p>Green Pyramid is funded by an optional monthly subscription, processed
+by our payments partner RevenueCat. RevenueCat receives your purchase
+receipt and an identifier tied to your anonymous account (not your name or
+email) to activate and manage your subscription; it does not receive any of
+your category, essence, or habit content. See RevenueCat's
+<a href="https://www.revenuecat.com/privacy/">privacy policy</a> for
+details.</p>
+<p>New accounts receive a short free trial before a subscription is
+required, limited to one trial per device so it cannot be repeatedly
+reclaimed by reinstalling the app. We use each platform's own mechanism for
+this:</p>
+<ul>
+  <li><strong>iOS:</strong> Apple's DeviceCheck service. Apple stores two
+      bits of state for your device — whether it has used a trial — and we
+      only ask Apple that yes-or-no question. We do not collect or store
+      any device identifier for this purpose ourselves.</li>
+  <li><strong>Android:</strong> a one-way cryptographic hash of your
+      device's Android ID. We never see or store the underlying identifier,
+      only its hash, and we use it for no purpose other than this
+      one-trial-per-device check. It is retained for 24 months and then
+      deleted.</li>
+</ul>
+<p>This use is limited to preventing repeated free-trial claims on the same
+device; it is never combined with your category, essence, habit, or
+conversation content, and never used for advertising.</p>
+
+<h2>Analytics and diagnostics</h2>
+<p>We use Firebase Analytics to understand aggregate app usage, such as
+which screens are visited and general device characteristics, so we can
+improve the app. This does not include your category, essence, or Council
+content.</p>
 
 <h2>What we share, and what we do not</h2>
 <ul>
-  <li>We share data with the service providers described above (Google for
-      advertising, analytics, and app integrity; OpenAI for AI responses)
+  <li>We share data with the service providers described above (Anthropic
+      for Council responses, RevenueCat for subscription billing, Google
+      Firebase for authentication, sync, notifications, and app integrity)
       only as needed to operate those features.</li>
-  <li>We do not sell your personal information.</li>
+  <li>We do not sell your personal information, and we show no advertising
+      of any kind.</li>
   <li>We may disclose information if required by law or to protect rights,
       property, or safety.</li>
 </ul>
 
 <h2>Data retention</h2>
-<p>Content you create lives on your device until you delete it or uninstall
-the app. Our backend retains no user content. Data collected by Google and
-OpenAI is retained under their respective policies linked above.</p>
+<p>Content you create is retained on your device and in our backend while
+your account is active. An account that never completes setup is deleted
+after 30 days of inactivity. An account whose trial or subscription lapses
+without ever being renewed has its backend copy deleted after 12 months;
+the local copy on your device is never affected by this. The Android trial
+hash described above is retained for 24 months. Deleting the app removes
+the on-device copy of your data immediately.</p>
 
 <h2>Your rights and choices</h2>
 <ul>
-  <li>You can delete all app content at any time by deleting your data in
-      the app or uninstalling it.</li>
+  <li>You can delete your account and its backend data at any time by
+      contacting us at the address below.</li>
   <li>You can decline notification permission, or revoke it in system
-      settings.</li>
+      settings, at any time.</li>
+  <li>You can cancel your subscription at any time from your device's App
+      Store or Play Store subscription settings; your data is never
+      affected by cancellation.</li>
   <li>Depending on where you live (for example the EEA, UK, or California),
       you may have rights to access, correct, or delete personal
       information. Contact us at the address below and we will help.</li>
@@ -108,15 +144,16 @@ us and we will address it.</p>
 <h2>Security</h2>
 <p>Communication with our backend and third-party services uses encrypted
 connections (HTTPS), and backend access is gated by device attestation
-(Firebase App Check). No method of transmission or storage is completely
-secure, but we work to protect your information appropriately.</p>
+(Firebase App Check) and account authentication. No method of transmission
+or storage is completely secure, but we work to protect your information
+appropriately.</p>
 
 <h2>Changes to this policy</h2>
 <p>We may update this policy as the app evolves. Material changes will be
 reflected on this page with an updated effective date.</p>
 
 <h2>Contact</h2>
-<p>Questions about privacy or this policy: <a
-href="mailto:c_glendenning@yahoo.com">c_glendenning@yahoo.com</a></p>
+<p>Questions about privacy or this policy, or to request account deletion:
+<a href="mailto:c_glendenning@yahoo.com">c_glendenning@yahoo.com</a></p>
 </body>
 </html>

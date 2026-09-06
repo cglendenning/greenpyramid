@@ -3,15 +3,15 @@ import 'package:flutter/material.dart';
 import '../services/db.dart';
 import '../theme/app_colors.dart';
 import 'council_screen.dart';
+import 'paywall_screen.dart';
 
 /// D-061: Settings' "Revisit a category with the Council" entry point.
 /// Lists the six categories; choosing one opens a Council session scoped to
 /// it (D-028), gated behind D-016's entitlement check.
 ///
-/// D-016's gate always refuses in this release — no trial or subscription
-/// mechanism exists until R8 (D-021/D-070). This is a deliberate,
-/// spec-confirmed choice: the Council ships built and reachable, but dark,
-/// until R8 unlocks it. See the Decision Log.
+/// D-013: this is the app's first value-triggered paywall placement — the
+/// user has already named the exact next step (deepen this category with
+/// the Council) before ever seeing a price.
 class CouncilCategoryPicker extends StatefulWidget {
   const CouncilCategoryPicker({super.key});
 
@@ -42,26 +42,15 @@ class _CouncilCategoryPickerState extends State<CouncilCategoryPicker> {
     if (!mounted) return;
 
     if (!entitled) {
-      await showDialog<void>(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: AppColors.surface,
-          title: const Text('Subscription required',
-              style: TextStyle(color: AppColors.textPrimary)),
-          content: const Text(
-            'Revisiting a category with the Council requires a subscription'
-            ' or an active trial.',
-            style: TextStyle(color: AppColors.textSecondary),
+      final subscribed = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => PaywallScreen(
+            reason: 'Revisit $categoryName with the Council',
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('OK'),
-            ),
-          ],
         ),
       );
-      return;
+      if (subscribed != true || !mounted) return;
     }
 
     await Navigator.push(

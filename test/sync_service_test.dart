@@ -128,8 +128,7 @@ void main() {
     expect(findings.docs, isEmpty);
   });
 
-  test('D-075: vision statement and account_state fields (entitlement, '
-      'trial window, timezone) sync into profile/main', () async {
+  test('D-075: vision statement and timezone sync into profile/main', () async {
     await db.insertVisionStatement('My body carries me through every challenge.');
     await db.setAccountTimezone('America/Los_Angeles');
     final firestore = FakeFirebaseFirestore();
@@ -137,8 +136,24 @@ void main() {
 
     final data = (await profileDoc(firestore)).data();
     expect(data?['visionStatement'], 'My body carries me through every challenge.');
-    expect(data?['entitlement'], 'pre_trial');
     expect(data?['timezone'], 'America/Los_Angeles');
+  });
+
+  test('D-057: entitlement/trialStartedAt/trialExpiresAt are never pushed by '
+      'the client — they are server-authoritative, not local-cache-sourced. '
+      'A stale local cache must not clobber a real subscribed/lapsed state.',
+      () async {
+    final firestore = FakeFirebaseFirestore();
+    // Server has already transitioned this account to subscribed.
+    await firestore.collection('users').doc(uid).collection('profile').doc('main')
+        .set({'entitlement': 'subscribed'});
+
+    await SyncService(firestore: firestore, db: db).syncAll(uid, setupComplete: true);
+
+    final data = (await profileDoc(firestore)).data();
+    expect(data?['entitlement'], 'subscribed');
+    expect(data?.containsKey('trialStartedAt'), isFalse);
+    expect(data?.containsKey('trialExpiresAt'), isFalse);
   });
 
   test('D-075: only a bounded window of task_log syncs to recentActivity — '

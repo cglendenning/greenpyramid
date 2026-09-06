@@ -21,6 +21,9 @@ import { guardAndCountSetupCall, SetupCallLimitError } from './lib/setup_guard.j
 import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, CATEGORIES_TOOL, HABITS_TOOL } from './lib/setup_derivation.js';
 import { isEligibleForTailoredNotification } from './lib/notification_schedule.js';
 import { buildNotificationPrompt, NOTIFICATION_TOOL } from './lib/notification_derivation.js';
+import { requireEntitlement, EntitlementRequiredError } from './lib/entitlement.js';
+import { grantTrialIfEligible, grantMigrationTrial, DeviceTrialError } from './lib/device_trial.js';
+import { applyRevenueCatEvent, verifyWebhookAuth } from './lib/revenuecat_webhook.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -28,6 +31,11 @@ import { buildNotificationPrompt, NOTIFICATION_TOOL } from './lib/notification_d
 // backs the Council (D-040, D-050).
 const sOpenAI = defineSecret('OPENAI_API_KEY');
 const sAnthropic = defineSecret('ANTHROPIC_API_KEY');
+// D-059: Apple DeviceCheck signing key (.p8, PEM). D-070: RevenueCat's
+// webhook shared-secret string, configured identically in the RevenueCat
+// dashboard's webhook "Authorization header" field.
+const sDeviceCheckKey = defineSecret('DEVICECHECK_PRIVATE_KEY');
+const sRevenueCatWebhookSecret = defineSecret('REVENUECAT_WEBHOOK_SECRET');
 
 setGlobalOptions({ region: 'us-central1' });
 
@@ -90,6 +98,27 @@ app.use(express.json({ limit: '256kb' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
+// D-070: RevenueCat calls this directly from its own servers — never through
+// the app, so it carries no App Check token and must sit before that gate.
+// Auth is the shared-secret header check above, not App Check or Firebase
+// Auth. Always responds quickly so RevenueCat doesn't retry-storm on a slow
+// Firestore write; entitlement changes are the only side effect.
+app.post('/revenuecatWebhook', async (req, res) => {
+  if (!verifyWebhookAuth(req.header('Authorization'), sRevenueCatWebhookSecret.value())) {
+    return res.status(401).json({ error: 'invalid_webhook_auth' });
+  }
+  try {
+    ensureAdmin();
+    await applyRevenueCatEvent(req.body?.event, admin.firestore());
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('revenuecatWebhook error:', e.message);
+    // Still 200s: a transient Firestore error here should not make
+    // RevenueCat retry-storm an event that may partially have applied.
+    res.status(200).json({ ok: false });
+  }
+});
+
 app.use(requireAppCheck);
 
 // OpenAI-compatible chat-completions passthrough: the app sends the same body
@@ -146,6 +175,18 @@ async function guardCouncilCall(req, res, { isSetup, sessionId }) {
       throw e;
     }
   }
+  // D-016: every non-setup AI surface requires an active trial or
+  // subscription. Checked before the spend cap — an unentitled account
+  // should never even reach that check.
+  try {
+    await requireEntitlement(req.uid);
+  } catch (e) {
+    if (e instanceof EntitlementRequiredError) {
+      res.status(402).json({ error: 'entitlement_required', entitlement: e.entitlement });
+      return false;
+    }
+    throw e;
+  }
   try {
     await checkSpendLimit(req.uid);
     return true;
@@ -161,6 +202,33 @@ async function guardCouncilCall(req, res, { isSetup, sessionId }) {
     throw e;
   }
 }
+
+// D-058/D-059/D-071: called once, right at setup completion (or, for the
+// D-034 migration cohort, once at first launch of this build). Device-bound
+// for new users; account-bound and device-check-free for the migration
+// grant, per D-059's explicit carve-out.
+app.post('/requestTrial', requireFirebaseAuth, async (req, res) => {
+  const { platform, androidIdHash, deviceCheckToken, isDevelopmentBuild, isMigration } = req.body || {};
+  try {
+    ensureAdmin();
+    const store = admin.firestore();
+    const result = isMigration
+      ? await grantMigrationTrial(req.uid, store)
+      : await grantTrialIfEligible(req.uid, {
+        platform,
+        androidIdHash,
+        deviceCheckToken,
+        deviceCheckConfig: { privateKeyPem: sDeviceCheckKey.value(), isDevelopmentBuild: !!isDevelopmentBuild },
+      }, store);
+    res.json(result);
+  } catch (e) {
+    if (e instanceof DeviceTrialError) {
+      return res.status(e.status).json({ error: e.message });
+    }
+    console.error('requestTrial error:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
 
 app.post('/boardAdvisorTurn', requireFirebaseAuth, async (req, res) => {
   const built = buildAdvisorTurnPrompt(req.body || {});
@@ -291,7 +359,7 @@ app.post('/deriveVisionStatement', requireFirebaseAuth, async (req, res) => {
 
 export const api = onRequest(
   {
-    secrets: [sOpenAI, sAnthropic],
+    secrets: [sOpenAI, sAnthropic, sDeviceCheckKey, sRevenueCatWebhookSecret],
     timeoutSeconds: 60,
     memory: '256MiB',
     invoker: 'public',

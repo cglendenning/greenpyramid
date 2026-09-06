@@ -37,6 +37,18 @@ class SetupCallLimitException implements Exception {
   String toString() => 'Setup call limit reached ($count calls)';
 }
 
+/// D-016: thrown when the backend refuses a non-setup AI call because the
+/// account is neither trialing nor subscribed. The client-side gate (e.g.
+/// CouncilCategoryPicker) is expected to catch this case before ever
+/// reaching the network — this is the server-authoritative backstop for
+/// when a local cache is stale.
+class EntitlementRequiredException implements Exception {
+  final String entitlement;
+  EntitlementRequiredException({required this.entitlement});
+  @override
+  String toString() => 'Entitlement required (currently: $entitlement)';
+}
+
 class AdvisorTurnResult {
   final String reply;
   final int inputTokens;
@@ -113,6 +125,10 @@ class CouncilClient {
 
     if (resp.statusCode == 402) {
       final data = jsonDecode(resp.body) as Map<String, dynamic>;
+      if (data['error'] == 'entitlement_required') {
+        throw EntitlementRequiredException(
+            entitlement: data['entitlement'] as String? ?? 'pre_trial');
+      }
       throw SpendLimitException(
         totalSpendUsd: (data['totalSpendUsd'] as num?)?.toDouble() ?? 0,
         spendCapUsd: (data['spendCapUsd'] as num?)?.toDouble() ?? 0,

@@ -50,9 +50,11 @@ export function isNotificationWindow(timezone, now = new Date()) {
 }
 
 // D-036: lapsed accounts are excluded from the job entirely — no server or
-// model cost. D-016/R7's carve-out: until R8 introduces real entitlement
-// transitions, every non-lapsed account (which today means every account,
-// since nothing can become lapsed yet) is treated as entitled.
+// model cost. trialing and subscribed accounts both receive tailored
+// notifications (D-021: a trial has identical capability to a subscription);
+// pre_trial never reaches this in practice, since a pre_trial account has no
+// completed setup and therefore no vision statement or categories to draw a
+// tailored notification from.
 export function isEligibleForTailoredNotification(profileData, now = new Date()) {
   if (!profileData) return false;
   if (profileData.entitlement === 'lapsed') return false;
