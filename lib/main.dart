@@ -1,13 +1,18 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:life_ops/screens/homescreen.dart';
 import 'package:life_ops/screens/database_recovery_screen.dart';
 import 'package:life_ops/services/notification.dart';
 import "package:timezone/data/latest.dart" as tz show initializeTimeZones;
 import 'package:life_ops/services/db.dart';
+import 'package:life_ops/services/auth_service.dart';
+import 'package:life_ops/services/sync_service.dart';
 import 'package:flutter/services.dart';
 import 'package:app_install_date/app_install_date.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_app_check/firebase_app_check.dart';
+import 'package:flutter_timezone/flutter_timezone.dart';
 import 'firebase_options.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/widgets.dart';
@@ -108,4 +113,35 @@ Future<void> main() async {
     routeToGo = '/setup';
   }
   runApp(HomeScreen());
+
+  // D-032/D-034: silent account bootstrap, kicked off after the first frame
+  // so it never gates app startup or changes the setup step count (D-007).
+  // Not awaited — a failure here is retried on the next launch, never shown
+  // to the user (D-032 acceptance criteria).
+  unawaited(_bootstrapAccountSync(setupComplete: defaultCats != 6));
+}
+
+/// D-032: create (or resume) the silent anonymous account, then run D-034's
+/// migration / D-075's ongoing sync. Every step logs its own failure rather
+/// than throwing past this function — one failed step must not stop the
+/// others, and none of them may ever block habit check-off (D-031).
+Future<void> _bootstrapAccountSync({required bool setupComplete}) async {
+  final uid = await AuthService.instance.signInSilently();
+  if (uid == null) return;
+
+  final dbHelper = DatabaseHelper.instance;
+  try {
+    await dbHelper.setAccountUid(uid);
+  } catch (e, st) {
+    debugPrint('Failed to persist account uid locally: $e\n$st');
+  }
+
+  try {
+    final timezone = await FlutterTimezone.getLocalTimezone();
+    await dbHelper.setAccountTimezone(timezone);
+  } catch (e, st) {
+    debugPrint('Failed to persist account timezone locally: $e\n$st');
+  }
+
+  await SyncService.instance.syncAll(uid, setupComplete: setupComplete);
 }

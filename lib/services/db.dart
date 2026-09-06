@@ -1442,6 +1442,59 @@ class DatabaseHelper {
     return null;
   }
 
+  // --- R4 / Part IV: account_state, and reads that feed SyncService ------
+
+  /// The single account_state row (D-030). The row always exists after
+  /// applyV7Schema's `INSERT OR IGNORE`, so this never returns null.
+  Future<Map<String, dynamic>> getAccountState() async {
+    final db = await database;
+    final rows = await db
+        .query(accountStateTable, where: '$columnAccountId = ?', whereArgs: [1]);
+    return rows.first;
+  }
+
+  /// D-032/D-034: records the Firebase uid once anonymous sign-in succeeds.
+  Future<void> setAccountUid(String uid) async {
+    final db = await database;
+    await db.update(
+        accountStateTable,
+        {
+          columnAccountUid: uid,
+          columnEntitlementSyncedAt: DateTime.now().toIso8601String(),
+        },
+        where: '$columnAccountId = ?',
+        whereArgs: [1]);
+  }
+
+  Future<void> setAccountTimezone(String timezone) async {
+    final db = await database;
+    await db.update(accountStateTable, {columnAccountTimezone: timezone},
+        where: '$columnAccountId = ?', whereArgs: [1]);
+  }
+
+  /// D-075: every version of every category's essence — part of the synced
+  /// set.
+  Future<List<Map<String, dynamic>>> queryAllCategoryEssences() async {
+    final db = await database;
+    return db.query(categoryEssenceTable);
+  }
+
+  /// D-075: accumulated four-domain findings — part of the synced set.
+  Future<List<Map<String, dynamic>>> queryAllDomainFindings() async {
+    final db = await database;
+    return db.query(domainFindingTable);
+  }
+
+  /// D-075: the bounded recent window of task_log that syncs to Firestore —
+  /// full history stays local-only (D-031). [limit] is supplied by the
+  /// caller (`AiGuard.maxTaskLogRows`) so this layer stays free of that
+  /// dependency.
+  Future<List<Map<String, dynamic>>> queryRecentTaskLogs(int limit) async {
+    final db = await database;
+    return db.query(getTaskLogTable(),
+        orderBy: '$columnTLTaskDate DESC', limit: limit);
+  }
+
   Future<void> insertChatMessage(String sender, String content) async {
     final db = await database;
     await db.insert(getChatTable(), {
