@@ -255,6 +255,65 @@ void main() {
     expect(userDoc.data()?['ttlAt'], isNull);
   });
 
+  test('D-064: a lapsed account gets ttlAt set 12 months out', () async {
+    final d = await db.database;
+    await d.update(DatabaseHelper.accountStateTable,
+        {DatabaseHelper.columnEntitlement: 'lapsed'},
+        where: '${DatabaseHelper.columnAccountId} = ?', whereArgs: [1]);
+    final firestore = FakeFirebaseFirestore();
+    await SyncService(firestore: firestore, db: db).syncAll(uid, setupComplete: true);
+
+    final userDoc = await firestore.collection('users').doc(uid).get();
+    expect(userDoc.data()?['ttlAt'], isNotNull);
+  });
+
+  test('D-064: ttlAt for a lapsed account is anchored at first lapse, not renewed on every '
+      'sync', () async {
+    final d = await db.database;
+    await d.update(DatabaseHelper.accountStateTable,
+        {DatabaseHelper.columnEntitlement: 'lapsed'},
+        where: '${DatabaseHelper.columnAccountId} = ?', whereArgs: [1]);
+    final firestore = FakeFirebaseFirestore();
+    final sync = SyncService(firestore: firestore, db: db);
+    await sync.syncAll(uid, setupComplete: true);
+    final first =
+        (await firestore.collection('users').doc(uid).get()).data()?['ttlAt'];
+
+    await sync.syncAll(uid, setupComplete: true);
+    final second =
+        (await firestore.collection('users').doc(uid).get()).data()?['ttlAt'];
+
+    expect(second, first);
+  });
+
+  test('D-035/D-064: an account that returns from lapsed has ttlAt '
+      'cleared — a returning user is never purged', () async {
+    final d = await db.database;
+    await d.update(DatabaseHelper.accountStateTable,
+        {DatabaseHelper.columnEntitlement: 'lapsed'},
+        where: '${DatabaseHelper.columnAccountId} = ?', whereArgs: [1]);
+    final firestore = FakeFirebaseFirestore();
+    final sync = SyncService(firestore: firestore, db: db);
+    await sync.syncAll(uid, setupComplete: true);
+    expect((await firestore.collection('users').doc(uid).get()).data()?['ttlAt'],
+        isNotNull);
+
+    await d.update(DatabaseHelper.accountStateTable,
+        {DatabaseHelper.columnEntitlement: 'subscribed'},
+        where: '${DatabaseHelper.columnAccountId} = ?', whereArgs: [1]);
+    await sync.syncAll(uid, setupComplete: true);
+
+    expect((await firestore.collection('users').doc(uid).get()).data()?['ttlAt'],
+        isNull);
+  });
+
+  test('D-064: a non-lapsed, setup-complete account never gets a ttlAt', () async {
+    final firestore = FakeFirebaseFirestore();
+    await SyncService(firestore: firestore, db: db).syncAll(uid, setupComplete: true);
+    final userDoc = await firestore.collection('users').doc(uid).get();
+    expect(userDoc.data()?['ttlAt'], isNull);
+  });
+
   test('MIG-1: re-running syncAll against unchanged local data is '
       'idempotent — no duplicate documents', () async {
     final d = await db.database;

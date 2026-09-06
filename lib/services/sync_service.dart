@@ -53,7 +53,7 @@ class SyncService {
         _syncEssenceVersions(userDoc),
         _syncDomainFindings(userDoc),
         _syncRecentActivity(userDoc),
-        _syncPruneEligibility(userDoc, setupComplete: setupComplete),
+        _syncRetentionEligibility(userDoc, setupComplete: setupComplete),
       ]);
     } catch (e, st) {
       debugPrint('SyncService: sync failed, will retry next launch: $e\n$st');
@@ -184,32 +184,47 @@ class SyncService {
     await batch.commit();
   }
 
-  /// D-035: writes the `ttlAt` field a Firestore TTL policy prunes on —
-  /// only for an account still eligible (never finished setup, never linked
-  /// a credential, never held a subscription). `ttlAt` is anchored at first
-  /// write, not renewed on every sync, so it always reads 30 days from
-  /// account *creation* (D-064), not from last launch. Once the account
-  /// stops being eligible, `ttlAt` is removed — a prune must never touch an
-  /// account that went on to link a credential or subscribe (D-035). This
-  /// field lives on `users/{uid}` itself, not inside `profile/`, since it is
-  /// pruning metadata rather than user data.
-  Future<void> _syncPruneEligibility(
+  /// D-064: cloud data for a `lapsed` account is purged 12 months after
+  /// lapse — never the local SQLite copy (D-035), so a returning user still
+  /// has their pyramid on-device.
+  static const lapsedRetentionWindow = Duration(days: 365);
+
+  /// D-035/D-064: writes the single `ttlAt` field a Firestore TTL policy
+  /// prunes on. Both retention rules share this one field — discovered
+  /// live, not assumed: Firestore allows only one TTL-enabled field per
+  /// collection group, so D-064 cannot have its own `lapsedTtlAt` field
+  /// alongside D-035's `ttlAt`. The two windows are mutually exclusive in
+  /// practice (an account is never simultaneously "still in setup" and
+  /// "lapsed"), so one field with two possible windows is correct, not a
+  /// compromise. `ttlAt` is anchored at first write, not renewed on every
+  /// sync, so it always reads the full window from *whichever moment made
+  /// it eligible* — account creation for D-035, first observed lapse for
+  /// D-064 — never from last launch. It is removed the moment neither
+  /// condition holds: a prune must never touch an account that went on to
+  /// link a credential or subscribe (D-035), or that returned from lapsed
+  /// (D-064's same promise). Lives on `users/{uid}` itself, not inside
+  /// `profile/`, since it is pruning metadata rather than user data.
+  Future<void> _syncRetentionEligibility(
       DocumentReference<Map<String, dynamic>> userDoc,
       {required bool setupComplete}) async {
     final account = await _db.getAccountState();
-    final everSubscribed =
-        account[DatabaseHelper.columnEntitlement] != 'pre_trial';
-    final eligible = !setupComplete && !everSubscribed;
+    final entitlement = account[DatabaseHelper.columnEntitlement];
+    final everSubscribed = entitlement != 'pre_trial';
+    final incompleteSetupEligible = !setupComplete && !everSubscribed;
+    // Not reachable yet: nothing sets entitlement to 'lapsed' until R8's
+    // trial/subscription lifecycle exists.
+    final lapsedEligible = entitlement == 'lapsed';
 
-    if (!eligible) {
+    if (!incompleteSetupEligible && !lapsedEligible) {
       await userDoc.set({'ttlAt': FieldValue.delete()}, SetOptions(merge: true));
       return;
     }
 
     final existing = await userDoc.get();
     if (existing.data()?['ttlAt'] != null) return;
+    final window = lapsedEligible ? lapsedRetentionWindow : pruneEligibleWindow;
     await userDoc.set(
-        {'ttlAt': Timestamp.fromDate(DateTime.now().add(pruneEligibleWindow))},
+        {'ttlAt': Timestamp.fromDate(DateTime.now().add(window))},
         SetOptions(merge: true));
   }
 }
