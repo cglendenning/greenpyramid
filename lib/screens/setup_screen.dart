@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/board_session.dart';
@@ -297,6 +299,16 @@ class _SetupScreenState extends State<SetupScreen> {
     await _setup.commitEssence(
       categoryId: step.categoryId, essence: text, sessionId: session.sessionId);
     step.capturedEssence = text;
+
+    // D-048: advisory, never required (D-074) — never blocks setup's
+    // progression, which continues immediately below.
+    unawaited(_setup.recordDomainFindings(
+      session: session,
+      categoryId: step.categoryId,
+      categoryName: step.categoryName,
+      essence: text,
+      isSetup: true,
+    ));
 
     if (_essenceIndex + 1 < _foundational.length) {
       setState(() => _essenceIndex++);

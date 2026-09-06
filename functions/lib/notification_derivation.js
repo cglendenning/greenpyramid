@@ -16,13 +16,21 @@ export const NOTIFICATION_TOOL = {
   },
 };
 
-// D-037: exactly this context, nothing else. [categories] is
-// [{name, tier, essence}] (essence null for cat4-cat6 without one, D-010).
-// [recentActivity] is the bounded task_log window already synced (D-075).
+// D-037 (amended for R9 to add domainFindings/calendarContext — D-048's own
+// text always said findings feed notification generation, but D-037's
+// enumerated context never listed them until now): exactly this context,
+// nothing else. [categories] is [{name, tier, essence}] (essence null for
+// cat4-cat6 without one, D-010). [recentActivity] is the bounded task_log
+// window already synced (D-075). [domainFindings] is [{domain, note}].
+// [calendarContext] is a short pre-summarized string, present only when the
+// user granted calendar access (D-025 step 7) — absent entirely otherwise,
+// never a placeholder.
 export function buildNotificationPrompt({
   categories = [],
   visionStatement,
   recentActivity = [],
+  domainFindings = [],
+  calendarContext,
 }) {
   const categoryLines = categories.map((c) => {
     const name = sanitize(c.name, 60);
@@ -46,10 +54,15 @@ export function buildNotificationPrompt({
     'acknowledging — never a generic reminder. Call send_notification with ' +
     'a short title and a one-sentence body. No emojis.';
 
+  const findingLines = domainFindings.slice(0, 50).map((f) =>
+    `- ${sanitize(f.domain, 20)}: ${sanitize(f.note, 200)}`).join('\n');
+
   const user =
     `CATEGORIES:\n${categoryLines}\n\n` +
     (visionStatement ? `THEIR VISION: "${sanitize(visionStatement, 500)}"\n\n` : '') +
-    `RECENT ACTIVITY:\n${recentLines || '(none yet)'}`;
+    `RECENT ACTIVITY:\n${recentLines || '(none yet)'}` +
+    (findingLines ? `\n\nDOMAIN FINDINGS (impediments named in past Council sessions):\n${findingLines}` : '') +
+    (calendarContext ? `\n\nTODAY'S CALENDAR: ${sanitize(calendarContext, 500)}` : '');
 
   return { system, user };
 }

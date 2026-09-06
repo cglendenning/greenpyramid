@@ -76,6 +76,11 @@ dependencies:
   # it ever leaves the device.
   android_id: ^0.5.2+1
   crypto: ^3.0.0
+  # D-025 step 7: read-only calendar context feeding P-8. Green Pyramid
+  # never creates, edits, or deletes events — read is the only capability
+  # this plugin exposes above its gentler write-only tier, so a full-access
+  # grant is required even though only read is ever used.
+  device_calendar_plus: ^0.8.0
 
 dev_dependencies:
   flutter_test:

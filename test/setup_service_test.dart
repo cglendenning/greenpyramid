@@ -32,6 +32,17 @@ class _FakeCouncilClient extends CouncilClient {
   ];
   List<String> habits = const ['Walk 20 minutes', 'Drink water', 'Stretch'];
   String vision = 'I am someone who shows up fully for the people I love.';
+  List<DomainFinding> findings = const [];
+
+  @override
+  Future<List<DomainFinding>> deriveDomainFindings({
+    required String sessionId,
+    required String categoryName,
+    String? essence,
+    required List<Map<String, String>> transcript,
+    bool isSetup = false,
+  }) async =>
+      findings;
 
   @override
   Future<List<CategoryProposal>> deriveCategories({
@@ -56,6 +67,18 @@ class _FakeCouncilClient extends CouncilClient {
     required List<Map<String, String>> transcript,
   }) async =>
       vision;
+}
+
+class _ThrowingCouncilClient extends _FakeCouncilClient {
+  @override
+  Future<List<DomainFinding>> deriveDomainFindings({
+    required String sessionId,
+    required String categoryName,
+    String? essence,
+    required List<Map<String, String>> transcript,
+    bool isSetup = false,
+  }) async =>
+      throw CouncilClientException('backend unavailable');
 }
 
 /// R6: SetupService orchestrates the single continuous setup conversation
@@ -170,6 +193,65 @@ void main() {
           categoryId: 1, essence: 'my body carries me', sessionId: 's1');
       final essence = await db.getLatestEssenceForCategory(1);
       expect(essence, 'my body carries me');
+    });
+  });
+
+  group('D-048: domain finding derivation', () {
+    test('recordDomainFindings commits every finding the backend returns',
+        () async {
+      final client = _FakeCouncilClient()
+        ..findings = const [
+          DomainFinding(domain: 'biological', note: 'too tired most evenings'),
+          DomainFinding(domain: 'relational', note: 'partner feels distant'),
+        ];
+      final svc = buildService(client: client);
+      final session = await svc.startOrResumeSetup();
+
+      await svc.recordDomainFindings(
+        session: session,
+        categoryId: 1,
+        categoryName: 'Health',
+        essence: 'my body carries me',
+        isSetup: true,
+      );
+
+      final saved = await db.queryAllDomainFindings();
+      expect(saved.length, 2);
+      expect(saved.map((f) => f[DatabaseHelper.columnFindingDomain]),
+          containsAll(['biological', 'relational']));
+    });
+
+    test('D-074: a session with no impediment named commits nothing — '
+        'valid, not an error', () async {
+      final svc = buildService();
+      final session = await svc.startOrResumeSetup();
+
+      await svc.recordDomainFindings(
+        session: session,
+        categoryId: 1,
+        categoryName: 'Health',
+        essence: 'my body carries me',
+        isSetup: true,
+      );
+
+      expect(await db.queryAllDomainFindings(), isEmpty);
+    });
+
+    test('a backend failure is swallowed — never blocks setup progression',
+        () async {
+      final client = _ThrowingCouncilClient();
+      final svc = buildService(client: client);
+      final session = await svc.startOrResumeSetup();
+
+      await svc.recordDomainFindings(
+        session: session,
+        categoryId: 1,
+        categoryName: 'Health',
+        essence: 'my body carries me',
+        isSetup: true,
+      );
+
+      expect(await db.queryAllDomainFindings(), isEmpty);
     });
   });
 

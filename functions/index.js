@@ -19,6 +19,7 @@ import { checkSpendLimit, recordCost, SpendLimitError } from './lib/billing.js';
 import { getCouncilModel, getNotificationModel } from './lib/model_config.js';
 import { guardAndCountSetupCall, SetupCallLimitError } from './lib/setup_guard.js';
 import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, CATEGORIES_TOOL, HABITS_TOOL } from './lib/setup_derivation.js';
+import { buildDeriveDomainFindingsPrompt, DOMAIN_FINDING_TOOL } from './lib/domain_finding_derivation.js';
 import { isEligibleForTailoredNotification } from './lib/notification_schedule.js';
 import { buildNotificationPrompt, NOTIFICATION_TOOL } from './lib/notification_derivation.js';
 import { requireEntitlement, EntitlementRequiredError } from './lib/entitlement.js';
@@ -334,6 +335,41 @@ app.post('/deriveHabits', requireFirebaseAuth, async (req, res) => {
   }
 });
 
+// D-048: derives domain findings from one category's conversation, at the
+// moment its essence is accepted. Unlike the three setup-only derivations
+// above, this runs from both setup (free, D-072-bounded) and D-061's paid
+// re-clarification — so, like boardAdvisorTurn, it takes a dynamic isSetup
+// and goes through the full guardCouncilCall gate rather than being
+// hardcoded free.
+app.post('/deriveDomainFindings', requireFirebaseAuth, async (req, res) => {
+  const { sessionId, categoryName, essence, transcript, isSetup } = req.body || {};
+  if (!(await guardCouncilCall(req, res, { isSetup, sessionId }))) return;
+
+  const { system, user } = buildDeriveDomainFindingsPrompt({ categoryName, essence, transcript });
+  const model = await getCouncilModel();
+  try {
+    const msg = await claude().messages.create({
+      model,
+      max_tokens: 300,
+      thinking: { type: 'disabled' },
+      system: [{ type: 'text', text: system }],
+      messages: [{ role: 'user', content: user }],
+      tools: [DOMAIN_FINDING_TOOL],
+      tool_choice: { type: 'tool', name: DOMAIN_FINDING_TOOL.name },
+    });
+    if (!isSetup) {
+      recordCost(req.uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
+        .catch((e) => console.error('recordCost error:', e.message));
+    }
+    const toolUse = msg.content.find((b) => b.type === 'tool_use');
+    if (!toolUse) return res.status(502).json({ error: 'no_tool_use_in_response' });
+    res.json({ findings: toolUse.input.findings });
+  } catch (e) {
+    console.error('deriveDomainFindings error:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
 app.post('/deriveVisionStatement', requireFirebaseAuth, async (req, res) => {
   const { sessionId, essences, transcript } = req.body || {};
   if (!(await guardCouncilCall(req, res, { isSetup: true, sessionId }))) return;
@@ -384,10 +420,23 @@ async function sendTailoredNotification(uid, profileData) {
       .collection('users').doc(uid).collection('recentActivity').get();
   const recentActivity = recentSnap.docs.map((d) => d.data());
 
+  // D-048/D-037 (amended): findings live in their own subcollection (IV-D),
+  // synced in full — unbounded, unlike recentActivity's 250-row cap, since
+  // findings are sparse by nature (D-074).
+  const findingsSnap = await db
+      .collection('users').doc(uid).collection('domainFindings').get();
+  const domainFindings = findingsSnap.docs.map((d) => d.data());
+  // D-025 step 7: present only when the user granted calendar access —
+  // absent entirely otherwise (buildNotificationPrompt already omits the
+  // section when this is undefined).
+  const calendarContext = profileData.calendarContext;
+
   const { system, user } = buildNotificationPrompt({
     categories,
     visionStatement: profileData.visionStatement,
     recentActivity,
+    domainFindings,
+    calendarContext,
   });
 
   const model = await getNotificationModel();

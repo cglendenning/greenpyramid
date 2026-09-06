@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import 'ai_guard.dart';
+import 'calendar_service.dart';
 import 'db.dart';
 
 /// D-034/D-075: uploads exactly the enumerated local dataset to Firestore
@@ -26,14 +27,16 @@ import 'db.dart';
 /// This runs after habit check-off, never in its path (D-031): check-off
 /// itself never calls into this class or awaits anything here.
 class SyncService {
-  SyncService({FirebaseFirestore? firestore, DatabaseHelper? db})
+  SyncService({FirebaseFirestore? firestore, DatabaseHelper? db, CalendarService? calendar})
       : _firestore = firestore ?? FirebaseFirestore.instance,
-        _db = db ?? DatabaseHelper.instance;
+        _db = db ?? DatabaseHelper.instance,
+        _calendar = calendar ?? CalendarService.instance;
 
   static final SyncService instance = SyncService();
 
   final FirebaseFirestore _firestore;
   final DatabaseHelper _db;
+  final CalendarService _calendar;
 
   /// D-064: an anonymous account that never finished setup is pruned 30
   /// days after creation. [setupComplete] is the caller's own signal for
@@ -95,6 +98,13 @@ class SyncService {
     final vision = await _db.getLatestVisionStatement();
     final account = await _db.getAccountState();
 
+    // D-025 step 7: only ever synced when permission is already granted —
+    // this never prompts. Explicitly deleted (not just omitted) when null,
+    // so a user who revokes calendar access in system settings doesn't
+    // leave a stale summary sitting in Firestore forever — merge:true never
+    // removes a field that's simply left out of the payload.
+    final calendarContext = await _calendar.summarizeToday();
+
     // D-057: entitlement/trialStartedAt/trialExpiresAt are server-authoritative
     // (granted by /requestTrial, transitioned by the RevenueCat webhook) —
     // never uploaded here. The local account_state copy is a downstream cache
@@ -106,6 +116,7 @@ class SyncService {
           'categories': categories,
           if (vision != null) 'visionStatement': vision,
           'timezone': account[DatabaseHelper.columnAccountTimezone],
+          'calendarContext': calendarContext ?? FieldValue.delete(),
         },
         SetOptions(merge: true));
   }

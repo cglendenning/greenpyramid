@@ -213,6 +213,10 @@
     <true/>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Ability to attach screenshots for feedback.</string>
+    <key>NSCalendarsUsageDescription</key>
+    <string>Green Pyramid can read your calendar, only if you turn this on, so the Council's notifications can be aware of what your day looks like. Nothing is ever added to your calendar.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Green Pyramid can read your calendar, only if you turn this on, so the Council's notifications can be aware of what your day looks like. Nothing is ever added to your calendar.</string>
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
     <key>CFBundleDevelopmentRegion</key>

@@ -7,6 +7,9 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:life_ops/screens/council_category_picker.dart';
 import 'package:life_ops/screens/cancel_subscription_screen.dart';
+import 'package:life_ops/screens/domain_map_screen.dart';
+import 'package:life_ops/services/calendar_service.dart';
+import 'package:life_ops/services/entitlement_gate.dart';
 import 'dart:io' show Platform;
 
 Future<void> showPreviewWarningDialog(BuildContext context) async {
@@ -220,6 +223,33 @@ class _SettingsState extends State<Settings> {
           child: const Text('Manage subscription'),
         ),
       ),
+      // D-049: the domain map — a destination visited deliberately, gated
+      // as a paid capability (D-016).
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4.0),
+        child: TextButton(
+          onPressed: () async {
+            final allowed = await ensureEntitled(context, reason: 'See your domain map');
+            if (!allowed || !context.mounted) return;
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const DomainMapScreen()),
+            );
+          },
+          child: const Text('Your domain map'),
+        ),
+      ),
+      // D-025 step 7: opt-in only, requested here — never on launch.
+      Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: const [
+            Text('Let the Council see your calendar'),
+            CalendarAccessSwitch(),
+          ],
+        ),
+      ),
       // Adjust Previews link - only show on iOS
       if (Platform.isIOS)
         Padding(
@@ -241,6 +271,45 @@ class _SettingsState extends State<Settings> {
     ]))));
   }
 
+}
+
+/// D-025 step 7: reflects and toggles calendar read access. Turning it on
+/// prompts the OS permission dialog; turning it off only stops the app from
+/// reading the calendar going forward — revoking the OS grant itself
+/// happens in system settings, same as every other permission in this app.
+class CalendarAccessSwitch extends StatefulWidget {
+  const CalendarAccessSwitch({super.key});
+
+  @override
+  State<CalendarAccessSwitch> createState() => _CalendarAccessSwitchState();
+}
+
+class _CalendarAccessSwitchState extends State<CalendarAccessSwitch> {
+  bool _granted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    CalendarService.instance.hasPermission().then((granted) {
+      if (mounted) setState(() => _granted = granted);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Switch(
+      value: _granted,
+      activeColor: Colors.blue,
+      onChanged: (value) async {
+        if (!value) {
+          setState(() => _granted = false);
+          return;
+        }
+        final granted = await CalendarService.instance.requestPermission();
+        if (mounted) setState(() => _granted = granted);
+      },
+    );
+  }
 }
 
 class NotificationSwitch extends StatefulWidget {

@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/services/ai_guard.dart';
+import 'package:life_ops/services/calendar_service.dart';
 import 'package:life_ops/services/db.dart';
 import 'package:life_ops/services/sync_service.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
@@ -16,6 +17,13 @@ class _TempPathProvider extends PathProviderPlatform
   final String dir;
   @override
   Future<String?> getApplicationDocumentsPath() async => dir;
+}
+
+class _FakeCalendarService extends CalendarService {
+  _FakeCalendarService(this.summary);
+  final String? summary;
+  @override
+  Future<String?> summarizeToday({DateTime? now}) async => summary;
 }
 
 /// R4: D-034's silent migration and D-075's enumerated ongoing sync, tested
@@ -137,6 +145,24 @@ void main() {
     final data = (await profileDoc(firestore)).data();
     expect(data?['visionStatement'], 'My body carries me through every challenge.');
     expect(data?['timezone'], 'America/Los_Angeles');
+  });
+
+  test('D-025 step 7: calendar context syncs into profile/main only when '
+      'CalendarService has a summary; absent (deleted) otherwise, never a '
+      'placeholder', () async {
+    final firestore = FakeFirebaseFirestore();
+    await SyncService(firestore: firestore, db: db, calendar: _FakeCalendarService('09:00 Standup'))
+        .syncAll(uid, setupComplete: true);
+    var data = (await profileDoc(firestore)).data();
+    expect(data?['calendarContext'], '09:00 Standup');
+
+    // Permission revoked / nothing today — the stale value must be removed,
+    // not merely left unmentioned, since merge:true never clears a field
+    // that's simply omitted from a later write.
+    await SyncService(firestore: firestore, db: db, calendar: _FakeCalendarService(null))
+        .syncAll(uid, setupComplete: true);
+    data = (await profileDoc(firestore)).data();
+    expect(data?.containsKey('calendarContext'), isFalse);
   });
 
   test('D-057: entitlement/trialStartedAt/trialExpiresAt are never pushed by '

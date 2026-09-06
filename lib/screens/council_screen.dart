@@ -136,12 +136,17 @@ class _CouncilScreenState extends State<CouncilScreen> {
     final session = _session;
     if (session == null) return;
 
+    final sanitizedEssence = AiGuard.sanitizeField(text, maxChars: 400);
     await DatabaseHelper.instance.insertCategoryEssence(
       categoryId: widget.categoryId,
-      essence: AiGuard.sanitizeField(text, maxChars: 400),
+      essence: sanitizedEssence,
       sourceSessionId: session.sessionId,
     );
     await _council.endSession(session.sessionId);
+
+    // D-048: advisory, never required (D-074) — a failure here must never
+    // block closing the session, whose essence is already committed above.
+    unawaited(_recordDomainFindings(session, sanitizedEssence));
 
     // Push the new essence version to Firestore (D-075) same as any other
     // profile change; the account bootstrap in main.dart already ensures a
@@ -152,6 +157,29 @@ class _CouncilScreenState extends State<CouncilScreen> {
     }
 
     if (mounted) Navigator.of(context).pop();
+  }
+
+  Future<void> _recordDomainFindings(BoardSession session, String essence) async {
+    try {
+      final findings = await CouncilClient.instance.deriveDomainFindings(
+        sessionId: session.sessionId,
+        categoryName: widget.categoryName,
+        essence: essence,
+        transcript: session.messages
+            .map((m) => {'advisor': m.advisorKey, 'text': m.text})
+            .toList(),
+      );
+      for (final f in findings) {
+        await DatabaseHelper.instance.insertDomainFinding(
+          categoryId: widget.categoryId,
+          domain: f.domain,
+          note: AiGuard.sanitizeField(f.note, maxChars: 200),
+          sourceSessionId: session.sessionId,
+        );
+      }
+    } catch (e) {
+      debugPrint('CouncilScreen: domain finding derivation failed: $e');
+    }
   }
 
   @override

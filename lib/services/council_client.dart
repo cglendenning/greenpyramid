@@ -66,6 +66,14 @@ class CategoryProposal {
   const CategoryProposal({required this.position, required this.name});
 }
 
+/// D-048: one impediment surfaced during a category conversation, already
+/// classified into one of the four domains.
+class DomainFinding {
+  final String domain;
+  final String note;
+  const DomainFinding({required this.domain, required this.note});
+}
+
 /// D-040/D-050: the transport for every Council backend call. Calls Green
 /// Pyramid's own Cloud Function (not Kansei's), authenticated with both a
 /// Firebase App Check token (proves the genuine app binary — same as
@@ -214,6 +222,32 @@ class CouncilClient {
     });
     return (data['habits'] as List<dynamic>? ?? const [])
         .map((h) => h as String)
+        .toList();
+  }
+
+  /// D-048: derives domain findings from one category's conversation, at
+  /// the moment its essence is accepted. Runs from both setup (free,
+  /// [isSetup] true) and D-061's paid re-clarification — the backend gates
+  /// accordingly, same as [boardAdvisorTurn].
+  Future<List<DomainFinding>> deriveDomainFindings({
+    required String sessionId,
+    required String categoryName,
+    String? essence,
+    required List<Map<String, String>> transcript,
+    bool isSetup = false,
+  }) async {
+    final data = await _post('deriveDomainFindings', {
+      'sessionId': sessionId,
+      'categoryName': categoryName,
+      if (essence != null) 'essence': essence,
+      'transcript': transcript,
+      'isSetup': isSetup,
+    });
+    return (data['findings'] as List<dynamic>? ?? const [])
+        .map((f) => DomainFinding(
+              domain: f['domain'] as String,
+              note: f['note'] as String,
+            ))
         .toList();
   }
 

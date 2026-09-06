@@ -1578,10 +1578,43 @@ class DatabaseHelper {
     });
   }
 
+  /// D-048: records one domain finding surfaced during a category
+  /// conversation. Findings accumulate — never overwritten, never
+  /// deduplicated — since the same impediment resurfacing over time is
+  /// itself part of the record (P-16).
+  Future<void> insertDomainFinding({
+    required int categoryId,
+    required String domain,
+    required String note,
+    String? sourceSessionId,
+  }) async {
+    final db = await database;
+    await db.insert(domainFindingTable, {
+      columnFindingCategoryId: categoryId,
+      columnFindingDomain: domain,
+      columnFindingNote: note,
+      columnFindingCreated: DateTime.now().toIso8601String(),
+      columnFindingSourceSession: sourceSessionId,
+    });
+  }
+
   /// D-075: accumulated four-domain findings — part of the synced set.
   Future<List<Map<String, dynamic>>> queryAllDomainFindings() async {
     final db = await database;
     return db.query(domainFindingTable);
+  }
+
+  /// D-049: findings grouped by domain, for the domain-map view. Domain
+  /// state is derived from accumulated findings, never asked of the user
+  /// directly (D-049's own acceptance criterion).
+  Future<Map<String, List<Map<String, dynamic>>>> queryDomainFindingsByDomain() async {
+    final rows = await queryAllDomainFindings();
+    final byDomain = <String, List<Map<String, dynamic>>>{};
+    for (final row in rows) {
+      final domain = row[columnFindingDomain] as String;
+      (byDomain[domain] ??= []).add(row);
+    }
+    return byDomain;
   }
 
   /// D-075: the bounded recent window of task_log that syncs to Firestore —

@@ -48,6 +48,25 @@ test('an injected straight quote cannot close out of the essence\'s own '
   assert.equal(straightQuoteCount, 2, 'only the template\'s own wrapping quotes should be straight');
 });
 
+test('D-048/D-037 (amended): domain findings are included when present, '
+  + 'omitted entirely when there are none', () => {
+  const withFindings = buildNotificationPrompt({
+    domainFindings: [{ domain: 'biological', note: 'too tired to cook most nights' }],
+  });
+  assert.match(withFindings.user, /DOMAIN FINDINGS/);
+  assert.match(withFindings.user, /too tired to cook most nights/);
+  const withoutFindings = buildNotificationPrompt({});
+  assert.doesNotMatch(withoutFindings.user, /DOMAIN FINDINGS/);
+});
+
+test('D-037 (amended): calendar context is included only when granted — '
+  + 'never a placeholder when absent', () => {
+  const withCalendar = buildNotificationPrompt({ calendarContext: 'Busy 2-4pm, free evening' });
+  assert.match(withCalendar.user, /TODAY'S CALENDAR: Busy 2-4pm, free evening/);
+  const withoutCalendar = buildNotificationPrompt({});
+  assert.doesNotMatch(withoutCalendar.user, /CALENDAR/);
+});
+
 test('D-036: NOTIFICATION_TOOL requires a title and a body', () => {
   assert.deepEqual(Object.keys(NOTIFICATION_TOOL.input_schema.properties).sort(),
     ['body', 'title']);

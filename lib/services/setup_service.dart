@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show debugPrint;
+
 import '../models/board_session.dart';
 import 'ai_guard.dart';
 import 'auth_service.dart';
@@ -128,6 +130,39 @@ class SetupService {
       essence: AiGuard.sanitizeField(essence, maxChars: 400),
       sourceSessionId: sessionId,
     );
+  }
+
+  /// D-048: derives and commits domain findings for one foundational
+  /// category's conversation, at the moment its essence is accepted. Never
+  /// throws past this point — advisory, never required (D-074).
+  Future<void> recordDomainFindings({
+    required BoardSession session,
+    required int categoryId,
+    required String categoryName,
+    required String essence,
+    required bool isSetup,
+  }) async {
+    try {
+      final findings = await _client.deriveDomainFindings(
+        sessionId: session.sessionId,
+        categoryName: categoryName,
+        essence: essence,
+        transcript: session.messages
+            .map((m) => {'advisor': m.advisorKey, 'text': m.text})
+            .toList(),
+        isSetup: isSetup,
+      );
+      for (final f in findings) {
+        await _db.insertDomainFinding(
+          categoryId: categoryId,
+          domain: f.domain,
+          note: AiGuard.sanitizeField(f.note, maxChars: 200),
+          sourceSessionId: session.sessionId,
+        );
+      }
+    } catch (e, st) {
+      debugPrint('SetupService.recordDomainFindings failed: $e\n$st');
+    }
   }
 
   /// Pushes everything setup just wrote to Firestore (D-075) in one pass,
