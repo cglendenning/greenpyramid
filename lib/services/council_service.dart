@@ -121,6 +121,10 @@ class CouncilService {
     await AiGuard.instance.acquire();
 
     final sliderValue = session.sliderSettings[advisorKey] ?? 0.5;
+    // D-017/D-072: a setup-typed session is free, bounded by call count —
+    // never charged against D-087's dollar cap. Derived from the session
+    // itself so callers can't get this wrong.
+    final isSetup = session.type == BoardSessionType.setup;
     final result = await _client.boardAdvisorTurn(
       advisorKey: advisorKey,
       sliderValue: sliderValue,
@@ -133,6 +137,8 @@ class CouncilService {
       conversationHistory: session.messages
           .map((m) => {'advisor': m.advisorKey, 'text': m.text})
           .toList(),
+      isSetup: isSetup,
+      sessionId: session.sessionId,
     );
 
     final msg = BoardMessage(

@@ -17,7 +17,8 @@ class _FakeCouncilClient extends CouncilClient {
     required Map<String, dynamic> categoryContext,
     required List<Map<String, String>> conversationHistory,
     double sliderValue = 0.5,
-    Duration timeout = const Duration(seconds: 30),
+    bool isSetup = false,
+    String? sessionId,
   }) async {
     lastCategoryContext = categoryContext;
     return response;
