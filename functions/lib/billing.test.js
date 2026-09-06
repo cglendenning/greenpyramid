@@ -64,6 +64,14 @@ test('D-087: spend recorded in a prior month does not count toward the '
   await checkSpendLimit('u1', store, feb); // February — January's spend is stale
 });
 
+test('D-041: all three Anthropic tiers are priced, cheapest to costliest '
+  + 'matching the published table', () => {
+  const tiers = ['claude-haiku-4-5', 'claude-sonnet-5', 'claude-opus-5'];
+  for (const tier of tiers) assert.ok(MODEL_RATES[tier], `missing rate for ${tier}`);
+  assert.ok(MODEL_RATES['claude-haiku-4-5'].input < MODEL_RATES['claude-sonnet-5'].input);
+  assert.ok(MODEL_RATES['claude-sonnet-5'].input < MODEL_RATES['claude-opus-5'].input);
+});
+
 test('D-041/D-087: recordCost computes real cost from Opus 5 token rates', async () => {
   const store = new FakeFirestore();
   await recordCost('u1', 'claude-opus-5', 1_000_000, 0, store, jan);

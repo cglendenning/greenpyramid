@@ -13,8 +13,9 @@ import cors from 'cors';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import admin from 'firebase-admin';
-import { buildAdvisorTurnPrompt } from './lib/council.js';
+import { buildAdvisorTurnPrompt, extractReplyText } from './lib/council.js';
 import { checkSpendLimit, recordCost, SpendLimitError } from './lib/billing.js';
+import { getCouncilModel } from './lib/model_config.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -116,9 +117,6 @@ app.post('/v1/chat/completions', async (req, res) => {
 // Prompt-building logic lives in lib/council.js so it's testable without
 // spinning up Express or Firebase Admin (node --test lib/*.test.js).
 
-// D-041: the one place the Council's model identifier is configured.
-const COUNCIL_MODEL = 'claude-opus-5';
-
 let anthropicClient;
 function claude() {
   if (!anthropicClient) anthropicClient = new Anthropic({ apiKey: sAnthropic.value() });
@@ -145,24 +143,36 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, async (req, res) => {
     throw e;
   }
 
+  const model = await getCouncilModel();
   try {
     const msg = await claude().messages.create({
-      model: COUNCIL_MODEL,
+      model,
       max_tokens: 120,
+      // Thinking is off, not just unrequested: Opus 5 can emit a `thinking`
+      // block ahead of the reply even without it, which both costs extra
+      // output tokens and (if not parsed defensively) can return an empty
+      // reply — a live one/two-sentence chat line gets nothing from
+      // reasoning that's worth either cost.
+      thinking: { type: 'disabled' },
       // D-041: this block is the stable prefix — constant per advisor while
       // the intensity slider stays at its default (D-073) — so it carries
       // the cache breakpoint. Nothing user-derived is in this block.
       system: [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: userMessage }],
     });
-    recordCost(req.uid, COUNCIL_MODEL, msg.usage.input_tokens, msg.usage.output_tokens)
+    recordCost(req.uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
       .catch((e) => console.error('recordCost error:', e.message));
+    const reply = extractReplyText(msg.content);
+    if (!reply) {
+      console.error('boardAdvisorTurn: no text block in response — advisor:', advisor.name, 'stop_reason:', msg.stop_reason);
+      return res.status(502).json({ error: 'empty_reply' });
+    }
     res.json({
-      reply: msg.content[0].text,
+      reply,
       usage: { inputTokens: msg.usage.input_tokens, outputTokens: msg.usage.output_tokens },
     });
   } catch (e) {
-    console.error('boardAdvisorTurn error:', e.message, '— advisor:', advisor.name);
+    console.error('boardAdvisorTurn error:', e.message, '— advisor:', advisor.name, '— model:', model);
     res.status(502).json({ error: e.message });
   }
 });

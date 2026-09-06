@@ -106,3 +106,14 @@ export function buildAdvisorTurnPrompt({
 
   return { advisor, systemText, userMessage };
 }
+
+// Claude Opus 5 can return a `thinking` content block ahead of the `text`
+// block even without thinking explicitly requested — indexing content[0]
+// blindly grabbed the thinking block on a live call and silently sent an
+// empty reply. Finds the first text block regardless of position; empty
+// string (not a throw) if none exists, so the caller can treat "no text
+// came back" as its own error rather than serving a blank reply.
+export function extractReplyText(content) {
+  const block = (content || []).find((b) => b?.type === 'text');
+  return block?.text ?? '';
+}

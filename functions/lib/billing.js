@@ -11,9 +11,14 @@ import admin from 'firebase-admin';
 export const DEFAULT_SPEND_CAP_USD = 5.0;
 
 // D-041: published per-token rates (USD), used to compute real cost from
-// actual usage — never estimated.
+// actual usage — never estimated. All three tiers are priced here since
+// D-041's model is now switchable at runtime (config/council) — a rate
+// missing for whichever model is actually selected would silently record
+// zero cost for every call.
 export const MODEL_RATES = {
   'claude-opus-5': { input: 5e-6, output: 25e-6 },
+  'claude-sonnet-5': { input: 3e-6, output: 15e-6 },
+  'claude-haiku-4-5': { input: 1e-6, output: 5e-6 },
 };
 
 export class SpendLimitError extends Error {
