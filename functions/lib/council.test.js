@@ -6,6 +6,13 @@ test('D-029: exactly the four Council advisors exist', () => {
   assert.deepEqual(Object.keys(ADVISORS).sort(), ['eli', 'kenji', 'mira', 'noa']);
 });
 
+test('D-027: each advisor keeps its Kansei name, title, and trait', () => {
+  assert.equal(ADVISORS.mira.name, 'Mira');
+  assert.equal(ADVISORS.kenji.title, 'The Anchor');
+  assert.equal(ADVISORS.noa.trait, 'competent');
+  assert.equal(ADVISORS.eli.title, 'The Compass');
+});
+
 test('sanitize: strips control characters and replaces straight quotes with '
   + 'curly ones (a naive single-character replace, not paired)', () => {
   assert.equal(sanitize('he said "hi"\x00'), 'he said “hi“');
