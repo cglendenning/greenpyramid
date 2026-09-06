@@ -27,4 +27,30 @@ void main() {
     expect(source, isNot(contains('DropdownButton')));
     expect(source, isNot(contains('preset')));
   });
+
+  test('D-045: no review, confirmation, or "does this look right?" step '
+      'exists anywhere in the setup path', () {
+    final source = File('lib/screens/setup_screen.dart').readAsStringSync();
+    for (final phrase in ['Does this look right', 'Confirm your', 'Review your']) {
+      expect(source, isNot(contains(phrase)),
+          reason: '"$phrase" would be a review step, forbidden by D-045');
+    }
+    // Essences remain editable *later*, from the category detail screen
+    // (D-047) — never inside setup itself.
+    expect(source, isNot(contains('Edit your essence')));
+  });
+
+  test('D-053: none of the six duplicate habit-generator files survive', () {
+    for (final n in [1, 2, 3, 4, 5, 6]) {
+      expect(File('lib/screens/setup/tasks/cat${n}tasks.dart').existsSync(), isFalse);
+    }
+    expect(File('lib/screens/setup/tasks/taskdow.dart').existsSync(), isFalse);
+    expect(Directory('lib/screens/setup/tasks').existsSync(), isFalse);
+  });
+
+  test('D-001: none of the eighteen old-flow setup screens survive', () {
+    for (final n in List.generate(18, (i) => i + 1)) {
+      expect(File('lib/screens/setup/setup$n.dart').existsSync(), isFalse);
+    }
+  });
 }
