@@ -97,6 +97,15 @@ class _CouncilScreenState extends State<CouncilScreen> {
       if (mounted) setState(() => _session = refreshed ?? session);
     } on AiBudgetException catch (e) {
       if (mounted) setState(() => _error = e.message);
+    } on SpendLimitException catch (e) {
+      // D-087/D-088: the purchase flow itself waits on R8's store products
+      // — for now this names the limit plainly rather than pretending it's
+      // a generic failure.
+      if (mounted) {
+        setState(() => _error =
+            'You\'ve reached this month\'s spend limit (\$${e.totalSpendUsd.toStringAsFixed(2)}'
+            ' of \$${e.spendCapUsd.toStringAsFixed(2)}). More can be purchased soon.');
+      }
     } on CouncilClientException catch (e) {
       if (mounted) setState(() => _error = e.message);
     }

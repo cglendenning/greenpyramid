@@ -14,6 +14,7 @@ import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import admin from 'firebase-admin';
 import { buildAdvisorTurnPrompt } from './lib/council.js';
+import { checkSpendLimit, recordCost, SpendLimitError } from './lib/billing.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -45,6 +46,25 @@ async function requireAppCheck(req, res, next) {
     next();
   } catch {
     res.status(401).json({ error: 'Invalid App Check token' });
+  }
+}
+
+// D-087: verifies a Firebase ID token passed as "Authorization: Bearer
+// <token>" and sets req.uid. Separate from App Check (which proves the
+// binary, not the account) — the spend cap is per-account, so the backend
+// needs to know which account to charge before it can enforce one.
+async function requireFirebaseAuth(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Missing Authorization header' });
+  }
+  try {
+    ensureAdmin();
+    const decoded = await admin.auth().verifyIdToken(header.slice(7));
+    req.uid = decoded.uid;
+    next();
+  } catch {
+    res.status(401).json({ error: 'Invalid or expired ID token' });
   }
 }
 
@@ -105,10 +125,25 @@ function claude() {
   return anthropicClient;
 }
 
-app.post('/boardAdvisorTurn', async (req, res) => {
+app.post('/boardAdvisorTurn', requireFirebaseAuth, async (req, res) => {
   const built = buildAdvisorTurnPrompt(req.body || {});
   if (!built) return res.status(400).json({ error: 'Invalid advisorKey' });
   const { advisor, systemText, userMessage } = built;
+
+  // D-087: refused before the model is ever called — the cap protects
+  // against cost, not against a request that already spent money.
+  try {
+    await checkSpendLimit(req.uid);
+  } catch (e) {
+    if (e instanceof SpendLimitError) {
+      return res.status(402).json({
+        error: 'spend_limit_exceeded',
+        totalSpendUsd: e.totalSpendUsd,
+        spendCapUsd: e.spendCapUsd,
+      });
+    }
+    throw e;
+  }
 
   try {
     const msg = await claude().messages.create({
@@ -120,6 +155,8 @@ app.post('/boardAdvisorTurn', async (req, res) => {
       system: [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: userMessage }],
     });
+    recordCost(req.uid, COUNCIL_MODEL, msg.usage.input_tokens, msg.usage.output_tokens)
+      .catch((e) => console.error('recordCost error:', e.message));
     res.json({
       reply: msg.content[0].text,
       usage: { inputTokens: msg.usage.input_tokens, outputTokens: msg.usage.output_tokens },
