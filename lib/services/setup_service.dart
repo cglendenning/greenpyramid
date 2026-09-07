@@ -15,16 +15,25 @@ import 'sync_service.dart';
 /// screen calls these methods and renders state; no SQL or prompt
 /// construction lives in the screen (D-024).
 class SetupService {
-  SetupService({CouncilService? council, DatabaseHelper? db, CouncilClient? client})
+  SetupService(
+      {CouncilService? council,
+      DatabaseHelper? db,
+      CouncilClient? client,
+      SyncService? sync,
+      AuthService? auth})
       : _council = council ?? CouncilService.instance,
         _db = db ?? DatabaseHelper.instance,
-        _client = client ?? CouncilClient.instance;
+        _client = client ?? CouncilClient.instance,
+        _sync = sync ?? SyncService.instance,
+        _auth = auth ?? AuthService.instance;
 
   static final SetupService instance = SetupService();
 
   final CouncilService _council;
   final DatabaseHelper _db;
   final CouncilClient _client;
+  final SyncService _sync;
+  final AuthService _auth;
 
   /// D-082: exactly one setup session may exist per account, ever — but
   /// only enforced once this device actually has a real local pyramid to
@@ -34,16 +43,12 @@ class SetupService {
   /// harmless-looking, but the guarantee this directive documents as
   /// `done` didn't really hold.
   ///
-  /// A device with no real category yet — still the default `Empty%` seed,
-  /// or no rows at all — is allowed through regardless of Firestore
-  /// history: D-075's sync is push-only
-  /// (local to Firestore, never back down), so there is currently no way
-  /// to restore an existing pyramid onto a device that doesn't have one —
-  /// refusing here would strand a genuinely reinstalling user with no
-  /// pyramid and no path to ever get one. The case this actually guards
-  /// against is the real bug: a device that already has a working local
-  /// pyramid re-entering setup (e.g. the home screen's "Setup" menu item)
-  /// and redoing it.
+  /// D-096: a device with no real local pyramid first gets a chance to
+  /// restore one from Firestore (the account may already have completed
+  /// setup on a different install) before falling through to a genuinely
+  /// fresh setup session. Restoring, not refusing, is what resolves the
+  /// original problem the local-only check below could only work around:
+  /// a reinstall losing the account's data outright.
   Future<BoardSession> startOrResumeSetup() async {
     final active = await _council.getActiveSession(type: BoardSessionType.setup);
     if (active != null) return active;
@@ -57,8 +62,16 @@ class SetupService {
     final rows = await _db.queryCategories();
     final hasRealLocalPyramid =
         rows.any((r) => !(r[DatabaseHelper.columnCat] as String).startsWith('Empty'));
-    if (hasRealLocalPyramid && await _council.hasEverCreatedSetupSession()) {
-      throw SetupAlreadyCompleteException();
+
+    if (hasRealLocalPyramid) {
+      if (await _council.hasEverCreatedSetupSession()) {
+        throw SetupAlreadyCompleteException();
+      }
+    } else {
+      final uid = _auth.currentUid;
+      if (uid != null && await _sync.restoreFromCloud(uid)) {
+        throw SetupAlreadyCompleteException();
+      }
     }
 
     return _council.createSession(type: BoardSessionType.setup);
@@ -208,11 +221,13 @@ class SetupService {
   }
 }
 
-/// D-082: thrown by [SetupService.startOrResumeSetup] when this device
-/// already has a real local pyramid and the account already completed a
-/// setup session — re-entering setup (e.g. the home screen's menu item)
-/// must not redo it. The screen's response is to leave setup entirely,
-/// not show an error inside a chat UI that has nothing to resume.
+/// D-082/D-096: thrown by [SetupService.startOrResumeSetup] whenever setup
+/// has nothing left to do for this account — either this device already
+/// had a real local pyramid and the account already completed a setup
+/// session (re-entering setup, e.g. the home screen's menu item, must not
+/// redo it), or it didn't, but one was just restored from Firestore. The
+/// screen's response is the same either way: leave setup entirely, not
+/// show an error inside a chat UI that has nothing to resume.
 class SetupAlreadyCompleteException implements Exception {
   @override
   String toString() =>

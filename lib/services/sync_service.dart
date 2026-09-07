@@ -15,6 +15,7 @@ import 'db.dart';
 ///   essenceVersions/{id}        every version of every essence (D-061)
 ///   domainFindings/{id}         accumulated four-domain findings (D-048)
 ///   recentActivity/{id}         bounded task_log window, ≤250 rows (D-075)
+///   tasks/{id}                  every habit/task currently defined (D-096)
 /// ```
 /// `councilSessions/` and `deviceTrial/` are also part of IV-D but are not
 /// built yet (R5 and D-059's Android trial marker respectively) — nothing
@@ -26,6 +27,11 @@ import 'db.dart';
 ///
 /// This runs after habit check-off, never in its path (D-031): check-off
 /// itself never calls into this class or awaits anything here.
+///
+/// D-096: [restoreFromCloud] is the pull direction — the rest of this
+/// class only ever pushes. A device with no real local pyramid (a fresh
+/// install, or one that lost its data) calls it once, before setup would
+/// otherwise start, to bring back what the account already has.
 class SyncService {
   SyncService({FirebaseFirestore? firestore, DatabaseHelper? db, CalendarService? calendar})
       : _firestore = firestore ?? FirebaseFirestore.instance,
@@ -56,6 +62,7 @@ class SyncService {
         _syncEssenceVersions(userDoc),
         _syncDomainFindings(userDoc),
         _syncRecentActivity(userDoc),
+        _syncTasks(userDoc),
         _syncRetentionEligibility(userDoc, setupComplete: setupComplete),
       ]);
     } catch (e, st) {
@@ -196,6 +203,118 @@ class SyncService {
           SetOptions(merge: true));
     }
     await batch.commit();
+  }
+
+  /// IV-D `tasks/{id}`: every habit/task currently defined, keyed by its
+  /// local row id. D-096: without this, restoring a pyramid from Firestore
+  /// could bring back categories and essences but never the habits under
+  /// them — the part of the app people actually check off daily. Diffs
+  /// against what's already remote, the same reconcile pattern
+  /// [_syncRecentActivity] already uses, since a habit can be deleted or
+  /// edited locally and a pure-append sync would leave stale rows forever.
+  Future<void> _syncTasks(DocumentReference<Map<String, dynamic>> userDoc) async {
+    final rows = await _db.queryAllTasks();
+    final col = userDoc.collection('tasks');
+    final localIds = rows.map((r) => r[DatabaseHelper.columnId].toString()).toSet();
+
+    final existing = await col.get();
+    final batch = _firestore.batch();
+    for (final doc in existing.docs) {
+      if (!localIds.contains(doc.id)) {
+        batch.delete(doc.reference);
+      }
+    }
+    for (final row in rows) {
+      final id = row[DatabaseHelper.columnId].toString();
+      batch.set(
+          col.doc(id),
+          {
+            'category': row[DatabaseHelper.columnCategory],
+            'taskdescription': row[DatabaseHelper.columnTaskDescription],
+            'sunday': row[DatabaseHelper.columnSunday],
+            'monday': row[DatabaseHelper.columnMonday],
+            'tuesday': row[DatabaseHelper.columnTuesday],
+            'wednesday': row[DatabaseHelper.columnWednesday],
+            'thursday': row[DatabaseHelper.columnThursday],
+            'friday': row[DatabaseHelper.columnFriday],
+            'saturday': row[DatabaseHelper.columnSaturday],
+            'createdate': row[DatabaseHelper.columnCreateDate],
+          },
+          SetOptions(merge: true));
+    }
+    await batch.commit();
+  }
+
+  /// D-096: the pull direction — brings a device with no real local
+  /// pyramid back up to date from what the account already has in
+  /// Firestore, rather than starting setup over. Returns whether real
+  /// data was actually found and restored (false means this is a
+  /// genuinely new account, and the caller should proceed to setup as
+  /// normal).
+  ///
+  /// Deliberately partial, and disclosed as such: restores categories,
+  /// each category's *current* essence (not the full version history —
+  /// `essenceVersions` is provenance, not something the app's own
+  /// behavior depends on), the vision statement, and every habit/task.
+  /// Domain findings (D-048, advisory-only per D-074) and recent check-off
+  /// activity do not restore — losing them costs nothing the app depends
+  /// on to function, and reconciling check-off history against whatever a
+  /// user did on a now-gone device is a genuinely different, harder
+  /// problem this does not attempt to solve.
+  Future<bool> restoreFromCloud(String uid) async {
+    final userDoc = _firestore.collection('users').doc(uid);
+    final profileSnap = await userDoc.collection('profile').doc('main').get();
+    final profile = profileSnap.data();
+    final categories = (profile?['categories'] as List<dynamic>?) ?? const [];
+
+    // A placeholder-only or empty remote profile means there is nothing to
+    // restore — the same check used locally (D-082) for "no real pyramid",
+    // applied to what's in the cloud instead.
+    final realCategories = categories
+        .cast<Map<String, dynamic>>()
+        .where((c) => !(c['cat'] as String? ?? 'Empty').startsWith('Empty'))
+        .toList();
+    if (realCategories.isEmpty) return false;
+
+    for (final c in realCategories) {
+      final id = (c['id'] as num).toInt();
+      await _db.insertCategory({
+        DatabaseHelper.columnCategoryId: id,
+        DatabaseHelper.columnCat: c['cat'] as String,
+        DatabaseHelper.columnPosition: c['position'] as int? ?? 0,
+        if (c['created'] != null) DatabaseHelper.columnCategoryCreated: c['created'],
+      });
+      final essence = c['activeEssence'] as String?;
+      if (essence != null && essence.isNotEmpty) {
+        await _db.insertCategoryEssence(
+            categoryId: id, essence: essence, sourceSessionId: 'restored');
+      }
+    }
+
+    final vision = profile?['visionStatement'] as String?;
+    if (vision != null && vision.isNotEmpty) {
+      await _db.insertVisionStatement(vision);
+    }
+
+    final tasksSnap = await userDoc.collection('tasks').get();
+    for (final doc in tasksSnap.docs) {
+      final t = doc.data();
+      await _db.insertTask({
+        DatabaseHelper.columnCategory: t['category'],
+        DatabaseHelper.columnTaskDescription: t['taskdescription'],
+        DatabaseHelper.columnSunday: t['sunday'] ?? 'true',
+        DatabaseHelper.columnMonday: t['monday'] ?? 'true',
+        DatabaseHelper.columnTuesday: t['tuesday'] ?? 'true',
+        DatabaseHelper.columnWednesday: t['wednesday'] ?? 'true',
+        DatabaseHelper.columnThursday: t['thursday'] ?? 'true',
+        DatabaseHelper.columnFriday: t['friday'] ?? 'true',
+        DatabaseHelper.columnSaturday: t['saturday'] ?? 'true',
+        DatabaseHelper.columnCreateDate:
+            t['createdate'] ?? DateTime.now().toIso8601String(),
+      });
+    }
+
+    return true;
   }
 
   /// D-064: cloud data for a `lapsed` account is purged 12 months after

@@ -376,4 +376,129 @@ void main() {
         .get();
     expect(versions.docs.length, 1);
   });
+
+  group('D-096: tasks sync (push) and cloud restore (pull)', () {
+    test('IV-D/D-096: every habit/task syncs into the tasks collection',
+        () async {
+      await db.insertTask({
+        DatabaseHelper.columnCategory: 'Health',
+        DatabaseHelper.columnTaskDescription: 'Walk 20 minutes',
+        DatabaseHelper.columnSunday: 'true',
+        DatabaseHelper.columnMonday: 'true',
+        DatabaseHelper.columnTuesday: 'true',
+        DatabaseHelper.columnWednesday: 'true',
+        DatabaseHelper.columnThursday: 'true',
+        DatabaseHelper.columnFriday: 'true',
+        DatabaseHelper.columnSaturday: 'true',
+        DatabaseHelper.columnCreateDate: '2026-01-01T00:00:00.000',
+      });
+      final firestore = FakeFirebaseFirestore();
+      await SyncService(firestore: firestore, db: db).syncAll(uid, setupComplete: true);
+
+      final tasks = await firestore.collection('users').doc(uid).collection('tasks').get();
+      expect(tasks.docs.single.data()['taskdescription'], 'Walk 20 minutes');
+    });
+
+    test('IV-D/D-096: a task deleted locally is removed from Firestore on '
+        'the next sync — same reconcile pattern as recentActivity',
+        () async {
+      final id = await db.insertTask({
+        DatabaseHelper.columnCategory: 'Health',
+        DatabaseHelper.columnTaskDescription: 'Walk 20 minutes',
+        DatabaseHelper.columnSunday: 'true',
+        DatabaseHelper.columnMonday: 'true',
+        DatabaseHelper.columnTuesday: 'true',
+        DatabaseHelper.columnWednesday: 'true',
+        DatabaseHelper.columnThursday: 'true',
+        DatabaseHelper.columnFriday: 'true',
+        DatabaseHelper.columnSaturday: 'true',
+        DatabaseHelper.columnCreateDate: '2026-01-01T00:00:00.000',
+      });
+      final firestore = FakeFirebaseFirestore();
+      final sync = SyncService(firestore: firestore, db: db);
+      await sync.syncAll(uid, setupComplete: true);
+
+      final d = await db.database;
+      await d.delete(DatabaseHelper.taskTable,
+          where: '${DatabaseHelper.columnId} = ?', whereArgs: [id]);
+      await sync.syncAll(uid, setupComplete: true);
+
+      final tasks = await firestore.collection('users').doc(uid).collection('tasks').get();
+      expect(tasks.docs, isEmpty);
+    });
+
+    test('D-096: restoreFromCloud returns false, and writes nothing, when '
+        'the cloud profile has no real categories (a genuinely new '
+        'account)', () async {
+      final firestore = FakeFirebaseFirestore();
+      final restored = await SyncService(firestore: firestore, db: db).restoreFromCloud(uid);
+      expect(restored, isFalse);
+    });
+
+    test('D-096: restoreFromCloud brings back categories, each category\'s '
+        'current essence, the vision statement, and every habit — '
+        'regression test for owner feedback: reinstalling the app lost '
+        'the whole pyramid because nothing ever pulled Firestore data '
+        'back down', () async {
+      final firestore = FakeFirebaseFirestore();
+      final push = SyncService(firestore: firestore, db: db);
+
+      await db.insertCategory({
+        DatabaseHelper.columnCategoryId: 1,
+        DatabaseHelper.columnCat: 'Health',
+        DatabaseHelper.columnPosition: 1,
+      });
+      final d = await db.database;
+      await d.insert(DatabaseHelper.categoryEssenceTable, {
+        DatabaseHelper.columnEssenceCategoryId: 1,
+        DatabaseHelper.columnEssenceText: 'my body carries me',
+        DatabaseHelper.columnEssenceCreated: '2026-01-01T00:00:00.000',
+      });
+      await db.insertVisionStatement('I show up for what matters.');
+      await db.insertTask({
+        DatabaseHelper.columnCategory: 'Health',
+        DatabaseHelper.columnTaskDescription: 'Walk 20 minutes',
+        DatabaseHelper.columnSunday: 'true',
+        DatabaseHelper.columnMonday: 'true',
+        DatabaseHelper.columnTuesday: 'true',
+        DatabaseHelper.columnWednesday: 'true',
+        DatabaseHelper.columnThursday: 'true',
+        DatabaseHelper.columnFriday: 'true',
+        DatabaseHelper.columnSaturday: 'true',
+        DatabaseHelper.columnCreateDate: '2026-01-01T00:00:00.000',
+      });
+      await push.syncAll(uid, setupComplete: true);
+
+      // "Reinstall": a brand-new local database, same Firestore account.
+      final freshDir = await Directory.systemTemp.createTemp('gp_sync_restore_test');
+      addTearDown(() {
+        if (freshDir.existsSync()) freshDir.deleteSync(recursive: true);
+      });
+      PathProviderPlatform.instance = _TempPathProvider(freshDir.path);
+
+      final pull = SyncService(firestore: firestore, db: db);
+      final restored = await pull.restoreFromCloud(uid);
+      expect(restored, isTrue);
+
+      final categories = await db.queryCategories();
+      expect(categories.single[DatabaseHelper.columnCat], 'Health');
+      expect(await db.getLatestEssenceForCategory(1), 'my body carries me');
+      expect(await db.getLatestVisionStatement(), 'I show up for what matters.');
+      final tasks = await db.queryAllTasks();
+      expect(tasks.single[DatabaseHelper.columnTaskDescription], 'Walk 20 minutes');
+    });
+
+    test('D-096: a cloud profile whose categories are still the Empty% '
+        'placeholder seed is treated as no real data — restoreFromCloud '
+        'returns false rather than restoring placeholders', () async {
+      final firestore = FakeFirebaseFirestore();
+      await firestore.collection('users').doc(uid).collection('profile').doc('main').set({
+        'categories': [
+          {'id': 1, 'cat': 'Empty1', 'position': 0},
+        ],
+      });
+      final restored = await SyncService(firestore: firestore, db: db).restoreFromCloud(uid);
+      expect(restored, isFalse);
+    });
+  });
 }

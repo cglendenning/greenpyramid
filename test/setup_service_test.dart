@@ -4,10 +4,12 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/models/board_session.dart';
+import 'package:life_ops/services/auth_service.dart';
 import 'package:life_ops/services/council_client.dart';
 import 'package:life_ops/services/council_service.dart';
 import 'package:life_ops/services/db.dart';
 import 'package:life_ops/services/setup_service.dart';
+import 'package:life_ops/services/sync_service.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -107,12 +109,19 @@ void main() {
     if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
   });
 
-  SetupService buildService({_FakeCouncilClient? client}) {
+  SetupService buildService(
+      {_FakeCouncilClient? client, FakeFirebaseFirestore? firestore}) {
     final auth = MockFirebaseAuth(
         signedIn: true, mockUser: MockUser(uid: 'u1', isAnonymous: true));
-    final firestore = FakeFirebaseFirestore();
-    final council = CouncilService(firestore: firestore, auth: auth);
-    return SetupService(council: council, db: db, client: client ?? _FakeCouncilClient());
+    final fakeFirestore = firestore ?? FakeFirebaseFirestore();
+    final council = CouncilService(firestore: fakeFirestore, auth: auth);
+    return SetupService(
+      council: council,
+      db: db,
+      client: client ?? _FakeCouncilClient(),
+      sync: SyncService(firestore: fakeFirestore, db: db),
+      auth: AuthService(auth: auth),
+    );
   }
 
   group('D-082: exactly one setup session, resumed not duplicated', () {
@@ -139,8 +148,15 @@ void main() {
         'been created at all', () async {
       final auth = MockFirebaseAuth(
           signedIn: true, mockUser: MockUser(uid: 'u-real-pyramid', isAnonymous: true));
-      final council = CouncilService(firestore: FakeFirebaseFirestore(), auth: auth);
-      final svc = SetupService(council: council, db: db, client: _FakeCouncilClient());
+      final firestore = FakeFirebaseFirestore();
+      final council = CouncilService(firestore: firestore, auth: auth);
+      final svc = SetupService(
+        council: council,
+        db: db,
+        client: _FakeCouncilClient(),
+        sync: SyncService(firestore: firestore, db: db),
+        auth: AuthService(auth: auth),
+      );
 
       final first = await svc.startOrResumeSetup();
       await council.endSession(first.sessionId);
@@ -153,33 +169,40 @@ void main() {
         CategoryProposal(position: 6, name: 'Legacy'),
       ]);
 
-      expect(svc.startOrResumeSetup(),
+      await expectLater(svc.startOrResumeSetup(),
           throwsA(isA<SetupAlreadyCompleteException>()));
     });
 
     test(
-        'D-082: a device with no real local pyramid (e.g. after a '
-        'reinstall) is still allowed to start a fresh setup session, even '
-        'though the account already completed one on a previous install — '
-        'D-075\'s sync is push-only, so there is currently no way to '
-        'restore an existing pyramid onto a device that has none; refusing '
-        'here would strand the user permanently instead', () async {
+        'D-096: a device with no real local pyramid (e.g. after a '
+        'reinstall), same account as one that already completed setup, '
+        'restores the cloud pyramid rather than starting a new setup '
+        'session', () async {
       final auth = MockFirebaseAuth(
           signedIn: true, mockUser: MockUser(uid: 'u-reinstall', isAnonymous: true));
-      final council = CouncilService(firestore: FakeFirebaseFirestore(), auth: auth);
+      final firestore = FakeFirebaseFirestore();
+      final council = CouncilService(firestore: firestore, auth: auth);
+      final sync = SyncService(firestore: firestore, db: db);
+      final authSvc = AuthService(auth: auth);
 
-      // "First install": complete a setup session with a real pyramid.
-      final svc1 = SetupService(council: council, db: db, client: _FakeCouncilClient());
+      // "First install": complete a setup session with a real pyramid,
+      // then push it to Firestore the same way real setup completion does.
+      final svc1 = SetupService(
+          council: council, db: db, client: _FakeCouncilClient(), sync: sync, auth: authSvc);
       final first = await svc1.startOrResumeSetup();
       await council.endSession(first.sessionId);
       await svc1.commitCategories(const [
-        CategoryProposal(position: 1, name: 'Health'),
+        CategoryProposal(position: 1, name: 'Health', description: 'my body carries me'),
         CategoryProposal(position: 2, name: 'Craft'),
         CategoryProposal(position: 3, name: 'Family'),
         CategoryProposal(position: 4, name: 'Money'),
         CategoryProposal(position: 5, name: 'Friendship'),
         CategoryProposal(position: 6, name: 'Legacy'),
       ]);
+      await svc1.commitEssence(
+          categoryId: 1, essence: 'my body carries me', sessionId: first.sessionId);
+      await svc1.commitHabits('Health', const ['Walk 20 minutes']);
+      await sync.syncAll('u-reinstall', setupComplete: true);
 
       // "Reinstall": a brand-new local database, same Firestore account.
       final freshDir =
@@ -189,9 +212,26 @@ void main() {
       });
       PathProviderPlatform.instance = _TempPathProvider(freshDir.path);
 
-      final svc2 = SetupService(council: council, db: db, client: _FakeCouncilClient());
-      final second = await svc2.startOrResumeSetup();
-      expect(second.sessionId, isNot(first.sessionId));
+      final svc2 = SetupService(
+          council: council, db: db, client: _FakeCouncilClient(), sync: sync, auth: authSvc);
+      await expectLater(svc2.startOrResumeSetup(),
+          throwsA(isA<SetupAlreadyCompleteException>()));
+
+      final restoredCategories = await db.queryCategories();
+      expect(restoredCategories.any((c) => c[DatabaseHelper.columnCat] == 'Health'), isTrue);
+      final restoredTasks = await db.queryAllTasks();
+      expect(restoredTasks.any((t) => t[DatabaseHelper.columnTaskDescription] == 'Walk 20 minutes'),
+          isTrue);
+    });
+
+    test(
+        'D-096: a device with no real local pyramid, and no real cloud '
+        'data either (a genuinely new account), starts a fresh setup '
+        'session as normal — restore finds nothing and gets out of the '
+        'way', () async {
+      final svc = buildService();
+      final session = await svc.startOrResumeSetup();
+      expect(session.type, BoardSessionType.setup);
     });
   });
 
