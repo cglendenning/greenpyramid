@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sanitize, biasInstruction, buildAdvisorTurnPrompt, buildGeneralCouncilTurnPrompt, buildSetupAdvisorTurnPrompt, extractReplyText, ADVISORS, SETUP_TURN_TOOL } from './council.js';
+import { sanitize, biasInstruction, applyPacingReassurance, buildAdvisorTurnPrompt, buildGeneralCouncilTurnPrompt, buildSetupAdvisorTurnPrompt, countMiraTurns, extractReplyText, ADVISORS, SETUP_TURN_TOOL } from './council.js';
 
 test('D-029: exactly the four Council advisors exist', () => {
   assert.deepEqual(Object.keys(ADVISORS).sort(), ['eli', 'kenji', 'mira', 'noa']);
@@ -123,42 +123,52 @@ test('D-090: conversation history reaches the user message, sanitized the '
   assert.doesNotMatch(userMessage, /"/);
 });
 
-test('D-092: no pacing reassurance instruction before Mira has asked two '
-  + 'questions — nothing to reassure about yet', () => {
-  const { systemText } = buildSetupAdvisorTurnPrompt({
-    conversationHistory: [
-      { advisor: 'mira', text: 'What energizes you?' },
-      { advisor: 'user', text: 'Being outdoors.' },
-    ],
-  });
-  assert.doesNotMatch(systemText, /just a couple more/i);
+// D-092: found live — asking the model to weave a pacing reassurance into
+// its own reply was not reliably followed several turns into a real
+// conversation (the owner hit five real questions with zero reassurance
+// and had to ask directly). Replaced with a deterministic, server-applied
+// suffix — these tests cover that mechanism, not a prompt instruction.
+test('D-092: countMiraTurns counts only Mira\'s own turns, not the '
+  + 'user\'s', () => {
+  assert.equal(countMiraTurns([
+    { advisor: 'mira', text: 'a' },
+    { advisor: 'user', text: 'b' },
+    { advisor: 'mira', text: 'c' },
+  ]), 2);
+  assert.equal(countMiraTurns([]), 0);
+  assert.equal(countMiraTurns(undefined), 0);
 });
 
-test('D-092: a pacing reassurance instruction appears once Mira has already '
-  + 'asked two questions — regression test for owner feedback: past a '
-  + 'couple of questions with no sense of how much longer, it started to '
-  + 'feel like it could be endless', () => {
-  const { systemText } = buildSetupAdvisorTurnPrompt({
-    conversationHistory: [
-      { advisor: 'mira', text: 'What energizes you?' },
-      { advisor: 'user', text: 'Being outdoors.' },
-      { advisor: 'mira', text: 'What does that give you?' },
-      { advisor: 'user', text: 'A sense of space.' },
-    ],
-  });
-  assert.match(systemText, /just a couple more/i);
-  assert.match(systemText, /never a literal countdown or exact number/i);
+test('D-092: applyPacingReassurance leaves the reply untouched before '
+  + 'Mira has asked two questions — nothing to reassure about yet', () => {
+  const reply = applyPacingReassurance('What energizes you?',
+      { turnsSoFar: 1, readyToBuild: false });
+  assert.equal(reply, 'What energizes you?');
 });
 
-test('D-092: the pacing instruction never tells Mira to state an exact '
-  + 'count — the guidance itself forbids reciting one', () => {
-  const { systemText } = buildSetupAdvisorTurnPrompt({
-    conversationHistory: [
-      { advisor: 'mira', text: 'a' }, { advisor: 'user', text: 'b' },
-      { advisor: 'mira', text: 'c' }, { advisor: 'user', text: 'd' },
-    ],
-  });
-  assert.doesNotMatch(systemText, /exactly \d+ more/i);
+test('D-092: applyPacingReassurance appends a reassurance once Mira has '
+  + 'already asked two questions — regression test for owner feedback: '
+  + 'past a couple of questions with no sense of how much longer, it '
+  + 'started to feel like it could be endless', () => {
+  const reply = applyPacingReassurance('What does that give you?',
+      { turnsSoFar: 2, readyToBuild: false });
+  assert.notEqual(reply, 'What does that give you?');
+  assert.match(reply, /^What does that give you\?/);
+});
+
+test('D-092: applyPacingReassurance never appends on a closing turn — a '
+  + 'reply that is visibly ending on its own needs no reassurance', () => {
+  const reply = applyPacingReassurance("Let's build this.",
+      { turnsSoFar: 5, readyToBuild: true });
+  assert.equal(reply, "Let's build this.");
+});
+
+test('D-092: applyPacingReassurance never states a literal countdown or '
+  + 'exact number — a felt sense, not a mechanical progress report', () => {
+  for (let turnsSoFar = 2; turnsSoFar < 10; turnsSoFar++) {
+    const reply = applyPacingReassurance('x', { turnsSoFar, readyToBuild: false });
+    assert.doesNotMatch(reply, /\d+ more/i);
+  }
 });
 
 test('D-093: with no existingCategories, buildSetupAdvisorTurnPrompt is a '

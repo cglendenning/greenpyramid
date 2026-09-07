@@ -14,7 +14,7 @@ import cors from 'cors';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import admin from 'firebase-admin';
-import { buildAdvisorTurnPrompt, buildGeneralCouncilTurnPrompt, buildSetupAdvisorTurnPrompt, extractReplyText, SETUP_TURN_TOOL } from './lib/council.js';
+import { applyPacingReassurance, buildAdvisorTurnPrompt, buildGeneralCouncilTurnPrompt, buildSetupAdvisorTurnPrompt, countMiraTurns, extractReplyText, SETUP_TURN_TOOL } from './lib/council.js';
 import { checkSpendLimit, recordCost, SpendLimitError } from './lib/billing.js';
 import { getCouncilModel, getNotificationModel } from './lib/model_config.js';
 import { guardAndCountSetupCall, SetupCallLimitError } from './lib/setup_guard.js';
@@ -318,11 +318,19 @@ async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conver
       console.error('boardAdvisorTurn(setup): no tool_use in response, stop_reason:', msg.stop_reason);
       return res.status(502).json({ error: 'no_tool_use_in_response' });
     }
+    const readyToBuild = !!toolUse.input.readyToBuild;
+    // D-092: applied server-side, deterministically — found live that
+    // asking the model to weave this into its own reply wasn't reliably
+    // followed several turns into a real conversation.
+    const reply = applyPacingReassurance(toolUse.input.reply, {
+      turnsSoFar: countMiraTurns(conversationHistory),
+      readyToBuild,
+    });
     // D-017: setup is free — never charged against D-087's dollar ledger,
     // only counted against D-072's call limit (already done above).
     res.json({
-      reply: toolUse.input.reply,
-      readyToBuild: !!toolUse.input.readyToBuild,
+      reply,
+      readyToBuild,
       usage: { inputTokens: msg.usage.input_tokens, outputTokens: msg.usage.output_tokens },
     });
   } catch (e) {

@@ -218,25 +218,6 @@ export function buildSetupAdvisorTurnPrompt({
       `true and let reply be a brief, warm closing line telling them you're about to build it — never ` +
       `a question in that case.`;
 
-  // D-092: how many questions Mira has already asked — used only to gate
-  // a pacing instruction, never sent to the model as a literal number to
-  // recite. Two possible values (below/at-or-above the threshold), not one
-  // per turn count, so this still only produces two distinct system-prompt
-  // variants and stays cacheable (D-041).
-  const miraTurnsSoFar = safeHistory.filter((m) => m.advisor !== 'user').length;
-  const pacingInstruction = miraTurnsSoFar >= 2
-    ? `You've already asked a couple of questions. If you are not yet ready ` +
-      `to build (readyToBuild: false), work a brief, warm sense of "not much ` +
-      `longer" into this reply — something like "just a couple more" or ` +
-      `"we're almost there" — never a literal countdown or exact number. ` +
-      `This conversation is usually about 4 to 6 exchanges total and rarely ` +
-      `goes past 7, so let that be roughly true rather than a guess. Found ` +
-      `live: past a couple of questions with no sense of how much longer ` +
-      `this would go, it started to feel like it could be endless, which ` +
-      `felt bad — the reassurance is there to prevent exactly that. Skip it ` +
-      `if readyToBuild is true; a closing line doesn't need it.\n`
-    : '';
-
   const systemText =
     `You are Mira, The Heart — having a one-on-one conversation with someone, ` +
     `before building their personal pyramid of values and the habits that ` +
@@ -246,12 +227,41 @@ export function buildSetupAdvisorTurnPrompt({
     `${roleInstruction} One question or reflection at a time — never a list. ` +
     `Max 2 sentences.\n` +
     `${readyInstruction}\n` +
-    pacingInstruction +
     `Never wrap your response in quotation marks.`;
 
   const userMessage = `CONVERSATION SO FAR:\n${historyText}\n\n${advisor.name}:`;
 
   return { advisor, systemText, userMessage };
+}
+
+// D-092: how many of Mira's own turns are already in the conversation —
+// shared by [applyPacingReassurance] below, which needs the exact same
+// count to decide whether to add a reassurance, computed the same way
+// regardless of caller.
+export function countMiraTurns(conversationHistory) {
+  return (conversationHistory || []).filter((m) => m.advisor !== 'user').length;
+}
+
+// D-092: found live — asking the model to weave a pacing reassurance into
+// its own reply (the original approach) was not reliably followed once the
+// conversation ran several turns deep; the owner hit five real questions
+// with zero reassurance and had to ask directly how much longer this would
+// go. This replaces that with a deterministic, server-applied suffix —
+// guaranteed to appear once Mira has asked two questions without being
+// ready, rather than left to the model's discretion. Never applied to a
+// closing turn (readyToBuild: true), which is visibly ending on its own
+// and needs no reassurance. Rotates through a small fixed set so a long
+// conversation doesn't repeat the exact same phrase every turn.
+const PACING_SUFFIXES = [
+  " We're close — just a bit more.",
+  ' Almost there.',
+  " Not much further to go.",
+];
+
+export function applyPacingReassurance(reply, { turnsSoFar, readyToBuild }) {
+  if (readyToBuild || turnsSoFar < 2) return reply;
+  const suffix = PACING_SUFFIXES[turnsSoFar % PACING_SUFFIXES.length];
+  return `${(reply || '').trim()}${suffix}`;
 }
 
 // D-090: forced tool-use schema for the solo setup turn above — the

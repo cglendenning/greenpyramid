@@ -722,10 +722,15 @@ class _SetupScreenState extends State<SetupScreen> {
       case _Phase.categories:
         return _buildCategories();
       case _Phase.refining:
-        // D-093: no synthetic prepend needed here — unlike Mira's opening
-        // line, the refinement prompt is persisted (see
-        // appendAdvisorMessage), so it's already part of session.messages.
-        return _buildTranscript(_session?.messages ?? const []);
+        // D-067/D-093: found live — refining renders the conversation from
+        // its start, but Mira's opening line is never persisted (it's
+        // fixed, client-only copy, same as the openingRound case above),
+        // so without prepending it here it silently vanished the moment a
+        // user tapped "Not quite right" and came back to the chat. The
+        // refinement prompt itself IS persisted (see appendAdvisorMessage)
+        // and is already part of session.messages — only the very first
+        // line needs reconstructing.
+        return _buildTranscript([_openingMessage, ...?_session?.messages]);
       case _Phase.essences:
         return _buildEssences();
       case _Phase.habits:

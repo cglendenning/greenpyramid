@@ -108,6 +108,28 @@ void main() {
   });
 
   test(
+      'D-067/D-093: Mira\'s opening line always renders in the refining '
+      'phase too — regression test for a defect found live: tapping "Not '
+      'quite right" and returning to the chat silently dropped the very '
+      'first message, because refining renders the conversation from its '
+      'start but the opening line is never persisted to Firestore.', () {
+    final source = File('lib/screens/setup_screen.dart').readAsStringSync();
+    final bodyStart = source.indexOf('Widget _buildBody()');
+    final bodyEnd = source.indexOf('\n  Widget _buildTranscript', bodyStart);
+    final body = source.substring(bodyStart, bodyEnd);
+
+    final refiningCase = body.indexOf('case _Phase.refining:');
+    expect(refiningCase, greaterThan(-1));
+    final nextCase = body.indexOf('case _Phase.essences:', refiningCase);
+    final refiningBranch = body.substring(refiningCase, nextCase);
+
+    expect(refiningBranch, contains('_openingMessage'),
+        reason: 'the refining phase renders the whole conversation from '
+            'the start, so it must prepend the synthetic Mira opening '
+            'message the same way the openingRound phase does');
+  });
+
+  test(
       'D-090: a pause follows Mira\'s closing line before the categories '
       'phase replaces the transcript — same pacing discipline D-042 '
       'established for the old multi-advisor round, kept for the solo one',
