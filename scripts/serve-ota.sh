@@ -29,6 +29,11 @@ case "$MODE" in
     ;;
 esac
 ARTIFACT_NAME=$(basename "$ARTIFACT")
+# URL-encode the artifact name (e.g. "Green Pyramid.ipa" has a literal space,
+# which is invalid unescaped in a URL) for every URL we build below. The
+# local http.server still serves it fine: it decodes the request path back
+# to the real filename before looking it up on disk.
+ARTIFACT_NAME_ENC=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quote(sys.argv[1]))" "$ARTIFACT_NAME")
 
 # Kill any leftover server or tunnel from a previous run.
 lsof -ti:${PORT} | xargs kill -9 2>/dev/null || true
@@ -68,7 +73,7 @@ if [ "$MODE" = "ios" ]; then
           <key>kind</key>
           <string>software-package</string>
           <key>url</key>
-          <string>${TUNNEL_URL}/${ARTIFACT_NAME}</string>
+          <string>${TUNNEL_URL}/${ARTIFACT_NAME_ENC}</string>
         </dict>
       </array>
       <key>metadata</key>
@@ -110,7 +115,7 @@ HTTP_CODE="000"
 for i in $(seq 30); do
   HTTP_CODE=$(curl -s --max-time 10 \
     --resolve "${TUNNEL_HOST}:443:${TUNNEL_IP}" \
-    "${TUNNEL_URL}/${ARTIFACT_NAME}" \
+    "${TUNNEL_URL}/${ARTIFACT_NAME_ENC}" \
     -o /dev/null -w "%{http_code}" 2>/dev/null)
   [ "$HTTP_CODE" = "200" ] && break
   sleep 1
@@ -125,7 +130,7 @@ echo "ARTIFACT: ${ARTIFACT_NAME}"
 if [ "$MODE" = "ios" ]; then
   echo "itms-services://?action=download-manifest&url=${TUNNEL_URL}/manifest.plist"
 else
-  echo "${TUNNEL_URL}/${ARTIFACT_NAME}"
+  echo "${TUNNEL_URL}/${ARTIFACT_NAME_ENC}"
 fi
 
 # Keep the HTTP server and tunnel alive (they are backgrounded above) until

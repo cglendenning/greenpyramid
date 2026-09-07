@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/board_session.dart';
 import '../services/ai_guard.dart';
+import '../services/auth_service.dart';
 import '../services/council_client.dart';
 import '../services/council_service.dart';
 import '../services/db.dart';
@@ -80,6 +81,13 @@ class _SetupScreenState extends State<SetupScreen> {
   Future<void> _load() async {
     setState(() => _busy = true);
     try {
+      // D-032's silent account bootstrap is deliberately fire-and-forget
+      // from main.dart so it never gates the first frame — but a Council
+      // session write needs request.auth to already exist. On a brand-new
+      // device (no cached Firebase Auth session) this screen would
+      // otherwise race that sign-in and lose. signInSilently() is a no-op
+      // once already signed in, so awaiting it here is always cheap.
+      await AuthService.instance.signInSilently();
       final session = await _setup.startOrResumeSetup();
       setState(() {
         _session = session;
@@ -89,7 +97,8 @@ class _SetupScreenState extends State<SetupScreen> {
         _phase = session.messages.isEmpty ? _Phase.opening : _Phase.openingRound;
       });
       if (_phase == _Phase.openingRound) await _runOpeningRound();
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('SetupScreen: failed to start or resume setup: $e\n$st');
       setState(() => _error = 'Could not start setup. Please try again.');
     } finally {
       if (mounted) setState(() => _busy = false);
