@@ -42,6 +42,39 @@ test('D-051: the prompt instructs one or two words for the name and a '
   assert.match(system, /DESCRIPTION/);
 });
 
+test('D-094: the prompt gently biases the foundational tier toward body, '
+  + 'mind, and spirit — but explicitly as a soft, non-overriding nudge',
+  () => {
+  const { system } = buildDeriveCategoriesPrompt([]);
+  assert.match(system, /body/i);
+  assert.match(system, /mind/i);
+  assert.match(system, /spirit/i);
+  assert.match(system, /soft bias/i);
+  assert.match(system, /never invent a foundational category/i);
+});
+
+test('D-093: with no existingCategories, the prompt is a fresh derivation '
+  + '— no refinement framing appears', () => {
+  const { system } = buildDeriveCategoriesPrompt([]);
+  assert.doesNotMatch(system, /REFINE/);
+  assert.doesNotMatch(system, /wasn't.*quite right/i);
+});
+
+test('D-093: with existingCategories, the prompt switches to refinement — '
+  + 'names the prior proposal and instructs revising, not reinventing',
+  () => {
+  const { system } = buildDeriveCategoriesPrompt([], {
+    existingCategories: [
+      { position: 1, name: 'Health', description: 'my body carries me' },
+      { position: 6, name: 'Legacy', description: 'what outlives me' },
+    ],
+  });
+  assert.match(system, /REFINE/);
+  assert.match(system, /Health/);
+  assert.match(system, /my body carries me/);
+  assert.match(system, /not a fresh start/i);
+});
+
 // Amended 2026-09-07: found live that 3-5 habits at up to 120 chars each
 // was too many and too verbose. See Decision Log for the defect.
 test('D-052: HABITS_TOOL requires 2 to 3 short (max 40 char) habits', () => {

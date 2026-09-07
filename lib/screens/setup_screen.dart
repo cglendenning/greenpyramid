@@ -37,7 +37,15 @@ class SetupScreen extends StatefulWidget {
   State<SetupScreen> createState() => _SetupScreenState();
 }
 
-enum _Phase { opening, openingRound, categories, essences, habits, closing }
+enum _Phase {
+  opening,
+  openingRound,
+  categories,
+  refining,
+  essences,
+  habits,
+  closing
+}
 
 class _FoundationalStep {
   final int categoryId;
@@ -50,6 +58,14 @@ class _SetupScreenState extends State<SetupScreen> {
   static const _openingLine =
       "Hi! Let me know what energizes you. What are things that you want "
       "more of in your life?"; // D-067: fixed, not generated.
+
+  // D-093: fixed, same rationale as D-067's opening line — a simple,
+  // reliable question that doesn't need a model call to ask well. Unlike
+  // the opening line, this one IS persisted (see appendAdvisorMessage's
+  // doc comment): the next model call needs it in the real history to
+  // understand the conversation just switched into refinement mode.
+  static const _refinementPrompt =
+      "What didn't feel right about this? Tell me more, and I'll refine it.";
 
   // D-051: the pyramid is fixed at 3/2/1 — shared by _buildCategories'
   // tier headers and _changeTier's tier-choice sheet, so the two never
@@ -71,6 +87,16 @@ class _SetupScreenState extends State<SetupScreen> {
   BoardSession? _session;
   bool _busy = false;
   String? _error;
+  // D-093: true while re-entering the conversation from "Not quite
+  // right" — routes both the Mira turn and the eventual re-derivation
+  // through the refine-not-replace path.
+  bool _refining = false;
+
+  /// The categories to treat as "already proposed" for this turn — only
+  /// meaningful while [_refining], and read before any re-derivation
+  /// overwrites [_categories] with the refined result.
+  List<CategoryProposal>? get _refinementContext =>
+      _refining ? _categories : null;
 
   List<CategoryProposal> _categories = const [];
   int _essenceIndex = 0;
@@ -162,11 +188,39 @@ class _SetupScreenState extends State<SetupScreen> {
           .getActiveSession(type: BoardSessionType.setup);
       setState(() {
         _session = refreshed ?? session;
-        _phase = _Phase.openingRound;
+        // D-093: a reply sent while refining stays in the refining phase
+        // — only the very first reply (not yet refining) advances into
+        // the shared openingRound phase.
+        _phase = _refining ? _Phase.refining : _Phase.openingRound;
       });
       await _runMiraTurn();
     } on AiBudgetException catch (e) {
       setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  // ── Refinement (D-093): "Not quite right" re-enters the conversation ───
+  // instead of only offering to accept the proposal — Mira asks what felt
+  // off, then refines the existing six categories rather than discarding
+  // them and starting over.
+
+  Future<void> _requestRefinement() async {
+    final session = _session;
+    if (session == null) return;
+    setState(() => _busy = true);
+    try {
+      await CouncilService.instance
+          .appendAdvisorMessage(session.sessionId, 'mira', _refinementPrompt);
+      final refreshed = await CouncilService.instance
+          .getActiveSession(type: BoardSessionType.setup);
+      setState(() {
+        _session = refreshed ?? session;
+        _refining = true;
+        _phase = _Phase.refining;
+      });
+      _scrollToBottom();
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -177,7 +231,8 @@ class _SetupScreenState extends State<SetupScreen> {
     if (session == null) return;
     setState(() => _busy = true);
     try {
-      final result = await CouncilService.instance.runMiraSetupTurn(session);
+      final result = await CouncilService.instance
+          .runMiraSetupTurn(session, existingCategories: _refinementContext);
       setState(() => _session = result.session);
       _scrollToBottom();
       if (result.readyToBuild) {
@@ -186,19 +241,30 @@ class _SetupScreenState extends State<SetupScreen> {
         // instantly swapped out from under the user (same pacing D-042
         // already established for the old multi-advisor round).
         if (mounted) await Future.delayed(const Duration(milliseconds: 700));
-        setState(() => _phase = _Phase.categories);
-        await _loadCategories();
+        // Captured before _categories is overwritten by the re-derivation
+        // below, and before _refining resets — this is the last point
+        // _refinementContext still reflects the proposal being refined.
+        final priorCategories = _refinementContext;
+        setState(() {
+          _phase = _Phase.categories;
+          _refining = false;
+        });
+        await _loadCategories(existingCategories: priorCategories);
       }
-      // Otherwise: stay in openingRound. The text input is already visible
-      // there, waiting for the user's next reply.
+      // Otherwise: stay in the current phase. The text input is already
+      // visible there, waiting for the user's next reply.
     } on AiBudgetException catch (e) {
       setState(() => _error = e.message);
     } on SpendLimitException catch (e) {
       setState(() => _error = e.toString());
     } on SetupCallLimitException {
       // D-072: approaching the bound — close gracefully rather than fail.
-      setState(() => _phase = _Phase.categories);
-      await _loadCategories();
+      final priorCategories = _refinementContext;
+      setState(() {
+        _phase = _Phase.categories;
+        _refining = false;
+      });
+      await _loadCategories(existingCategories: priorCategories);
     } on CouncilClientException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -222,12 +288,14 @@ class _SetupScreenState extends State<SetupScreen> {
 
   // ── Categories (D-051) ──────────────────────────────────────────────────
 
-  Future<void> _loadCategories() async {
+  Future<void> _loadCategories(
+      {List<CategoryProposal>? existingCategories}) async {
     final session = _session;
     if (session == null) return;
     setState(() => _busy = true);
     try {
-      final categories = await _setup.proposeCategories(session);
+      final categories = await _setup.proposeCategories(session,
+          existingCategories: existingCategories);
       setState(() => _categories = categories);
     } on SetupCallLimitException {
       // Nothing to propose from if the bound is already hit on the very
@@ -600,6 +668,7 @@ class _SetupScreenState extends State<SetupScreen> {
                   Expanded(child: _buildBody()),
                   if (_phase == _Phase.opening ||
                       _phase == _Phase.openingRound ||
+                      _phase == _Phase.refining ||
                       _phase == _Phase.essences)
                     _buildTextInput(),
                 ],
@@ -624,6 +693,8 @@ class _SetupScreenState extends State<SetupScreen> {
         return 0.15;
       case _Phase.categories:
         return 0.35;
+      case _Phase.refining:
+        return 0.3;
       case _Phase.essences:
         return 0.35 + 0.3 * (_essenceIndex / 3);
       case _Phase.habits:
@@ -650,6 +721,11 @@ class _SetupScreenState extends State<SetupScreen> {
         return _buildTranscript([_openingMessage, ...?_session?.messages]);
       case _Phase.categories:
         return _buildCategories();
+      case _Phase.refining:
+        // D-093: no synthetic prepend needed here — unlike Mira's opening
+        // line, the refinement prompt is persisted (see
+        // appendAdvisorMessage), so it's already part of session.messages.
+        return _buildTranscript(_session?.messages ?? const []);
       case _Phase.essences:
         return _buildEssences();
       case _Phase.habits:
@@ -748,9 +824,26 @@ class _SetupScreenState extends State<SetupScreen> {
               tierSection(tier.$1, tier.$2.length,
                   _categories.where((c) => tier.$2.contains(c.position))),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _busy ? null : _confirmCategories,
-              child: const Text('This feels right'),
+            // D-093: "Not quite right" re-enters the conversation instead
+            // of only offering to accept the proposal — the owner
+            // specifically wanted a way to keep working on the list, not
+            // just confirm or abandon it.
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _busy ? null : _requestRefinement,
+                    child: const Text('Not quite right'),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: _busy ? null : _confirmCategories,
+                    child: const Text('This feels right'),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -946,11 +1039,13 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   void _onSubmitText() {
-    if (_phase == _Phase.opening || _phase == _Phase.openingRound) {
-      // D-090: the same handler serves the very first reply and every
-      // back-and-forth exchange after it — Mira decides when she has
-      // enough, not a fixed turn count, so there is no separate "continue
-      // the round" path.
+    if (_phase == _Phase.opening ||
+        _phase == _Phase.openingRound ||
+        _phase == _Phase.refining) {
+      // D-090/D-093: the same handler serves the very first reply, every
+      // back-and-forth exchange after it, and every refinement reply —
+      // Mira decides when she has enough, not a fixed turn count, so
+      // there is no separate "continue the round" path.
       _sendOpeningReply();
     } else if (_phase == _Phase.essences) {
       _sendEssenceReply();

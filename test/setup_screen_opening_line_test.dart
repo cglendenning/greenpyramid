@@ -199,6 +199,62 @@ void main() {
   });
 
   test(
+      'D-093: the categories screen offers "Not quite right" alongside '
+      '"This feels right" — the owner needed a way to keep working on the '
+      'list, not just confirm or abandon it', () {
+    final source = File('lib/screens/setup_screen.dart').readAsStringSync();
+    final buildCategoriesStart = source.indexOf('Widget _buildCategories()');
+    final buildCategoriesEnd =
+        source.indexOf('\n  Widget _buildEssences()', buildCategoriesStart);
+    final body = source.substring(buildCategoriesStart, buildCategoriesEnd);
+    expect(body, contains('Not quite right'));
+    expect(body, contains('_requestRefinement'));
+    expect(body, contains('This feels right'));
+  });
+
+  test(
+      'D-093: "Not quite right" re-enters the conversation and refines the '
+      'existing categories — it must never discard them and start over',
+      () {
+    final source = File('lib/screens/setup_screen.dart').readAsStringSync();
+
+    final requestStart = source.indexOf('Future<void> _requestRefinement()');
+    expect(requestStart, greaterThan(-1));
+    final requestEnd = source.indexOf('\n  Future<void> _runMiraTurn()', requestStart);
+    expect(requestEnd, greaterThan(requestStart));
+    final requestBody = source.substring(requestStart, requestEnd);
+    expect(requestBody, contains('_Phase.refining'),
+        reason: 'refinement must re-enter the chat, not stay on the '
+            'categories screen or silently reset it');
+    expect(requestBody, contains('appendAdvisorMessage'),
+        reason: 'Mira must ask what felt off, not silently reopen an '
+            'empty text field');
+
+    // The re-derivation after a refinement round must be handed the prior
+    // proposal, never called with nothing — that would be indistinguishable
+    // from throwing the old categories away.
+    final turnStart = source.indexOf('Future<void> _runMiraTurn()');
+    final turnEnd = source.indexOf('\n  Future<BoardSession> _runSetupTurn', turnStart);
+    final turnBody = source.substring(turnStart, turnEnd);
+    expect(turnBody, contains('existingCategories: _refinementContext'));
+    expect(turnBody, contains('existingCategories: priorCategories'));
+  });
+
+  test(
+      'D-093: the refining phase shows the text input and dispatches '
+      'replies the same way the opening round does', () {
+    final source = File('lib/screens/setup_screen.dart').readAsStringSync();
+    final buildStart = source.indexOf('Widget build(BuildContext context)');
+    final buildEnd = source.indexOf('\n  double _progressFor', buildStart);
+    expect(source.substring(buildStart, buildEnd), contains('_phase == _Phase.refining'));
+
+    final submitStart = source.indexOf('void _onSubmitText()');
+    expect(submitStart, greaterThan(-1));
+    final submitEnd = source.indexOf('\n}', submitStart);
+    expect(source.substring(submitStart, submitEnd), contains('_phase == _Phase.refining'));
+  });
+
+  test(
       'D-052: habits can be edited and new ones added by hand, not only '
       'deleted — the auto-generated set is a starting point, never the '
       'only option', () {

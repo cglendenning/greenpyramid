@@ -65,12 +65,16 @@ class SetupService {
   }
 
   /// D-051: derives the six tiered categories from the transcript so far.
-  Future<List<CategoryProposal>> proposeCategories(BoardSession session) {
+  /// D-093: [existingCategories], non-null, requests a refinement of that
+  /// proposal ("not quite right") rather than a fresh derivation.
+  Future<List<CategoryProposal>> proposeCategories(BoardSession session,
+      {List<CategoryProposal>? existingCategories}) {
     return _client.deriveCategories(
       sessionId: session.sessionId,
       transcript: session.messages
           .map((m) => {'advisor': m.advisorKey, 'text': m.text})
           .toList(),
+      existingCategories: existingCategories,
     );
   }
 

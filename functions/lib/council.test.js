@@ -161,6 +161,36 @@ test('D-092: the pacing instruction never tells Mira to state an exact '
   assert.doesNotMatch(systemText, /exactly \d+ more/i);
 });
 
+test('D-093: with no existingCategories, buildSetupAdvisorTurnPrompt is a '
+  + 'fresh-build conversation — no refinement framing appears', () => {
+  const { systemText } = buildSetupAdvisorTurnPrompt({});
+  assert.doesNotMatch(systemText, /already proposed/i);
+  assert.doesNotMatch(systemText, /refining the existing pyramid/i);
+});
+
+test('D-093: with existingCategories, buildSetupAdvisorTurnPrompt switches '
+  + 'to refinement — names the prior proposal and asks what felt off, not '
+  + 'the original opening question', () => {
+  const { systemText } = buildSetupAdvisorTurnPrompt({
+    existingCategories: [
+      { name: 'Health', description: 'my body carries me' },
+      { name: 'Legacy', description: 'what outlives me' },
+    ],
+  });
+  assert.match(systemText, /already proposed/i);
+  assert.match(systemText, /Health/);
+  assert.match(systemText, /refining the existing pyramid, not starting over/i);
+  assert.doesNotMatch(systemText, /what energizes them and what they want more of in their life\./);
+});
+
+test('D-093: refinement mode still requires the readyToBuild signal before '
+  + 'closing, same as a fresh build', () => {
+  const { systemText } = buildSetupAdvisorTurnPrompt({
+    existingCategories: [{ name: 'Health', description: 'my body carries me' }],
+  });
+  assert.match(systemText, /readyToBuild/);
+});
+
 test('D-090: SETUP_TURN_TOOL requires both reply and readyToBuild', () => {
   assert.deepEqual(SETUP_TURN_TOOL.input_schema.required.sort(), ['readyToBuild', 'reply']);
   assert.equal(SETUP_TURN_TOOL.input_schema.properties.readyToBuild.type, 'boolean');

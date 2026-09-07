@@ -113,9 +113,15 @@ export function buildAdvisorTurnPrompt({
 // being deleted. Mira asks a few genuine follow-up questions, then signals
 // she has enough to build the pyramid via a forced tool call (readyToBuild)
 // rather than free text the client would have to parse intent out of.
+//
+// D-093: [existingCategories] switches this from "gathering material to
+// build a pyramid" to "refining a pyramid already proposed" — the owner
+// explicitly wants "not quite right" to refine what's there, never discard
+// it and start over.
 export function buildSetupAdvisorTurnPrompt({
   sliderValue = 0.5,
   conversationHistory = [],
+  existingCategories = null,
 }) {
   const advisor = ADVISORS.mira;
 
@@ -126,6 +132,29 @@ export function buildSetupAdvisorTurnPrompt({
         return `${name}: ${sanitize(m.text, 500)}`;
       }).join('\n')
     : '(nothing yet)';
+
+  const refining = Array.isArray(existingCategories) && existingCategories.length > 0;
+  const existingText = refining
+    ? existingCategories
+        .map((c) => `- ${sanitize(c.name, 24)}: ${sanitize(c.description || '', 140)}`)
+        .join('\n')
+    : null;
+
+  const roleInstruction = refining
+    ? `You already proposed a pyramid of six categories for this person:\n${existingText}\n\n` +
+      `They said something about it wasn't quite right. Find out specifically what — ask focused ` +
+      `questions about what feels off, not the general "what energizes you" opening questions from ` +
+      `before. You are refining the existing pyramid, not starting over.`
+    : `This is the very start of their relationship with the app. Ask genuine, warm follow-up ` +
+      `questions about what energizes them and what they want more of in their life.`;
+
+  const readyInstruction = refining
+    ? `Once you understand what to adjust, set readyToBuild to true and let reply be a brief, warm ` +
+      `closing line telling them you're about to refine it — never a question in that case.`
+    : `After a few exchanges — enough to have real, specific material, but not so many it drags — you ` +
+      `will have enough to build a pyramid that is actually theirs. When you do, set readyToBuild to ` +
+      `true and let reply be a brief, warm closing line telling them you're about to build it — never ` +
+      `a question in that case.`;
 
   // D-092: how many questions Mira has already asked — used only to gate
   // a pacing instruction, never sent to the model as a literal number to
@@ -152,15 +181,9 @@ export function buildSetupAdvisorTurnPrompt({
     `support each one.\n\n` +
     `Your personality: ${advisor.personality}\n\n` +
     `${biasInstruction(advisor.trait, sliderValue)}\n\n` +
-    `This is the very start of their relationship with the app. Ask genuine, ` +
-    `warm follow-up questions about what energizes them and what they want ` +
-    `more of in their life. One question or reflection at a time — never a ` +
-    `list. Max 2 sentences.\n` +
-    `After a few exchanges — enough to have real, specific material, but not ` +
-    `so many it drags — you will have enough to build a pyramid that is ` +
-    `actually theirs. When you do, set readyToBuild to true and let reply be ` +
-    `a brief, warm closing line telling them you're about to build it — never ` +
-    `a question in that case.\n` +
+    `${roleInstruction} One question or reflection at a time — never a list. ` +
+    `Max 2 sentences.\n` +
+    `${readyInstruction}\n` +
     pacingInstruction +
     `Never wrap your response in quotation marks.`;
 
@@ -176,7 +199,7 @@ export const SETUP_TURN_TOOL = {
   name: 'setup_turn',
   description:
     "Mira's next line in the one-on-one setup conversation, plus whether " +
-    'she now has enough to build the pyramid of values and habits.',
+    'she now has enough to build or refine the pyramid of values and habits.',
   input_schema: {
     type: 'object',
     properties: {

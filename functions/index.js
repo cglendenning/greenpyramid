@@ -236,8 +236,8 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, async (req, res) => {
   // a tool call so her readiness to build the pyramid comes back as data,
   // not free text. Every other caller (category re-clarification, D-091's
   // general Council chat) keeps the original four-advisor free-text path.
-  const { isSetup, sessionId, sliderValue, conversationHistory } = req.body || {};
-  if (isSetup) return handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conversationHistory });
+  const { isSetup, sessionId, sliderValue, conversationHistory, existingCategories } = req.body || {};
+  if (isSetup) return handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conversationHistory, existingCategories });
 
   const built = buildAdvisorTurnPrompt(req.body || {});
   if (!built) return res.status(400).json({ error: 'Invalid advisorKey' });
@@ -290,10 +290,10 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, async (req, res) => {
 // D-090: the solo-Mira half of /boardAdvisorTurn, split out so the
 // four-advisor free-text path above stays exactly as it was for its other
 // two callers (category re-clarification, D-091's general Council chat).
-async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conversationHistory }) {
+async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conversationHistory, existingCategories }) {
   if (!(await guardCouncilCall(req, res, { isSetup: true, sessionId }))) return;
 
-  const { systemText, userMessage } = buildSetupAdvisorTurnPrompt({ sliderValue, conversationHistory });
+  const { systemText, userMessage } = buildSetupAdvisorTurnPrompt({ sliderValue, conversationHistory, existingCategories });
   const model = await getCouncilModel();
   try {
     const msg = await claude().messages.create({
@@ -329,10 +329,10 @@ async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conver
 // call count, never by D-087's spend cap.
 
 app.post('/deriveCategories', requireFirebaseAuth, async (req, res) => {
-  const { sessionId, transcript } = req.body || {};
+  const { sessionId, transcript, existingCategories } = req.body || {};
   if (!(await guardCouncilCall(req, res, { isSetup: true, sessionId }))) return;
 
-  const { system, user } = buildDeriveCategoriesPrompt(transcript);
+  const { system, user } = buildDeriveCategoriesPrompt(transcript, { existingCategories });
   const model = await getCouncilModel();
   try {
     const msg = await claude().messages.create({

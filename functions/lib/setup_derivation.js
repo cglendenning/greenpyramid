@@ -46,7 +46,17 @@ export const CATEGORIES_TOOL = {
   },
 };
 
-export function buildDeriveCategoriesPrompt(transcript) {
+// D-093: [existingCategories], when given, switches this from a fresh
+// derivation to a refinement of a pyramid already proposed — the owner
+// explicitly wants "not quite right" to adjust what's there, not discard it.
+export function buildDeriveCategoriesPrompt(transcript, { existingCategories } = {}) {
+  const refining = Array.isArray(existingCategories) && existingCategories.length > 0;
+  const existingText = refining
+    ? existingCategories
+        .map((c) => `- position ${c.position ?? '?'}: ${sanitize(c.name, 24)} — ${sanitize(c.description || '', 140)}`)
+        .join('\n')
+    : null;
+
   const system =
     'You are the Council — the four advisors together, not any one of them — deriving the six ' +
     'categories of someone\'s life pyramid from a conversation they just had. Positions 1-3 are ' +
@@ -60,8 +70,25 @@ export function buildDeriveCategoriesPrompt(transcript) {
     'unless that is genuinely their own word for it; and a DESCRIPTION of one short sentence, in their own ' +
     'words or tone from the conversation, that captures why it matters to them specifically — resonant, ' +
     'not a dictionary definition of the name, and not the full essence (a much deeper exchange happens ' +
-    'later for that; this is one line that would make them nod, not an interview). Call propose_categories ' +
-    'with exactly six entries, one per position 1 through 6.';
+    'later for that; this is one line that would make them nod, not an interview). ' +
+    // D-094: a soft, disclosed bias toward body/mind/spirit in the
+    // foundational tier — never a hard requirement, and explicitly
+    // forbidden from inventing or displacing anything the person didn't
+    // actually give real material for.
+    'When choosing the three FOUNDATIONAL categories specifically, gently favor a spread across body ' +
+    '(physical health), mind (mindset, mental or emotional wellbeing), and spirit (meaning or purpose) — ' +
+    'but only where the conversation genuinely gives you real material for it. This is a soft bias, never ' +
+    'a rule to force: never invent a foundational category the person didn\'t actually give you something ' +
+    'to draw on for, and never displace something they clearly weighted heavily just to fill a slot. If ' +
+    'their words don\'t support one of these three areas, leave it out rather than manufacture it.' +
+    (refining
+      ? `\n\nYou already proposed this pyramid for them:\n${existingText}\n\nThey said something wasn't ` +
+        'quite right, and the conversation below includes what they clarified. REFINE the six categories ' +
+        '— change what the new material actually calls for, and keep everything else close to what you ' +
+        'already had. This is a revision, not a fresh start: do not reinvent categories the new material ' +
+        'didn\'t touch.'
+      : '') +
+    ' Call propose_categories with exactly six entries, one per position 1 through 6.';
   const user = `CONVERSATION SO FAR:\n${transcriptText(transcript)}`;
   return { system, user };
 }

@@ -44,12 +44,17 @@ class _FakeCouncilClient extends CouncilClient {
   }) async =>
       findings;
 
+  List<CategoryProposal>? lastExistingCategories;
+
   @override
   Future<List<CategoryProposal>> deriveCategories({
     required String sessionId,
     required List<Map<String, String>> transcript,
-  }) async =>
-      categories;
+    List<CategoryProposal>? existingCategories,
+  }) async {
+    lastExistingCategories = existingCategories;
+    return categories;
+  }
 
   @override
   Future<List<String>> deriveHabits({
@@ -215,6 +220,30 @@ void main() {
       final proposed = await svc.proposeCategories(session);
       expect(proposed.length, 6);
       expect(proposed.first.name, 'Being present with my kids');
+    });
+
+    test('D-093: proposeCategories passes existingCategories through to the '
+        'client as a refinement request', () async {
+      final client = _FakeCouncilClient();
+      final svc = buildService(client: client);
+      final session = await svc.startOrResumeSetup();
+      const priorCategories = [
+        CategoryProposal(position: 1, name: 'Health', description: 'my body carries me'),
+      ];
+
+      await svc.proposeCategories(session, existingCategories: priorCategories);
+
+      expect(client.lastExistingCategories, priorCategories);
+    });
+
+    test('D-093: proposeCategories with no existingCategories passes null '
+        'through — a fresh derivation, not a refinement', () async {
+      final client = _FakeCouncilClient();
+      final svc = buildService(client: client);
+      final session = await svc.startOrResumeSetup();
+
+      await svc.proposeCategories(session);
+      expect(client.lastExistingCategories, isNull);
     });
   });
 

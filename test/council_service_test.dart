@@ -11,6 +11,8 @@ class _FakeCouncilClient extends CouncilClient {
       reply: 'a reply', inputTokens: 10, outputTokens: 5);
   Map<String, dynamic>? lastCategoryContext;
 
+  List<Map<String, String>>? lastExistingCategories;
+
   @override
   Future<AdvisorTurnResult> boardAdvisorTurn({
     required String advisorKey,
@@ -19,8 +21,10 @@ class _FakeCouncilClient extends CouncilClient {
     double sliderValue = 0.5,
     bool isSetup = false,
     String? sessionId,
+    List<Map<String, String>>? existingCategories,
   }) async {
     lastCategoryContext = categoryContext;
+    lastExistingCategories = existingCategories;
     return response;
   }
 }
@@ -159,6 +163,51 @@ void main() {
 
       final result = await svc.runMiraSetupTurn(session);
       expect(result.readyToBuild, isTrue);
+    });
+
+    test('D-093: runMiraSetupTurn passes existingCategories through to the '
+        'client as a refinement signal', () async {
+      final client = _FakeCouncilClient();
+      final svc = buildService(client: client);
+      final session = await svc.createSession(type: BoardSessionType.setup);
+
+      await svc.runMiraSetupTurn(session, existingCategories: const [
+        CategoryProposal(position: 1, name: 'Health', description: 'my body carries me'),
+      ]);
+
+      expect(client.lastExistingCategories, hasLength(1));
+      expect(client.lastExistingCategories!.single['name'], 'Health');
+      expect(client.lastExistingCategories!.single['description'], 'my body carries me');
+    });
+
+    test('D-093: runMiraSetupTurn with no existingCategories passes null '
+        'through — a fresh build, not a refinement', () async {
+      final client = _FakeCouncilClient();
+      final svc = buildService(client: client);
+      final session = await svc.createSession(type: BoardSessionType.setup);
+
+      await svc.runMiraSetupTurn(session);
+      expect(client.lastExistingCategories, isNull);
+    });
+  });
+
+  group('D-093: a fixed advisor line can be appended without a model call',
+      () {
+    test('appendAdvisorMessage persists the given text under the given '
+        'advisor key, at zero token cost', () async {
+      final svc = buildService();
+      final session = await svc.createSession(type: BoardSessionType.setup);
+
+      final msg = await svc.appendAdvisorMessage(
+          session.sessionId, 'mira', "What didn't feel right about this?");
+
+      expect(msg.advisorKey, 'mira');
+      expect(msg.text, "What didn't feel right about this?");
+
+      final active = await svc.getActiveSession(type: BoardSessionType.setup);
+      expect(active?.messages.single.text, "What didn't feel right about this?");
+      expect(active?.totalInputTokens, 0);
+      expect(active?.totalOutputTokens, 0);
     });
   });
 

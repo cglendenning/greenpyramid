@@ -157,8 +157,13 @@ class CouncilService {
   /// as [readyToBuild] rather than something parsed out of free text.
   /// Returns the session with her reply already appended, since the caller
   /// needs both the updated transcript and the readiness flag together.
+  ///
+  /// D-093: [existingCategories], non-null, means this is a refinement
+  /// round ("not quite right") rather than an original build — passed
+  /// straight through so the backend frames the conversation accordingly.
   Future<({BoardSession session, bool readyToBuild})> runMiraSetupTurn(
-      BoardSession session) async {
+      BoardSession session,
+      {List<CategoryProposal>? existingCategories}) async {
     await AiGuard.instance.acquire();
 
     final result = await _client.boardAdvisorTurn(
@@ -169,6 +174,9 @@ class CouncilService {
           .toList(),
       isSetup: true,
       sessionId: session.sessionId,
+      existingCategories: existingCategories
+          ?.map((c) => {'name': c.name, 'description': c.description ?? ''})
+          .toList(),
     );
 
     final msg = BoardMessage(
@@ -186,6 +194,24 @@ class CouncilService {
     final msg = BoardMessage(
       advisorKey: 'user',
       text: AiGuard.clampMessage(text),
+      timestamp: DateTime.now(),
+    );
+    await _appendMessage(sessionId, msg, inputTokens: 0, outputTokens: 0);
+    return msg;
+  }
+
+  /// D-093: appends a fixed, client-authored advisor line (e.g. the
+  /// "what didn't feel right" refinement prompt) — no API call, no token
+  /// cost, the same as [appendUserMessage] but attributed to an advisor.
+  /// Unlike D-067's opening line, this is persisted: the turn after it
+  /// needs the real conversation history to show why the user's next
+  /// reply is about what to refine, not a continuation of the original
+  /// opening questions.
+  Future<BoardMessage> appendAdvisorMessage(
+      String sessionId, String advisorKey, String text) async {
+    final msg = BoardMessage(
+      advisorKey: advisorKey,
+      text: text,
       timestamp: DateTime.now(),
     );
     await _appendMessage(sessionId, msg, inputTokens: 0, outputTokens: 0);

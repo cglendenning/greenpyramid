@@ -178,6 +178,9 @@ class CouncilClient {
   /// defaults to 0.5 and has no UI control yet (D-073). [isSetup]/
   /// [sessionId] route this turn against D-072's free call-count bound
   /// instead of D-087's spend cap (D-017).
+  /// D-093: [existingCategories], setup-only, switches Mira's turn from
+  /// gathering material for a fresh pyramid to refining one already
+  /// proposed — "not quite right" adjusts what's there, never discards it.
   Future<AdvisorTurnResult> boardAdvisorTurn({
     required String advisorKey,
     required Map<String, dynamic> categoryContext,
@@ -185,6 +188,7 @@ class CouncilClient {
     double sliderValue = 0.5,
     bool isSetup = false,
     String? sessionId,
+    List<Map<String, String>>? existingCategories,
   }) async {
     final data = await _post('boardAdvisorTurn', {
       'advisorKey': advisorKey,
@@ -193,6 +197,7 @@ class CouncilClient {
       'conversationHistory': conversationHistory,
       'isSetup': isSetup,
       if (sessionId != null) 'sessionId': sessionId,
+      if (existingCategories != null) 'existingCategories': existingCategories,
     });
     final usage = data['usage'] as Map<String, dynamic>? ?? const {};
     return AdvisorTurnResult(
@@ -204,13 +209,26 @@ class CouncilClient {
   }
 
   /// D-051: derives the six pyramid categories, already tiered by position,
-  /// from the setup transcript so far.
+  /// from the setup transcript so far. D-093: [existingCategories], when
+  /// given, requests a refinement of that proposal instead of a fresh
+  /// derivation.
   Future<List<CategoryProposal>> deriveCategories({
     required String sessionId,
     required List<Map<String, String>> transcript,
+    List<CategoryProposal>? existingCategories,
   }) async {
-    final data = await _post(
-        'deriveCategories', {'sessionId': sessionId, 'transcript': transcript});
+    final data = await _post('deriveCategories', {
+      'sessionId': sessionId,
+      'transcript': transcript,
+      if (existingCategories != null)
+        'existingCategories': existingCategories
+            .map((c) => {
+                  'position': c.position,
+                  'name': c.name,
+                  'description': c.description ?? '',
+                })
+            .toList(),
+    });
     final list = data['categories'] as List<dynamic>? ?? const [];
     final categories = list
         .map((c) => CategoryProposal(
