@@ -48,6 +48,16 @@ void main() {
       final s = session(type: BoardSessionType.setup, categoryId: null);
       expect(s.type, BoardSessionType.setup);
     });
+
+    test('D-091: a general session behaves like setup — no categoryId '
+        'required or allowed', () {
+      final s = session(type: BoardSessionType.general, categoryId: null);
+      expect(s.type, BoardSessionType.general);
+      expect(
+        () => session(type: BoardSessionType.general, categoryId: 3),
+        throwsA(isA<AssertionError>()),
+      );
+    });
   });
 
   group('D-028: rotation and resume, ported from Kansei\'s BoardSession', () {

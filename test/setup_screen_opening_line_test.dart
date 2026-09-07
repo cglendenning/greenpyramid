@@ -16,8 +16,8 @@ void main() {
     final flattened = source.replaceAll(RegExp(r'"\s*\n\s*"'), '');
     expect(
       flattened,
-      contains("I'm not going to ask what you want to change. Tell me "
-          "about a day recently that felt like it mattered."),
+      contains("Hi! Let me know what energizes you. What are things that "
+          "you want more of in your life?"),
     );
   });
 
@@ -108,19 +108,33 @@ void main() {
   });
 
   test(
-      'D-042/P-9: a pause follows every advisor turn in the opening round, '
-      'and another follows the round before the categories phase replaces '
-      'the transcript — regression test for owner feedback that four '
-      'replies landing back to back "flew by"', () {
+      'D-090: a pause follows Mira\'s closing line before the categories '
+      'phase replaces the transcript — same pacing discipline D-042 '
+      'established for the old multi-advisor round, kept for the solo one',
+      () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
-    final roundStart = source.indexOf('Future<void> _runOpeningRound()');
+    final roundStart = source.indexOf('Future<void> _runMiraTurn()');
     expect(roundStart, greaterThan(-1));
     final roundEnd = source.indexOf('\n  Future<BoardSession> _runSetupTurn', roundStart);
     expect(roundEnd, greaterThan(roundStart));
     final delays = 'Future.delayed'.allMatches(source.substring(roundStart, roundEnd)).length;
-    expect(delays, greaterThanOrEqualTo(2),
-        reason: 'expected one pause per advisor turn plus one more before '
-            'the categories transition');
+    expect(delays, greaterThanOrEqualTo(1),
+        reason: 'expected a pause before the categories transition, so '
+            'Mira\'s closing line is read, not instantly replaced');
+  });
+
+  test(
+      'D-090: setup is a solo conversation with Mira — no rotation over the '
+      'other three advisors happens inside the opening round anymore',
+      () {
+    final source = File('lib/screens/setup_screen.dart').readAsStringSync();
+    final roundStart = source.indexOf('Future<void> _runMiraTurn()');
+    expect(roundStart, greaterThan(-1));
+    final roundEnd = source.indexOf('\n  Future<BoardSession> _runSetupTurn', roundStart);
+    final round = source.substring(roundStart, roundEnd);
+    expect(round, contains('runMiraSetupTurn'));
+    expect(round, isNot(contains('rotationOrder')));
+    expect(round, contains('readyToBuild'));
   });
 
   test(

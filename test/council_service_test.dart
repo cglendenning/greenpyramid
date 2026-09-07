@@ -121,6 +121,47 @@ void main() {
     });
   });
 
+  group('D-090: the solo setup turn persists Mira\'s reply and surfaces '
+      'readiness', () {
+    test('runMiraSetupTurn appends Mira\'s message and returns readyToBuild',
+        () async {
+      final client = _FakeCouncilClient()
+        ..response = const AdvisorTurnResult(
+            reply: 'Tell me more about that.',
+            inputTokens: 8,
+            outputTokens: 4,
+            readyToBuild: false);
+      final svc = buildService(client: client);
+      final session = await svc.createSession(type: BoardSessionType.setup);
+
+      final result = await svc.runMiraSetupTurn(session);
+
+      expect(result.readyToBuild, isFalse);
+      expect(result.session.messages.single.advisorKey, 'mira');
+      expect(result.session.messages.single.text, 'Tell me more about that.');
+
+      final active =
+          await svc.getActiveSession(type: BoardSessionType.setup);
+      expect(active?.messages.length, 1);
+      expect(active?.totalInputTokens, 8);
+    });
+
+    test('runMiraSetupTurn surfaces readyToBuild: true once the client '
+        'signals it', () async {
+      final client = _FakeCouncilClient()
+        ..response = const AdvisorTurnResult(
+            reply: 'I have what I need — let\'s build this.',
+            inputTokens: 8,
+            outputTokens: 4,
+            readyToBuild: true);
+      final svc = buildService(client: client);
+      final session = await svc.createSession(type: BoardSessionType.setup);
+
+      final result = await svc.runMiraSetupTurn(session);
+      expect(result.readyToBuild, isTrue);
+    });
+  });
+
   group('D-028: ending a session removes it from the active set', () {
     test('endSession marks isComplete and it drops out of getActiveSession',
         () async {

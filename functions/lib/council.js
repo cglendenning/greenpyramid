@@ -107,6 +107,74 @@ export function buildAdvisorTurnPrompt({
   return { advisor, systemText, userMessage };
 }
 
+// D-090: setup is now a one-on-one conversation with Mira alone, not the
+// four-advisor group chat buildAdvisorTurnPrompt above builds — that
+// mechanic moved to the general Council conversation (D-091) instead of
+// being deleted. Mira asks a few genuine follow-up questions, then signals
+// she has enough to build the pyramid via a forced tool call (readyToBuild)
+// rather than free text the client would have to parse intent out of.
+export function buildSetupAdvisorTurnPrompt({
+  sliderValue = 0.5,
+  conversationHistory = [],
+}) {
+  const advisor = ADVISORS.mira;
+
+  const safeHistory = (conversationHistory || []).slice(-30);
+  const historyText = safeHistory.length > 0
+    ? safeHistory.map((m) => {
+        const name = m.advisor === 'user' ? 'You' : advisor.name;
+        return `${name}: ${sanitize(m.text, 500)}`;
+      }).join('\n')
+    : '(nothing yet)';
+
+  const systemText =
+    `You are Mira, The Heart — having a one-on-one conversation with someone, ` +
+    `before building their personal pyramid of values and the habits that ` +
+    `support each one.\n\n` +
+    `Your personality: ${advisor.personality}\n\n` +
+    `${biasInstruction(advisor.trait, sliderValue)}\n\n` +
+    `This is the very start of their relationship with the app. Ask genuine, ` +
+    `warm follow-up questions about what energizes them and what they want ` +
+    `more of in their life. One question or reflection at a time — never a ` +
+    `list. Max 2 sentences.\n` +
+    `After a few exchanges — enough to have real, specific material, but not ` +
+    `so many it drags — you will have enough to build a pyramid that is ` +
+    `actually theirs. When you do, set readyToBuild to true and let reply be ` +
+    `a brief, warm closing line telling them you're about to build it — never ` +
+    `a question in that case.\n` +
+    `Never wrap your response in quotation marks.`;
+
+  const userMessage = `CONVERSATION SO FAR:\n${historyText}\n\n${advisor.name}:`;
+
+  return { advisor, systemText, userMessage };
+}
+
+// D-090: forced tool-use schema for the solo setup turn above — the
+// structured twin of the group-chat's free-text reply, since a boolean
+// intent signal has to come back as data, not something parsed out of prose.
+export const SETUP_TURN_TOOL = {
+  name: 'setup_turn',
+  description:
+    "Mira's next line in the one-on-one setup conversation, plus whether " +
+    'she now has enough to build the pyramid of values and habits.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      reply: {
+        type: 'string',
+        minLength: 1,
+        maxLength: 400,
+        description: 'Mira\'s next conversational line — a question or a closing line, never both.',
+      },
+      readyToBuild: {
+        type: 'boolean',
+        description: 'True once Mira has enough specific, personal material to build the pyramid.',
+      },
+    },
+    required: ['reply', 'readyToBuild'],
+  },
+};
+
 // Claude Opus 5 can return a `thinking` content block ahead of the `text`
 // block even without thinking explicitly requested — indexing content[0]
 // blindly grabbed the thinking block on a live call and silently sent an

@@ -55,10 +55,14 @@ class AdvisorTurnResult {
   final String reply;
   final int inputTokens;
   final int outputTokens;
+  // D-090: only meaningful for a solo setup turn (isSetup: true) — false,
+  // unused, for every other caller's free-text reply.
+  final bool readyToBuild;
   const AdvisorTurnResult({
     required this.reply,
     required this.inputTokens,
     required this.outputTokens,
+    this.readyToBuild = false,
   });
 }
 
@@ -195,6 +199,7 @@ class CouncilClient {
       reply: (data['reply'] as String? ?? '').trim(),
       inputTokens: (usage['inputTokens'] as num?)?.toInt() ?? 0,
       outputTokens: (usage['outputTokens'] as num?)?.toInt() ?? 0,
+      readyToBuild: data['readyToBuild'] as bool? ?? false,
     );
   }
 

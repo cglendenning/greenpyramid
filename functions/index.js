@@ -14,7 +14,7 @@ import cors from 'cors';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import admin from 'firebase-admin';
-import { buildAdvisorTurnPrompt, extractReplyText } from './lib/council.js';
+import { buildAdvisorTurnPrompt, buildSetupAdvisorTurnPrompt, extractReplyText, SETUP_TURN_TOOL } from './lib/council.js';
 import { checkSpendLimit, recordCost, SpendLimitError } from './lib/billing.js';
 import { getCouncilModel, getNotificationModel } from './lib/model_config.js';
 import { guardAndCountSetupCall, SetupCallLimitError } from './lib/setup_guard.js';
@@ -232,6 +232,13 @@ app.post('/requestTrial', requireFirebaseAuth, async (req, res) => {
 });
 
 app.post('/boardAdvisorTurn', requireFirebaseAuth, async (req, res) => {
+  // D-090: setup (isSetup) is a solo conversation with Mira, forced through
+  // a tool call so her readiness to build the pyramid comes back as data,
+  // not free text. Every other caller (category re-clarification, D-091's
+  // general Council chat) keeps the original four-advisor free-text path.
+  const { isSetup, sessionId, sliderValue, conversationHistory } = req.body || {};
+  if (isSetup) return handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conversationHistory });
+
   const built = buildAdvisorTurnPrompt(req.body || {});
   if (!built) return res.status(400).json({ error: 'Invalid advisorKey' });
   const { advisor, systemText, userMessage } = built;
@@ -239,7 +246,6 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, async (req, res) => {
   // D-087/D-072: refused before the model is ever called — the guard
   // protects against cost/overuse, not against a request that already
   // spent money.
-  const { isSetup, sessionId } = req.body || {};
   if (!(await guardCouncilCall(req, res, { isSetup, sessionId }))) return;
 
   const model = await getCouncilModel();
@@ -280,6 +286,43 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, async (req, res) => {
     res.status(502).json({ error: e.message });
   }
 });
+
+// D-090: the solo-Mira half of /boardAdvisorTurn, split out so the
+// four-advisor free-text path above stays exactly as it was for its other
+// two callers (category re-clarification, D-091's general Council chat).
+async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conversationHistory }) {
+  if (!(await guardCouncilCall(req, res, { isSetup: true, sessionId }))) return;
+
+  const { systemText, userMessage } = buildSetupAdvisorTurnPrompt({ sliderValue, conversationHistory });
+  const model = await getCouncilModel();
+  try {
+    const msg = await claude().messages.create({
+      model,
+      max_tokens: 150,
+      thinking: { type: 'disabled' },
+      // D-041: stable prefix, same cache treatment as the group-chat path.
+      system: [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content: userMessage }],
+      tools: [SETUP_TURN_TOOL],
+      tool_choice: { type: 'tool', name: SETUP_TURN_TOOL.name },
+    });
+    const toolUse = msg.content.find((b) => b.type === 'tool_use');
+    if (!toolUse) {
+      console.error('boardAdvisorTurn(setup): no tool_use in response, stop_reason:', msg.stop_reason);
+      return res.status(502).json({ error: 'no_tool_use_in_response' });
+    }
+    // D-017: setup is free — never charged against D-087's dollar ledger,
+    // only counted against D-072's call limit (already done above).
+    res.json({
+      reply: toolUse.input.reply,
+      readyToBuild: !!toolUse.input.readyToBuild,
+      usage: { inputTokens: msg.usage.input_tokens, outputTokens: msg.usage.output_tokens },
+    });
+  } catch (e) {
+    console.error('boardAdvisorTurn(setup) error:', e.message, '— model:', model);
+    res.status(502).json({ error: e.message });
+  }
+}
 
 // ── Setup derivation (D-051/D-052/D-055) ────────────────────────────────────
 // All three are setup-only: always free (D-017), always bounded by D-072's

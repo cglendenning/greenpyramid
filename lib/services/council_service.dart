@@ -152,6 +152,35 @@ class CouncilService {
     return msg;
   }
 
+  /// D-090: one turn of the solo setup conversation — Mira only, forced
+  /// through a tool call so her readiness to build the pyramid comes back
+  /// as [readyToBuild] rather than something parsed out of free text.
+  /// Returns the session with her reply already appended, since the caller
+  /// needs both the updated transcript and the readiness flag together.
+  Future<({BoardSession session, bool readyToBuild})> runMiraSetupTurn(
+      BoardSession session) async {
+    await AiGuard.instance.acquire();
+
+    final result = await _client.boardAdvisorTurn(
+      advisorKey: 'mira',
+      categoryContext: const {},
+      conversationHistory: session.messages
+          .map((m) => {'advisor': m.advisorKey, 'text': m.text})
+          .toList(),
+      isSetup: true,
+      sessionId: session.sessionId,
+    );
+
+    final msg = BoardMessage(
+      advisorKey: 'mira',
+      text: result.reply,
+      timestamp: DateTime.now(),
+    );
+    await _appendMessage(session.sessionId, msg,
+        inputTokens: result.inputTokens, outputTokens: result.outputTokens);
+    return (session: session.withMessage(msg), readyToBuild: result.readyToBuild);
+  }
+
   /// Appends a user-typed message to the session — no API call, no token cost.
   Future<BoardMessage> appendUserMessage(String sessionId, String text) async {
     final msg = BoardMessage(

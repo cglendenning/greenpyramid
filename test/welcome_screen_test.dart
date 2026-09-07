@@ -18,7 +18,8 @@ void main() {
     await tester.pump();
 
     expect(find.byType(Image), findsOneWidget);
-    expect(find.text('Say what matters.\nWe’ll build around it.'), findsOneWidget);
+    expect(find.text('Say what matters. We’ll build your life around it.'),
+        findsOneWidget);
     expect(find.widgetWithText(ElevatedButton, 'Begin'), findsOneWidget);
     // One action only (P-14): no other buttons anywhere on the screen.
     expect(find.byType(ElevatedButton), findsOneWidget);

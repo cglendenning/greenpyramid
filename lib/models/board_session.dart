@@ -2,10 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// D-082: every Council session is typed. `setup` covers the whole pyramid
 /// and exists at most once per account, ever; every session after setup is
-/// `category`-typed and scoped to exactly one category (D-028).
+/// `category`-typed and scoped to exactly one category (D-028). D-091 adds
+/// `general` — a free-form conversation with the whole Council, not tied to
+/// any one category, reachable any time from the home screen.
 enum BoardSessionType {
   setup,
-  category;
+  category,
+  general;
 
   static BoardSessionType fromName(String? name) =>
       values.firstWhere((v) => v.name == name, orElse: () => category);

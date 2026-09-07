@@ -6,6 +6,7 @@ import 'package:life_ops/main.dart';
 import 'package:life_ops/widgets/pyramid.dart';
 import 'package:life_ops/screens/settings.dart';
 import 'package:life_ops/screens/welcome_screen.dart';
+import 'package:life_ops/screens/general_council_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:life_ops/services/email.dart';
 import 'package:life_ops/screens/editpyramid.dart';
@@ -346,6 +347,9 @@ class CustomAppBarState extends State<CustomAppBar> {
               navigateToSetup(context);
             }
             break;
+          case 'council':
+            navigateToCouncil(context);
+            break;
           case 'faq':
             if (currentScreen != 'faq') {
               navigateToFAQ(context);
@@ -372,6 +376,10 @@ class CustomAppBarState extends State<CustomAppBar> {
           const PopupMenuItem<String>(
             value: 'setup',
             child: Text('Setup'),
+          ),
+          const PopupMenuItem<String>(
+            value: 'council',
+            child: Text('Talk to the Council'),
           ),
           const PopupMenuItem<String>(
             value: 'faq',
@@ -427,6 +435,15 @@ class CustomAppBarState extends State<CustomAppBar> {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(context,
             MaterialPageRoute(builder: (context) => const WelcomeScreen()))
+        .then((value) {});
+    utils.Utils().changeSystemColor(Brightness.light);
+    setState(() {});
+  }
+
+  void navigateToCouncil(BuildContext context) async {
+    utils.Utils().changeSystemColor(Brightness.dark);
+    await Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const GeneralCouncilScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});

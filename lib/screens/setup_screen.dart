@@ -12,8 +12,8 @@ import '../services/entitlement_service.dart';
 import '../services/resonance_service.dart';
 import '../services/setup_service.dart';
 import '../theme/app_colors.dart';
-import '../widgets/advisor.dart';
 import '../widgets/chat_backdrop.dart';
+import '../widgets/council_transcript.dart';
 import '../widgets/setup_progress_indicator.dart';
 import 'setup_completion_screen.dart';
 import 'push_permission_screen.dart';
@@ -48,8 +48,8 @@ class _FoundationalStep {
 
 class _SetupScreenState extends State<SetupScreen> {
   static const _openingLine =
-      "I'm not going to ask what you want to change. Tell me about a day "
-      "recently that felt like it mattered."; // D-067: fixed, not generated.
+      "Hi! Let me know what energizes you. What are things that you want "
+      "more of in your life?"; // D-067: fixed, not generated.
 
   BoardMessage get _openingMessage => BoardMessage(
       advisorKey: 'mira', text: _openingLine, timestamp: DateTime.now());
@@ -101,7 +101,14 @@ class _SetupScreenState extends State<SetupScreen> {
         _phase =
             session.messages.isEmpty ? _Phase.opening : _Phase.openingRound;
       });
-      if (_phase == _Phase.openingRound) await _runOpeningRound();
+      // D-090: resuming mid-round only needs a fresh Mira turn if the
+      // session was interrupted right after the user's own message —
+      // otherwise she has already replied and it's the user's turn next,
+      // so there is nothing to run and the text input just waits for them.
+      final last = session.messages.isNotEmpty ? session.messages.last : null;
+      if (_phase == _Phase.openingRound && last?.advisorKey == 'user') {
+        await _runMiraTurn();
+      }
     } catch (e, st) {
       debugPrint('SetupScreen: failed to start or resume setup: $e\n$st');
       setState(() => _error = 'Could not start setup. Please try again.');
@@ -121,7 +128,10 @@ class _SetupScreenState extends State<SetupScreen> {
     });
   }
 
-  // ── Opening (D-042/D-067) and the other three advisors joining in ──────
+  // ── Opening (D-042/D-067/D-090): a solo, back-and-forth conversation ───
+  // with Mira alone — not the four-advisor pile-on this used to be. That
+  // mechanic moved to the general Council chat (D-091); setup is now one
+  // advisor, a few real exchanges, until she signals she has enough.
 
   Future<void> _sendOpeningReply() async {
     final text = _textController.text.trim();
@@ -137,7 +147,7 @@ class _SetupScreenState extends State<SetupScreen> {
         _session = refreshed ?? session;
         _phase = _Phase.openingRound;
       });
-      await _runOpeningRound();
+      await _runMiraTurn();
     } on AiBudgetException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -145,34 +155,25 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
-  Future<void> _runOpeningRound() async {
-    var session = _session;
+  Future<void> _runMiraTurn() async {
+    final session = _session;
     if (session == null) return;
     setState(() => _busy = true);
     try {
-      // The other three advisors, in rotation order, minus whichever
-      // already spoke this session.
-      final spoken = session.messages.map((m) => m.advisorKey).toSet();
-      for (final advisorKey in session.rotationOrder) {
-        if (spoken.contains(advisorKey)) continue;
-        session = await _runSetupTurn(session!, advisorKey);
-        _scrollToBottom();
-        // D-042/P-9: found live — four advisor replies landing back to
-        // back, network-call-speed apart, read as a wall of text flying
-        // by rather than a conversation. A short pause after each turn
-        // gives the user a beat to actually read it before the next one
-        // arrives; it costs nothing structural (no directive requires
-        // these calls to be back-to-back) and matches how the rest of
-        // the app already treats pacing as part of the experience (D-046's
-        // 3-second spin, D-065 waiting for the completion moment to settle).
-        if (mounted) await Future.delayed(const Duration(milliseconds: 900));
+      final result = await CouncilService.instance.runMiraSetupTurn(session);
+      setState(() => _session = result.session);
+      _scrollToBottom();
+      if (result.readyToBuild) {
+        // A beat before the categories phase replaces the transcript
+        // outright — Mira's closing line deserves to be read, not
+        // instantly swapped out from under the user (same pacing D-042
+        // already established for the old multi-advisor round).
+        if (mounted) await Future.delayed(const Duration(milliseconds: 700));
+        setState(() => _phase = _Phase.categories);
+        await _loadCategories();
       }
-      // A beat before the categories phase replaces the transcript outright
-      // — the last advisor's line deserves to be read, not instantly
-      // swapped out from under the user.
-      if (mounted) await Future.delayed(const Duration(milliseconds: 700));
-      setState(() => _phase = _Phase.categories);
-      await _loadCategories();
+      // Otherwise: stay in openingRound. The text input is already visible
+      // there, waiting for the user's next reply.
     } on AiBudgetException catch (e) {
       setState(() => _error = e.message);
     } on SpendLimitException catch (e) {
@@ -522,7 +523,9 @@ class _SetupScreenState extends State<SetupScreen> {
                           style: const TextStyle(color: Colors.redAccent)),
                     ),
                   Expanded(child: _buildBody()),
-                  if (_phase == _Phase.opening || _phase == _Phase.essences)
+                  if (_phase == _Phase.opening ||
+                      _phase == _Phase.openingRound ||
+                      _phase == _Phase.essences)
                     _buildTextInput(),
                 ],
               ),
@@ -589,65 +592,7 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   Widget _buildTranscript(List<BoardMessage> messages) {
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.all(12),
-      itemCount: messages.length,
-      itemBuilder: (context, index) {
-        final m = messages[index];
-        final isUser = m.advisorKey == 'user';
-        final advisor = isUser ? null : AdvisorConfig.forKey(m.advisorKey);
-        final bubble = Container(
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          padding: const EdgeInsets.all(12),
-          constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.66),
-          decoration: BoxDecoration(
-            color: (isUser ? AppColors.surfaceHigh : advisor!.bubbleColor)
-                .withValues(alpha: 0.92),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!isUser)
-                Text(advisor!.name,
-                    style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold)),
-              Text(m.text,
-                  style: const TextStyle(color: AppColors.textPrimary)),
-            ],
-          ),
-        );
-        if (isUser) {
-          return Align(alignment: Alignment.centerRight, child: bubble);
-        }
-        // D-042: each advisor speaks with their own portrait, ported from
-        // Kansei (images/advisors/*.jpg) but — until now — never actually
-        // rendered anywhere; the chat showed a colored bubble and a name
-        // label only. fallbackColor covers a decode failure so a bad asset
-        // degrades to a colored circle, never a broken-image icon.
-        return Align(
-          alignment: Alignment.centerLeft,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: advisor!.fallbackColor,
-                backgroundImage: AssetImage(advisor.assetPath),
-                onBackgroundImageError: (_, __) {},
-              ),
-              const SizedBox(width: 8),
-              Flexible(child: bubble),
-            ],
-          ),
-        );
-      },
-    );
+    return CouncilTranscript(messages: messages, scrollController: _scrollController);
   }
 
   Widget _buildCategories() {
@@ -927,7 +872,11 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   void _onSubmitText() {
-    if (_phase == _Phase.opening) {
+    if (_phase == _Phase.opening || _phase == _Phase.openingRound) {
+      // D-090: the same handler serves the very first reply and every
+      // back-and-forth exchange after it — Mira decides when she has
+      // enough, not a fixed turn count, so there is no separate "continue
+      // the round" path.
       _sendOpeningReply();
     } else if (_phase == _Phase.essences) {
       _sendEssenceReply();

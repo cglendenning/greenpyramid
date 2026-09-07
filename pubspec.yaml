@@ -147,6 +147,44 @@ flutter:
     - images/advisors/advisor_kenji.jpg
     - images/advisors/advisor_noa.jpg
     - images/advisors/advisor_eli.jpg
+    - images/stock/stock_00.jpg
+    - images/stock/stock_01.jpg
+    - images/stock/stock_02.jpg
+    - images/stock/stock_03.jpg
+    - images/stock/stock_04.jpg
+    - images/stock/stock_05.jpg
+    - images/stock/stock_06.jpg
+    - images/stock/stock_07.jpg
+    - images/stock/stock_08.jpg
+    - images/stock/stock_09.jpg
+    - images/stock/stock_10.jpg
+    - images/stock/stock_11.jpg
+    - images/stock/stock_12.jpg
+    - images/stock/stock_13.jpg
+    - images/stock/stock_14.jpg
+    - images/stock/stock_15.jpg
+    - images/stock/stock_16.jpg
+    - images/stock/stock_17.jpg
+    - images/stock/stock_18.jpg
+    - images/stock/stock_19.jpg
+    - images/workshop/workshop_00.jpg
+    - images/workshop/workshop_01.jpg
+    - images/workshop/workshop_02.jpg
+    - images/workshop/workshop_03.jpg
+    - images/workshop/workshop_04.jpg
+    - images/workshop/workshop_05.jpg
+    - images/workshop/workshop_06.jpg
+    - images/workshop/workshop_07.jpg
+    - images/workshop/workshop_08.jpg
+    - images/workshop/workshop_09.jpg
+    - images/completion/completion_00.jpg
+    - images/completion/completion_01.jpg
+    - images/completion/completion_02.jpg
+    - images/completion/completion_03.jpg
+    - images/completion/completion_04.jpg
+    - images/anchor_placeholder_0.jpg
+    - images/anchor_placeholder_1.jpg
+    - images/anchor_placeholder_2.jpg
   fonts:
     - family: Exo2
       fonts:
