@@ -18,7 +18,8 @@ class DatabaseHelper {
   static final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
   static bool get isDemoMode => demoModeNotifier.value;
   static set isDemoMode(bool value) => demoModeNotifier.value = value;
-  static void toggleDemoMode() => demoModeNotifier.value = !demoModeNotifier.value;
+  static void toggleDemoMode() =>
+      demoModeNotifier.value = !demoModeNotifier.value;
 
   // Real tables
   static const taskTable = 'task';
@@ -79,7 +80,10 @@ class DatabaseHelper {
   static const columnFindingSourceSession = 'source_session_id';
 
   static const Set<String> domains = {
-    'biological', 'psychological', 'relational', 'environmental'
+    'biological',
+    'psychological',
+    'relational',
+    'environmental'
   };
 
   // Single-row cache of server-authoritative entitlement (D-057). Never
@@ -153,7 +157,9 @@ class DatabaseHelper {
     String path = join(documentsDirectory.path, _databaseName);
     try {
       final db = await openDatabase(path,
-          version: _databaseVersion, onCreate: _onCreate, onUpgrade: _onUpgrade);
+          version: _databaseVersion,
+          onCreate: _onCreate,
+          onUpgrade: _onUpgrade);
       openFailure = null;
       return db;
     } catch (e, stack) {
@@ -168,7 +174,6 @@ class DatabaseHelper {
       rethrow;
     }
   }
-
 
   /// The R3 schema additions (Part IV), written idempotently so the v7
   /// migration is safe to interrupt and retry (MIG-4). Shared by _onCreate
@@ -195,32 +200,27 @@ class DatabaseHelper {
         'UPDATE $categoryTable SET $columnPosition = $columnCategoryId '
         'WHERE $columnPosition = 0');
 
-    await db.execute(
-        'CREATE TABLE IF NOT EXISTS $categoryEssenceTable ('
+    await db.execute('CREATE TABLE IF NOT EXISTS $categoryEssenceTable ('
         '$columnEssenceId INTEGER PRIMARY KEY AUTOINCREMENT, '
         '$columnEssenceCategoryId INTEGER NOT NULL, '
         '$columnEssenceText TEXT NOT NULL, '
         '$columnEssenceCreated TEXT NOT NULL, '
         '$columnEssenceSourceSession TEXT)');
-    await db.execute(
-        'CREATE INDEX IF NOT EXISTS idx_essence_cat_created ON '
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_essence_cat_created ON '
         '$categoryEssenceTable ($columnEssenceCategoryId, $columnEssenceCreated DESC)');
 
-    await db.execute(
-        'CREATE TABLE IF NOT EXISTS $domainFindingTable ('
+    await db.execute('CREATE TABLE IF NOT EXISTS $domainFindingTable ('
         '$columnFindingId INTEGER PRIMARY KEY AUTOINCREMENT, '
         '$columnFindingCategoryId INTEGER NOT NULL, '
         '$columnFindingDomain TEXT NOT NULL, '
         '$columnFindingNote TEXT NOT NULL, '
         '$columnFindingCreated TEXT NOT NULL, '
         '$columnFindingSourceSession TEXT)');
-    await db.execute(
-        'CREATE INDEX IF NOT EXISTS idx_finding_cat ON '
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_finding_cat ON '
         '$domainFindingTable ($columnFindingCategoryId)');
 
     // CHECK (id = 1) enforces the single-row invariant at the schema level.
-    await db.execute(
-        'CREATE TABLE IF NOT EXISTS $accountStateTable ('
+    await db.execute('CREATE TABLE IF NOT EXISTS $accountStateTable ('
         "$columnAccountId INTEGER PRIMARY KEY CHECK ($columnAccountId = 1), "
         '$columnAccountUid TEXT, '
         "$columnEntitlement TEXT NOT NULL DEFAULT 'pre_trial', "
@@ -781,18 +781,27 @@ class DatabaseHelper {
   // Inserts a row in the database where each key in the Map is a column name
   // and the value is the column value. The return value is the id of the
   // inserted row.
+  // D-051/D-084: categoryid is the PRIMARY KEY, and every fresh install
+  // already has rows 1-6 seeded by populateCategory() ("Empty1".."Empty6")
+  // — the placeholder the pre-Council flow relied on. Without an explicit
+  // conflict policy, sqflite's default is ABORT: committing a real derived
+  // category for an id that already exists throws, which the catch below
+  // swallowed silently in release builds. The real defect this caused: the
+  // Council's proposed names never overwrote the seed rows, so setup
+  // completed with categories still literally named "Empty1".."Empty6"
+  // (found live via Firestore, 2026-09-07) — and the completion screen's
+  // pyramid, built from those degenerate rows (every one at position 0),
+  // rendered a blank screen instead of failing loudly. REPLACE is what
+  // "commit the derived pyramid" always meant here: overwrite whatever
+  // was at that id, not refuse to.
   Future<int> insertCategory(Map<String, dynamic> row) async {
     int id = 0;
     try {
       Database db = await instance.database;
-      id = await db.insert(getCategoryTable(), row);
+      id = await db.insert(getCategoryTable(), row,
+          conflictAlgorithm: ConflictAlgorithm.replace);
     } catch (e, s) {
-      if (kDebugMode) {
-        print(e);
-      }
-      if (kDebugMode) {
-        print(s);
-      }
+      debugPrint('DatabaseHelper.insertCategory failed for $row: $e\n$s');
     }
     return id;
   }
@@ -839,7 +848,8 @@ class DatabaseHelper {
     Database db = await instance.database;
     // First, check if there are any tasks for this category
     final taskTable = getTaskTable();
-    final taskRes = await db.query(taskTable, where: '$columnCategory = ?', whereArgs: [cat]);
+    final taskRes = await db
+        .query(taskTable, where: '$columnCategory = ?', whereArgs: [cat]);
     if (taskRes.isEmpty) {
       return -1; // No tasks defined for this category
     }
@@ -853,7 +863,8 @@ class DatabaseHelper {
     final res1 = await db.rawQuery(q1, [cat, fromDate]);
     var total = res1.length;
     print('[RADAR][PCT] Total logs for $cat: $total');
-    var q2 = "select * from $table where category = ? and taskdate >= ? and checked = 'true'";
+    var q2 =
+        "select * from $table where category = ? and taskdate >= ? and checked = 'true'";
     final res2 = await db.rawQuery(q2, [cat, fromDate]);
     var checked = res2.length;
     print('[RADAR][PCT] Checked logs for $cat: $checked');
@@ -1188,7 +1199,13 @@ class DatabaseHelper {
   /// D-024: extracted from lib/screens/edittaskdetail.dart, which built this
   /// statement by string interpolation of user input.
   static const Set<String> dayColumns = {
-    'sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'
+    'sunday',
+    'monday',
+    'tuesday',
+    'wednesday',
+    'thursday',
+    'friday',
+    'saturday'
   };
 
   Future<int> setTaskDayFlag({
@@ -1393,7 +1410,8 @@ class DatabaseHelper {
   // returned. This should be 1 as long as the row exists.
   Future<int> delete(int id) async {
     Database db = await instance.database;
-    return await db.delete(getTaskTable(), where: '$columnId = ?', whereArgs: [id]);
+    return await db
+        .delete(getTaskTable(), where: '$columnId = ?', whereArgs: [id]);
   }
 
   // Deletes a task and every task-log entry it produced — including the
@@ -1482,8 +1500,8 @@ class DatabaseHelper {
   /// applyV7Schema's `INSERT OR IGNORE`, so this never returns null.
   Future<Map<String, dynamic>> getAccountState() async {
     final db = await database;
-    final rows = await db
-        .query(accountStateTable, where: '$columnAccountId = ?', whereArgs: [1]);
+    final rows = await db.query(accountStateTable,
+        where: '$columnAccountId = ?', whereArgs: [1]);
     return rows.first;
   }
 
@@ -1607,7 +1625,8 @@ class DatabaseHelper {
   /// D-049: findings grouped by domain, for the domain-map view. Domain
   /// state is derived from accumulated findings, never asked of the user
   /// directly (D-049's own acceptance criterion).
-  Future<Map<String, List<Map<String, dynamic>>>> queryDomainFindingsByDomain() async {
+  Future<Map<String, List<Map<String, dynamic>>>>
+      queryDomainFindingsByDomain() async {
     final rows = await queryAllDomainFindings();
     final byDomain = <String, List<Map<String, dynamic>>>{};
     for (final row in rows) {
@@ -1643,8 +1662,8 @@ class DatabaseHelper {
 
   Future<void> deleteOldestChatMessage(int messageId) async {
     final db = await database;
-    await db
-        .delete(getChatTable(), where: '$chatColumnId = ?', whereArgs: [messageId]);
+    await db.delete(getChatTable(),
+        where: '$chatColumnId = ?', whereArgs: [messageId]);
   }
 
   // Commentary countdown methods

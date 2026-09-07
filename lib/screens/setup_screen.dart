@@ -13,6 +13,7 @@ import '../services/resonance_service.dart';
 import '../services/setup_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/advisor.dart';
+import '../widgets/chat_backdrop.dart';
 import '../widgets/setup_progress_indicator.dart';
 import 'setup_completion_screen.dart';
 import 'push_permission_screen.dart';
@@ -50,8 +51,8 @@ class _SetupScreenState extends State<SetupScreen> {
       "I'm not going to ask what you want to change. Tell me about a day "
       "recently that felt like it mattered."; // D-067: fixed, not generated.
 
-  BoardMessage get _openingMessage =>
-      BoardMessage(advisorKey: 'mira', text: _openingLine, timestamp: DateTime.now());
+  BoardMessage get _openingMessage => BoardMessage(
+      advisorKey: 'mira', text: _openingLine, timestamp: DateTime.now());
 
   final _setup = SetupService.instance;
   final _textController = TextEditingController();
@@ -97,7 +98,8 @@ class _SetupScreenState extends State<SetupScreen> {
         // D-062-adjacent resume: an in-progress session with messages
         // already resumes into the opening round rather than replaying
         // Mira's fixed line a second time.
-        _phase = session.messages.isEmpty ? _Phase.opening : _Phase.openingRound;
+        _phase =
+            session.messages.isEmpty ? _Phase.opening : _Phase.openingRound;
       });
       if (_phase == _Phase.openingRound) await _runOpeningRound();
     } catch (e, st) {
@@ -155,7 +157,20 @@ class _SetupScreenState extends State<SetupScreen> {
         if (spoken.contains(advisorKey)) continue;
         session = await _runSetupTurn(session!, advisorKey);
         _scrollToBottom();
+        // D-042/P-9: found live — four advisor replies landing back to
+        // back, network-call-speed apart, read as a wall of text flying
+        // by rather than a conversation. A short pause after each turn
+        // gives the user a beat to actually read it before the next one
+        // arrives; it costs nothing structural (no directive requires
+        // these calls to be back-to-back) and matches how the rest of
+        // the app already treats pacing as part of the experience (D-046's
+        // 3-second spin, D-065 waiting for the completion moment to settle).
+        if (mounted) await Future.delayed(const Duration(milliseconds: 900));
       }
+      // A beat before the categories phase replaces the transcript outright
+      // — the last advisor's line deserves to be read, not instantly
+      // swapped out from under the user.
+      if (mounted) await Future.delayed(const Duration(milliseconds: 700));
       setState(() => _phase = _Phase.categories);
       await _loadCategories();
     } on AiBudgetException catch (e) {
@@ -199,7 +214,8 @@ class _SetupScreenState extends State<SetupScreen> {
     } on SetupCallLimitException {
       // Nothing to propose from if the bound is already hit on the very
       // first derivation call — surface plainly rather than looping.
-      setState(() => _error = 'Setup reached its limit. Please try again shortly.');
+      setState(
+          () => _error = 'Setup reached its limit. Please try again shortly.');
     } on CouncilClientException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -222,15 +238,18 @@ class _SetupScreenState extends State<SetupScreen> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
           TextButton(
             onPressed: () {
               final name = AiGuard.sanitizeField(controller.text, maxChars: 60);
               if (name.isNotEmpty) {
                 setState(() {
                   _categories = [..._categories];
-                  _categories[index] =
-                      CategoryProposal(position: _categories[index].position, name: name);
+                  _categories[index] = CategoryProposal(
+                      position: _categories[index].position,
+                      name: name,
+                      description: _categories[index].description);
                 });
               }
               Navigator.pop(context);
@@ -274,8 +293,10 @@ class _SetupScreenState extends State<SetupScreen> {
         orElse: () => openPositions.first);
     setState(() {
       _categories = [..._categories];
-      _categories[index] =
-          CategoryProposal(position: target, name: _categories[index].name);
+      _categories[index] = CategoryProposal(
+          position: target,
+          name: _categories[index].name,
+          description: _categories[index].description);
       _categories.sort((a, b) => a.position.compareTo(b.position));
     });
   }
@@ -286,7 +307,8 @@ class _SetupScreenState extends State<SetupScreen> {
       await _setup.commitCategories(_categories);
       _foundational = _categories
           .where((c) => c.position <= 3)
-          .map((c) => _FoundationalStep(categoryId: c.position, categoryName: c.name))
+          .map((c) =>
+              _FoundationalStep(categoryId: c.position, categoryName: c.name))
           .toList()
         ..sort((a, b) => a.categoryId.compareTo(b.categoryId));
       setState(() {
@@ -311,7 +333,9 @@ class _SetupScreenState extends State<SetupScreen> {
     if (session == null) return;
     final step = _foundational[_essenceIndex];
     await _setup.commitEssence(
-      categoryId: step.categoryId, essence: text, sessionId: session.sessionId);
+        categoryId: step.categoryId,
+        essence: text,
+        sessionId: session.sessionId);
     step.capturedEssence = text;
 
     // D-048: advisory, never required (D-074) — never blocks setup's
@@ -341,7 +365,8 @@ class _SetupScreenState extends State<SetupScreen> {
     try {
       await CouncilService.instance.runAdvisorTurn(
         session: session,
-        advisorKey: session.rotationOrder[_essenceIndex % session.rotationOrder.length],
+        advisorKey:
+            session.rotationOrder[_essenceIndex % session.rotationOrder.length],
         categoryName: step.categoryName,
       );
       final refreshed = await CouncilService.instance
@@ -375,7 +400,8 @@ class _SetupScreenState extends State<SetupScreen> {
     final session = _session;
     if (session == null) return;
     for (final c in _categories) {
-      setState(() => _habitCategoriesLoading = {..._habitCategoriesLoading, c.name});
+      setState(
+          () => _habitCategoriesLoading = {..._habitCategoriesLoading, c.name});
       final essence = _foundational
           .where((f) => f.categoryName == c.name)
           .map((f) => f.capturedEssence)
@@ -413,7 +439,8 @@ class _SetupScreenState extends State<SetupScreen> {
       final session = _session!;
       final essences = _foundational
           .where((f) => f.capturedEssence != null)
-          .map((f) => (categoryName: f.categoryName, essence: f.capturedEssence!))
+          .map((f) =>
+              (categoryName: f.categoryName, essence: f.capturedEssence!))
           .toList();
       await _setup.closeSynthesis(session: session, essences: essences);
       await _setup.syncAfterSetup();
@@ -433,7 +460,8 @@ class _SetupScreenState extends State<SetupScreen> {
               // D-065: push permission is requested here — immediately
               // after the completion moment settles, before the home
               // screen, never on first launch.
-              onDone: () => Navigator.of(context).pushReplacement(MaterialPageRoute(
+              onDone: () =>
+                  Navigator.of(context).pushReplacement(MaterialPageRoute(
                 builder: (context) => PushPermissionScreen(
                   onDone: () => Navigator.of(context)
                       .pushNamedAndRemoveUntil('/', (route) => false),
@@ -452,28 +480,30 @@ class _SetupScreenState extends State<SetupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Stack(
-          children: [
-            Column(
-              children: [
-                if (_error != null)
-                  Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Text(_error!,
-                        style: const TextStyle(color: Colors.redAccent)),
-                  ),
-                Expanded(child: _buildBody()),
-                if (_phase == _Phase.opening || _phase == _Phase.essences)
-                  _buildTextInput(),
-              ],
-            ),
-            Positioned(
-              top: 8,
-              right: 8,
-              child: SetupProgressIndicator(progress: _progressFor(_phase)),
-            ),
-          ],
+      body: ChatBackdrop(
+        child: SafeArea(
+          child: Stack(
+            children: [
+              Column(
+                children: [
+                  if (_error != null)
+                    Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Text(_error!,
+                          style: const TextStyle(color: Colors.redAccent)),
+                    ),
+                  Expanded(child: _buildBody()),
+                  if (_phase == _Phase.opening || _phase == _Phase.essences)
+                    _buildTextInput(),
+                ],
+              ),
+              Positioned(
+                top: 8,
+                right: 8,
+                child: SetupProgressIndicator(progress: _progressFor(_phase)),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -537,9 +567,11 @@ class _SetupScreenState extends State<SetupScreen> {
         final bubble = Container(
           margin: const EdgeInsets.symmetric(vertical: 6),
           padding: const EdgeInsets.all(12),
-          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.66),
+          constraints: BoxConstraints(
+              maxWidth: MediaQuery.of(context).size.width * 0.66),
           decoration: BoxDecoration(
-            color: isUser ? AppColors.surfaceHigh : advisor!.bubbleColor,
+            color: (isUser ? AppColors.surfaceHigh : advisor!.bubbleColor)
+                .withValues(alpha: 0.92),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Column(
@@ -551,7 +583,8 @@ class _SetupScreenState extends State<SetupScreen> {
                         color: AppColors.textSecondary,
                         fontSize: 12,
                         fontWeight: FontWeight.bold)),
-              Text(m.text, style: const TextStyle(color: AppColors.textPrimary)),
+              Text(m.text,
+                  style: const TextStyle(color: AppColors.textPrimary)),
             ],
           ),
         );
@@ -599,23 +632,46 @@ class _SetupScreenState extends State<SetupScreen> {
           children: [
             Text(label,
                 style: const TextStyle(
-                    color: AppColors.textSecondary, fontWeight: FontWeight.bold)),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                for (final c in list)
-                  GestureDetector(
-                    onLongPress: () => _changeTier(_categories.indexOf(c)),
-                    child: ActionChip(
-                      label: Text(c.name),
-                      backgroundColor: AppColors.surfaceHigh,
-                      labelStyle: const TextStyle(color: AppColors.textPrimary),
-                      onPressed: () => _renameCategory(_categories.indexOf(c)),
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 6),
+            for (final c in list)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: GestureDetector(
+                  onLongPress: () => _changeTier(_categories.indexOf(c)),
+                  onTap: () => _renameCategory(_categories.indexOf(c)),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceHigh,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                          color: AppColors.brandGreen.withValues(alpha: 0.18)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(c.name,
+                            style: const TextStyle(
+                                color: AppColors.textPrimary,
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600)),
+                        if (c.description != null) ...[
+                          const SizedBox(height: 3),
+                          Text(c.description!,
+                              style: const TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 13,
+                                  height: 1.35)),
+                        ],
+                      ],
                     ),
                   ),
-              ],
-            ),
+                ),
+              ),
           ],
         ),
       );
@@ -630,12 +686,15 @@ class _SetupScreenState extends State<SetupScreen> {
             const Text('Here is what I heard.',
                 style: TextStyle(color: AppColors.textPrimary, fontSize: 18)),
             const SizedBox(height: 4),
-            const Text('Tap a name to change it. Hold to move it to a different tier.',
+            const Text(
+                'Tap a name to change it. Hold to move it to a different tier.',
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-            tierSection(tierLabels[1]!, _categories.where((c) => c.position <= 3)),
+            tierSection(
+                tierLabels[1]!, _categories.where((c) => c.position <= 3)),
             tierSection(tierLabels[2]!,
                 _categories.where((c) => c.position == 4 || c.position == 5)),
-            tierSection(tierLabels[3]!, _categories.where((c) => c.position == 6)),
+            tierSection(
+                tierLabels[3]!, _categories.where((c) => c.position == 6)),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _busy ? null : _confirmCategories,
@@ -712,8 +771,9 @@ class _SetupScreenState extends State<SetupScreen> {
             const SizedBox(height: 16),
           ],
           ElevatedButton(
-            onPressed:
-                (_busy || _habitCategoriesLoading.isNotEmpty) ? null : _confirmHabitsAndClose,
+            onPressed: (_busy || _habitCategoriesLoading.isNotEmpty)
+                ? null
+                : _confirmHabitsAndClose,
             child: const Text('Build my pyramid'),
           ),
         ],

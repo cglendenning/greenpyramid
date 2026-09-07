@@ -23,6 +23,25 @@ test('D-051: no preset category list appears in the system prompt — it '
   assert.doesNotMatch(system, /Health.*Career.*Finance/i);
 });
 
+// Regression coverage for a defect found live 2026-09-07: category names
+// came back as full clauses, not a one-or-two-word label, with no
+// separate resonant description at all.
+test('D-051: a category entry requires both a short name (max 24 chars) '
+  + 'and a description (max 140 chars)', () => {
+  const item = CATEGORIES_TOOL.input_schema.properties.categories.items;
+  assert.equal(item.properties.name.maxLength, 24);
+  assert.ok(item.properties.description, 'description must be a schema field');
+  assert.equal(item.properties.description.maxLength, 140);
+  assert.deepEqual(item.required, ['position', 'name', 'description']);
+});
+
+test('D-051: the prompt instructs one or two words for the name and a '
+  + 'separate resonant description', () => {
+  const { system } = buildDeriveCategoriesPrompt([]);
+  assert.match(system, /one or two words/);
+  assert.match(system, /DESCRIPTION/);
+});
+
 test('D-052: HABITS_TOOL requires 3 to 5 habits', () => {
   assert.equal(HABITS_TOOL.input_schema.properties.habits.minItems, 3);
   assert.equal(HABITS_TOOL.input_schema.properties.habits.maxItems, 5);

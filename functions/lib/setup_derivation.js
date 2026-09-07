@@ -28,9 +28,17 @@ export const CATEGORIES_TOOL = {
           type: 'object',
           properties: {
             position: { type: 'integer', minimum: 1, maximum: 6 },
-            name: { type: 'string', minLength: 1, maxLength: 60 },
+            // D-051: found live 2026-09-07 — names were coming back as
+            // full clauses, not a label. 24 chars is roomy for two real
+            // words ("Family Time", "Deep Work") without being roomy
+            // enough for a sentence to sneak through.
+            name: { type: 'string', minLength: 1, maxLength: 24 },
+            // A short resonant phrase, not the full essence (that's the
+            // Council exchange's job, later) — one line that would make
+            // the user nod, not a definition of the category.
+            description: { type: 'string', minLength: 1, maxLength: 140 },
           },
-          required: ['position', 'name'],
+          required: ['position', 'name', 'description'],
         },
       },
     },
@@ -44,10 +52,16 @@ export function buildDeriveCategoriesPrompt(transcript) {
     'categories of someone\'s life pyramid from a conversation they just had. Positions 1-3 are ' +
     'foundational (the parts of their life that hold up everything else — usually the ones they spoke ' +
     'about with the most weight or urgency). Positions 4-5 are essential. Position 6 is peak — ' +
-    'aspirational, the thing at the top once the rest is standing. Every category name must come from ' +
-    'the user\'s own words and specifics in the conversation — never a generic label like "Health" or ' +
-    '"Career" unless that is genuinely how they put it themselves. Call propose_categories with exactly ' +
-    'six entries, one per position 1 through 6.';
+    'aspirational, the thing at the top once the rest is standing. ' +
+    'Each category needs two things, and they do different jobs: ' +
+    'a NAME of exactly one or two words — a label, not a clause, the way a person would answer if asked ' +
+    '"what would you call that part of your life?" ("Health", "Deep Work", "My Kids" — never a run-on ' +
+    'phrase, never a full sentence) — drawn from the user\'s own words, not a generic textbook term ' +
+    'unless that is genuinely their own word for it; and a DESCRIPTION of one short sentence, in their own ' +
+    'words or tone from the conversation, that captures why it matters to them specifically — resonant, ' +
+    'not a dictionary definition of the name, and not the full essence (a much deeper exchange happens ' +
+    'later for that; this is one line that would make them nod, not an interview). Call propose_categories ' +
+    'with exactly six entries, one per position 1 through 6.';
   const user = `CONVERSATION SO FAR:\n${transcriptText(transcript)}`;
   return { system, user };
 }

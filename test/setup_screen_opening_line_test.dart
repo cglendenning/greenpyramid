@@ -106,4 +106,35 @@ void main() {
             'Mira opening message, prepended to whatever the session '
             'actually has, so a resumed session is never shown without it');
   });
+
+  test(
+      'D-042/P-9: a pause follows every advisor turn in the opening round, '
+      'and another follows the round before the categories phase replaces '
+      'the transcript — regression test for owner feedback that four '
+      'replies landing back to back "flew by"', () {
+    final source = File('lib/screens/setup_screen.dart').readAsStringSync();
+    final roundStart = source.indexOf('Future<void> _runOpeningRound()');
+    expect(roundStart, greaterThan(-1));
+    final roundEnd = source.indexOf('\n  Future<BoardSession> _runSetupTurn', roundStart);
+    expect(roundEnd, greaterThan(roundStart));
+    final delays = 'Future.delayed'.allMatches(source.substring(roundStart, roundEnd)).length;
+    expect(delays, greaterThanOrEqualTo(2),
+        reason: 'expected one pause per advisor turn plus one more before '
+            'the categories transition');
+  });
+
+  test(
+      'D-051: the category card renders both the name and the description '
+      '— regression test for owner feedback that names alone, with no '
+      'resonant line under them, read as too bare', () {
+    final source = File('lib/screens/setup_screen.dart').readAsStringSync();
+    final buildCategoriesStart = source.indexOf('Widget _buildCategories()');
+    expect(buildCategoriesStart, greaterThan(-1));
+    final buildCategoriesEnd =
+        source.indexOf('\n  Widget _buildEssences()', buildCategoriesStart);
+    expect(buildCategoriesEnd, greaterThan(buildCategoriesStart));
+    final body = source.substring(buildCategoriesStart, buildCategoriesEnd);
+    expect(body, contains('c.name'));
+    expect(body, contains('c.description'));
+  });
 }

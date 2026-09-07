@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/board_session.dart';
 import '../widgets/advisor.dart';
+import '../widgets/chat_backdrop.dart';
 import '../services/ai_guard.dart';
 import '../services/auth_service.dart';
 import '../services/council_client.dart';
@@ -104,7 +105,7 @@ class _CouncilScreenState extends State<CouncilScreen> {
       if (mounted) {
         setState(() => _error =
             'You\'ve reached this month\'s spend limit (\$${e.totalSpendUsd.toStringAsFixed(2)}'
-            ' of \$${e.spendCapUsd.toStringAsFixed(2)}). More can be purchased soon.');
+                ' of \$${e.spendCapUsd.toStringAsFixed(2)}). More can be purchased soon.');
       }
     } on CouncilClientException catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -129,7 +130,8 @@ class _CouncilScreenState extends State<CouncilScreen> {
   Future<void> _acceptAsEssence(String text) async {
     if (!ResonanceService.qualifies(text)) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Say a little more before accepting this as your essence.'),
+        content:
+            Text('Say a little more before accepting this as your essence.'),
       ));
       return;
     }
@@ -159,7 +161,8 @@ class _CouncilScreenState extends State<CouncilScreen> {
     if (mounted) Navigator.of(context).pop();
   }
 
-  Future<void> _recordDomainFindings(BoardSession session, String essence) async {
+  Future<void> _recordDomainFindings(
+      BoardSession session, String essence) async {
     try {
       final findings = await CouncilClient.instance.deriveDomainFindings(
         sessionId: session.sessionId,
@@ -191,105 +194,111 @@ class _CouncilScreenState extends State<CouncilScreen> {
         backgroundColor: AppColors.background,
         title: Text(widget.categoryName),
       ),
-      body: Column(
-        children: [
-          if (_error != null)
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Text(_error!, style: const TextStyle(color: Colors.redAccent)),
-            ),
-          Expanded(
-            child: session == null
-                ? const Center(child: CircularProgressIndicator())
-                : ListView.builder(
-                    padding: const EdgeInsets.all(12),
-                    itemCount: session.messages.length,
-                    itemBuilder: (context, index) {
-                      final m = session.messages[index];
-                      final isUser = m.advisorKey == 'user';
-                      final advisor =
-                          isUser ? null : AdvisorConfig.forKey(m.advisorKey);
-                      final bubble = Container(
-                        margin: const EdgeInsets.symmetric(vertical: 6),
-                        padding: const EdgeInsets.all(12),
-                        constraints: BoxConstraints(
-                            maxWidth:
-                                MediaQuery.of(context).size.width * 0.66),
-                        decoration: BoxDecoration(
-                          color: isUser
-                              ? AppColors.surfaceHigh
-                              : advisor!.bubbleColor,
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (!isUser)
-                              Text(advisor!.name,
+      body: ChatBackdrop(
+        child: Column(
+          children: [
+            if (_error != null)
+              Padding(
+                padding: const EdgeInsets.all(12),
+                child: Text(_error!,
+                    style: const TextStyle(color: Colors.redAccent)),
+              ),
+            Expanded(
+              child: session == null
+                  ? const Center(child: CircularProgressIndicator())
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(12),
+                      itemCount: session.messages.length,
+                      itemBuilder: (context, index) {
+                        final m = session.messages[index];
+                        final isUser = m.advisorKey == 'user';
+                        final advisor =
+                            isUser ? null : AdvisorConfig.forKey(m.advisorKey);
+                        final bubble = Container(
+                          margin: const EdgeInsets.symmetric(vertical: 6),
+                          padding: const EdgeInsets.all(12),
+                          constraints: BoxConstraints(
+                              maxWidth:
+                                  MediaQuery.of(context).size.width * 0.66),
+                          decoration: BoxDecoration(
+                            color: (isUser
+                                    ? AppColors.surfaceHigh
+                                    : advisor!.bubbleColor)
+                                .withValues(alpha: 0.92),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              if (!isUser)
+                                Text(advisor!.name,
+                                    style: const TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold)),
+                              Text(m.text,
                                   style: const TextStyle(
-                                      color: AppColors.textSecondary,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold)),
-                            Text(m.text,
-                                style: const TextStyle(
-                                    color: AppColors.textPrimary)),
-                            if (isUser)
-                              TextButton(
-                                onPressed: () => _acceptAsEssence(m.text),
-                                child: const Text('Use as my essence'),
-                              ),
-                          ],
-                        ),
-                      );
-                      if (isUser) {
+                                      color: AppColors.textPrimary)),
+                              if (isUser)
+                                TextButton(
+                                  onPressed: () => _acceptAsEssence(m.text),
+                                  child: const Text('Use as my essence'),
+                                ),
+                            ],
+                          ),
+                        );
+                        if (isUser) {
+                          return Align(
+                              alignment: Alignment.centerRight, child: bubble);
+                        }
+                        // D-042/D-027: portrait alongside the advisor's
+                        // bubble — same fix as setup_screen.dart's transcript.
                         return Align(
-                            alignment: Alignment.centerRight, child: bubble);
-                      }
-                      // D-042/D-027: portrait alongside the advisor's
-                      // bubble — same fix as setup_screen.dart's transcript.
-                      return Align(
-                        alignment: Alignment.centerLeft,
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            CircleAvatar(
-                              radius: 16,
-                              backgroundColor: advisor!.fallbackColor,
-                              backgroundImage: AssetImage(advisor.assetPath),
-                              onBackgroundImageError: (_, __) {},
-                            ),
-                            const SizedBox(width: 8),
-                            Flexible(child: bubble),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-          ),
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _textController,
-                      enabled: !_busy,
-                      style: const TextStyle(color: AppColors.textPrimary),
-                      decoration: const InputDecoration(hintText: 'Say more…'),
-                      onSubmitted: (_) => _sendUserMessage(),
+                          alignment: Alignment.centerLeft,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundColor: advisor!.fallbackColor,
+                                backgroundImage: AssetImage(advisor.assetPath),
+                                onBackgroundImageError: (_, __) {},
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(child: bubble),
+                            ],
+                          ),
+                        );
+                      },
                     ),
-                  ),
-                  IconButton(
-                    onPressed: _busy ? null : _sendUserMessage,
-                    icon: const Icon(Icons.arrow_upward, color: AppColors.brandGreen),
-                  ),
-                ],
+            ),
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _textController,
+                        enabled: !_busy,
+                        style: const TextStyle(color: AppColors.textPrimary),
+                        decoration:
+                            const InputDecoration(hintText: 'Say more…'),
+                        onSubmitted: (_) => _sendUserMessage(),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _busy ? null : _sendUserMessage,
+                      icon: const Icon(Icons.arrow_upward,
+                          color: AppColors.brandGreen),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

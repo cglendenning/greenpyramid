@@ -32,4 +32,19 @@ void main() {
     expect(categoriesBody, contains('looksLikePlaceholder'));
     expect(habitsBody, contains('looksLikePlaceholder'));
   });
+
+  test(
+      'D-051: CategoryProposal carries a description, and deriveCategories '
+      'parses it and guards it the same way it guards the name — a short '
+      'resonant line, not a bare label, was the owner\'s explicit ask '
+      'after seeing verbose one-word-only category names live', () {
+    final modelSource =
+        File('lib/services/council_client.dart').readAsStringSync();
+    expect(modelSource, contains('final String? description;'));
+    expect(modelSource, contains("description: c['description'] as String?"));
+    expect(
+        modelSource,
+        contains(
+            "looksLikePlaceholder(c.description!)"));
+  });
 }

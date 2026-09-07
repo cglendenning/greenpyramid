@@ -65,7 +65,12 @@ class AdvisorTurnResult {
 class CategoryProposal {
   final int position;
   final String name;
-  const CategoryProposal({required this.position, required this.name});
+  // D-051: a short resonant line, distinct from the name — null on a
+  // category the user has hand-renamed (AiGuard.sanitizeField input has
+  // no description of its own to carry over).
+  final String? description;
+  const CategoryProposal(
+      {required this.position, required this.name, this.description});
 }
 
 /// D-048: one impediment surfaced during a category conversation, already
@@ -146,17 +151,20 @@ class CouncilClient {
     }
     if (resp.statusCode == 409) {
       final data = jsonDecode(resp.body) as Map<String, dynamic>;
-      throw SetupCallLimitException(count: (data['count'] as num?)?.toInt() ?? 0);
+      throw SetupCallLimitException(
+          count: (data['count'] as num?)?.toInt() ?? 0);
     }
     if (resp.statusCode != 200) {
-      debugPrint('CouncilClient: $path backend ${resp.statusCode}: ${resp.body}');
+      debugPrint(
+          'CouncilClient: $path backend ${resp.statusCode}: ${resp.body}');
       throw CouncilClientException('The servers seem busy. Please try again.');
     }
     try {
       return jsonDecode(resp.body) as Map<String, dynamic>;
     } catch (e) {
       debugPrint('CouncilClient: $path bad response shape: $e');
-      throw CouncilClientException('Got an unexpected response. Please try again.');
+      throw CouncilClientException(
+          'Got an unexpected response. Please try again.');
     }
   }
 
@@ -196,18 +204,20 @@ class CouncilClient {
     required String sessionId,
     required List<Map<String, String>> transcript,
   }) async {
-    final data = await _post('deriveCategories',
-        {'sessionId': sessionId, 'transcript': transcript});
+    final data = await _post(
+        'deriveCategories', {'sessionId': sessionId, 'transcript': transcript});
     final list = data['categories'] as List<dynamic>? ?? const [];
     final categories = list
         .map((c) => CategoryProposal(
               position: (c['position'] as num).toInt(),
               name: c['name'] as String,
+              description: c['description'] as String?,
             ))
         .toList()
       ..sort((a, b) => a.position.compareTo(b.position));
     for (final c in categories) {
-      if (looksLikePlaceholder(c.name)) {
+      if (looksLikePlaceholder(c.name) ||
+          (c.description != null && looksLikePlaceholder(c.description!))) {
         throw CouncilClientException(
             'The Council needs a bit more to go on — try adding a little '
             'more detail and try again.');
