@@ -118,6 +118,14 @@ class _SetupScreenState extends State<SetupScreen> {
       if (_phase == _Phase.openingRound && last?.advisorKey == 'user') {
         await _runMiraTurn();
       }
+    } on SetupAlreadyCompleteException {
+      // D-082: this account already has a real local pyramid and already
+      // completed a setup session — nothing here to resume or redo.
+      // Leave setup entirely rather than show an error inside a chat UI
+      // with nothing behind it.
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+      }
     } catch (e, st) {
       debugPrint('SetupScreen: failed to start or resume setup: $e\n$st');
       setState(() => _error = 'Could not start setup. Please try again.');

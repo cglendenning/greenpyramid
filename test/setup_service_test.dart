@@ -124,6 +124,70 @@ void main() {
       final second = await svc.startOrResumeSetup();
       expect(second.sessionId, first.sessionId);
     });
+
+    test(
+        'D-082: startOrResumeSetup refuses a second session once this '
+        'device already has a real local pyramid and the account already '
+        'completed one — regression test for owner feedback: repeated '
+        'reinstalls accumulated four Firestore setup sessions because only '
+        'an *active* session was ever checked, never whether one had ever '
+        'been created at all', () async {
+      final auth = MockFirebaseAuth(
+          signedIn: true, mockUser: MockUser(uid: 'u-real-pyramid', isAnonymous: true));
+      final council = CouncilService(firestore: FakeFirebaseFirestore(), auth: auth);
+      final svc = SetupService(council: council, db: db, client: _FakeCouncilClient());
+
+      final first = await svc.startOrResumeSetup();
+      await council.endSession(first.sessionId);
+      await svc.commitCategories(const [
+        CategoryProposal(position: 1, name: 'Health'),
+        CategoryProposal(position: 2, name: 'Craft'),
+        CategoryProposal(position: 3, name: 'Family'),
+        CategoryProposal(position: 4, name: 'Money'),
+        CategoryProposal(position: 5, name: 'Friendship'),
+        CategoryProposal(position: 6, name: 'Legacy'),
+      ]);
+
+      expect(svc.startOrResumeSetup(),
+          throwsA(isA<SetupAlreadyCompleteException>()));
+    });
+
+    test(
+        'D-082: a device with no real local pyramid (e.g. after a '
+        'reinstall) is still allowed to start a fresh setup session, even '
+        'though the account already completed one on a previous install — '
+        'D-075\'s sync is push-only, so there is currently no way to '
+        'restore an existing pyramid onto a device that has none; refusing '
+        'here would strand the user permanently instead', () async {
+      final auth = MockFirebaseAuth(
+          signedIn: true, mockUser: MockUser(uid: 'u-reinstall', isAnonymous: true));
+      final council = CouncilService(firestore: FakeFirebaseFirestore(), auth: auth);
+
+      // "First install": complete a setup session with a real pyramid.
+      final svc1 = SetupService(council: council, db: db, client: _FakeCouncilClient());
+      final first = await svc1.startOrResumeSetup();
+      await council.endSession(first.sessionId);
+      await svc1.commitCategories(const [
+        CategoryProposal(position: 1, name: 'Health'),
+        CategoryProposal(position: 2, name: 'Craft'),
+        CategoryProposal(position: 3, name: 'Family'),
+        CategoryProposal(position: 4, name: 'Money'),
+        CategoryProposal(position: 5, name: 'Friendship'),
+        CategoryProposal(position: 6, name: 'Legacy'),
+      ]);
+
+      // "Reinstall": a brand-new local database, same Firestore account.
+      final freshDir =
+          await Directory.systemTemp.createTemp('gp_setup_test_reinstall');
+      addTearDown(() {
+        if (freshDir.existsSync()) freshDir.deleteSync(recursive: true);
+      });
+      PathProviderPlatform.instance = _TempPathProvider(freshDir.path);
+
+      final svc2 = SetupService(council: council, db: db, client: _FakeCouncilClient());
+      final second = await svc2.startOrResumeSetup();
+      expect(second.sessionId, isNot(first.sessionId));
+    });
   });
 
   group('D-051: category proposals are committed at their proposed '

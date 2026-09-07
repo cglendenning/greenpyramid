@@ -26,12 +26,41 @@ class SetupService {
   final DatabaseHelper _db;
   final CouncilClient _client;
 
-  /// D-082: exactly one setup session may exist per account, ever. Resumes
-  /// the existing one (active or not yet started) rather than creating a
-  /// second.
+  /// D-082: exactly one setup session may exist per account, ever — but
+  /// only enforced once this device actually has a real local pyramid to
+  /// protect. Found live: this was never actually checked (only an
+  /// *active* session was), so completing setup and later relaunching
+  /// with no active session in progress just created another one —
+  /// harmless-looking, but the guarantee this directive documents as
+  /// `done` didn't really hold.
+  ///
+  /// A device with no real category yet — still the default `Empty%` seed,
+  /// or no rows at all — is allowed through regardless of Firestore
+  /// history: D-075's sync is push-only
+  /// (local to Firestore, never back down), so there is currently no way
+  /// to restore an existing pyramid onto a device that doesn't have one —
+  /// refusing here would strand a genuinely reinstalling user with no
+  /// pyramid and no path to ever get one. The case this actually guards
+  /// against is the real bug: a device that already has a working local
+  /// pyramid re-entering setup (e.g. the home screen's "Setup" menu item)
+  /// and redoing it.
   Future<BoardSession> startOrResumeSetup() async {
     final active = await _council.getActiveSession(type: BoardSessionType.setup);
     if (active != null) return active;
+
+    // Checked directly against the category rows themselves — "at least
+    // one category isn't a placeholder" — rather than reusing
+    // queryLaunchSetup()'s "exactly 6 Empty% rows" count, which assumes
+    // populateCategory() has already seeded the defaults. A database that
+    // hasn't been seeded at all (rows.isEmpty) must read the same as one
+    // that's still all placeholders: no real pyramid either way.
+    final rows = await _db.queryCategories();
+    final hasRealLocalPyramid =
+        rows.any((r) => !(r[DatabaseHelper.columnCat] as String).startsWith('Empty'));
+    if (hasRealLocalPyramid && await _council.hasEverCreatedSetupSession()) {
+      throw SetupAlreadyCompleteException();
+    }
+
     return _council.createSession(type: BoardSessionType.setup);
   }
 
@@ -173,4 +202,15 @@ class SetupService {
     if (uid == null) return;
     await SyncService.instance.syncAll(uid, setupComplete: true);
   }
+}
+
+/// D-082: thrown by [SetupService.startOrResumeSetup] when this device
+/// already has a real local pyramid and the account already completed a
+/// setup session — re-entering setup (e.g. the home screen's menu item)
+/// must not redo it. The screen's response is to leave setup entirely,
+/// not show an error inside a chat UI that has nothing to resume.
+class SetupAlreadyCompleteException implements Exception {
+  @override
+  String toString() =>
+      'Setup has already been completed for this account.';
 }
