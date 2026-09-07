@@ -14,7 +14,7 @@ import cors from 'cors';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import admin from 'firebase-admin';
-import { buildAdvisorTurnPrompt, buildSetupAdvisorTurnPrompt, extractReplyText, SETUP_TURN_TOOL } from './lib/council.js';
+import { buildAdvisorTurnPrompt, buildGeneralCouncilTurnPrompt, buildSetupAdvisorTurnPrompt, extractReplyText, SETUP_TURN_TOOL } from './lib/council.js';
 import { checkSpendLimit, recordCost, SpendLimitError } from './lib/billing.js';
 import { getCouncilModel, getNotificationModel } from './lib/model_config.js';
 import { guardAndCountSetupCall, SetupCallLimitError } from './lib/setup_guard.js';
@@ -236,10 +236,17 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, async (req, res) => {
   // a tool call so her readiness to build the pyramid comes back as data,
   // not free text. Every other caller (category re-clarification, D-091's
   // general Council chat) keeps the original four-advisor free-text path.
-  const { isSetup, sessionId, sliderValue, conversationHistory, existingCategories } = req.body || {};
+  const { isSetup, sessionId, sliderValue, conversationHistory, existingCategories, pyramidContext } = req.body || {};
   if (isSetup) return handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conversationHistory, existingCategories });
 
-  const built = buildAdvisorTurnPrompt(req.body || {});
+  // D-095: pyramidContext, present only from GeneralCouncilScreen (D-091),
+  // switches this from the category-scoped clarification framing to the
+  // pyramid-grounded "help them live out values they've already defined"
+  // framing — real context instead of the "their life" placeholder that
+  // produced disconnected, non-sequitur replies.
+  const built = pyramidContext
+    ? buildGeneralCouncilTurnPrompt({ ...(req.body || {}), pyramidContext })
+    : buildAdvisorTurnPrompt(req.body || {});
   if (!built) return res.status(400).json({ error: 'Invalid advisorKey' });
   const { advisor, systemText, userMessage } = built;
 

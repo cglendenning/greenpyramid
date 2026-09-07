@@ -44,6 +44,14 @@ class AiGuard {
 
   final List<DateTime> _recentCalls = [];
 
+  // AiGuard.instance is a true singleton with in-memory per-minute state
+  // that SharedPreferences.setMockInitialValues({}) cannot reset — a test
+  // file with more than maxCallsPerMinute real acquire() calls across its
+  // whole run starts refusing them regardless of test order, once it
+  // crosses the cap cumulatively. Test-only; never called in production.
+  @visibleForTesting
+  void resetForTest() => _recentCalls.clear();
+
   // Reserves one API call or throws AiBudgetException. Enforces three
   // layers, cheapest first: a per-minute burst limit, a per-day volume cap,
   // expensive. [at] exists for deterministic tests; production callers omit

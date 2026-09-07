@@ -4,6 +4,7 @@ import '../models/board_session.dart';
 import '../services/ai_guard.dart';
 import '../services/council_client.dart';
 import '../services/council_service.dart';
+import '../services/db.dart';
 import '../theme/app_colors.dart';
 import '../widgets/chat_backdrop.dart';
 import '../widgets/council_transcript.dart';
@@ -30,7 +31,12 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
   bool _busy = false;
   String? _error;
 
+  // D-095: real grounding for the advisors' advice — replaces the
+  // "their life" placeholder that produced disconnected, sometimes
+  // non-sequitur replies (found live: Kenji replied to a message about
+  // Crossfit consistency with a generic "what's on your mind?").
   static const _categoryName = 'their life';
+  List<Map<String, dynamic>>? _pyramidContext;
 
   @override
   void initState() {
@@ -47,6 +53,7 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
   Future<void> _load() async {
     setState(() => _busy = true);
     try {
+      _pyramidContext = await DatabaseHelper.instance.queryPyramidSummary();
       var session = await _council.getActiveSession(type: BoardSessionType.general);
       session ??= await _council.createSession(type: BoardSessionType.general);
       setState(() => _session = session);
@@ -69,6 +76,7 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
         session: session,
         advisorKey: advisorKey,
         categoryName: _categoryName,
+        pyramidContext: _pyramidContext,
       );
       final refreshed =
           await _council.getActiveSession(type: BoardSessionType.general);

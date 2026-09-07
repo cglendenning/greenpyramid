@@ -2,6 +2,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/models/board_session.dart';
+import 'package:life_ops/services/ai_guard.dart';
 import 'package:life_ops/services/council_client.dart';
 import 'package:life_ops/services/council_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,6 +13,7 @@ class _FakeCouncilClient extends CouncilClient {
   Map<String, dynamic>? lastCategoryContext;
 
   List<Map<String, String>>? lastExistingCategories;
+  List<Map<String, String?>>? lastPyramidContext;
 
   @override
   Future<AdvisorTurnResult> boardAdvisorTurn({
@@ -22,9 +24,11 @@ class _FakeCouncilClient extends CouncilClient {
     bool isSetup = false,
     String? sessionId,
     List<Map<String, String>>? existingCategories,
+    List<Map<String, String?>>? pyramidContext,
   }) async {
     lastCategoryContext = categoryContext;
     lastExistingCategories = existingCategories;
+    lastPyramidContext = pyramidContext;
     return response;
   }
 }
@@ -46,6 +50,11 @@ void main() {
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
+    // AiGuard.instance is a singleton whose per-minute call history is
+    // in-memory, not read from SharedPreferences — without this, enough
+    // real acquire() calls across this file's whole run trips the 5/min
+    // cap regardless of test order.
+    AiGuard.instance.resetForTest();
   });
 
   group('D-082: exactly one setup session may exist per account', () {
@@ -122,6 +131,41 @@ void main() {
       expect(active?.messages.length, 1);
       expect(active?.totalInputTokens, 10);
       expect(active?.totalOutputTokens, 5);
+    });
+
+    test('D-095: runAdvisorTurn passes pyramidContext through, sanitized '
+        'the same way any user-derived text reaches a prompt', () async {
+      final client = _FakeCouncilClient();
+      final svc = buildService(client: client);
+      final session = await svc.createSession(type: BoardSessionType.general);
+
+      await svc.runAdvisorTurn(
+        session: session,
+        advisorKey: 'noa',
+        categoryName: 'their life',
+        pyramidContext: const [
+          {'name': 'Health', 'tier': 'foundational', 'essence': 'my body carries me'},
+          {'name': 'Legacy', 'tier': 'peak', 'essence': null},
+        ],
+      );
+
+      expect(client.lastPyramidContext, hasLength(2));
+      expect(client.lastPyramidContext![0]['name'], 'Health');
+      expect(client.lastPyramidContext![0]['tier'], 'foundational');
+      expect(client.lastPyramidContext![0]['essence'], 'my body carries me');
+      expect(client.lastPyramidContext![1]['essence'], isNull);
+    });
+
+    test('D-095: runAdvisorTurn with no pyramidContext passes null through '
+        '— the category-scoped path is unaffected', () async {
+      final client = _FakeCouncilClient();
+      final svc = buildService(client: client);
+      final session = await svc.createSession(
+          type: BoardSessionType.category, categoryId: 1);
+
+      await svc.runAdvisorTurn(
+          session: session, advisorKey: 'mira', categoryName: 'Health');
+      expect(client.lastPyramidContext, isNull);
     });
   });
 

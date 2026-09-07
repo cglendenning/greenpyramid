@@ -181,6 +181,8 @@ class CouncilClient {
   /// D-093: [existingCategories], setup-only, switches Mira's turn from
   /// gathering material for a fresh pyramid to refining one already
   /// proposed — "not quite right" adjusts what's there, never discards it.
+  /// D-095: [pyramidContext], general-chat-only (D-091), grounds the
+  /// advisors in the user's actual pyramid instead of a placeholder.
   Future<AdvisorTurnResult> boardAdvisorTurn({
     required String advisorKey,
     required Map<String, dynamic> categoryContext,
@@ -189,6 +191,7 @@ class CouncilClient {
     bool isSetup = false,
     String? sessionId,
     List<Map<String, String>>? existingCategories,
+    List<Map<String, String?>>? pyramidContext,
   }) async {
     final data = await _post('boardAdvisorTurn', {
       'advisorKey': advisorKey,
@@ -198,6 +201,7 @@ class CouncilClient {
       'isSetup': isSetup,
       if (sessionId != null) 'sessionId': sessionId,
       if (existingCategories != null) 'existingCategories': existingCategories,
+      if (pyramidContext != null) 'pyramidContext': pyramidContext,
     });
     final usage = data['usage'] as Map<String, dynamic>? ?? const {};
     return AdvisorTurnResult(

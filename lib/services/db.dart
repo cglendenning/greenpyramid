@@ -1580,6 +1580,38 @@ class DatabaseHelper {
     return rows.first[columnEssenceText] as String?;
   }
 
+  /// D-095: name, tier, and latest essence for every category — the shape
+  /// the general Council conversation (D-091) needs to ground its advice
+  /// in the user's actual pyramid, not a placeholder. Tier follows the
+  /// same position convention used throughout setup (1-3 foundational,
+  /// 4-5 essential, 6 peak). Reuses [getLatestEssenceForCategory] per
+  /// category rather than re-deriving "latest essence" with a second
+  /// reduction over every essence row (SyncService._syncProfile already
+  /// has one; this isn't a third).
+  Future<List<Map<String, dynamic>>> queryPyramidSummary() async {
+    final rows = await queryCategories();
+    // db.query()'s result is sqflite's own read-only list — sort a copy,
+    // never the original (the exact defect query_categories_readonly_test
+    // covers elsewhere).
+    final sorted = List<Map<String, dynamic>>.from(rows)
+      ..sort((a, b) =>
+          (a[columnPosition] as int).compareTo(b[columnPosition] as int));
+
+    final summary = <Map<String, dynamic>>[];
+    for (final row in sorted) {
+      final id = row[columnCategoryId] as int;
+      final position = row[columnPosition] as int;
+      final tier =
+          position <= 3 ? 'foundational' : (position <= 5 ? 'essential' : 'peak');
+      summary.add({
+        'name': row[columnCat] as String,
+        'tier': tier,
+        'essence': await getLatestEssenceForCategory(id),
+      });
+    }
+    return summary;
+  }
+
   /// D-028/D-061: appends a new essence version for a category (essences are
   /// versioned, never overwritten — D-061).
   Future<void> insertCategoryEssence({

@@ -111,12 +111,18 @@ class CouncilService {
   /// returns it. [categoryName], [categoryTier], and [priorEssence] are the
   /// category-scoped context D-028 requires; sanitized the same way any
   /// user-derived text reaches a prompt (D-006).
+  ///
+  /// D-095: [pyramidContext], non-null, is the general Council chat's
+  /// (D-091) whole-pyramid grounding — when present, the backend ignores
+  /// the category-scoped fields above entirely and uses the pyramid-aware
+  /// prompt instead.
   Future<BoardMessage?> runAdvisorTurn({
     required BoardSession session,
     required String advisorKey,
     required String categoryName,
     int? categoryTier,
     String? priorEssence,
+    List<Map<String, dynamic>>? pyramidContext,
   }) async {
     await AiGuard.instance.acquire();
 
@@ -139,6 +145,15 @@ class CouncilService {
           .toList(),
       isSetup: isSetup,
       sessionId: session.sessionId,
+      pyramidContext: pyramidContext
+          ?.map((c) => {
+                'name': AiGuard.sanitizeField(c['name'] as String, maxChars: 24),
+                'tier': c['tier'] as String?,
+                'essence': (c['essence'] as String?) == null
+                    ? null
+                    : AiGuard.sanitizeField(c['essence'] as String, maxChars: 300),
+              })
+          .toList(),
     );
 
     final msg = BoardMessage(

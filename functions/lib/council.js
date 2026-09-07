@@ -107,6 +107,68 @@ export function buildAdvisorTurnPrompt({
   return { advisor, systemText, userMessage };
 }
 
+// D-095: the general Council conversation (D-091) needed real grounding —
+// found live, the placeholder ("Category: 'their life'") produced
+// disconnected, sometimes non-sequitur replies, because buildAdvisorTurnPrompt
+// above is fundamentally category-scoped framing repurposed for a
+// conversation that isn't about any one category. This is its own prompt:
+// the person has already defined their values (the pyramid exists); the
+// advisors' job is living them out, not discovering them.
+export function buildGeneralCouncilTurnPrompt({
+  advisorKey,
+  sliderValue = 0.5,
+  pyramidContext = [],
+  conversationHistory = [],
+}) {
+  const advisor = ADVISORS[advisorKey];
+  if (!advisor) return null;
+
+  const otherAdvisors = Object.entries(ADVISORS)
+    .filter(([k]) => k !== advisorKey)
+    .map(([, v]) => `- ${v.name} (${v.title}): ${v.trait}`)
+    .join('\n');
+
+  const systemText =
+    `You are ${advisor.name}, ${advisor.title} — one of four advisors in a live group chat, helping ` +
+    `someone live out values they've already defined, not discover new ones.\n\n` +
+    `Your personality: ${advisor.personality}\n\n` +
+    `${biasInstruction(advisor.trait, sliderValue)}\n\n` +
+    `The other advisors are:\n${otherAdvisors}\n\n` +
+    `Ground your advice in their actual pyramid of values (given in the message below) whenever it's ` +
+    `relevant — connect what they're struggling with or asking about to the specific category and ` +
+    `essence it touches, rather than generic encouragement. This is a chat room — crisp, warm, a little ` +
+    `levity is welcome. No speeches.\n` +
+    `Vary your response length naturally based on your personality. Sometimes a single word or phrase is ` +
+    `the right move. Sometimes a full sentence or two. Max 2 sentences.\n` +
+    `Respond to what was just said. If the person themselves wrote (shown as You:), speak to them ` +
+    `directly.\n` +
+    `Otherwise address your fellow advisors, referring to the person in the third person.\n` +
+    `Never wrap your response in quotation marks.`;
+
+  // D-041: kept out of the system prompt, same discipline buildAdvisorTurnPrompt
+  // follows for categoryContext — the pyramid is user-specific, so it belongs
+  // in the per-turn user message, not the cacheable stable system prefix.
+  const pyramidText = (pyramidContext || []).length > 0
+    ? pyramidContext.map((c) => {
+        const essenceText = c.essence ? ` — "${sanitize(c.essence, 300)}"` : '';
+        return `- [${sanitize(c.tier || '', 20)}] ${sanitize(c.name, 24)}${essenceText}`;
+      }).join('\n')
+    : '(no pyramid yet)';
+
+  const safeHistory = (conversationHistory || []).slice(-30);
+  const historyText = safeHistory.length > 0
+    ? safeHistory.map(m => {
+        const name = m.advisor === 'user' ? 'You' : (ADVISORS[m.advisor]?.name || String(m.advisor));
+        return `${name}: ${sanitize(m.text, 500)}`;
+      }).join('\n')
+    : '(nothing yet)';
+
+  const userMessage =
+    `THEIR PYRAMID OF VALUES:\n${pyramidText}\n\nCHAT SO FAR:\n${historyText}\n\n${advisor.name}:`;
+
+  return { advisor, systemText, userMessage };
+}
+
 // D-090: setup is now a one-on-one conversation with Mira alone, not the
 // four-advisor group chat buildAdvisorTurnPrompt above builds — that
 // mechanic moved to the general Council conversation (D-091) instead of
