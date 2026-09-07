@@ -138,4 +138,41 @@ void main() {
       expect(completed.map((s) => s.sessionId), contains(session.sessionId));
     });
   });
+
+  group('D-032/D-042: session access before sign-in resolves', () {
+    // Regression test for the setup-screen startup race: main.dart kicks
+    // off anonymous sign-in unawaited so it never gates the first frame
+    // (D-032), but SetupScreen's own load path must never reach Firestore
+    // before that sign-in has actually completed — on a device with no
+    // cached Firebase Auth session (a fresh install), losing this race
+    // surfaced in production as "Could not start setup." This test pins
+    // the invariant SetupScreen._load() depends on: createSession and
+    // getActiveSession fail fast, rather than silently succeeding as some
+    // other uid, when there is no authenticated user yet.
+    test('createSession throws StateError, not a Firestore call, when no '
+        'user is signed in', () async {
+      final svc = CouncilService(
+        firestore: FakeFirebaseFirestore(),
+        auth: MockFirebaseAuth(), // signedIn: false by default
+        client: _FakeCouncilClient(),
+      );
+      await expectLater(
+        svc.createSession(type: BoardSessionType.setup),
+        throwsA(isA<StateError>()),
+      );
+    });
+
+    test('getActiveSession throws StateError, not a Firestore call, when no '
+        'user is signed in', () async {
+      final svc = CouncilService(
+        firestore: FakeFirebaseFirestore(),
+        auth: MockFirebaseAuth(),
+        client: _FakeCouncilClient(),
+      );
+      await expectLater(
+        svc.getActiveSession(type: BoardSessionType.setup),
+        throwsA(isA<StateError>()),
+      );
+    });
+  });
 }

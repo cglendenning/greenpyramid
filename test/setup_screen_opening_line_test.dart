@@ -53,4 +53,31 @@ void main() {
       expect(File('lib/screens/setup/setup$n.dart').existsSync(), isFalse);
     }
   });
+
+  test(
+      'D-032: _load() awaits sign-in before touching the Council session — '
+      'regression test for the startup race that surfaced in production as '
+      '"Could not start setup." main.dart fires anonymous sign-in unawaited '
+      'so it never gates the first frame, which means this screen is the '
+      'one place that must wait for it before any Firestore call, or a '
+      'fresh device (no cached auth session) loses the race.', () {
+    final source = File('lib/screens/setup_screen.dart').readAsStringSync();
+    final loadStart = source.indexOf('Future<void> _load()');
+    expect(loadStart, greaterThan(-1), reason: '_load() must exist');
+    // Cheap method-body bound: the next top-level method signature after
+    // _load(), consistent with this file's other structural checks.
+    final loadEnd = source.indexOf('\n  void _scrollToBottom()', loadStart);
+    expect(loadEnd, greaterThan(loadStart));
+    final loadBody = source.substring(loadStart, loadEnd);
+
+    final signInIndex = loadBody.indexOf('AuthService.instance.signInSilently()');
+    final sessionIndex = loadBody.indexOf('_setup.startOrResumeSetup()');
+    expect(signInIndex, greaterThan(-1),
+        reason: '_load() must await AuthService.instance.signInSilently() '
+            'before creating/resuming a Council session');
+    expect(sessionIndex, greaterThan(-1));
+    expect(signInIndex, lessThan(sessionIndex),
+        reason: 'sign-in must be awaited strictly before the Council '
+            'session call, not after or in parallel');
+  });
 }

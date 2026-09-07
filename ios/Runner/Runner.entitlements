@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Required for Firebase App Check's AppleProvider.appAttest (main.dart)
+	     to work at all — DCAppAttestService silently fails token requests
+	     without it. Verified on-device: Xcode's automatic signing sets this
+	     to "production" even for a "development"-method export
+	     (ios/ExportOptions.plist) — the App Attest environment tracks the
+	     provisioning profile's capability grant, not the export method, so
+	     this value is not something to "match" to the signing method. -->
+	<key>com.apple.developer.devicecheck.appattest-environment</key>
+	<string>production</string>
+</dict>
+</plist>
