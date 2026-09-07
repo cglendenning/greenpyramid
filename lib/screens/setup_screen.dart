@@ -734,6 +734,81 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
+  // D-052: the auto-generated set is a starting point, never the only
+  // option — the user can reword any of them, drop them (the chip's own
+  // x), or write one of their own from scratch.
+  void _editHabit(String categoryName, String current) {
+    final controller = TextEditingController(text: current);
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Say it your way',
+            style: TextStyle(color: AppColors.textPrimary)),
+        content: TextField(
+          controller: controller,
+          style: const TextStyle(color: AppColors.textPrimary),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              final text = AiGuard.sanitizeField(controller.text, maxChars: 60);
+              if (text.isNotEmpty) {
+                setState(() {
+                  _habitsByCategory[categoryName] = [
+                    for (final h in _habitsByCategory[categoryName] ?? const [])
+                      if (h == current) text else h,
+                  ];
+                });
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _addHabit(String categoryName) {
+    final controller = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Add a habit',
+            style: TextStyle(color: AppColors.textPrimary)),
+        content: TextField(
+          controller: controller,
+          style: const TextStyle(color: AppColors.textPrimary),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () {
+              final text = AiGuard.sanitizeField(controller.text, maxChars: 60);
+              if (text.isNotEmpty) {
+                setState(() {
+                  _habitsByCategory[categoryName] = [
+                    ...?_habitsByCategory[categoryName],
+                    text,
+                  ];
+                });
+              }
+              Navigator.pop(context);
+            },
+            child: const Text('Add'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHabits() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
@@ -755,10 +830,14 @@ class _SetupScreenState extends State<SetupScreen> {
                 runSpacing: 8,
                 children: [
                   for (final h in _habitsByCategory[c.name] ?? const [])
-                    Chip(
+                    InputChip(
                       label: Text(h),
                       backgroundColor: AppColors.surfaceHigh,
                       labelStyle: const TextStyle(color: AppColors.textPrimary),
+                      // The auto-generated ones are a starting point, not
+                      // the final word: tap to change the wording, the x
+                      // to drop it entirely.
+                      onPressed: () => _editHabit(c.name, h),
                       onDeleted: () => setState(() {
                         _habitsByCategory[c.name] = [
                           for (final x in _habitsByCategory[c.name]!)
@@ -766,6 +845,14 @@ class _SetupScreenState extends State<SetupScreen> {
                         ];
                       }),
                     ),
+                  ActionChip(
+                    avatar: const Icon(Icons.add,
+                        size: 18, color: AppColors.brandGreen),
+                    label: const Text('Add'),
+                    backgroundColor: AppColors.surfaceHigh,
+                    labelStyle: const TextStyle(color: AppColors.brandGreen),
+                    onPressed: () => _addHabit(c.name),
+                  ),
                 ],
               ),
             const SizedBox(height: 16),

@@ -42,9 +42,12 @@ test('D-051: the prompt instructs one or two words for the name and a '
   assert.match(system, /DESCRIPTION/);
 });
 
-test('D-052: HABITS_TOOL requires 3 to 5 habits', () => {
-  assert.equal(HABITS_TOOL.input_schema.properties.habits.minItems, 3);
-  assert.equal(HABITS_TOOL.input_schema.properties.habits.maxItems, 5);
+// Amended 2026-09-07: found live that 3-5 habits at up to 120 chars each
+// was too many and too verbose. See Decision Log for the defect.
+test('D-052: HABITS_TOOL requires 2 to 3 short (max 40 char) habits', () => {
+  assert.equal(HABITS_TOOL.input_schema.properties.habits.minItems, 2);
+  assert.equal(HABITS_TOOL.input_schema.properties.habits.maxItems, 3);
+  assert.equal(HABITS_TOOL.input_schema.properties.habits.items.maxLength, 40);
 });
 
 test('D-052: the habit prompt includes the essence when one exists', () => {

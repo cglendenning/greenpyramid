@@ -137,4 +137,22 @@ void main() {
     expect(body, contains('c.name'));
     expect(body, contains('c.description'));
   });
+
+  test(
+      'D-052: habits can be edited and new ones added by hand, not only '
+      'deleted — the auto-generated set is a starting point, never the '
+      'only option', () {
+    final source = File('lib/screens/setup_screen.dart').readAsStringSync();
+    final buildHabitsStart = source.indexOf('Widget _buildHabits()');
+    expect(buildHabitsStart, greaterThan(-1));
+    final habitsBody = source.substring(buildHabitsStart);
+
+    expect(habitsBody, contains('InputChip'),
+        reason: 'a plain Chip only supports the delete (x) affordance — '
+            'InputChip is what makes the habit itself tappable to edit');
+    expect(habitsBody, contains('_editHabit'));
+    expect(habitsBody, contains('_addHabit'));
+    expect(source, contains('void _editHabit('));
+    expect(source, contains('void _addHabit('));
+  });
 }

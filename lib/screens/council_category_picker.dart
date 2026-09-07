@@ -79,7 +79,10 @@ class _CouncilCategoryPickerState extends State<CouncilCategoryPicker> {
           if (!snapshot.hasData) {
             return const Center(child: CircularProgressIndicator());
           }
-          final categories = snapshot.data!
+          // Same defect as setup_completion_screen.dart: db.query()'s
+          // result is read-only on the real sqflite plugin, so sorting it
+          // in place throws.
+          final categories = List<Map<String, dynamic>>.from(snapshot.data!)
             ..sort((a, b) => (a[DatabaseHelper.columnPosition] as int? ?? 0)
                 .compareTo(b[DatabaseHelper.columnPosition] as int? ?? 0));
           return ListView.builder(

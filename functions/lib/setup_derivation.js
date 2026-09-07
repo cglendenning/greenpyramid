@@ -69,17 +69,20 @@ export function buildDeriveCategoriesPrompt(transcript) {
 // D-052: 3-5 habits for one category, conditioned on its essence when one
 // exists (D-010: cat4-cat6 leave setup without one — falls back to
 // name-only, degrading without a placeholder).
+// D-052: found live 2026-09-07 — 3-5 habits at up to 120 chars each read
+// as too many, too long. Tightened to 2-3, ~5 words apiece (maxLength 40
+// is roomy for that without permitting a full sentence to sneak through).
 export const HABITS_TOOL = {
   name: 'propose_habits',
-  description: 'Propose 3-5 concrete daily habits for one category.',
+  description: 'Propose 2-3 concrete daily habits for one category, each around five words.',
   input_schema: {
     type: 'object',
     properties: {
       habits: {
         type: 'array',
-        minItems: 3,
-        maxItems: 5,
-        items: { type: 'string', minLength: 1, maxLength: 120 },
+        minItems: 2,
+        maxItems: 3,
+        items: { type: 'string', minLength: 1, maxLength: 40 },
       },
     },
     required: ['habits'],
@@ -95,12 +98,12 @@ export function buildDeriveHabitsPrompt({ categoryName, essence, existingHabits 
     (essenceText
       ? `Their own words for why this category matters to them: "${essenceText}" — let this shape which habits you propose, not just the category name.`
       : 'No stated reason exists for this category yet — propose from the category name alone, and do not invent one.') +
-    ' Habits must be concrete, dailyable actions someone can check off — never vague aspirations like ' +
-    '"be healthier" or "improve relationships". ' +
+    ' Each habit is a short, concrete, dailyable action someone can check off — around five words, never a full ' +
+    'sentence, never a vague aspiration like "be healthier" or "improve relationships". ' +
     (blacklist.length
       ? `Never repeat or closely restate any of these already-chosen habits: ${blacklist.join('; ')}.`
       : '') +
-    ' Call propose_habits with 3 to 5 habits.';
+    ' Call propose_habits with 2 to 3 habits.';
   const user = `Category: '${name}'`;
   return { system, user };
 }
