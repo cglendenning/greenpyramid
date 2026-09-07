@@ -51,6 +51,15 @@ class _SetupScreenState extends State<SetupScreen> {
       "Hi! Let me know what energizes you. What are things that you want "
       "more of in your life?"; // D-067: fixed, not generated.
 
+  // D-051: the pyramid is fixed at 3/2/1 — shared by _buildCategories'
+  // tier headers and _changeTier's tier-choice sheet, so the two never
+  // drift into different ideas of which positions belong to which tier.
+  static const List<(String, List<int>)> _tierDefinitions = [
+    ('Foundational', [1, 2, 3]),
+    ('Essential', [4, 5]),
+    ('Peak', [6]),
+  ];
+
   BoardMessage get _openingMessage => BoardMessage(
       advisorKey: 'mira', text: _openingLine, timestamp: DateTime.now());
 
@@ -270,13 +279,10 @@ class _SetupScreenState extends State<SetupScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            for (final tier in [
-              ('Foundational', [1, 2, 3]),
-              ('Essential', [4, 5]),
-              ('Peak', [6]),
-            ])
+            for (final tier in _tierDefinitions)
               ListTile(
-                title: Text(tier.$1,
+                title: Text(
+                    '${tier.$1} (${_categories.where((c) => tier.$2.contains(c.position)).length}/${tier.$2.length})',
                     style: const TextStyle(color: AppColors.textPrimary)),
                 onTap: () => _moveToTier(index, tier.$2),
               ),
@@ -286,16 +292,77 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  void _moveToTier(int index, List<int> openPositions) {
-    Navigator.pop(context);
-    final taken = _categories.map((c) => c.position).toSet()
-      ..remove(_categories[index].position);
-    final target = openPositions.firstWhere((p) => !taken.contains(p),
-        orElse: () => openPositions.first);
+  // D-051: the pyramid's shape is fixed at 3/2/1 — every position 1-6 is
+  // always occupied by exactly one category. Found live: moving into a
+  // full tier used to silently drop the moved category onto an already-
+  // taken position, duplicating it and leaving the tier it came from
+  // empty ("four in Foundational, none in Peak"). A tier with room still
+  // gets a plain move; a full tier requires picking who to swap places
+  // with, so the 3/2/1 shape can never break.
+  void _moveToTier(int index, List<int> tierPositions) {
+    Navigator.pop(context); // the tier-choice sheet
+    final sourcePosition = _categories[index].position;
+    if (tierPositions.contains(sourcePosition)) return; // already there
+
+    final taken = _categories.map((c) => c.position).toSet();
+    final openSlot =
+        tierPositions.firstWhere((p) => !taken.contains(p), orElse: () => -1);
+    if (openSlot != -1) {
+      setState(() {
+        _categories = [..._categories];
+        _categories[index] = CategoryProposal(
+            position: openSlot,
+            name: _categories[index].name,
+            description: _categories[index].description);
+        _categories.sort((a, b) => a.position.compareTo(b.position));
+      });
+      return;
+    }
+    _pickSwapTarget(index, tierPositions);
+  }
+
+  void _pickSwapTarget(int index, List<int> tierPositions) {
+    final candidates = _categories
+        .where((c) => tierPositions.contains(c.position))
+        .toList()
+      ..sort((a, b) => a.position.compareTo(b.position));
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 4),
+              child: Text('This tier is full — swap places with:',
+                  style:
+                      TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            ),
+            for (final c in candidates)
+              ListTile(
+                title:
+                    Text(c.name, style: const TextStyle(color: AppColors.textPrimary)),
+                onTap: () => _swapPositions(index, c.position),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _swapPositions(int index, int otherPosition) {
+    Navigator.pop(context); // the swap-choice sheet
+    final otherIndex = _categories.indexWhere((c) => c.position == otherPosition);
+    final sourcePosition = _categories[index].position;
     setState(() {
       _categories = [..._categories];
+      _categories[otherIndex] = CategoryProposal(
+          position: sourcePosition,
+          name: _categories[otherIndex].name,
+          description: _categories[otherIndex].description);
       _categories[index] = CategoryProposal(
-          position: target,
+          position: otherPosition,
           name: _categories[index].name,
           description: _categories[index].description);
       _categories.sort((a, b) => a.position.compareTo(b.position));
@@ -599,16 +666,18 @@ class _SetupScreenState extends State<SetupScreen> {
     if (_categories.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
-    const tierLabels = {1: 'Foundational', 2: 'Essential', 3: 'Peak'};
-    Widget tierSection(String label, Iterable<CategoryProposal> items) {
+    Widget tierSection(String label, int capacity, Iterable<CategoryProposal> items) {
       final list = items.toList();
-      if (list.isEmpty) return const SizedBox.shrink();
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label,
+            // D-051: every tier always holds exactly its fixed count
+            // (3/2/1) — shown here so a tier can never quietly read as
+            // empty or overfull the way it used to when a move onto a
+            // full tier silently duplicated a position.
+            Text('$label (${list.length}/$capacity)',
                 style: const TextStyle(
                     color: AppColors.textSecondary,
                     fontWeight: FontWeight.bold)),
@@ -667,12 +736,9 @@ class _SetupScreenState extends State<SetupScreen> {
             const Text(
                 'Tap a name to change it. Hold to move it to a different tier.',
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-            tierSection(
-                tierLabels[1]!, _categories.where((c) => c.position <= 3)),
-            tierSection(tierLabels[2]!,
-                _categories.where((c) => c.position == 4 || c.position == 5)),
-            tierSection(
-                tierLabels[3]!, _categories.where((c) => c.position == 6)),
+            for (final tier in _tierDefinitions)
+              tierSection(tier.$1, tier.$2.length,
+                  _categories.where((c) => tier.$2.contains(c.position))),
             const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _busy ? null : _confirmCategories,

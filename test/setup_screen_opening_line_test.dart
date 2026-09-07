@@ -153,6 +153,52 @@ void main() {
   });
 
   test(
+      'D-051: moving a category into a full tier swaps positions rather '
+      'than silently overwriting one — regression test for owner feedback '
+      'from a real run: moving a Peak category into Foundational (already '
+      'full at 3) left four categories at position 1 and none at position '
+      '6, because the old fallback (orElse: openPositions.first) just '
+      'dropped the moved category onto an already-taken position with no '
+      'check.', () {
+    final source = File('lib/screens/setup_screen.dart').readAsStringSync();
+
+    // The exact defect: a naive "pick the first position in the target
+    // tier" fallback with no regard for whether it's already occupied.
+    expect(source, isNot(contains('orElse: () => openPositions.first')));
+    expect(source, isNot(contains('orElse: () => tierPositions.first')));
+
+    final moveStart = source.indexOf(
+        'void _moveToTier(int index, List<int> tierPositions)');
+    expect(moveStart, greaterThan(-1));
+    final moveEnd = source.indexOf('\n  void _pickSwapTarget', moveStart);
+    expect(moveEnd, greaterThan(moveStart));
+    final moveBody = source.substring(moveStart, moveEnd);
+    expect(moveBody, contains('_pickSwapTarget'),
+        reason: 'a full tier must hand off to picking a swap partner, not '
+            'silently assign a taken position');
+
+    expect(source, contains('void _pickSwapTarget('));
+    expect(source, contains('void _swapPositions('));
+  });
+
+  test(
+      'D-051: every tier section shows its occupancy against a fixed '
+      'capacity (e.g. "Foundational (3/3)") — regression test for owner '
+      'feedback: "I don\'t understand how the organizational system '
+      'works" after a move left a tier silently empty with no indication '
+      'anything was wrong', () {
+    final source = File('lib/screens/setup_screen.dart').readAsStringSync();
+    final buildCategoriesStart = source.indexOf('Widget _buildCategories()');
+    final buildCategoriesEnd =
+        source.indexOf('\n  Widget _buildEssences()', buildCategoriesStart);
+    final body = source.substring(buildCategoriesStart, buildCategoriesEnd);
+    expect(body, contains(r'$label (${list.length}/$capacity)'));
+    // A tier that has been emptied by a bad move must still render — it
+    // is exactly the state that most needs to be visible, not hidden.
+    expect(body, isNot(contains('if (list.isEmpty) return const SizedBox.shrink()')));
+  });
+
+  test(
       'D-052: habits can be edited and new ones added by hand, not only '
       'deleted — the auto-generated set is a starting point, never the '
       'only option', () {

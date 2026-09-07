@@ -127,6 +127,25 @@ export function buildSetupAdvisorTurnPrompt({
       }).join('\n')
     : '(nothing yet)';
 
+  // D-092: how many questions Mira has already asked — used only to gate
+  // a pacing instruction, never sent to the model as a literal number to
+  // recite. Two possible values (below/at-or-above the threshold), not one
+  // per turn count, so this still only produces two distinct system-prompt
+  // variants and stays cacheable (D-041).
+  const miraTurnsSoFar = safeHistory.filter((m) => m.advisor !== 'user').length;
+  const pacingInstruction = miraTurnsSoFar >= 2
+    ? `You've already asked a couple of questions. If you are not yet ready ` +
+      `to build (readyToBuild: false), work a brief, warm sense of "not much ` +
+      `longer" into this reply — something like "just a couple more" or ` +
+      `"we're almost there" — never a literal countdown or exact number. ` +
+      `This conversation is usually about 4 to 6 exchanges total and rarely ` +
+      `goes past 7, so let that be roughly true rather than a guess. Found ` +
+      `live: past a couple of questions with no sense of how much longer ` +
+      `this would go, it started to feel like it could be endless, which ` +
+      `felt bad — the reassurance is there to prevent exactly that. Skip it ` +
+      `if readyToBuild is true; a closing line doesn't need it.\n`
+    : '';
+
   const systemText =
     `You are Mira, The Heart — having a one-on-one conversation with someone, ` +
     `before building their personal pyramid of values and the habits that ` +
@@ -142,6 +161,7 @@ export function buildSetupAdvisorTurnPrompt({
     `actually theirs. When you do, set readyToBuild to true and let reply be ` +
     `a brief, warm closing line telling them you're about to build it — never ` +
     `a question in that case.\n` +
+    pacingInstruction +
     `Never wrap your response in quotation marks.`;
 
   const userMessage = `CONVERSATION SO FAR:\n${historyText}\n\n${advisor.name}:`;

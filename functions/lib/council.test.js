@@ -123,6 +123,44 @@ test('D-090: conversation history reaches the user message, sanitized the '
   assert.doesNotMatch(userMessage, /"/);
 });
 
+test('D-092: no pacing reassurance instruction before Mira has asked two '
+  + 'questions — nothing to reassure about yet', () => {
+  const { systemText } = buildSetupAdvisorTurnPrompt({
+    conversationHistory: [
+      { advisor: 'mira', text: 'What energizes you?' },
+      { advisor: 'user', text: 'Being outdoors.' },
+    ],
+  });
+  assert.doesNotMatch(systemText, /just a couple more/i);
+});
+
+test('D-092: a pacing reassurance instruction appears once Mira has already '
+  + 'asked two questions — regression test for owner feedback: past a '
+  + 'couple of questions with no sense of how much longer, it started to '
+  + 'feel like it could be endless', () => {
+  const { systemText } = buildSetupAdvisorTurnPrompt({
+    conversationHistory: [
+      { advisor: 'mira', text: 'What energizes you?' },
+      { advisor: 'user', text: 'Being outdoors.' },
+      { advisor: 'mira', text: 'What does that give you?' },
+      { advisor: 'user', text: 'A sense of space.' },
+    ],
+  });
+  assert.match(systemText, /just a couple more/i);
+  assert.match(systemText, /never a literal countdown or exact number/i);
+});
+
+test('D-092: the pacing instruction never tells Mira to state an exact '
+  + 'count — the guidance itself forbids reciting one', () => {
+  const { systemText } = buildSetupAdvisorTurnPrompt({
+    conversationHistory: [
+      { advisor: 'mira', text: 'a' }, { advisor: 'user', text: 'b' },
+      { advisor: 'mira', text: 'c' }, { advisor: 'user', text: 'd' },
+    ],
+  });
+  assert.doesNotMatch(systemText, /exactly \d+ more/i);
+});
+
 test('D-090: SETUP_TURN_TOOL requires both reply and readyToBuild', () => {
   assert.deepEqual(SETUP_TURN_TOOL.input_schema.required.sort(), ['readyToBuild', 'reply']);
   assert.equal(SETUP_TURN_TOOL.input_schema.properties.readyToBuild.type, 'boolean');
