@@ -5,7 +5,7 @@ import 'package:life_ops/services/dbtools.dart';
 import 'package:life_ops/main.dart';
 import 'package:life_ops/widgets/pyramid.dart';
 import 'package:life_ops/screens/settings.dart';
-import 'package:life_ops/screens/setup_screen.dart';
+import 'package:life_ops/screens/welcome_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:life_ops/services/email.dart';
 import 'package:life_ops/screens/editpyramid.dart';
@@ -61,7 +61,9 @@ class HomeScreen extends StatelessWidget {
               builder: (_) => const HomeScreenWidget(),
             );
           case '/setup':
-            return MaterialPageRoute(builder: (context) => const SetupScreen());
+            // D-089: a fresh install lands here first via routeToGo — the
+            // welcome screen, not straight into Mira's opening line.
+            return MaterialPageRoute(builder: (context) => const WelcomeScreen());
           default:
             return _errorRoute();
         }
@@ -424,7 +426,7 @@ class CustomAppBarState extends State<CustomAppBar> {
   void navigateToSetup(BuildContext context) async {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const SetupScreen()))
+            MaterialPageRoute(builder: (context) => const WelcomeScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
