@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import '../services/db.dart';
 import '../theme/app_colors.dart';
 import '../widgets/confetti_overlay.dart';
-import '../widgets/pyramid.dart' show setColor;
 import '../widgets/pyramid_3d.dart';
 
 /// D-046: the completion moment, sequenced after D-055's closing synthesis.
@@ -97,10 +96,14 @@ class _SetupCompletionScreenState extends State<SetupCompletionScreen> {
                         for (final row in rows)
                           PyramidCategoryData(
                             label: row[DatabaseHelper.columnCat] as String? ?? '',
-                            // Freshly committed habits, nothing checked off
-                            // yet today — the real, current completion
-                            // state, not a placeholder.
-                            color: setColor(0),
+                            // Green here is deliberately not the real
+                            // completion color (which is red at 0% —
+                            // correct on the home screen, since nothing
+                            // has been checked off yet). This is the
+                            // one-time celebration moment: the pyramid was
+                            // just built, and green reads as "done," not
+                            // as a completion percentage.
+                            color: AppColors.brandGreen,
                           ),
                       ],
                     );
