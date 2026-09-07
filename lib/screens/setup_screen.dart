@@ -50,6 +50,9 @@ class _SetupScreenState extends State<SetupScreen> {
       "I'm not going to ask what you want to change. Tell me about a day "
       "recently that felt like it mattered."; // D-067: fixed, not generated.
 
+  BoardMessage get _openingMessage =>
+      BoardMessage(advisorKey: 'mira', text: _openingLine, timestamp: DateTime.now());
+
   final _setup = SetupService.instance;
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
@@ -197,6 +200,8 @@ class _SetupScreenState extends State<SetupScreen> {
       // Nothing to propose from if the bound is already hit on the very
       // first derivation call — surface plainly rather than looping.
       setState(() => _error = 'Setup reached its limit. Please try again shortly.');
+    } on CouncilClientException catch (e) {
+      setState(() => _error = e.message);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -382,7 +387,12 @@ class _SetupScreenState extends State<SetupScreen> {
           essence: essence,
         );
         setState(() => _habitsByCategory[c.name] = habits);
-      } catch (_) {
+      } catch (e) {
+        // D-052: the proposed set is allowed to be empty — the user can
+        // always add their own — so a failure here degrades rather than
+        // blocks setup. Still logged: a silently empty category otherwise
+        // looks identical to "the Council had nothing to suggest."
+        debugPrint('SetupScreen: habit proposal failed for "${c.name}": $e');
         setState(() => _habitsByCategory[c.name] = const []);
       } finally {
         setState(() => _habitCategoriesLoading = {..._habitCategoriesLoading}
@@ -489,11 +499,18 @@ class _SetupScreenState extends State<SetupScreen> {
   Widget _buildBody() {
     switch (_phase) {
       case _Phase.opening:
-        return _buildTranscript([
-          BoardMessage(advisorKey: 'mira', text: _openingLine, timestamp: DateTime.now())
-        ]);
+        return _buildTranscript([_openingMessage]);
       case _Phase.openingRound:
-        return _buildTranscript(_session?.messages ?? const []);
+        // D-067/D-042: Mira's opening line is never persisted to Firestore
+        // (it's fixed, client-only copy) — only the user's reply and each
+        // advisor's turn are. A session resumed after an earlier launch
+        // failed mid-round (e.g. a backend call that errored before any
+        // advisor replied) therefore has real messages but no Mira line at
+        // all, and would otherwise render straight into an unframed
+        // transcript with no visible Council prompt. Always prepending it
+        // here — cheap, since it's static — means the user sees Mira's
+        // opening on every render of this phase, resumed or not.
+        return _buildTranscript([_openingMessage, ...?_session?.messages]);
       case _Phase.categories:
         return _buildCategories();
       case _Phase.essences:
@@ -517,29 +534,50 @@ class _SetupScreenState extends State<SetupScreen> {
         final m = messages[index];
         final isUser = m.advisorKey == 'user';
         final advisor = isUser ? null : AdvisorConfig.forKey(m.advisorKey);
+        final bubble = Container(
+          margin: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.all(12),
+          constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.66),
+          decoration: BoxDecoration(
+            color: isUser ? AppColors.surfaceHigh : advisor!.bubbleColor,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (!isUser)
+                Text(advisor!.name,
+                    style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold)),
+              Text(m.text, style: const TextStyle(color: AppColors.textPrimary)),
+            ],
+          ),
+        );
+        if (isUser) {
+          return Align(alignment: Alignment.centerRight, child: bubble);
+        }
+        // D-042: each advisor speaks with their own portrait, ported from
+        // Kansei (images/advisors/*.jpg) but — until now — never actually
+        // rendered anywhere; the chat showed a colored bubble and a name
+        // label only. fallbackColor covers a decode failure so a bad asset
+        // degrades to a colored circle, never a broken-image icon.
         return Align(
-          alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-          child: Container(
-            margin: const EdgeInsets.symmetric(vertical: 6),
-            padding: const EdgeInsets.all(12),
-            constraints:
-                BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
-            decoration: BoxDecoration(
-              color: isUser ? AppColors.surfaceHigh : advisor!.bubbleColor,
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (!isUser)
-                  Text(advisor!.name,
-                      style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold)),
-                Text(m.text, style: const TextStyle(color: AppColors.textPrimary)),
-              ],
-            ),
+          alignment: Alignment.centerLeft,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: advisor!.fallbackColor,
+                backgroundImage: AssetImage(advisor.assetPath),
+                onBackgroundImageError: (_, __) {},
+              ),
+              const SizedBox(width: 8),
+              Flexible(child: bubble),
+            ],
           ),
         );
       },

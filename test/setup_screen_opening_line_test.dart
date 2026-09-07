@@ -80,4 +80,30 @@ void main() {
         reason: 'sign-in must be awaited strictly before the Council '
             'session call, not after or in parallel');
   });
+
+  test(
+      'D-042/D-067: Mira\'s opening line always renders in the openingRound '
+      'phase, not only when a session is brand new — regression test for a '
+      'defect found live: Mira\'s line is client-only copy, never persisted '
+      'to Firestore, so a session resumed after an earlier launch failed '
+      'mid-round (real messages exist, but none from Mira) rendered '
+      'straight into an unframed transcript with no visible Council prompt '
+      'at all.', () {
+    final source = File('lib/screens/setup_screen.dart').readAsStringSync();
+    final bodyStart = source.indexOf('Widget _buildBody()');
+    expect(bodyStart, greaterThan(-1));
+    final bodyEnd = source.indexOf('\n  Widget _buildTranscript', bodyStart);
+    expect(bodyEnd, greaterThan(bodyStart));
+    final body = source.substring(bodyStart, bodyEnd);
+
+    final openingRoundCase = body.indexOf('case _Phase.openingRound:');
+    expect(openingRoundCase, greaterThan(-1));
+    final nextCase = body.indexOf('case _Phase.categories:', openingRoundCase);
+    final openingRoundBranch = body.substring(openingRoundCase, nextCase);
+
+    expect(openingRoundBranch, contains('_openingMessage'),
+        reason: 'the openingRound phase must always include the synthetic '
+            'Mira opening message, prepended to whatever the session '
+            'actually has, so a resumed session is never shown without it');
+  });
 }

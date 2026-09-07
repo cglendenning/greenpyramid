@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import 'model_output_guard.dart';
+
 /// Thrown when a Council backend call fails (network, App Check, or a
 /// backend error). The message is user-presentable.
 class CouncilClientException implements Exception {
@@ -197,13 +199,21 @@ class CouncilClient {
     final data = await _post('deriveCategories',
         {'sessionId': sessionId, 'transcript': transcript});
     final list = data['categories'] as List<dynamic>? ?? const [];
-    return list
+    final categories = list
         .map((c) => CategoryProposal(
               position: (c['position'] as num).toInt(),
               name: c['name'] as String,
             ))
         .toList()
       ..sort((a, b) => a.position.compareTo(b.position));
+    for (final c in categories) {
+      if (looksLikePlaceholder(c.name)) {
+        throw CouncilClientException(
+            'The Council needs a bit more to go on — try adding a little '
+            'more detail and try again.');
+      }
+    }
+    return categories;
   }
 
   /// D-052: proposes 3-5 habits for one category, conditioned on its
@@ -220,9 +230,15 @@ class CouncilClient {
       if (essence != null) 'essence': essence,
       'existingHabits': existingHabits,
     });
-    return (data['habits'] as List<dynamic>? ?? const [])
+    final habits = (data['habits'] as List<dynamic>? ?? const [])
         .map((h) => h as String)
         .toList();
+    if (habits.any(looksLikePlaceholder)) {
+      throw CouncilClientException(
+          'The Council needs a bit more to go on — try adding a little '
+          'more detail and try again.');
+    }
+    return habits;
   }
 
   /// D-048: derives domain findings from one category's conversation, at

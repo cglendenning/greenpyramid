@@ -209,41 +209,59 @@ class _CouncilScreenState extends State<CouncilScreen> {
                       final isUser = m.advisorKey == 'user';
                       final advisor =
                           isUser ? null : AdvisorConfig.forKey(m.advisorKey);
-                      return Align(
-                        alignment: isUser
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(vertical: 6),
-                          padding: const EdgeInsets.all(12),
-                          constraints: BoxConstraints(
-                              maxWidth:
-                                  MediaQuery.of(context).size.width * 0.78),
-                          decoration: BoxDecoration(
-                            color: isUser
-                                ? AppColors.surfaceHigh
-                                : advisor!.bubbleColor,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (!isUser)
-                                Text(advisor!.name,
-                                    style: const TextStyle(
-                                        color: AppColors.textSecondary,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold)),
-                              Text(m.text,
+                      final bubble = Container(
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        padding: const EdgeInsets.all(12),
+                        constraints: BoxConstraints(
+                            maxWidth:
+                                MediaQuery.of(context).size.width * 0.66),
+                        decoration: BoxDecoration(
+                          color: isUser
+                              ? AppColors.surfaceHigh
+                              : advisor!.bubbleColor,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (!isUser)
+                              Text(advisor!.name,
                                   style: const TextStyle(
-                                      color: AppColors.textPrimary)),
-                              if (isUser)
-                                TextButton(
-                                  onPressed: () => _acceptAsEssence(m.text),
-                                  child: const Text('Use as my essence'),
-                                ),
-                            ],
-                          ),
+                                      color: AppColors.textSecondary,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold)),
+                            Text(m.text,
+                                style: const TextStyle(
+                                    color: AppColors.textPrimary)),
+                            if (isUser)
+                              TextButton(
+                                onPressed: () => _acceptAsEssence(m.text),
+                                child: const Text('Use as my essence'),
+                              ),
+                          ],
+                        ),
+                      );
+                      if (isUser) {
+                        return Align(
+                            alignment: Alignment.centerRight, child: bubble);
+                      }
+                      // D-042/D-027: portrait alongside the advisor's
+                      // bubble — same fix as setup_screen.dart's transcript.
+                      return Align(
+                        alignment: Alignment.centerLeft,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CircleAvatar(
+                              radius: 16,
+                              backgroundColor: advisor!.fallbackColor,
+                              backgroundImage: AssetImage(advisor.assetPath),
+                              onBackgroundImageError: (_, __) {},
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(child: bubble),
+                          ],
                         ),
                       );
                     },
