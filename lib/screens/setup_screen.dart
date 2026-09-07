@@ -471,6 +471,35 @@ class _SetupScreenState extends State<SetupScreen> {
           )),
         ),
       ));
+    } on AiBudgetException catch (e) {
+      // Found live: this whole method had no catch clause at all — any
+      // failure here (most plausibly this one, a client-side rate/day
+      // budget, after enough setup runs in one day) left the user
+      // permanently stuck on the "closing" phase's static text with no
+      // error shown and no way back, only `_busy` quietly reset to false
+      // by the finally block underneath. Reverting to the habits phase
+      // means "Build my pyramid" is tappable again once the real cause
+      // (budget, network, spend cap) clears, instead of a dead end.
+      setState(() {
+        _error = e.message;
+        _phase = _Phase.habits;
+      });
+    } on SpendLimitException catch (e) {
+      setState(() {
+        _error = e.toString();
+        _phase = _Phase.habits;
+      });
+    } on CouncilClientException catch (e) {
+      setState(() {
+        _error = e.message;
+        _phase = _Phase.habits;
+      });
+    } catch (e, st) {
+      debugPrint('SetupScreen: _confirmHabitsAndClose failed: $e\n$st');
+      setState(() {
+        _error = 'Something went wrong finishing setup. Please try again.';
+        _phase = _Phase.habits;
+      });
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -548,8 +577,12 @@ class _SetupScreenState extends State<SetupScreen> {
       case _Phase.habits:
         return _buildHabits();
       case _Phase.closing:
+        // D-046: this phase covers committing habits, the closing
+        // synthesis, syncing, and requesting the trial — "writing your
+        // vision statement" named only one of those four steps and read
+        // as wrong/stuck-sounding once the others were running.
         return const Center(
-          child: Text('The Council is writing your vision statement…',
+          child: Text('Building your pyramid…',
               style: TextStyle(color: AppColors.textSecondary)),
         );
     }

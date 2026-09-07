@@ -155,4 +155,32 @@ void main() {
     expect(source, contains('void _editHabit('));
     expect(source, contains('void _addHabit('));
   });
+
+  test(
+      'D-046: _confirmHabitsAndClose() catches its own failures instead of '
+      'stranding the user on the closing screen forever — regression test '
+      'for a defect found live: the whole method had no catch clause at '
+      'all, only a finally, so any failure (most plausibly AiGuard\'s '
+      'client-side daily budget, after repeated setup runs) left the '
+      'screen permanently stuck on static "closing" text with no error '
+      'shown and no way back.', () {
+    final source = File('lib/screens/setup_screen.dart').readAsStringSync();
+    final methodStart = source.indexOf('Future<void> _confirmHabitsAndClose()');
+    expect(methodStart, greaterThan(-1));
+    final methodEnd = source.indexOf('\n  @override', methodStart);
+    expect(methodEnd, greaterThan(methodStart));
+    final body = source.substring(methodStart, methodEnd);
+
+    expect(body, contains('on AiBudgetException catch'),
+        reason: 'closeSynthesis() calls AiGuard.instance.acquire() first, '
+            'which throws exactly this when the local daily/per-minute '
+            'budget is exhausted');
+    expect(body, contains('_phase = _Phase.habits'),
+        reason: 'on failure the screen must return to a state the user '
+            'can retry from, not stay on the closing phase\'s dead end');
+    expect(body, contains('catch (e, st)'),
+        reason: 'a catch-all is required too — the point of this fix is '
+            'that no failure here, known or not, can strand the user '
+            'silently again');
+  });
 }
