@@ -4,6 +4,7 @@ import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/models/board_session.dart';
+import 'package:life_ops/services/account_reset_service.dart';
 import 'package:life_ops/services/auth_service.dart';
 import 'package:life_ops/services/council_client.dart';
 import 'package:life_ops/services/council_service.dart';
@@ -121,6 +122,7 @@ void main() {
       client: client ?? _FakeCouncilClient(),
       sync: SyncService(firestore: fakeFirestore, db: db),
       auth: AuthService(auth: auth),
+      accountReset: AccountResetService(firestore: fakeFirestore, auth: auth),
     );
   }
 
@@ -132,7 +134,15 @@ void main() {
       expect(session.type, BoardSessionType.setup);
     });
 
-    test('D-082: a second call resumes the same session', () async {
+    test(
+        'D-082/D-098: a second call resumes the same session — regression '
+        'test for a defect found live in D-098\'s own first implementation: '
+        'the reinstall-wipe check ran on every call while local had no '
+        'real pyramid, which is also true for the entire rest of a '
+        'genuinely ongoing setup conversation (before categories are '
+        'committed) — so an ordinary second call found the in-progress '
+        'session itself as "prior data" and wiped the very conversation '
+        'the user was still having', () async {
       final svc = buildService();
       final first = await svc.startOrResumeSetup();
       final second = await svc.startOrResumeSetup();
@@ -156,6 +166,7 @@ void main() {
         client: _FakeCouncilClient(),
         sync: SyncService(firestore: firestore, db: db),
         auth: AuthService(auth: auth),
+        accountReset: AccountResetService(firestore: firestore, auth: auth),
       );
 
       final first = await svc.startOrResumeSetup();
@@ -174,21 +185,94 @@ void main() {
     });
 
     test(
-        'D-096: a device with no real local pyramid (e.g. after a '
-        'reinstall), same account as one that already completed setup, '
-        'restores the cloud pyramid rather than starting a new setup '
-        'session', () async {
+        'D-098: an anonymous device with no real local pyramid, whose '
+        'account already has prior cloud data, gets wiped and starts a '
+        'genuinely fresh session — the owner\'s explicit reversal of '
+        'D-096\'s original restore-on-reinstall behavior for anonymous '
+        'accounts: "the only activity that should delete all of that '
+        'data is the act of deleting the application off of their '
+        'phone... this should only ever delete anonymous accounts"',
+        () async {
       final auth = MockFirebaseAuth(
-          signedIn: true, mockUser: MockUser(uid: 'u-reinstall', isAnonymous: true));
+          signedIn: true, mockUser: MockUser(uid: 'u-wipe', isAnonymous: true));
       final firestore = FakeFirebaseFirestore();
       final council = CouncilService(firestore: firestore, auth: auth);
       final sync = SyncService(firestore: firestore, db: db);
       final authSvc = AuthService(auth: auth);
+      final accountReset = AccountResetService(firestore: firestore, auth: auth);
 
       // "First install": complete a setup session with a real pyramid,
       // then push it to Firestore the same way real setup completion does.
       final svc1 = SetupService(
-          council: council, db: db, client: _FakeCouncilClient(), sync: sync, auth: authSvc);
+          council: council,
+          db: db,
+          client: _FakeCouncilClient(),
+          sync: sync,
+          auth: authSvc,
+          accountReset: accountReset);
+      final first = await svc1.startOrResumeSetup();
+      await council.endSession(first.sessionId);
+      await svc1.commitCategories(const [
+        CategoryProposal(position: 1, name: 'Health', description: 'my body carries me'),
+        CategoryProposal(position: 2, name: 'Craft'),
+        CategoryProposal(position: 3, name: 'Family'),
+        CategoryProposal(position: 4, name: 'Money'),
+        CategoryProposal(position: 5, name: 'Friendship'),
+        CategoryProposal(position: 6, name: 'Legacy'),
+      ]);
+      await sync.syncAll('u-wipe', setupComplete: true);
+
+      // "Reinstall": a brand-new local database, AND SharedPreferences
+      // reset — both are app-sandboxed local storage genuinely wiped by
+      // a real uninstall, unlike the Keychain-persisted auth credential.
+      final freshDir = await Directory.systemTemp.createTemp('gp_setup_test_wipe');
+      addTearDown(() {
+        if (freshDir.existsSync()) freshDir.deleteSync(recursive: true);
+      });
+      PathProviderPlatform.instance = _TempPathProvider(freshDir.path);
+      SharedPreferences.setMockInitialValues({});
+
+      final svc2 = SetupService(
+          council: council,
+          db: db,
+          client: _FakeCouncilClient(),
+          sync: sync,
+          auth: authSvc,
+          accountReset: accountReset);
+      // Must NOT throw SetupAlreadyCompleteException — a wipe proceeds
+      // straight into a fresh session, it doesn't bounce the user home.
+      final second = await svc2.startOrResumeSetup();
+      expect(second.sessionId, isNot(first.sessionId));
+
+      final profile =
+          await firestore.collection('users').doc('u-wipe').collection('profile').doc('main').get();
+      expect(profile.exists, isFalse,
+          reason: 'the old account\'s cloud data must actually be gone, not merely bypassed');
+
+      final categories = await db.queryCategories();
+      expect(categories.any((c) => c[DatabaseHelper.columnCat] == 'Health'), isFalse,
+          reason: 'nothing should have been restored — wiping and restoring are mutually exclusive');
+    });
+
+    test(
+        'D-096: a non-anonymous (linked) account still restores on '
+        'reinstall — D-098\'s wipe is a safe no-op for it, by '
+        'AccountResetService\'s own internal check', () async {
+      final auth = MockFirebaseAuth(
+          signedIn: true, mockUser: MockUser(uid: 'u-linked', isAnonymous: false));
+      final firestore = FakeFirebaseFirestore();
+      final council = CouncilService(firestore: firestore, auth: auth);
+      final sync = SyncService(firestore: firestore, db: db);
+      final authSvc = AuthService(auth: auth);
+      final accountReset = AccountResetService(firestore: firestore, auth: auth);
+
+      final svc1 = SetupService(
+          council: council,
+          db: db,
+          client: _FakeCouncilClient(),
+          sync: sync,
+          auth: authSvc,
+          accountReset: accountReset);
       final first = await svc1.startOrResumeSetup();
       await council.endSession(first.sessionId);
       await svc1.commitCategories(const [
@@ -202,18 +286,22 @@ void main() {
       await svc1.commitEssence(
           categoryId: 1, essence: 'my body carries me', sessionId: first.sessionId);
       await svc1.commitHabits('Health', const ['Walk 20 minutes']);
-      await sync.syncAll('u-reinstall', setupComplete: true);
+      await sync.syncAll('u-linked', setupComplete: true);
 
-      // "Reinstall": a brand-new local database, same Firestore account.
-      final freshDir =
-          await Directory.systemTemp.createTemp('gp_setup_test_reinstall');
+      final freshDir = await Directory.systemTemp.createTemp('gp_setup_test_linked_restore');
       addTearDown(() {
         if (freshDir.existsSync()) freshDir.deleteSync(recursive: true);
       });
       PathProviderPlatform.instance = _TempPathProvider(freshDir.path);
+      SharedPreferences.setMockInitialValues({});
 
       final svc2 = SetupService(
-          council: council, db: db, client: _FakeCouncilClient(), sync: sync, auth: authSvc);
+          council: council,
+          db: db,
+          client: _FakeCouncilClient(),
+          sync: sync,
+          auth: authSvc,
+          accountReset: accountReset);
       await expectLater(svc2.startOrResumeSetup(),
           throwsA(isA<SetupAlreadyCompleteException>()));
 

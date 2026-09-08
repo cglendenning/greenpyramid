@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart' show debugPrint;
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/board_session.dart';
+import 'account_reset_service.dart';
 import 'ai_guard.dart';
 import 'auth_service.dart';
 import 'council_client.dart';
@@ -20,12 +22,14 @@ class SetupService {
       DatabaseHelper? db,
       CouncilClient? client,
       SyncService? sync,
-      AuthService? auth})
+      AuthService? auth,
+      AccountResetService? accountReset})
       : _council = council ?? CouncilService.instance,
         _db = db ?? DatabaseHelper.instance,
         _client = client ?? CouncilClient.instance,
         _sync = sync ?? SyncService.instance,
-        _auth = auth ?? AuthService.instance;
+        _auth = auth ?? AuthService.instance,
+        _accountReset = accountReset ?? AccountResetService.instance;
 
   static final SetupService instance = SetupService();
 
@@ -34,6 +38,9 @@ class SetupService {
   final CouncilClient _client;
   final SyncService _sync;
   final AuthService _auth;
+  final AccountResetService _accountReset;
+
+  static const _reinstallCheckedKey = 'setup_reinstall_check_done';
 
   /// D-082: exactly one setup session may exist per account, ever — but
   /// only enforced once this device actually has a real local pyramid to
@@ -43,16 +50,29 @@ class SetupService {
   /// harmless-looking, but the guarantee this directive documents as
   /// `done` didn't really hold.
   ///
-  /// D-096: a device with no real local pyramid first gets a chance to
-  /// restore one from Firestore (the account may already have completed
-  /// setup on a different install) before falling through to a genuinely
-  /// fresh setup session. Restoring, not refusing, is what resolves the
-  /// original problem the local-only check below could only work around:
-  /// a reinstall losing the account's data outright.
+  /// D-098: a device with no real local pyramid gets exactly one chance,
+  /// per local install, to be wiped — an anonymous account whose
+  /// (Keychain-persisted) credential already has prior server-side data
+  /// can only be in this state because the app was deleted and
+  /// reinstalled, and the owner's explicit decision is that a deletion
+  /// means the whole account is gone, not that it comes back. Gated by
+  /// [_reinstallCheckedKey] in SharedPreferences — itself app-sandboxed
+  /// local storage, wiped by the same uninstall that wipes the local
+  /// database, so it naturally resets to unchecked on every genuine
+  /// reinstall and nowhere else. **Found live, the hard way**: without
+  /// this gate, the very first version of this method re-ran the check
+  /// on *every* call while local still had no real pyramid — which is
+  /// also true for the entire rest of setup before categories are
+  /// committed — so a second call in the same conversation (an ordinary
+  /// app relaunch mid-setup, not a reinstall at all) found the
+  /// in-progress session itself as "prior data" and wiped the
+  /// conversation the user was still actively having.
+  ///
+  /// D-096: a device with no real local pyramid whose account is *not*
+  /// anonymous (a future linked/paid account) restores instead of being
+  /// wiped — [AccountResetService.wipeIfReinstalled] is a safe no-op for
+  /// those, by its own internal check, not by trusting this caller.
   Future<BoardSession> startOrResumeSetup() async {
-    final active = await _council.getActiveSession(type: BoardSessionType.setup);
-    if (active != null) return active;
-
     // Checked directly against the category rows themselves — "at least
     // one category isn't a placeholder" — rather than reusing
     // queryLaunchSetup()'s "exactly 6 Empty% rows" count, which assumes
@@ -63,15 +83,34 @@ class SetupService {
     final hasRealLocalPyramid =
         rows.any((r) => !(r[DatabaseHelper.columnCat] as String).startsWith('Empty'));
 
-    if (hasRealLocalPyramid) {
-      if (await _council.hasEverCreatedSetupSession()) {
-        throw SetupAlreadyCompleteException();
+    if (!hasRealLocalPyramid) {
+      final prefs = await SharedPreferences.getInstance();
+      if (!(prefs.getBool(_reinstallCheckedKey) ?? false)) {
+        // This must run — and resolve, one way or another — *before* the
+        // active-session check below, and exactly once: a stale session
+        // from before a genuine reinstall must be wiped away before it's
+        // ever considered for resume, but only on this one occasion, not
+        // on every call for the rest of this local install's lifetime.
+        if (await _accountReset.wipeIfReinstalled()) {
+          // The old identity no longer exists — establish the new one
+          // before anything below touches auth.currentUser.
+          await _auth.signInSilently();
+        } else {
+          final uid = _auth.currentUid;
+          if (uid != null && await _sync.restoreFromCloud(uid)) {
+            await prefs.setBool(_reinstallCheckedKey, true);
+            throw SetupAlreadyCompleteException();
+          }
+        }
+        await prefs.setBool(_reinstallCheckedKey, true);
       }
-    } else {
-      final uid = _auth.currentUid;
-      if (uid != null && await _sync.restoreFromCloud(uid)) {
-        throw SetupAlreadyCompleteException();
-      }
+    }
+
+    final active = await _council.getActiveSession(type: BoardSessionType.setup);
+    if (active != null) return active;
+
+    if (hasRealLocalPyramid && await _council.hasEverCreatedSetupSession()) {
+      throw SetupAlreadyCompleteException();
     }
 
     return _council.createSession(type: BoardSessionType.setup);
