@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
 
 import '../models/board_session.dart';
 import '../services/ai_guard.dart';
+import '../services/auth_service.dart';
 import '../services/council_client.dart';
 import '../services/council_service.dart';
 import '../services/db.dart';
@@ -53,6 +55,15 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
   Future<void> _load() async {
     setState(() => _busy = true);
     try {
+      // D-032/found live: the same startup race SetupScreen was already
+      // fixed for — main.dart's account bootstrap is fire-and-forget so
+      // it never gates the first frame, so a screen that touches
+      // Firestore before sign-in resolves can lose that race on a fresh
+      // launch (a fresh install/reinstall, or D-098's wipe, both leave no
+      // cached session). GeneralCouncilScreen was added after that fix
+      // and never got it. signInSilently() is a no-op once already
+      // signed in, so awaiting it here is always cheap.
+      await AuthService.instance.signInSilently();
       _pyramidContext = await DatabaseHelper.instance.queryPyramidSummary();
       var session = await _council.getActiveSession(type: BoardSessionType.general);
       session ??= await _council.createSession(type: BoardSessionType.general);
@@ -61,7 +72,10 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
       if (session.resumeAction == BoardResumeAction.retryOpeningRound) {
         await _runAdvisorTurn(session.rotationOrder.first);
       }
-    } catch (e) {
+    } catch (e, st) {
+      // Found live: this was a silent catch — no log at all, so a real
+      // failure here was undiagnosable without guessing.
+      debugPrint('GeneralCouncilScreen: failed to open conversation: $e\n$st');
       setState(() => _error = 'Could not open this conversation. Try again.');
     } finally {
       if (mounted) setState(() => _busy = false);

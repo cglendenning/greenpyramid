@@ -30,4 +30,43 @@ void main() {
     expect(source, contains('BoardSessionType.general'));
     expect(source, isNot(contains('categoryId')));
   });
+
+  test(
+      'D-032: _load() awaits sign-in before touching the Council session — '
+      'regression test for a defect found live: "Could not open this '
+      'conversation" on a fresh launch (a reinstall, or D-098\'s wipe). '
+      'main.dart fires anonymous sign-in unawaited so it never gates the '
+      'first frame — SetupScreen was already fixed for this exact race; '
+      'GeneralCouncilScreen was added afterward and never got it.', () {
+    final source =
+        File('lib/screens/general_council_screen.dart').readAsStringSync();
+    final loadStart = source.indexOf('Future<void> _load()');
+    expect(loadStart, greaterThan(-1), reason: '_load() must exist');
+    final loadEnd = source.indexOf('\n  Future<void> _runAdvisorTurn', loadStart);
+    expect(loadEnd, greaterThan(loadStart));
+    final loadBody = source.substring(loadStart, loadEnd);
+
+    final signInIndex = loadBody.indexOf('AuthService.instance.signInSilently()');
+    final sessionIndex = loadBody.indexOf('_council.getActiveSession(');
+    expect(signInIndex, greaterThan(-1),
+        reason: '_load() must await AuthService.instance.signInSilently() '
+            'before creating/resuming a Council session');
+    expect(sessionIndex, greaterThan(-1));
+    expect(signInIndex, lessThan(sessionIndex),
+        reason: 'sign-in must be awaited strictly before the Council '
+            'session call, not after or in parallel');
+  });
+
+  test(
+      'D-091: _load()\'s catch clause logs the actual failure — '
+      'regression test for a defect found live: it was a silent catch, no '
+      'log at all, so a real failure was undiagnosable without guessing',
+      () {
+    final source =
+        File('lib/screens/general_council_screen.dart').readAsStringSync();
+    final loadStart = source.indexOf('Future<void> _load()');
+    final loadEnd = source.indexOf('\n  Future<void> _runAdvisorTurn', loadStart);
+    final loadBody = source.substring(loadStart, loadEnd);
+    expect(loadBody, contains('debugPrint('));
+  });
 }
