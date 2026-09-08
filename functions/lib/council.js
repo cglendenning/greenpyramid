@@ -119,6 +119,7 @@ export function buildGeneralCouncilTurnPrompt({
   sliderValue = 0.5,
   pyramidContext = [],
   conversationHistory = [],
+  nudgeConvergence = false,
 }) {
   const advisor = ADVISORS[advisorKey];
   if (!advisor) return null;
@@ -143,6 +144,21 @@ export function buildGeneralCouncilTurnPrompt({
     `Respond to what was just said. If the person themselves wrote (shown as You:), speak to them ` +
     `directly.\n` +
     `Otherwise address your fellow advisors, referring to the person in the third person.\n` +
+    // D-100: found live — a direct question about the Council itself got
+    // sidestepped in favor of continuing the diagnostic thread. A relevance-
+    // based advisor-selection mechanism was considered and rejected: it
+    // would require deciding the speaking advisor dynamically, which
+    // conflicts with D-041's caching (this system block is cacheable only
+    // because it's a fixed, known persona per call) for no benefit this
+    // instruction doesn't already deliver.
+    `If their last message is a direct question about you, the Council, or what kind of help you can ` +
+    `offer, answer it plainly, in your own voice, before continuing any diagnostic thread — never let a ` +
+    `direct question go unanswered while you pursue your own line of thought.\n` +
+    // D-100: found live — a real, evidence-backed connection to the user's
+    // own stated essence was hedged ("probably") as if it were a guess.
+    `When you connect what they're saying to something they've told you before — their essence, another ` +
+    `category — say it with confidence. That connection is real evidence, not a guess; avoid hedges like ` +
+    `"probably" or "I think" when you're drawing on what they've actually told you.\n` +
     `Never wrap your response in quotation marks.`;
 
   // D-041: kept out of the system prompt, same discipline buildAdvisorTurnPrompt
@@ -163,8 +179,19 @@ export function buildGeneralCouncilTurnPrompt({
       }).join('\n')
     : '(nothing yet)';
 
+  // D-100: the push toward a concrete next step lives here, in the
+  // per-turn user message, rather than in systemText — a turn-count-gated
+  // instruction in the cached system block would vary the "stable" prefix
+  // every time the gate flips, defeating D-041's caching for every advisor.
+  // The user message already varies per turn (conversation history), so
+  // this costs nothing extra it wasn't already paying.
+  const convergenceLine = nudgeConvergence
+    ? '\n\n(This conversation has gone on a while. If a real, specific pattern is clear, propose one ' +
+      'concrete thing to try differently instead of another question.)'
+    : '';
+
   const userMessage =
-    `THEIR PYRAMID OF VALUES:\n${pyramidText}\n\nCHAT SO FAR:\n${historyText}\n\n${advisor.name}:`;
+    `THEIR PYRAMID OF VALUES:\n${pyramidText}\n\nCHAT SO FAR:\n${historyText}${convergenceLine}\n\n${advisor.name}:`;
 
   return { advisor, systemText, userMessage };
 }
@@ -234,10 +261,11 @@ export function buildSetupAdvisorTurnPrompt({
   return { advisor, systemText, userMessage };
 }
 
-// D-092: how many of Mira's own turns are already in the conversation —
-// shared by [applyPacingReassurance] below, which needs the exact same
-// count to decide whether to add a reassurance, computed the same way
-// regardless of caller.
+// D-092: how many advisor turns are already in the conversation — shared
+// by [applyPacingReassurance] below (Mira's solo setup turns) and, despite
+// the name, also by index.js's D-100 convergence-nudge gate for the
+// general Council's four-advisor turns. Same computation either way:
+// advisor turns, not user messages.
 export function countMiraTurns(conversationHistory) {
   return (conversationHistory || []).filter((m) => m.advisor !== 'user').length;
 }

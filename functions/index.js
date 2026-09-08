@@ -19,7 +19,7 @@ import { checkSpendLimit, recordCost, SpendLimitError } from './lib/billing.js';
 import { getCouncilModel, getNotificationModel } from './lib/model_config.js';
 import { guardAndCountSetupCall, SetupCallLimitError } from './lib/setup_guard.js';
 import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, CATEGORIES_TOOL, HABITS_TOOL } from './lib/setup_derivation.js';
-import { buildDeriveDomainFindingsPrompt, DOMAIN_FINDING_TOOL } from './lib/domain_finding_derivation.js';
+import { buildDeriveDomainFindingsPrompt, buildDeriveGeneralDomainFindingsPrompt, DOMAIN_FINDING_TOOL, GENERAL_DOMAIN_FINDING_TOOL } from './lib/domain_finding_derivation.js';
 import { isEligibleForTailoredNotification } from './lib/notification_schedule.js';
 import { buildNotificationPrompt, NOTIFICATION_TOOL } from './lib/notification_derivation.js';
 import { requireEntitlement, EntitlementRequiredError } from './lib/entitlement.js';
@@ -251,8 +251,19 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, async (req, res) => {
   // pyramid-grounded "help them live out values they've already defined"
   // framing — real context instead of the "their life" placeholder that
   // produced disconnected, non-sequitur replies.
+  // D-100: nudgeConvergence fires once the general Council conversation has
+  // run two full four-advisor rounds without converging — enough room for
+  // real diagnosis (D-090's "not so many it drags" ethos) before pushing
+  // toward a concrete next step. Never applies to the category-scoped or
+  // solo-setup paths, which have their own convergence signals already
+  // (essence acceptance; readyToBuild).
+  const GENERAL_CONVERGENCE_TURN_THRESHOLD = 8;
   const built = pyramidContext
-    ? buildGeneralCouncilTurnPrompt({ ...(req.body || {}), pyramidContext })
+    ? buildGeneralCouncilTurnPrompt({
+        ...(req.body || {}),
+        pyramidContext,
+        nudgeConvergence: countMiraTurns(conversationHistory) >= GENERAL_CONVERGENCE_TURN_THRESHOLD,
+      })
     : buildAdvisorTurnPrompt(req.body || {});
   if (!built) return res.status(400).json({ error: 'Invalid advisorKey' });
   const { advisor, systemText, userMessage } = built;
@@ -407,10 +418,19 @@ app.post('/deriveHabits', requireFirebaseAuth, async (req, res) => {
 // and goes through the full guardCouncilCall gate rather than being
 // hardcoded free.
 app.post('/deriveDomainFindings', requireFirebaseAuth, async (req, res) => {
-  const { sessionId, categoryName, essence, transcript, isSetup } = req.body || {};
+  const { sessionId, categoryName, essence, transcript, isSetup, pyramidContext } = req.body || {};
   if (!(await guardCouncilCall(req, res, { isSetup, sessionId }))) return;
 
-  const { system, user } = buildDeriveDomainFindingsPrompt({ categoryName, essence, transcript });
+  // D-100: the general Council conversation (D-091) sends pyramidContext
+  // instead of a single categoryName/essence — findings need attributing
+  // to whichever category they actually concern, so this branches to a
+  // distinct prompt/tool pair rather than forcing one category framing to
+  // serve both callers.
+  const general = Array.isArray(pyramidContext);
+  const { system, user } = general
+    ? buildDeriveGeneralDomainFindingsPrompt({ pyramidContext, transcript })
+    : buildDeriveDomainFindingsPrompt({ categoryName, essence, transcript });
+  const tool = general ? GENERAL_DOMAIN_FINDING_TOOL : DOMAIN_FINDING_TOOL;
   const model = await getCouncilModel();
   try {
     const msg = await claude().messages.create({
@@ -419,8 +439,8 @@ app.post('/deriveDomainFindings', requireFirebaseAuth, async (req, res) => {
       thinking: { type: 'disabled' },
       system: [{ type: 'text', text: system }],
       messages: [{ role: 'user', content: user }],
-      tools: [DOMAIN_FINDING_TOOL],
-      tool_choice: { type: 'tool', name: DOMAIN_FINDING_TOOL.name },
+      tools: [tool],
+      tool_choice: { type: 'tool', name: tool.name },
     });
     if (!isSetup) {
       recordCost(req.uid, model, msg.usage.input_tokens, msg.usage.output_tokens)

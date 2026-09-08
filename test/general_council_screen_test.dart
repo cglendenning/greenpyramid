@@ -69,4 +69,22 @@ void main() {
     final loadBody = source.substring(loadStart, loadEnd);
     expect(loadBody, contains('debugPrint('));
   });
+
+  test(
+      'D-100: domain findings are captured once a round completes, '
+      'passing pyramidContext (never categoryId — this screen is never '
+      'category-scoped)', () {
+    final source =
+        File('lib/screens/general_council_screen.dart').readAsStringSync();
+    final turnStart = source.indexOf('Future<void> _runAdvisorTurn');
+    expect(turnStart, greaterThan(-1));
+    final turnEnd = source.indexOf('\n  Future<void> _sendUserMessage', turnStart);
+    expect(turnEnd, greaterThan(turnStart));
+    final turnBody = source.substring(turnStart, turnEnd);
+
+    expect(turnBody, contains('isRoundComplete'));
+    expect(turnBody, contains('_council.recordDomainFindings('));
+    expect(turnBody, contains('pyramidContext: pyramid'));
+    expect(turnBody, isNot(contains('categoryId')));
+  });
 }

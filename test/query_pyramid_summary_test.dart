@@ -97,4 +97,18 @@ void main() {
     final summary = await db.queryPyramidSummary();
     expect(summary.single['essence'], 'the real one');
   });
+
+  test('D-100: each entry carries its real categoryId — how a general '
+      'Council domain finding, named by the model against a category '
+      'name, resolves back to a real category for insertDomainFinding',
+      () async {
+    await db.insertCategory({
+      DatabaseHelper.columnCategoryId: 7,
+      DatabaseHelper.columnCat: 'Box Breathing',
+      DatabaseHelper.columnPosition: 2,
+    });
+
+    final summary = await db.queryPyramidSummary();
+    expect(summary.single['id'], 7);
+  });
 }

@@ -259,6 +259,40 @@ test('D-095: the prompt frames living out existing values, not '
   assert.match(systemText, /already defined/i);
 });
 
+test('D-100: the general Council prompt instructs answering a direct '
+  + 'question about the Council itself before continuing the diagnostic '
+  + 'thread — found live, a direct meta-question got sidestepped', () => {
+  const { systemText } = buildGeneralCouncilTurnPrompt({ advisorKey: 'mira' });
+  assert.match(systemText, /direct question/i);
+  assert.match(systemText, /before continuing/i);
+});
+
+test('D-100: the general Council prompt instructs confident, unhedged '
+  + 'language when connecting to something the person actually said — '
+  + 'found live, a real essence-backed connection was hedged as a guess',
+  () => {
+  const { systemText } = buildGeneralCouncilTurnPrompt({ advisorKey: 'kenji' });
+  assert.match(systemText, /confidence/i);
+  assert.match(systemText, /probably/i);
+});
+
+test('D-100: nudgeConvergence adds a convergence line to the user message, '
+  + 'never the system prompt — a system-prompt change there would defeat '
+  + "D-041's caching every time the gate flips", () => {
+  const withNudge = buildGeneralCouncilTurnPrompt({ advisorKey: 'noa', nudgeConvergence: true });
+  const withoutNudge = buildGeneralCouncilTurnPrompt({ advisorKey: 'noa', nudgeConvergence: false });
+  assert.match(withNudge.userMessage, /gone on a while/i);
+  assert.doesNotMatch(withoutNudge.userMessage, /gone on a while/i);
+  assert.equal(withNudge.systemText, withoutNudge.systemText);
+});
+
+test('D-100: the system prompt is identical regardless of nudgeConvergence '
+  + '— same cache discipline as D-095\'s own pyramidContext test', () => {
+  const first = buildGeneralCouncilTurnPrompt({ advisorKey: 'eli', nudgeConvergence: false });
+  const second = buildGeneralCouncilTurnPrompt({ advisorKey: 'eli', nudgeConvergence: true });
+  assert.equal(first.systemText, second.systemText);
+});
+
 test('D-028: conversation history is capped to the most recent 30 turns', () => {
   const history = Array.from({ length: 40 }, (_, i) => ({ advisor: 'user', text: `turn ${i}` }));
   const { userMessage } = buildAdvisorTurnPrompt({

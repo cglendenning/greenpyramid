@@ -1580,14 +1580,18 @@ class DatabaseHelper {
     return rows.first[columnEssenceText] as String?;
   }
 
-  /// D-095: name, tier, and latest essence for every category — the shape
-  /// the general Council conversation (D-091) needs to ground its advice
-  /// in the user's actual pyramid, not a placeholder. Tier follows the
-  /// same position convention used throughout setup (1-3 foundational,
+  /// D-095: id, name, tier, and latest essence for every category — the
+  /// shape the general Council conversation (D-091) needs to ground its
+  /// advice in the user's actual pyramid, not a placeholder. Tier follows
+  /// the same position convention used throughout setup (1-3 foundational,
   /// 4-5 essential, 6 peak). Reuses [getLatestEssenceForCategory] per
   /// category rather than re-deriving "latest essence" with a second
   /// reduction over every essence row (SyncService._syncProfile already
-  /// has one; this isn't a third).
+  /// has one; this isn't a third). D-100: `id` (added after the pyramid-
+  /// grounding shape first shipped) is how a general Council domain
+  /// finding, named by the model against `name`, resolves back to a real
+  /// `categoryId` for `insertDomainFinding` — never sent over the wire
+  /// itself, only used locally.
   Future<List<Map<String, dynamic>>> queryPyramidSummary() async {
     final rows = await queryCategories();
     // db.query()'s result is sqflite's own read-only list — sort a copy,
@@ -1604,6 +1608,7 @@ class DatabaseHelper {
       final tier =
           position <= 3 ? 'foundational' : (position <= 5 ? 'essential' : 'peak');
       summary.add({
+        'id': id,
         'name': row[columnCat] as String,
         'tier': tier,
         'essence': await getLatestEssenceForCategory(id),

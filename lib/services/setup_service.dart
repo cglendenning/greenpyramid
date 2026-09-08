@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/board_session.dart';
@@ -219,36 +218,25 @@ class SetupService {
 
   /// D-048: derives and commits domain findings for one foundational
   /// category's conversation, at the moment its essence is accepted. Never
-  /// throws past this point — advisory, never required (D-074).
+  /// throws past this point — advisory, never required (D-074). D-100:
+  /// delegates to `CouncilService.recordDomainFindings`, the single shared
+  /// implementation (also used by `CouncilScreen` and the general Council
+  /// conversation) — this stays only as the setup-specific entry point
+  /// callers already use.
   Future<void> recordDomainFindings({
     required BoardSession session,
     required int categoryId,
     required String categoryName,
     required String essence,
     required bool isSetup,
-  }) async {
-    try {
-      final findings = await _client.deriveDomainFindings(
-        sessionId: session.sessionId,
+  }) =>
+      _council.recordDomainFindings(
+        session: session,
+        isSetup: isSetup,
+        categoryId: categoryId,
         categoryName: categoryName,
         essence: essence,
-        transcript: session.messages
-            .map((m) => {'advisor': m.advisorKey, 'text': m.text})
-            .toList(),
-        isSetup: isSetup,
       );
-      for (final f in findings) {
-        await _db.insertDomainFinding(
-          categoryId: categoryId,
-          domain: f.domain,
-          note: AiGuard.sanitizeField(f.note, maxChars: 200),
-          sourceSessionId: session.sessionId,
-        );
-      }
-    } catch (e, st) {
-      debugPrint('SetupService.recordDomainFindings failed: $e\n$st');
-    }
-  }
 
   /// Pushes everything setup just wrote to Firestore (D-075) in one pass,
   /// same as any other profile change — the account bootstrap in

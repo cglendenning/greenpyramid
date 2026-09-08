@@ -40,10 +40,11 @@ class _FakeCouncilClient extends CouncilClient {
   @override
   Future<List<DomainFinding>> deriveDomainFindings({
     required String sessionId,
-    required String categoryName,
+    String? categoryName,
     String? essence,
     required List<Map<String, String>> transcript,
     bool isSetup = false,
+    List<Map<String, String?>>? pyramidContext,
   }) async =>
       findings;
 
@@ -81,10 +82,11 @@ class _ThrowingCouncilClient extends _FakeCouncilClient {
   @override
   Future<List<DomainFinding>> deriveDomainFindings({
     required String sessionId,
-    required String categoryName,
+    String? categoryName,
     String? essence,
     required List<Map<String, String>> transcript,
     bool isSetup = false,
+    List<Map<String, String?>>? pyramidContext,
   }) async =>
       throw CouncilClientException('backend unavailable');
 }
@@ -115,11 +117,18 @@ void main() {
     final auth = MockFirebaseAuth(
         signedIn: true, mockUser: MockUser(uid: 'u1', isAnonymous: true));
     final fakeFirestore = firestore ?? FakeFirebaseFirestore();
-    final council = CouncilService(firestore: fakeFirestore, auth: auth);
+    final sharedClient = client ?? _FakeCouncilClient();
+    // D-100: recordDomainFindings now delegates to CouncilService's own
+    // implementation — council's client must be the SAME fake the caller
+    // configured, or the delegated call silently falls through to
+    // CouncilClient.instance (the real network client) instead of the
+    // fake this test just set up. Found exactly this way, fixing this file
+    // for the refactor.
+    final council = CouncilService(firestore: fakeFirestore, auth: auth, client: sharedClient);
     return SetupService(
       council: council,
       db: db,
-      client: client ?? _FakeCouncilClient(),
+      client: sharedClient,
       sync: SyncService(firestore: fakeFirestore, db: db),
       auth: AuthService(auth: auth),
       accountReset: AccountResetService(firestore: fakeFirestore, auth: auth),

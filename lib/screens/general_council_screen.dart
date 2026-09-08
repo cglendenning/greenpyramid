@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
 
@@ -95,6 +97,21 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
       final refreshed =
           await _council.getActiveSession(type: BoardSessionType.general);
       if (mounted) setState(() => _session = refreshed ?? session);
+
+      // D-100: once per completed round (all four advisors have spoken),
+      // not every message — same checkpoint discipline D-048 already uses
+      // elsewhere (once per essence acceptance), applied to the moment
+      // that actually exists in a conversation with no such acceptance
+      // event of its own. Advisory, never required (D-074); never blocks
+      // the chat.
+      final pyramid = _pyramidContext;
+      if (pyramid != null && (refreshed ?? session).isRoundComplete) {
+        unawaited(_council.recordDomainFindings(
+          session: refreshed ?? session,
+          isSetup: false,
+          pyramidContext: pyramid,
+        ));
+      }
     } on AiBudgetException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } on SpendLimitException catch (e) {

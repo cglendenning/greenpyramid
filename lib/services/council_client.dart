@@ -82,7 +82,13 @@ class CategoryProposal {
 class DomainFinding {
   final String domain;
   final String note;
-  const DomainFinding({required this.domain, required this.note});
+  // D-100: populated only when derived from the general Council's
+  // whole-pyramid pass (pyramidContext given) — the model names which
+  // category the finding concerns since, unlike the single-category path,
+  // the caller doesn't already know. Null for the existing category-scoped
+  // path, which never needed this.
+  final String? categoryName;
+  const DomainFinding({required this.domain, required this.note, this.categoryName});
 }
 
 /// D-040/D-050: the transport for every Council backend call. Calls Green
@@ -293,17 +299,27 @@ class CouncilClient {
   /// the moment its essence is accepted. Runs from both setup (free,
   /// [isSetup] true) and D-061's paid re-clarification — the backend gates
   /// accordingly, same as [boardAdvisorTurn].
+  ///
+  /// D-100: the general Council conversation (D-091) spans the whole
+  /// pyramid rather than one category, so it passes [pyramidContext]
+  /// instead of [categoryName]/[essence] — exactly one of the two shapes
+  /// must be given; the backend branches on which arrived, same as
+  /// [boardAdvisorTurn] already does for pyramidContext.
   Future<List<DomainFinding>> deriveDomainFindings({
     required String sessionId,
-    required String categoryName,
+    String? categoryName,
     String? essence,
     required List<Map<String, String>> transcript,
     bool isSetup = false,
+    List<Map<String, String?>>? pyramidContext,
   }) async {
+    assert((categoryName != null) != (pyramidContext != null),
+        'pass exactly one of categoryName or pyramidContext, never both or neither');
     final data = await _post('deriveDomainFindings', {
       'sessionId': sessionId,
-      'categoryName': categoryName,
+      if (categoryName != null) 'categoryName': categoryName,
       if (essence != null) 'essence': essence,
+      if (pyramidContext != null) 'pyramidContext': pyramidContext,
       'transcript': transcript,
       'isSetup': isSetup,
     });
@@ -311,6 +327,7 @@ class CouncilClient {
         .map((f) => DomainFinding(
               domain: f['domain'] as String,
               note: f['note'] as String,
+              categoryName: f['categoryName'] as String?,
             ))
         .toList();
   }

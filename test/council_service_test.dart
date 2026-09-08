@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,7 +7,19 @@ import 'package:life_ops/models/board_session.dart';
 import 'package:life_ops/services/ai_guard.dart';
 import 'package:life_ops/services/council_client.dart';
 import 'package:life_ops/services/council_service.dart';
+import 'package:life_ops/services/db.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+class _TempPathProvider extends PathProviderPlatform
+    with MockPlatformInterfaceMixin {
+  _TempPathProvider(this.dir);
+  final String dir;
+  @override
+  Future<String?> getApplicationDocumentsPath() async => dir;
+}
 
 class _FakeCouncilClient extends CouncilClient {
   AdvisorTurnResult response = const AdvisorTurnResult(
@@ -15,6 +29,11 @@ class _FakeCouncilClient extends CouncilClient {
   List<Map<String, String>>? lastExistingCategories;
   List<Map<String, String?>>? lastPyramidContext;
   bool? lastSoloSetup;
+
+  List<DomainFinding> domainFindingsResponse = const [];
+  String? lastDomainFindingsCategoryName;
+  List<Map<String, String?>>? lastDomainFindingsPyramidContext;
+  bool domainFindingsShouldThrow = false;
 
   @override
   Future<AdvisorTurnResult> boardAdvisorTurn({
@@ -34,12 +53,45 @@ class _FakeCouncilClient extends CouncilClient {
     lastSoloSetup = soloSetup;
     return response;
   }
+
+  @override
+  Future<List<DomainFinding>> deriveDomainFindings({
+    required String sessionId,
+    String? categoryName,
+    String? essence,
+    required List<Map<String, String>> transcript,
+    bool isSetup = false,
+    List<Map<String, String?>>? pyramidContext,
+  }) async {
+    lastDomainFindingsCategoryName = categoryName;
+    lastDomainFindingsPyramidContext = pyramidContext;
+    if (domainFindingsShouldThrow) throw CouncilClientException('backend unavailable');
+    return domainFindingsResponse;
+  }
 }
 
 /// R5: Council session orchestration (D-028, D-082), tested against a fake
 /// Firestore and Auth — no live Firebase project, no live backend call.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  late Directory tempDir;
+
+  // D-100: recordDomainFindings' tests exercise real insertDomainFinding
+  // calls against sqflite FFI, same convention as
+  // query_pyramid_summary_test.dart — no other test in this file touches
+  // local SQLite, so this setup is additive and harmless to them.
+  setUpAll(() {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+  });
+  setUp(() async {
+    tempDir = await Directory.systemTemp.createTemp('gp_council_service_test');
+    PathProviderPlatform.instance = _TempPathProvider(tempDir.path);
+  });
+  tearDown(() async {
+    if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+  });
 
   CouncilService buildService({_FakeCouncilClient? client}) {
     final auth = MockFirebaseAuth(
@@ -337,6 +389,105 @@ void main() {
       await expectLater(
         svc.getActiveSession(type: BoardSessionType.setup),
         throwsA(isA<StateError>()),
+      );
+    });
+  });
+
+  group('D-048/D-100: recordDomainFindings', () {
+    BoardSession testSession() => BoardSession(
+          sessionId: 's1',
+          type: BoardSessionType.general,
+          categoryId: null,
+          createdAt: DateTime(2026, 1, 1),
+          lastUpdatedAt: DateTime(2026, 1, 1),
+          messages: const [],
+          rotationOrder: const ['mira', 'kenji', 'noa', 'eli'],
+          sliderSettings: const {},
+          isComplete: false,
+          totalInputTokens: 0,
+          totalOutputTokens: 0,
+        );
+
+    test('single-category shape: findings are inserted against the given '
+        'categoryId — the pre-existing setup/re-clarification path, '
+        'unchanged by the D-100 refactor', () async {
+      final client = _FakeCouncilClient()
+        ..domainFindingsResponse = const [
+          DomainFinding(domain: 'psychological', note: 'a note'),
+        ];
+      final svc = buildService(client: client);
+
+      await svc.recordDomainFindings(
+        session: testSession(),
+        isSetup: true,
+        categoryId: 42,
+        categoryName: 'Health',
+        essence: 'my body carries me',
+      );
+
+      expect(client.lastDomainFindingsCategoryName, 'Health');
+      expect(client.lastDomainFindingsPyramidContext, isNull);
+      final findings = await DatabaseHelper.instance.queryAllDomainFindings();
+      expect(findings, hasLength(1));
+      expect(findings.single[DatabaseHelper.columnFindingCategoryId], 42);
+      expect(findings.single[DatabaseHelper.columnFindingDomain], 'psychological');
+    });
+
+    test('pyramidContext shape: a finding is resolved to the real '
+        'categoryId by matching the model\'s categoryName against '
+        'pyramidContext', () async {
+      final client = _FakeCouncilClient()
+        ..domainFindingsResponse = const [
+          DomainFinding(domain: 'psychological', note: 'a note', categoryName: 'Box Breathing'),
+        ];
+      final svc = buildService(client: client);
+
+      await svc.recordDomainFindings(
+        session: testSession(),
+        isSetup: false,
+        pyramidContext: [
+          {'id': 7, 'name': 'Box Breathing', 'tier': 'foundational', 'essence': 'skipped when grinding'},
+          {'id': 8, 'name': 'Peak Physical Condition', 'tier': 'foundational', 'essence': 'load-bearing walls'},
+        ],
+      );
+
+      expect(client.lastDomainFindingsCategoryName, isNull);
+      expect(client.lastDomainFindingsPyramidContext, hasLength(2));
+      final findings = await DatabaseHelper.instance.queryAllDomainFindings();
+      expect(findings.single[DatabaseHelper.columnFindingCategoryId], 7);
+    });
+
+    test('pyramidContext shape: a finding naming a category that doesn\'t '
+        'match any given category is dropped, never guessed at', () async {
+      final client = _FakeCouncilClient()
+        ..domainFindingsResponse = const [
+          DomainFinding(domain: 'psychological', note: 'a note', categoryName: 'Not A Real Category'),
+        ];
+      final svc = buildService(client: client);
+
+      await svc.recordDomainFindings(
+        session: testSession(),
+        isSetup: false,
+        pyramidContext: [
+          {'id': 7, 'name': 'Box Breathing', 'tier': 'foundational', 'essence': null},
+        ],
+      );
+
+      expect(await DatabaseHelper.instance.queryAllDomainFindings(), isEmpty);
+    });
+
+    test('a backend failure is swallowed — advisory, never blocks the '
+        'caller (D-074)', () async {
+      final client = _FakeCouncilClient()..domainFindingsShouldThrow = true;
+      final svc = buildService(client: client);
+
+      await expectLater(
+        svc.recordDomainFindings(
+          session: testSession(),
+          isSetup: false,
+          pyramidContext: const [],
+        ),
+        completes,
       );
     });
   });

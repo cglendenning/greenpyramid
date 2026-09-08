@@ -2,27 +2,38 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:uuid/uuid.dart';
 
 import '../models/board_session.dart';
 import 'ai_guard.dart';
 import 'council_client.dart';
+import 'db.dart';
 
 /// D-028/D-082: orchestrates Council sessions, ported from Kansei's
 /// `BoardService`. Sessions live flat under `users/{uid}/councilSessions`
 /// (IV-D) rather than nested per-goal — this is what resolves II-K
 /// mismatches 1 and 3 (persistence and scope) for Green Pyramid.
 class CouncilService {
-  CouncilService({FirebaseFirestore? firestore, FirebaseAuth? auth, CouncilClient? client})
-      : _db = firestore ?? FirebaseFirestore.instance,
+  CouncilService({
+    FirebaseFirestore? firestore,
+    FirebaseAuth? auth,
+    CouncilClient? client,
+    DatabaseHelper? localDb,
+  })  : _db = firestore ?? FirebaseFirestore.instance,
         _auth = auth ?? FirebaseAuth.instance,
-        _client = client ?? CouncilClient.instance;
+        _client = client ?? CouncilClient.instance,
+        _localDb = localDb ?? DatabaseHelper.instance;
 
   static final CouncilService instance = CouncilService();
 
   final FirebaseFirestore _db;
   final FirebaseAuth _auth;
   final CouncilClient _client;
+  // D-100: local SQLite, not Firestore — named distinctly from _db (which
+  // is Firestore here, unlike most other services where _db means
+  // DatabaseHelper) to keep the two unambiguous in this file.
+  final DatabaseHelper _localDb;
   static const _uuid = Uuid();
 
   String get _uid {
@@ -165,6 +176,69 @@ class CouncilService {
     await _appendMessage(session.sessionId, msg,
         inputTokens: result.inputTokens, outputTokens: result.outputTokens);
     return msg;
+  }
+
+  /// D-048/D-100: derives and commits domain findings for a Council
+  /// conversation. Advisory, never required (D-074) — never throws past
+  /// this point. Extracted here after this exact derive-then-insert
+  /// sequence had been copy-pasted twice already (`SetupService` and
+  /// `CouncilScreen`, both now delegate here) — a third copy for the
+  /// general Council conversation would have made it three.
+  ///
+  /// Two shapes, exactly one required: [categoryId]/[categoryName]/
+  /// [essence] for a single-category conversation (setup's foundational
+  /// capture, D-061's re-clarification); [pyramidContext] for the general
+  /// Council conversation (D-091), which spans the whole pyramid — each
+  /// returned finding is attributed to whichever category the model named,
+  /// resolved back to a real `categoryId` by matching against
+  /// [pyramidContext]'s own `name` field (from `queryPyramidSummary`). A
+  /// finding naming a category that doesn't match is dropped rather than
+  /// guessed at.
+  Future<void> recordDomainFindings({
+    required BoardSession session,
+    required bool isSetup,
+    int? categoryId,
+    String? categoryName,
+    String? essence,
+    List<Map<String, dynamic>>? pyramidContext,
+  }) async {
+    assert((categoryId != null && categoryName != null) != (pyramidContext != null),
+        'pass either categoryId+categoryName, or pyramidContext, never both or neither');
+    try {
+      final findings = await _client.deriveDomainFindings(
+        sessionId: session.sessionId,
+        categoryName: pyramidContext == null ? categoryName : null,
+        essence: pyramidContext == null ? essence : null,
+        pyramidContext: pyramidContext
+            ?.map((c) => {
+                  'name': c['name'] as String,
+                  'tier': c['tier'] as String?,
+                  'essence': c['essence'] as String?,
+                })
+            .toList(),
+        transcript: session.messages
+            .map((m) => {'advisor': m.advisorKey, 'text': m.text})
+            .toList(),
+        isSetup: isSetup,
+      );
+      for (final f in findings) {
+        final resolvedCategoryId = pyramidContext == null
+            ? categoryId!
+            : pyramidContext.firstWhere(
+                (c) => c['name'] == f.categoryName,
+                orElse: () => const {},
+              )['id'] as int?;
+        if (resolvedCategoryId == null) continue;
+        await _localDb.insertDomainFinding(
+          categoryId: resolvedCategoryId,
+          domain: f.domain,
+          note: AiGuard.sanitizeField(f.note, maxChars: 200),
+          sourceSessionId: session.sessionId,
+        );
+      }
+    } catch (e, st) {
+      debugPrint('CouncilService.recordDomainFindings failed: $e\n$st');
+    }
   }
 
   /// D-090: one turn of the solo setup conversation — Mira only, forced
