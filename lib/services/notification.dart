@@ -257,11 +257,17 @@ class LocalNotificationService {
     const AndroidInitializationSettings androidInitializationSettings =
         AndroidInitializationSettings('@drawable/ic_launcher');
 
+    // D-038/D-065: these must stay false. The plugin's initialize() call
+    // itself requests permission immediately when they're true — on iOS
+    // that means the OS dialog fires at app launch, not from D-065's
+    // screen. Permission is requested explicitly later via
+    // IOSFlutterLocalNotificationsPlugin.requestPermissions() in
+    // _requestNotificationPermissions().
     DarwinInitializationSettings iosInitializationSettings =
-        DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
+        const DarwinInitializationSettings(
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
     );
 
     final InitializationSettings settings = InitializationSettings(
@@ -289,11 +295,6 @@ class LocalNotificationService {
       settings,
       onDidReceiveNotificationResponse: onSelectNotification,
     );
-
-    // D-038/D-065: permission is requested explicitly, by the setup flow
-    // right after the completion moment settles — never here. Calling
-    // intialize() wires up the plugin (timezone, tap routing) so scheduling
-    // works once permission exists; it must never itself prompt on launch.
   }
 
   /// D-065: called once, immediately after D-046's completion moment
@@ -334,9 +335,15 @@ class LocalNotificationService {
           print('USE_EXACT_ALARM permission handled via manifest');
         }
       } else if (Platform.isIOS) {
-        // iOS permissions are handled during initialization
+        // D-065: initialize() no longer requests permission (see
+        // intialize() above) — this is what actually shows the OS dialog.
+        final bool? granted = await _localNotificationService
+            .resolvePlatformSpecificImplementation<
+                IOSFlutterLocalNotificationsPlugin>()
+            ?.requestPermissions(alert: true, badge: true, sound: true);
+
         if (kDebugMode) {
-          print('iOS notification permissions handled during initialization');
+          print('iOS notification permission granted: $granted');
         }
       }
     } catch (e) {

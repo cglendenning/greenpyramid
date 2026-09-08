@@ -44,4 +44,29 @@ void main() {
     expect(pushIdx, greaterThan(completionIdx),
         reason: 'push permission must be requested after the completion moment');
   });
+
+  test('D-038/D-065: found live — DarwinInitializationSettings must request '
+      'nothing at intialize() time, or iOS shows the OS dialog at app '
+      'launch regardless of what requestPermissions() textually calls, '
+      'since flutter_local_notifications requests permission from '
+      'initialize() itself whenever these flags are true', () {
+    final source = File('lib/services/notification.dart').readAsStringSync();
+    final settingsIdx = source.indexOf('DarwinInitializationSettings(');
+    expect(settingsIdx, greaterThan(-1));
+    final settingsEnd = source.indexOf(');', settingsIdx);
+    final block = source.substring(settingsIdx, settingsEnd);
+    expect(block, contains('requestAlertPermission: false'));
+    expect(block, contains('requestBadgePermission: false'));
+    expect(block, contains('requestSoundPermission: false'));
+  });
+
+  test('D-038/D-065: the iOS branch of requestPermissions actually calls '
+      'the plugin\'s permission API — found live, it previously only '
+      'printed a debug line and relied on initialize() to have already '
+      'asked, which is exactly the bug the previous test guards against',
+      () {
+    final source = File('lib/services/notification.dart').readAsStringSync();
+    expect(source, contains('IOSFlutterLocalNotificationsPlugin'));
+    expect(source, contains('?.requestPermissions(alert: true, badge: true, sound: true)'));
+  });
 }

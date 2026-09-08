@@ -17,7 +17,7 @@ void main() {
     expect(source, contains("value: 'council'"));
     expect(source, contains('Talk to the Council'));
 
-    final navStart = source.indexOf('void navigateToCouncil(');
+    final navStart = source.indexOf('navigateToCouncil(BuildContext');
     expect(navStart, greaterThan(-1));
     final navEnd = source.indexOf('\n  }', navStart);
     expect(source.substring(navStart, navEnd), contains('GeneralCouncilScreen'));

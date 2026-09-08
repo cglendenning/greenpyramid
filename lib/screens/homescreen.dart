@@ -7,6 +7,7 @@ import 'package:life_ops/widgets/pyramid.dart';
 import 'package:life_ops/screens/settings.dart';
 import 'package:life_ops/screens/welcome_screen.dart';
 import 'package:life_ops/screens/general_council_screen.dart';
+import 'package:life_ops/screens/paywall_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:life_ops/services/email.dart';
 import 'package:life_ops/screens/editpyramid.dart';
@@ -440,7 +441,31 @@ class CustomAppBarState extends State<CustomAppBar> {
     setState(() {});
   }
 
-  void navigateToCouncil(BuildContext context) async {
+  // D-091/D-016: same client-side entitlement gate CouncilCategoryPicker
+  // already uses (council_category_picker.dart:_open) — found live, the
+  // hard way: without it, an unentitled account reaches GeneralCouncilScreen,
+  // the backend's EntitlementRequiredException isn't one of the exceptions
+  // that screen catches (matching CouncilScreen's own convention of relying
+  // entirely on this gate rather than handling the exception mid-screen),
+  // and the user sees a generic "Could not open this conversation" with no
+  // path forward.
+  Future<void> navigateToCouncil(BuildContext context) async {
+    final account = await DatabaseHelper.instance.getAccountState();
+    final entitlement = account[DatabaseHelper.columnEntitlement] as String?;
+    final entitled = entitlement == 'trialing' || entitlement == 'subscribed';
+
+    if (!mounted) return;
+
+    if (!entitled) {
+      final subscribed = await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(
+          builder: (context) => const PaywallScreen(reason: 'Talk to the Council'),
+        ),
+      );
+      if (subscribed != true || !mounted) return;
+    }
+
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(context,
             MaterialPageRoute(builder: (context) => const GeneralCouncilScreen()))

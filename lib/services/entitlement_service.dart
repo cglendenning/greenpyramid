@@ -62,13 +62,34 @@ class EntitlementService {
     return sha256.convert(utf8.encode(id)).toString();
   }
 
+  /// D-059: whether THIS build's iOS code signing is Apple's "development"
+  /// DeviceCheck environment — not whether Dart itself is compiled in debug
+  /// mode. These are different facts: `flutter build ipa` (no `--debug`)
+  /// always produces `kDebugMode == false`, even when `ios/ExportOptions.
+  /// plist`'s `method` is `development` (true for every OTA build this
+  /// pipeline ships — ios/ExportOptions.plist has no other method
+  /// configured yet). DeviceCheck ties a device token's validity to the
+  /// provisioning-profile environment it was minted under; querying the
+  /// wrong endpoint for that environment doesn't 4xx — Apple returns 200
+  /// with a plain-text "Failed to authenticate device..." body, which
+  /// `device_check.js`'s `JSON.parse` then throws on. Found live: this sent
+  /// `kDebugMode` (always false for a release build) instead, so every
+  /// device on this OTA pipeline silently failed every trial request,
+  /// forever, since the server always queried the production endpoint for
+  /// a development-environment token.
+  /// **Must flip to false the day `ios/ExportOptions.plist`'s `method`
+  /// changes to `app-store` or `ad-hoc` for real distribution.**
+  static const bool _isDeviceCheckDevelopmentEnvironment = true;
+
   /// D-058: called once, right at setup completion — the clock starts at
   /// the pyramid reveal, not at install. Never throws past this point, only
   /// logs: a network hiccup here must not block the completion screen, and
   /// the account simply stays pre_trial until the next opportunity.
   Future<void> requestTrialAfterSetup() async {
     try {
-      final body = <String, dynamic>{'isDevelopmentBuild': kDebugMode};
+      final body = <String, dynamic>{
+        'isDevelopmentBuild': _isDeviceCheckDevelopmentEnvironment,
+      };
       if (Platform.isAndroid) {
         final hash = await _androidIdHash();
         if (hash == null) {

@@ -15,6 +15,24 @@ void main() {
     expect(source, contains('reason:'));
   });
 
+  test('D-091/D-016: an unentitled account opening the general Council is '
+      'routed to the paywall before GeneralCouncilScreen is ever pushed, not '
+      'a dead-end "could not open" error — found live, missing on the entry '
+      'point CouncilCategoryPicker already had', () {
+    final source = File('lib/screens/homescreen.dart').readAsStringSync();
+    final navIdx = source.indexOf('Future<void> navigateToCouncil(');
+    expect(navIdx, greaterThan(-1));
+    final navEnd = source.indexOf('\n  }', navIdx);
+    final body = source.substring(navIdx, navEnd);
+    expect(body, contains('PaywallScreen('));
+    expect(body, contains('reason:'));
+    final paywallIdx = body.indexOf('PaywallScreen(');
+    final pushIdx = body.indexOf('GeneralCouncilScreen()');
+    expect(pushIdx, greaterThan(paywallIdx),
+        reason: 'the entitlement check and paywall route must come before '
+            'GeneralCouncilScreen is ever pushed');
+  });
+
   test('D-070: the paywall fetches the live store product rather than '
       'hardcoding a price, and reports a confirmed purchase back to the '
       'caller', () {
@@ -65,6 +83,28 @@ void main() {
     expect(source, isNot(contains("body['androidId']")));
   });
 
+  test('D-059: the DeviceCheck environment flag sent for iOS trial requests '
+      'reflects this build\'s actual code-signing environment, not Dart\'s '
+      'kDebugMode — found live: every device on the OTA pipeline silently '
+      'failed every trial request because ios/ExportOptions.plist signs '
+      '"development" while a release Dart build always has kDebugMode '
+      'false, so the server queried DeviceCheck\'s production endpoint for '
+      'a development-environment token and Apple returned 200 with a '
+      'plain-text "Failed to authenticate device" body instead of JSON', () {
+    final source = File('lib/services/entitlement_service.dart').readAsStringSync();
+    expect(source, contains('_isDeviceCheckDevelopmentEnvironment'));
+    expect(source, contains("'isDevelopmentBuild': _isDeviceCheckDevelopmentEnvironment"));
+    expect(source, isNot(contains("'isDevelopmentBuild': kDebugMode")));
+
+    final exportOptions = File('ios/ExportOptions.plist').readAsStringSync();
+    final signsDevelopment = exportOptions.contains('<string>development</string>');
+    // The flag's value must match ExportOptions.plist's actual method —
+    // this is the exact coupling that broke live; keep them locked together.
+    expect(source, contains(signsDevelopment
+        ? '_isDeviceCheckDevelopmentEnvironment = true'
+        : '_isDeviceCheckDevelopmentEnvironment = false'));
+  });
+
   test('D-012: the subscription is the sole revenue model — no ad SDK '
       'dependency exists alongside RevenueCat', () {
     final pubspec = File('pubspec.yaml').readAsStringSync();
@@ -75,7 +115,14 @@ void main() {
 
   test('D-015: habit tracking and the pyramid never check entitlement — a '
       'lapsed account keeps the tracker forever, with no paywall on it', () {
-    final gatedScreens = ['lib/screens/council_category_picker.dart'];
+    // homescreen.dart added for D-091: navigateToCouncil() gates the
+    // general Council entry point the same way council_category_picker.dart
+    // already gates category re-clarification — a second legitimate D-016
+    // gate site, not habit tracking or the pyramid gating on entitlement.
+    final gatedScreens = [
+      'lib/screens/council_category_picker.dart',
+      'lib/screens/homescreen.dart',
+    ];
     final offenders = Directory('lib/screens')
         .listSync(recursive: true)
         .whereType<File>()
