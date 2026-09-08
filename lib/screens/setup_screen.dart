@@ -101,6 +101,12 @@ class _SetupScreenState extends State<SetupScreen> {
   List<CategoryProposal> _categories = const [];
   int _essenceIndex = 0;
   List<_FoundationalStep> _foundational = const [];
+  // Found live: without this, "Save this" appeared the moment essence
+  // phase opened if the user had said anything at all earlier in setup —
+  // tapping it could save a stale, unrelated message as this category's
+  // essence, since it only ever checked "does any user message exist,"
+  // never "did the user reply to *this* category's question."
+  DateTime? _essenceQuestionAskedAt;
   final Map<String, List<String>> _habitsByCategory = {};
   Set<String> _habitCategoriesLoading = {};
 
@@ -459,6 +465,12 @@ class _SetupScreenState extends State<SetupScreen> {
         _phase = _Phase.essences;
         _essenceIndex = 0;
       });
+      // Found live: nothing ever kicked off the first foundational
+      // category's essence conversation — only _acceptEssence() (moving
+      // to the 2nd and 3rd) called this. The first category's screen
+      // opened onto whatever was already in the transcript from earlier
+      // in setup, never a question actually directed at it.
+      await _askAboutCurrentFoundational();
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -515,7 +527,12 @@ class _SetupScreenState extends State<SetupScreen> {
       );
       final refreshed = await CouncilService.instance
           .getActiveSession(type: BoardSessionType.setup);
-      setState(() => _session = refreshed ?? session);
+      final updated = refreshed ?? session;
+      setState(() {
+        _session = updated;
+        _essenceQuestionAskedAt =
+            updated.messages.isNotEmpty ? updated.messages.last.timestamp : null;
+      });
       _scrollToBottom();
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -861,23 +878,34 @@ class _SetupScreenState extends State<SetupScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     final step = _foundational[_essenceIndex];
+    // Found live: only messages sent after this category's own question
+    // was asked count — otherwise the button appears immediately using
+    // whatever the user last said earlier in setup, unrelated to this
+    // category.
     final userMessages = (_session?.messages ?? const [])
-        .where((m) => m.advisorKey == 'user')
+        .where((m) =>
+            m.advisorKey == 'user' &&
+            (_essenceQuestionAskedAt == null ||
+                m.timestamp.isAfter(_essenceQuestionAskedAt!)))
         .toList();
     return Column(
       children: [
         Padding(
           padding: const EdgeInsets.all(12),
-          child: Text('${step.categoryName} (${_essenceIndex + 1} of 3)',
+          child: Text(
+              'Going deeper: ${step.categoryName} (${_essenceIndex + 1} of 3)',
               style: const TextStyle(color: AppColors.textSecondary)),
         ),
         Expanded(child: _buildTranscript(_session?.messages ?? const [])),
         if (userMessages.isNotEmpty)
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: TextButton(
-              onPressed: () => _acceptEssence(userMessages.last.text),
-              child: const Text('Use as my essence'),
+            padding: const EdgeInsets.all(12),
+            child: SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => _acceptEssence(userMessages.last.text),
+                child: const Text("That's it — save this"),
+              ),
             ),
           ),
       ],

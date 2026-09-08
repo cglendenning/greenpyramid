@@ -188,6 +188,7 @@ class CouncilService {
           .map((m) => {'advisor': m.advisorKey, 'text': m.text})
           .toList(),
       isSetup: true,
+      soloSetup: true,
       sessionId: session.sessionId,
       existingCategories: existingCategories
           ?.map((c) => {'name': c.name, 'description': c.description ?? ''})

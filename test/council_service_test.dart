@@ -14,6 +14,7 @@ class _FakeCouncilClient extends CouncilClient {
 
   List<Map<String, String>>? lastExistingCategories;
   List<Map<String, String?>>? lastPyramidContext;
+  bool? lastSoloSetup;
 
   @override
   Future<AdvisorTurnResult> boardAdvisorTurn({
@@ -22,6 +23,7 @@ class _FakeCouncilClient extends CouncilClient {
     required List<Map<String, String>> conversationHistory,
     double sliderValue = 0.5,
     bool isSetup = false,
+    bool soloSetup = false,
     String? sessionId,
     List<Map<String, String>>? existingCategories,
     List<Map<String, String?>>? pyramidContext,
@@ -29,6 +31,7 @@ class _FakeCouncilClient extends CouncilClient {
     lastCategoryContext = categoryContext;
     lastExistingCategories = existingCategories;
     lastPyramidContext = pyramidContext;
+    lastSoloSetup = soloSetup;
     return response;
   }
 }
@@ -166,6 +169,34 @@ void main() {
       await svc.runAdvisorTurn(
           session: session, advisorKey: 'mira', categoryName: 'Health');
       expect(client.lastPyramidContext, isNull);
+    });
+
+    test(
+        'D-097: runAdvisorTurn never sets soloSetup, even inside a '
+        'setup-typed session — regression test for a defect found live: '
+        'essence-deepening (a setup-typed session\'s four-advisor '
+        'rotation) was being routed through the solo-Mira pyramid-'
+        'building backend logic because isSetup (billing) and the '
+        'solo-Mira routing signal used to be the same flag', () async {
+      final client = _FakeCouncilClient();
+      final svc = buildService(client: client);
+      final session = await svc.createSession(type: BoardSessionType.setup);
+
+      await svc.runAdvisorTurn(
+          session: session, advisorKey: 'kenji', categoryName: 'Bioenergetics');
+      expect(client.lastSoloSetup, isFalse);
+    });
+
+    test(
+        'D-097: runMiraSetupTurn always sets soloSetup — the one caller '
+        'that actually is the solo-Mira pyramid-building conversation',
+        () async {
+      final client = _FakeCouncilClient();
+      final svc = buildService(client: client);
+      final session = await svc.createSession(type: BoardSessionType.setup);
+
+      await svc.runMiraSetupTurn(session);
+      expect(client.lastSoloSetup, isTrue);
     });
   });
 

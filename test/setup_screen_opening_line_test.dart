@@ -277,6 +277,42 @@ void main() {
   });
 
   test(
+      'D-009: _confirmCategories kicks off the first foundational '
+      'category\'s essence question — regression test for a defect found '
+      'live: only _acceptEssence (moving to the 2nd and 3rd category) ever '
+      'called _askAboutCurrentFoundational, so the first category\'s '
+      'screen opened onto whatever was already in the transcript from '
+      'earlier in setup, never a question actually directed at it', () {
+    final source = File('lib/screens/setup_screen.dart').readAsStringSync();
+    final start = source.indexOf('Future<void> _confirmCategories()');
+    expect(start, greaterThan(-1));
+    final end = source.indexOf('\n  // ── Essences', start);
+    expect(end, greaterThan(start));
+    expect(source.substring(start, end), contains('_askAboutCurrentFoundational()'));
+  });
+
+  test(
+      'D-009: the "save this" essence button only considers messages sent '
+      'after this category\'s own question was asked — regression test '
+      'for a defect found live: it only ever checked "does any user '
+      'message exist," so the button appeared immediately using whatever '
+      'the user last said earlier in setup, unrelated to this category',
+      () {
+    final source = File('lib/screens/setup_screen.dart').readAsStringSync();
+    final start = source.indexOf('Widget _buildEssences()');
+    expect(start, greaterThan(-1));
+    final end = source.indexOf('\n  Widget _buildHabits()', start);
+    expect(end, greaterThan(start));
+    final body = source.substring(start, end);
+    expect(body, contains('_essenceQuestionAskedAt'));
+    expect(body, contains('isAfter'));
+    // D-005/P-12: "essence" is internal spec terminology — the owner
+    // found it confusing in user-facing copy, alongside the whole screen
+    // giving no indication of what was happening or why.
+    expect(body, isNot(contains('Use as my essence')));
+  });
+
+  test(
       'D-052: habits can be edited and new ones added by hand, not only '
       'deleted — the auto-generated set is a starting point, never the '
       'only option', () {

@@ -232,12 +232,19 @@ app.post('/requestTrial', requireFirebaseAuth, async (req, res) => {
 });
 
 app.post('/boardAdvisorTurn', requireFirebaseAuth, async (req, res) => {
-  // D-090: setup (isSetup) is a solo conversation with Mira, forced through
-  // a tool call so her readiness to build the pyramid comes back as data,
-  // not free text. Every other caller (category re-clarification, D-091's
-  // general Council chat) keeps the original four-advisor free-text path.
-  const { isSetup, sessionId, sliderValue, conversationHistory, existingCategories, pyramidContext } = req.body || {};
-  if (isSetup) return handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conversationHistory, existingCategories });
+  // D-090/D-097: soloSetup — not isSetup — is a solo conversation with
+  // Mira, forced through a tool call so her readiness to build the pyramid
+  // comes back as data, not free text. isSetup only ever meant "billed
+  // free" (D-017); every call inside a setup-typed session sets it,
+  // including essence-deepening's four-advisor rotation (D-009 step 3),
+  // which must NOT be routed through the solo-Mira path — found live,
+  // conflating the two silently broke essence-deepening (always Mira,
+  // wrong framing, D-092's pacing suffix leaking into a conversation it
+  // was never meant to touch). Every non-solo-setup caller (category
+  // re-clarification, essence-deepening, D-091's general Council chat)
+  // keeps the original four-advisor free-text path.
+  const { isSetup, soloSetup, sessionId, sliderValue, conversationHistory, existingCategories, pyramidContext } = req.body || {};
+  if (soloSetup) return handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conversationHistory, existingCategories });
 
   // D-095: pyramidContext, present only from GeneralCouncilScreen (D-091),
   // switches this from the category-scoped clarification framing to the

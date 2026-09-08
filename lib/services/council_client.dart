@@ -177,7 +177,16 @@ class CouncilClient {
   /// category-scoped replacement for Kansei's goal context. [sliderValue]
   /// defaults to 0.5 and has no UI control yet (D-073). [isSetup]/
   /// [sessionId] route this turn against D-072's free call-count bound
-  /// instead of D-087's spend cap (D-017).
+  /// instead of D-087's spend cap (D-017) — billing only.
+  ///
+  /// D-097: [soloSetup] is a separate signal from [isSetup] — it alone
+  /// selects D-090's solo-Mira forced-tool prompt on the backend. Found
+  /// live: these were the same flag until now, and every call within a
+  /// setup-typed session (including essence-deepening's four-advisor
+  /// rotation, D-009 step 3) is billed free — so `isSetup` was `true` for
+  /// those calls too, silently routing them through the solo-Mira
+  /// pyramid-building logic instead of the category-scoped one, ignoring
+  /// whichever advisor was actually meant to speak.
   /// D-093: [existingCategories], setup-only, switches Mira's turn from
   /// gathering material for a fresh pyramid to refining one already
   /// proposed — "not quite right" adjusts what's there, never discards it.
@@ -189,6 +198,7 @@ class CouncilClient {
     required List<Map<String, String>> conversationHistory,
     double sliderValue = 0.5,
     bool isSetup = false,
+    bool soloSetup = false,
     String? sessionId,
     List<Map<String, String>>? existingCategories,
     List<Map<String, String?>>? pyramidContext,
@@ -199,6 +209,7 @@ class CouncilClient {
       'categoryContext': categoryContext,
       'conversationHistory': conversationHistory,
       'isSetup': isSetup,
+      'soloSetup': soloSetup,
       if (sessionId != null) 'sessionId': sessionId,
       if (existingCategories != null) 'existingCategories': existingCategories,
       if (pyramidContext != null) 'pyramidContext': pyramidContext,
