@@ -292,20 +292,25 @@ void main() {
   });
 
   test(
-      'D-009: the "save this" essence button only considers messages sent '
-      'after this category\'s own question was asked — regression test '
-      'for a defect found live: it only ever checked "does any user '
+      'D-009/D-105: the "save this" essence button only considers messages '
+      'sent after this category\'s own question was asked — regression '
+      'test for a defect found live: it only ever checked "does any user '
       'message exist," so the button appeared immediately using whatever '
-      'the user last said earlier in setup, unrelated to this category',
-      () {
+      'the user last said earlier in setup, unrelated to this category. '
+      'D-105 replaced the original timestamp-based check '
+      '(_essenceQuestionAskedAt/isAfter) with message-index scoping '
+      '(_essenceStepStartIndex/stepMessages), which also fixed a second '
+      'live defect this same mechanism enables: the whole transcript view '
+      'no longer leaks the entire prior session into this category\'s '
+      'chat.', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
     final start = source.indexOf('Widget _buildEssences()');
     expect(start, greaterThan(-1));
-    final end = source.indexOf('\n  Widget _buildHabits()', start);
+    final end = source.indexOf('\n  void _editHabit', start);
     expect(end, greaterThan(start));
     final body = source.substring(start, end);
-    expect(body, contains('_essenceQuestionAskedAt'));
-    expect(body, contains('isAfter'));
+    expect(body, contains('_essenceStepStartIndex'));
+    expect(body, contains('stepMessages'));
     // D-005/P-12: "essence" is internal spec terminology — the owner
     // found it confusing in user-facing copy, alongside the whole screen
     // giving no indication of what was happening or why.

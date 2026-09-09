@@ -109,12 +109,12 @@ class _SetupScreenState extends State<SetupScreen> {
   List<CategoryProposal> _categories = const [];
   int _essenceIndex = 0;
   List<_FoundationalStep> _foundational = const [];
-  // Found live: without this, "Save this" appeared the moment essence
-  // phase opened if the user had said anything at all earlier in setup —
-  // tapping it could save a stale, unrelated message as this category's
-  // essence, since it only ever checked "does any user message exist,"
-  // never "did the user reply to *this* category's question."
-  DateTime? _essenceQuestionAskedAt;
+  // D-105: the index into _session.messages where this category's own
+  // essence-deepening exchange begins — captured right before
+  // _askAboutCurrentFoundational asks the question, so _buildEssences can
+  // show only this category's Q&A rather than the whole session (see its
+  // own doc comment for what that used to leak into view).
+  int? _essenceStepStartIndex;
   final Map<String, List<String>> _habitsByCategory = {};
   Set<String> _habitCategoriesLoading = {};
 
@@ -541,20 +541,28 @@ class _SetupScreenState extends State<SetupScreen> {
     final step = _foundational[_essenceIndex];
     setState(() => _busy = true);
     try {
+      // D-105: captured before the question is appended — the index this
+      // category's own exchange starts at, so _buildEssences can scope
+      // the visible transcript to just this Q&A.
+      _essenceStepStartIndex = session.messages.length;
+      // D-106: always Mira — never session.rotationOrder's shuffled pick.
+      // Found live: a different advisor appearing partway through
+      // essence-deepening (still nominally "one continuous setup
+      // conversation," D-043) read as a confusing non-sequitur switch,
+      // on top of the leftover-context defect above. The owner's
+      // decision: multiple advisors belong to the general Council
+      // conversation (D-091) and post-setup re-clarification (D-061),
+      // once there's real data for a council of voices to be useful
+      // against — setup itself stays one continuous voice throughout,
+      // matching D-090's opening conversation.
       await CouncilService.instance.runAdvisorTurn(
         session: session,
-        advisorKey:
-            session.rotationOrder[_essenceIndex % session.rotationOrder.length],
+        advisorKey: 'mira',
         categoryName: step.categoryName,
       );
       final refreshed = await CouncilService.instance
           .getActiveSession(type: BoardSessionType.setup);
-      final updated = refreshed ?? session;
-      setState(() {
-        _session = updated;
-        _essenceQuestionAskedAt =
-            updated.messages.isNotEmpty ? updated.messages.last.timestamp : null;
-      });
+      setState(() => _session = refreshed ?? session);
       _scrollToBottom();
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -572,6 +580,10 @@ class _SetupScreenState extends State<SetupScreen> {
       final refreshed = await CouncilService.instance
           .getActiveSession(type: BoardSessionType.setup);
       setState(() => _session = refreshed ?? session);
+      // D-105: found live — the "Save this" button (once it earns
+      // showing, per _buildEssences' resonance gate above) could land
+      // below the fold with nothing scrolling it into view.
+      _scrollToBottom();
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -979,15 +991,28 @@ class _SetupScreenState extends State<SetupScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     final step = _foundational[_essenceIndex];
-    // Found live: only messages sent after this category's own question
-    // was asked count — otherwise the button appears immediately using
-    // whatever the user last said earlier in setup, unrelated to this
-    // category.
-    final userMessages = (_session?.messages ?? const [])
-        .where((m) =>
-            m.advisorKey == 'user' &&
-            (_essenceQuestionAskedAt == null ||
-                m.timestamp.isAfter(_essenceQuestionAskedAt!)))
+    // D-105: found live — this used to render the whole session's
+    // messages, unscoped. Setup is one continuous session (D-043), so
+    // that included the entire opening conversation that already built
+    // the pyramid (Mira's own readyToBuild closing line among it) sitting
+    // directly above this category's actual question, and — for the 2nd
+    // and 3rd categories — every earlier category's essence exchange too.
+    // _essenceStepStartIndex, captured right before this category's
+    // question is asked (_askAboutCurrentFoundational), scopes the view
+    // to just this category's own Q&A.
+    final stepMessages = (_session != null && _essenceStepStartIndex != null)
+        ? _session!.messages.sublist(
+            _essenceStepStartIndex!.clamp(0, _session!.messages.length))
+        : const <BoardMessage>[];
+    // D-105: gated on the same resonance bar _acceptEssence itself
+    // enforces (ResonanceService.qualifies), not merely "any reply
+    // exists" — found live, the button used to appear the instant any
+    // message landed, including a short filler reply nowhere near
+    // substantial enough, so tapping it immediately bounced with a
+    // snackbar. The button now only ever appears once it will actually
+    // work.
+    final userMessages = stepMessages
+        .where((m) => m.advisorKey == 'user' && ResonanceService.qualifies(m.text))
         .toList();
     return Column(
       children: [
@@ -998,14 +1023,10 @@ class _SetupScreenState extends State<SetupScreen> {
               style: const TextStyle(color: AppColors.textSecondary)),
         ),
         Expanded(child: _buildTranscript(
-          _session?.messages ?? const [],
-          // D-101: the actual advisor about to reply for this category —
-          // rotationOrder[_essenceIndex % len], the same computation
-          // _askAboutCurrentFoundational uses to pick who asks the
-          // question in the first place.
-          typingAdvisorKey: (_busy && _session != null)
-              ? _session!.rotationOrder[_essenceIndex % _session!.rotationOrder.length]
-              : null,
+          stepMessages,
+          // D-106: always 'mira' — matches _askAboutCurrentFoundational,
+          // which no longer rotates through session.rotationOrder.
+          typingAdvisorKey: _busy ? 'mira' : null,
         )),
         if (userMessages.isNotEmpty)
           Padding(

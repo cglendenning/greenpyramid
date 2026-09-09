@@ -2,10 +2,10 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-102/D-103/D-104: structural checks on setup_screen.dart's phase flow
-/// between confirming categories and reaching the completion screen —
-/// SetupScreen owns live service singletons (SetupService.instance) the
-/// same way CouncilScreen does and isn't widget-tested directly, matching
+/// D-102/D-103/D-104/D-105/D-106: structural checks on setup_screen.dart's
+/// phase flow between confirming categories and reaching the completion
+/// screen — SetupScreen owns live service singletons (SetupService.instance)
+/// the same way CouncilScreen does and isn't widget-tested directly, matching
 /// this repo's convention (setup_screen_opening_line_test.dart).
 void main() {
   final source = File('lib/screens/setup_screen.dart').readAsStringSync();
@@ -82,5 +82,68 @@ void main() {
 
     expect(body, contains('daily'));
     expect(body, contains('anytime after setup'));
+  });
+
+  test('D-105: the essence-deepening transcript is scoped to this '
+      'category\'s own exchange, not the whole session — found live via '
+      'direct Firestore inspection: the full session included the entire '
+      'opening conversation (Mira\'s own readyToBuild closing line among '
+      'it) sitting directly above the category\'s actual question', () {
+    final start = source.indexOf('Widget _buildEssences()');
+    expect(start, greaterThan(-1));
+    final end = source.indexOf('\n  void _editHabit', start);
+    expect(end, greaterThan(start));
+    final body = source.substring(start, end);
+
+    expect(body, contains('_essenceStepStartIndex'));
+    expect(body, contains('stepMessages'));
+    expect(body, isNot(contains('_session?.messages ?? const []')),
+        reason: 'the old unscoped whole-session render must not reappear');
+  });
+
+  test('D-105: the "save this" button is gated on the same resonance bar '
+      '_acceptEssence itself enforces, not merely "any reply exists" — '
+      'found live: a short filler reply showed the button immediately, '
+      'and tapping it just bounced with a snackbar since the answer was '
+      'never actually going to qualify', () {
+    final start = source.indexOf('Widget _buildEssences()');
+    final end = source.indexOf('\n  void _editHabit', start);
+    final body = source.substring(start, end);
+
+    expect(body, contains('ResonanceService.qualifies(m.text)'));
+  });
+
+  test('D-105: sending an essence reply scrolls the new message (and, '
+      'once it qualifies, the button) into view rather than leaving it '
+      'below the fold', () {
+    final start = source.indexOf('Future<void> _sendEssenceReply()');
+    expect(start, greaterThan(-1));
+    final end = source.indexOf('\n  }', start);
+    final body = source.substring(start, end);
+
+    expect(body, contains('_scrollToBottom()'));
+  });
+
+  test('D-106: essence-deepening always speaks as Mira, never rotating '
+      'through the other three advisors — the owner\'s explicit call: '
+      '"multiple advisors should only be in the talk to the council '
+      'section... that can be a bit confusing during setup too"', () {
+    final start = source.indexOf('Future<void> _askAboutCurrentFoundational()');
+    expect(start, greaterThan(-1));
+    final end = source.indexOf('\n  }', start);
+    final body = source.substring(start, end);
+
+    expect(body, contains("advisorKey: 'mira'"));
+    expect(body, isNot(contains('session.rotationOrder[_essenceIndex')),
+        reason: 'the old per-category rotation must not reappear');
+  });
+
+  test('D-106: the essence-phase typing indicator always shows Mira, '
+      'matching the advisor that will actually reply', () {
+    final start = source.indexOf('Widget _buildEssences()');
+    final end = source.indexOf('\n  void _editHabit', start);
+    final body = source.substring(start, end);
+
+    expect(body, contains("typingAdvisorKey: _busy ? 'mira' : null"));
   });
 }
