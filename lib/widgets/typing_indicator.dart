@@ -22,6 +22,16 @@ class _TypingIndicatorState extends State<TypingIndicator>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   bool _reduceMotion = false;
+  // D-107: found live — "reduceMotion == _reduceMotion" as the sole guard
+  // meant the very first call, the overwhelmingly common case where the
+  // real MediaQuery value is also false, short-circuited before ever
+  // calling _controller.repeat() at all: false == false is true, so the
+  // "first configuration" and "no change since last time" cases were
+  // indistinguishable. The dots rendered, but frozen at the controller's
+  // initial value — motion never actually started. This flag makes "have
+  // we configured this at all yet" a fact of its own, not inferred from
+  // whether the value happens to match the field's default.
+  bool _reduceMotionInitialized = false;
 
   @override
   void initState() {
@@ -36,7 +46,8 @@ class _TypingIndicatorState extends State<TypingIndicator>
   void didChangeDependencies() {
     super.didChangeDependencies();
     final reduceMotion = MediaQuery.of(context).disableAnimations;
-    if (reduceMotion == _reduceMotion) return;
+    if (_reduceMotionInitialized && reduceMotion == _reduceMotion) return;
+    _reduceMotionInitialized = true;
     _reduceMotion = reduceMotion;
     if (_reduceMotion) {
       _controller.stop();

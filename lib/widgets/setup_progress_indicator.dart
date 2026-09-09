@@ -26,6 +26,15 @@ class _SetupProgressIndicatorState extends State<SetupProgressIndicator>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulse;
   bool _reduceMotion = false;
+  // D-107: found live in TypingIndicator's copy of this exact pattern —
+  // "reduceMotion == _reduceMotion" as the sole guard means the very
+  // first call, the overwhelmingly common case where the real MediaQuery
+  // value is also false, short-circuits before ever calling
+  // _pulse.repeat() at all: false == false is true, so "first
+  // configuration" and "no change since last time" were indistinguishable.
+  // The pyramid rendered, but frozen at the controller's initial value —
+  // the pulse never actually started, in production, since this shipped.
+  bool _reduceMotionInitialized = false;
 
   @override
   void initState() {
@@ -40,7 +49,8 @@ class _SetupProgressIndicatorState extends State<SetupProgressIndicator>
   void didChangeDependencies() {
     super.didChangeDependencies();
     final reduceMotion = MediaQuery.of(context).disableAnimations;
-    if (reduceMotion == _reduceMotion) return;
+    if (_reduceMotionInitialized && reduceMotion == _reduceMotion) return;
+    _reduceMotionInitialized = true;
     _reduceMotion = reduceMotion;
     if (_reduceMotion) {
       _pulse.stop();

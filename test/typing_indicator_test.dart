@@ -46,4 +46,31 @@ void main() {
       findsNothing,
     );
   });
+
+  testWidgets(
+      'D-107: the dots actually animate in the normal (motion-enabled) '
+      'case — regression test for a defect found live: '
+      '"reduceMotion == _reduceMotion" as the sole didChangeDependencies '
+      'guard meant the very first call — the overwhelmingly common case, '
+      'where the real value is also false — short-circuited before ever '
+      'calling _controller.repeat(), so the dots rendered but were '
+      'frozen at the controller\'s initial value forever, in every real '
+      'build that ever shipped', (tester) async {
+    await tester.pumpWidget(wrap(const TypingIndicator(advisorKey: 'mira')));
+    await tester.pump();
+
+    List<double> opacities() => tester
+        .widgetList<Opacity>(find.descendant(
+            of: find.byType(TypingIndicator), matching: find.byType(Opacity)))
+        .map((o) => o.opacity)
+        .toList();
+
+    final before = opacities();
+    await tester.pump(const Duration(milliseconds: 400));
+    final after = opacities();
+
+    expect(after, isNot(equals(before)),
+        reason: 'the animation must actually be running, not frozen at '
+            'its initial value — this is exactly what shipped broken');
+  });
 }
