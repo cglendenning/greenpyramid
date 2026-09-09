@@ -15,6 +15,7 @@ import '../theme/app_colors.dart';
 import '../widgets/chat_backdrop.dart';
 import '../widgets/chat_input_bar.dart';
 import '../widgets/council_transcript.dart';
+import '../widgets/onboarding_backdrop.dart';
 import '../widgets/setup_progress_indicator.dart';
 import 'setup_completion_screen.dart';
 import 'push_permission_screen.dart';
@@ -43,6 +44,12 @@ enum _Phase {
   openingRound,
   categories,
   refining,
+  // D-102: a brief, explicit handoff between confirming categories and
+  // being dropped back into chat for essence-deepening — found live: with
+  // no signposting, "This feels right" leading straight back into an
+  // identical-looking chat interface read as being "tossed back into
+  // chat," not entering a new, purposeful phase of setup.
+  essenceIntro,
   essences,
   habits,
   closing
@@ -462,19 +469,33 @@ class _SetupScreenState extends State<SetupScreen> {
               _FoundationalStep(categoryId: c.position, categoryName: c.name))
           .toList()
         ..sort((a, b) => a.categoryId.compareTo(b.categoryId));
-      setState(() {
-        _phase = _Phase.essences;
-        _essenceIndex = 0;
-      });
-      // Found live: nothing ever kicked off the first foundational
-      // category's essence conversation — only _acceptEssence() (moving
-      // to the 2nd and 3rd) called this. The first category's screen
-      // opened onto whatever was already in the transcript from earlier
-      // in setup, never a question actually directed at it.
-      await _askAboutCurrentFoundational();
+      // D-102: stop here, on a plain handoff screen, rather than dropping
+      // straight back into chat with no signal a new phase has begun —
+      // found live: "This feels right" leading straight into what looks
+      // like the identical chat interface read as being "tossed back into
+      // chat," not entering a new, purposeful step of setup.
+      setState(() => _phase = _Phase.essenceIntro);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  // D-102: the actual start of essence-deepening, moved out of
+  // _confirmCategories — now triggered by the person tapping through the
+  // handoff screen, not fired automatically the instant categories commit.
+  // _askAboutCurrentFoundational manages its own _busy toggle, so this
+  // only needs to set the phase and index before calling it.
+  Future<void> _beginEssenceDeepening() async {
+    setState(() {
+      _phase = _Phase.essences;
+      _essenceIndex = 0;
+    });
+    // Found live: nothing ever kicked off the first foundational
+    // category's essence conversation — only _acceptEssence() (moving to
+    // the 2nd and 3rd) called this. The first category's screen opened
+    // onto whatever was already in the transcript from earlier in setup,
+    // never a question actually directed at it.
+    await _askAboutCurrentFoundational();
   }
 
   // ── Essences for the three foundational categories (D-009/D-028) ───────
@@ -556,24 +577,40 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
-  // ── Habits (D-052/D-054) ────────────────────────────────────────────────
+  // ── Habits (D-052/D-054/D-103) ──────────────────────────────────────────
+
+  // D-103: the owner's explicit ceiling — never more than this many daily
+  // habits across the whole pyramid, regardless of category count.
+  static const _maxTotalHabits = 10;
 
   Future<void> _loadAllHabits() async {
     final session = _session;
     if (session == null) return;
-    for (final c in _categories) {
+    var totalCommitted = 0;
+    for (var i = 0; i < _categories.length; i++) {
+      final c = _categories[i];
       setState(
           () => _habitCategoriesLoading = {..._habitCategoriesLoading, c.name});
       final essence = _foundational
           .where((f) => f.categoryName == c.name)
           .map((f) => f.capturedEssence)
           .firstOrNull;
+      // D-103: reserve at least 1 slot for every category still to come,
+      // so an early category greedily using its full allowance can never
+      // leave a later one with nothing — the running total this produces
+      // can undershoot 10 (a category is free to propose fewer than its
+      // allowance) but never exceed it.
+      final remainingAfterThis = _categories.length - 1 - i;
+      final maxAllowed =
+          (_maxTotalHabits - totalCommitted - remainingAfterThis).clamp(1, 3);
       try {
         final habits = await _setup.proposeHabits(
           session: session,
           categoryName: c.name,
           essence: essence,
+          maxAllowed: maxAllowed,
         );
+        totalCommitted += habits.length;
         setState(() => _habitsByCategory[c.name] = habits);
       } catch (e) {
         // D-052: the proposed set is allowed to be empty — the user can
@@ -713,6 +750,8 @@ class _SetupScreenState extends State<SetupScreen> {
         return 0.35;
       case _Phase.refining:
         return 0.3;
+      case _Phase.essenceIntro:
+        return 0.35;
       case _Phase.essences:
         return 0.35 + 0.3 * (_essenceIndex / 3);
       case _Phase.habits:
@@ -752,6 +791,8 @@ class _SetupScreenState extends State<SetupScreen> {
         // line needs reconstructing.
         return _buildTranscript([_openingMessage, ...?_session?.messages],
             typingAdvisorKey: _busy ? 'mira' : null);
+      case _Phase.essenceIntro:
+        return _buildEssenceIntro();
       case _Phase.essences:
         return _buildEssences();
       case _Phase.habits:
@@ -778,6 +819,53 @@ class _SetupScreenState extends State<SetupScreen> {
       messages: messages,
       scrollController: _scrollController,
       typingAdvisorKey: typingAdvisorKey,
+    );
+  }
+
+  // D-102: the explicit handoff between confirming categories and being
+  // dropped back into chat for essence-deepening — plain typography over
+  // the existing ChatBackdrop (this phase's content, like every other
+  // phase's, renders inside SetupScreen's own ChatBackdrop already; a
+  // second, different full-bleed backdrop stacked on top of it would
+  // fight rather than match). OnboardingStyles gives it the same type
+  // scale as the welcome screen without introducing a second background
+  // treatment for one screen.
+  Widget _buildEssenceIntro() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Spacer(flex: 5),
+          const Text(
+            'Now, three questions worth sitting with.',
+            style: OnboardingStyles.headline,
+          ),
+          const SizedBox(height: 14),
+          OnboardingStyles.accentDivider,
+          const SizedBox(height: 16),
+          const Text(
+            "The Council will ask about your top three values, one at a "
+            "time. What you say here is what makes every habit — and "
+            "every conversation from here on — actually fit you, instead "
+            "of being generic.",
+            style: OnboardingStyles.subhead,
+          ),
+          const Spacer(flex: 4),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 28),
+            child: SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: _busy ? null : _beginEssenceDeepening,
+                style: OnboardingStyles.primaryButton,
+                child: const Text("Let's go deeper", style: OnboardingStyles.buttonLabel),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1015,6 +1103,21 @@ class _SetupScreenState extends State<SetupScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // D-104: explicit, not implicit — the chips below are editable
+          // right here, but nothing said so in words, and nothing said
+          // these default to a daily schedule (D-054) or that either fact
+          // still holds after setup ends. Found live: the owner asked for
+          // this stated plainly before the completion reveal, not left
+          // for the person to infer from the chips' own affordances.
+          const Padding(
+            padding: EdgeInsets.only(bottom: 16),
+            child: Text(
+              "Here's what you'll track daily. Tap any habit to reword it, "
+              "or the x to drop it — and you can change all of this again "
+              "anytime after setup, from the category itself.",
+              style: TextStyle(color: AppColors.textSecondary, height: 1.4),
+            ),
+          ),
           for (final c in _categories) ...[
             Text(c.name,
                 style: const TextStyle(

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, CATEGORIES_TOOL, HABITS_TOOL } from './setup_derivation.js';
+import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, CATEGORIES_TOOL, habitsTool } from './setup_derivation.js';
 
 test('D-051: CATEGORIES_TOOL requires exactly six category entries', () => {
   assert.equal(CATEGORIES_TOOL.input_schema.properties.categories.minItems, 6);
@@ -77,10 +77,47 @@ test('D-093: with existingCategories, the prompt switches to refinement — '
 
 // Amended 2026-09-07: found live that 3-5 habits at up to 120 chars each
 // was too many and too verbose. See Decision Log for the defect.
-test('D-052: HABITS_TOOL requires 2 to 3 short (max 40 char) habits', () => {
-  assert.equal(HABITS_TOOL.input_schema.properties.habits.minItems, 2);
-  assert.equal(HABITS_TOOL.input_schema.properties.habits.maxItems, 3);
-  assert.equal(HABITS_TOOL.input_schema.properties.habits.items.maxLength, 40);
+// Amended 2026-09-08 (D-103): the fixed 2-3 became a variable 1 to
+// maxAllowed (never more than 3) — a single well-chosen habit can be all
+// a category needs, and the owner wants a 10-habit ceiling across all six
+// categories, which requires a per-call budget the model is offered, not
+// a constant every category shares.
+test('D-103: habitsTool(maxAllowed) requires 1 to maxAllowed short (max '
+  + '40 char) habits, and never offers more than 3 regardless of the '
+  + 'requested ceiling', () => {
+  const three = habitsTool(3);
+  assert.equal(three.input_schema.properties.habits.minItems, 1);
+  assert.equal(three.input_schema.properties.habits.maxItems, 3);
+  assert.equal(three.input_schema.properties.habits.items.maxLength, 40);
+
+  const one = habitsTool(1);
+  assert.equal(one.input_schema.properties.habits.maxItems, 1);
+
+  const overRequested = habitsTool(5);
+  assert.equal(overRequested.input_schema.properties.habits.maxItems, 3,
+    'a per-category budget can never exceed 3, no matter what the caller passes');
+});
+
+test('D-103: habitsTool defaults to a ceiling of 3 for a missing, falsy, '
+  + 'or invalid maxAllowed — never zero, which would make a category '
+  + 'proposal impossible', () => {
+  assert.equal(habitsTool(undefined).input_schema.properties.habits.maxItems, 3);
+  assert.equal(habitsTool(0).input_schema.properties.habits.maxItems, 3,
+    '0 is nonsensical for this tool (a category must get at least one ' +
+    'habit) — treated as unspecified, same as undefined, not clamped up ' +
+    'from a literal zero');
+  assert.equal(habitsTool('not a number').input_schema.properties.habits.maxItems, 3);
+});
+
+test('D-103: the habit prompt names the actual per-call ceiling and asks '
+  + 'for only as many as genuinely earn a place, not padding to a fixed '
+  + 'count', () => {
+  const { system: two } = buildDeriveHabitsPrompt({ categoryName: 'Health', essence: null, maxAllowed: 2 });
+  assert.match(two, /1 to 2 habits/);
+  assert.match(two, /genuinely move the needle/);
+
+  const { system: three } = buildDeriveHabitsPrompt({ categoryName: 'Health', essence: null, maxAllowed: 3 });
+  assert.match(three, /1 to 3 habits/);
 });
 
 test('D-052: the habit prompt includes the essence when one exists', () => {

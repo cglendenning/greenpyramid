@@ -270,19 +270,25 @@ class CouncilClient {
     return categories;
   }
 
-  /// D-052: proposes 3-5 habits for one category, conditioned on its
-  /// essence when one exists (D-010).
+  /// D-052/D-103: proposes 1 to [maxAllowed] habits for one category
+  /// (never more than 3), conditioned on its essence when one exists
+  /// (D-010). [maxAllowed] is the caller's own cross-category budget —
+  /// see `SetupScreen._loadAllHabits`, which reserves at least 1 slot per
+  /// remaining category so a 6-category pyramid never exceeds 10 habits
+  /// total.
   Future<List<String>> deriveHabits({
     required String sessionId,
     required String categoryName,
     String? essence,
     List<String> existingHabits = const [],
+    int maxAllowed = 3,
   }) async {
     final data = await _post('deriveHabits', {
       'sessionId': sessionId,
       'categoryName': categoryName,
       if (essence != null) 'essence': essence,
       'existingHabits': existingHabits,
+      'maxAllowed': maxAllowed,
     });
     final habits = (data['habits'] as List<dynamic>? ?? const [])
         .map((h) => h as String)

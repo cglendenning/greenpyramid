@@ -93,33 +93,47 @@ export function buildDeriveCategoriesPrompt(transcript, { existingCategories } =
   return { system, user };
 }
 
-// D-052: 3-5 habits for one category, conditioned on its essence when one
-// exists (D-010: cat4-cat6 leave setup without one — falls back to
-// name-only, degrading without a placeholder).
+// D-103: 1 to [maxAllowed] habits for one category (maxAllowed itself
+// never exceeds 3), conditioned on its essence when one exists (D-010:
+// cat4-cat6 leave setup without one — falls back to name-only, degrading
+// without a placeholder). A fixed schema can't express "as many as
+// actually earn a place, up to a per-call ceiling" — habitsTool()
+// generates the schema per call so minItems/maxItems reflect the budget
+// setup_screen.dart computed for this specific category (see D-103's
+// cross-category reservation, which is what keeps a 6-category pyramid
+// at 10 habits total even though each category alone could ask for 3).
 // D-052: found live 2026-09-07 — 3-5 habits at up to 120 chars each read
-// as too many, too long. Tightened to 2-3, ~5 words apiece (maxLength 40
-// is roomy for that without permitting a full sentence to sneak through).
-export const HABITS_TOOL = {
-  name: 'propose_habits',
-  description: 'Propose 2-3 concrete daily habits for one category, each around five words.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      habits: {
-        type: 'array',
-        minItems: 2,
-        maxItems: 3,
-        items: { type: 'string', minLength: 1, maxLength: 40 },
+// as too many, too long. Tightened to at most 3, ~5 words apiece
+// (maxLength 40 is roomy for that without permitting a full sentence to
+// sneak through) — D-103 then made the floor 1, not a fixed 2, since a
+// single well-chosen habit can be all a category actually needs.
+export function habitsTool(maxAllowed) {
+  const max = Math.min(3, Math.max(1, Number(maxAllowed) || 3));
+  return {
+    name: 'propose_habits',
+    description:
+      `Propose between 1 and ${max} concrete daily habits for one category — only as many as will ` +
+      'genuinely move the needle for this value, each around five words.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        habits: {
+          type: 'array',
+          minItems: 1,
+          maxItems: max,
+          items: { type: 'string', minLength: 1, maxLength: 40 },
+        },
       },
+      required: ['habits'],
     },
-    required: ['habits'],
-  },
-};
+  };
+}
 
-export function buildDeriveHabitsPrompt({ categoryName, essence, existingHabits = [] }) {
+export function buildDeriveHabitsPrompt({ categoryName, essence, existingHabits = [], maxAllowed = 3 }) {
   const name = sanitize(categoryName, 60);
   const essenceText = essence ? sanitize(essence, 400) : null;
   const blacklist = (existingHabits || []).map((h) => sanitize(h, 80));
+  const max = Math.min(3, Math.max(1, Number(maxAllowed) || 3));
   const system =
     'You propose daily habits for one category of someone\'s life pyramid. ' +
     (essenceText
@@ -130,7 +144,8 @@ export function buildDeriveHabitsPrompt({ categoryName, essence, existingHabits 
     (blacklist.length
       ? `Never repeat or closely restate any of these already-chosen habits: ${blacklist.join('; ')}.`
       : '') +
-    ' Call propose_habits with 2 to 3 habits.';
+    ` Propose only as many as will genuinely move the needle for this specific value — a single well-chosen ` +
+    `habit beats three padded ones. Call propose_habits with 1 to ${max} habits.`;
   const user = `Category: '${name}'`;
   return { system, user };
 }

@@ -60,14 +60,19 @@ class _FakeCouncilClient extends CouncilClient {
     return categories;
   }
 
+  List<int> lastMaxAllowedByCategory = [];
+
   @override
   Future<List<String>> deriveHabits({
     required String sessionId,
     required String categoryName,
     String? essence,
     List<String> existingHabits = const [],
-  }) async =>
-      habits;
+    int maxAllowed = 3,
+  }) async {
+    lastMaxAllowedByCategory.add(maxAllowed);
+    return habits;
+  }
 
   @override
   Future<String> deriveVisionStatement({
@@ -412,6 +417,20 @@ void main() {
       final habits = await svc.proposeHabits(
           session: session, categoryName: 'Health', essence: null);
       expect(habits, ['Walk 20 minutes', 'Drink water', 'Stretch']);
+    });
+
+    test('D-103: proposeHabits passes maxAllowed through to the client, '
+        'defaulting to 3 when the caller doesn\'t specify one', () async {
+      final client = _FakeCouncilClient();
+      final svc = buildService(client: client);
+      final session = await svc.startOrResumeSetup();
+
+      await svc.proposeHabits(session: session, categoryName: 'Health', essence: null);
+      expect(client.lastMaxAllowedByCategory.last, 3);
+
+      await svc.proposeHabits(
+          session: session, categoryName: 'Craft', essence: null, maxAllowed: 1);
+      expect(client.lastMaxAllowedByCategory.last, 1);
     });
   });
 

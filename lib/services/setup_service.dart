@@ -129,20 +129,25 @@ class SetupService {
     );
   }
 
-  /// D-052: proposes 3-5 habits for one category. [essence] is null for a
-  /// category with none yet (D-010) — the prompt degrades to name-only
-  /// without inventing a reason.
+  /// D-052/D-103: proposes 1 to [maxAllowed] habits for one category
+  /// (never more than 3). [essence] is null for a category with none yet
+  /// (D-010) — the prompt degrades to name-only without inventing a
+  /// reason. [maxAllowed] is the caller's cross-category budget, keeping
+  /// the pyramid's total habit count at or under 10 across all six
+  /// categories.
   Future<List<String>> proposeHabits({
     required BoardSession session,
     required String categoryName,
     String? essence,
     List<String> existingHabits = const [],
+    int maxAllowed = 3,
   }) {
     return _client.deriveHabits(
       sessionId: session.sessionId,
       categoryName: categoryName,
       essence: essence,
       existingHabits: existingHabits,
+      maxAllowed: maxAllowed,
     );
   }
 

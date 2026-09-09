@@ -18,7 +18,7 @@ import { applyPacingReassurance, buildAdvisorTurnPrompt, buildGeneralCouncilTurn
 import { checkSpendLimit, recordCost, SpendLimitError } from './lib/billing.js';
 import { getCouncilModel, getNotificationModel } from './lib/model_config.js';
 import { guardAndCountSetupCall, SetupCallLimitError } from './lib/setup_guard.js';
-import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, CATEGORIES_TOOL, HABITS_TOOL } from './lib/setup_derivation.js';
+import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, CATEGORIES_TOOL, habitsTool } from './lib/setup_derivation.js';
 import { buildDeriveDomainFindingsPrompt, buildDeriveGeneralDomainFindingsPrompt, DOMAIN_FINDING_TOOL, GENERAL_DOMAIN_FINDING_TOOL } from './lib/domain_finding_derivation.js';
 import { isEligibleForTailoredNotification } from './lib/notification_schedule.js';
 import { buildNotificationPrompt, NOTIFICATION_TOOL } from './lib/notification_derivation.js';
@@ -387,10 +387,16 @@ app.post('/deriveCategories', requireFirebaseAuth, async (req, res) => {
 });
 
 app.post('/deriveHabits', requireFirebaseAuth, async (req, res) => {
-  const { sessionId, categoryName, essence, existingHabits } = req.body || {};
+  const { sessionId, categoryName, essence, existingHabits, maxAllowed } = req.body || {};
   if (!(await guardCouncilCall(req, res, { isSetup: true, sessionId }))) return;
 
-  const { system, user } = buildDeriveHabitsPrompt({ categoryName, essence, existingHabits });
+  // D-103: maxAllowed is setup_screen.dart's own reservation across all
+  // six categories (never more than 10 habits total, never less than 1
+  // per category) — the tool schema's maxItems is generated per call, not
+  // a fixed constant, so the model is never even offered more room than
+  // this specific category has left in the budget.
+  const tool = habitsTool(maxAllowed);
+  const { system, user } = buildDeriveHabitsPrompt({ categoryName, essence, existingHabits, maxAllowed });
   const model = await getCouncilModel();
   try {
     const msg = await claude().messages.create({
@@ -399,8 +405,8 @@ app.post('/deriveHabits', requireFirebaseAuth, async (req, res) => {
       thinking: { type: 'disabled' },
       system: [{ type: 'text', text: system }],
       messages: [{ role: 'user', content: user }],
-      tools: [HABITS_TOOL],
-      tool_choice: { type: 'tool', name: HABITS_TOOL.name },
+      tools: [tool],
+      tool_choice: { type: 'tool', name: tool.name },
     });
     const toolUse = msg.content.find((b) => b.type === 'tool_use');
     if (!toolUse) return res.status(502).json({ error: 'no_tool_use_in_response' });
