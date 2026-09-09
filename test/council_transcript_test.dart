@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/models/board_session.dart';
 import 'package:life_ops/widgets/council_transcript.dart';
+import 'package:life_ops/widgets/typing_indicator.dart';
 
 /// D-091: CouncilTranscript is the transcript rendering shared by every
 /// screen the Council appears on — extracted so it's tested once rather
@@ -52,5 +53,32 @@ void main() {
     expect(find.text('Use as my essence'), findsOneWidget);
     await tester.tap(find.text('Use as my essence'));
     expect(accepted, 'my body carries me');
+  });
+
+  testWidgets('D-101: typingAdvisorKey null (the default): no typing '
+      'indicator appears, even with messages present', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: CouncilTranscript(messages: [msg('mira', 'hello there')]),
+    ));
+    await tester.pump();
+
+    expect(find.byType(TypingIndicator), findsNothing);
+  });
+
+  testWidgets('D-101: typingAdvisorKey set: a TypingIndicator renders as '
+      'the trailing item, after every real message — the screen never '
+      'goes visually dead while waiting for a reply', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: CouncilTranscript(
+        messages: [msg('user', 'hi'), msg('mira', 'hello there')],
+        typingAdvisorKey: 'kenji',
+      ),
+    ));
+    await tester.pump();
+
+    expect(find.byType(TypingIndicator), findsOneWidget);
+    final indicator =
+        tester.widget<TypingIndicator>(find.byType(TypingIndicator));
+    expect(indicator.advisorKey, 'kenji');
   });
 }

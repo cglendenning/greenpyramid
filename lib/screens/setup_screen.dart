@@ -13,6 +13,7 @@ import '../services/resonance_service.dart';
 import '../services/setup_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/chat_backdrop.dart';
+import '../widgets/chat_input_bar.dart';
 import '../widgets/council_transcript.dart';
 import '../widgets/setup_progress_indicator.dart';
 import 'setup_completion_screen.dart';
@@ -724,7 +725,8 @@ class _SetupScreenState extends State<SetupScreen> {
   Widget _buildBody() {
     switch (_phase) {
       case _Phase.opening:
-        return _buildTranscript([_openingMessage]);
+        return _buildTranscript([_openingMessage],
+            typingAdvisorKey: _busy ? 'mira' : null);
       case _Phase.openingRound:
         // D-067/D-042: Mira's opening line is never persisted to Firestore
         // (it's fixed, client-only copy) — only the user's reply and each
@@ -735,7 +737,8 @@ class _SetupScreenState extends State<SetupScreen> {
         // transcript with no visible Council prompt. Always prepending it
         // here — cheap, since it's static — means the user sees Mira's
         // opening on every render of this phase, resumed or not.
-        return _buildTranscript([_openingMessage, ...?_session?.messages]);
+        return _buildTranscript([_openingMessage, ...?_session?.messages],
+            typingAdvisorKey: _busy ? 'mira' : null);
       case _Phase.categories:
         return _buildCategories();
       case _Phase.refining:
@@ -747,7 +750,8 @@ class _SetupScreenState extends State<SetupScreen> {
         // refinement prompt itself IS persisted (see appendAdvisorMessage)
         // and is already part of session.messages — only the very first
         // line needs reconstructing.
-        return _buildTranscript([_openingMessage, ...?_session?.messages]);
+        return _buildTranscript([_openingMessage, ...?_session?.messages],
+            typingAdvisorKey: _busy ? 'mira' : null);
       case _Phase.essences:
         return _buildEssences();
       case _Phase.habits:
@@ -764,8 +768,17 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
-  Widget _buildTranscript(List<BoardMessage> messages) {
-    return CouncilTranscript(messages: messages, scrollController: _scrollController);
+  // D-101: every caller of this in opening/openingRound/refining is a
+  // solo-Mira conversation (D-090) — 'mira' is always correct, unlike
+  // session.nextAdvisorKey, which reflects a shuffled four-advisor
+  // rotationOrder that setup sessions carry but never actually use for
+  // these turns.
+  Widget _buildTranscript(List<BoardMessage> messages, {String? typingAdvisorKey}) {
+    return CouncilTranscript(
+      messages: messages,
+      scrollController: _scrollController,
+      typingAdvisorKey: typingAdvisorKey,
+    );
   }
 
   Widget _buildCategories() {
@@ -896,7 +909,16 @@ class _SetupScreenState extends State<SetupScreen> {
               'Going deeper: ${step.categoryName} (${_essenceIndex + 1} of 3)',
               style: const TextStyle(color: AppColors.textSecondary)),
         ),
-        Expanded(child: _buildTranscript(_session?.messages ?? const [])),
+        Expanded(child: _buildTranscript(
+          _session?.messages ?? const [],
+          // D-101: the actual advisor about to reply for this category —
+          // rotationOrder[_essenceIndex % len], the same computation
+          // _askAboutCurrentFoundational uses to pick who asks the
+          // question in the first place.
+          typingAdvisorKey: (_busy && _session != null)
+              ? _session!.rotationOrder[_essenceIndex % _session!.rotationOrder.length]
+              : null,
+        )),
         if (userMessages.isNotEmpty)
           Padding(
             padding: const EdgeInsets.all(12),
@@ -1047,27 +1069,10 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   Widget _buildTextInput() {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(8),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _textController,
-                enabled: !_busy,
-                style: const TextStyle(color: AppColors.textPrimary),
-                decoration: const InputDecoration(hintText: 'Say more…'),
-                onSubmitted: (_) => _onSubmitText(),
-              ),
-            ),
-            IconButton(
-              onPressed: _busy ? null : _onSubmitText,
-              icon: const Icon(Icons.arrow_upward, color: AppColors.brandGreen),
-            ),
-          ],
-        ),
-      ),
+    return ChatInputBar(
+      controller: _textController,
+      enabled: !_busy,
+      onSubmit: _onSubmitText,
     );
   }
 

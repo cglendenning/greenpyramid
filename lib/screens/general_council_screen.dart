@@ -11,6 +11,7 @@ import '../services/council_service.dart';
 import '../services/db.dart';
 import '../theme/app_colors.dart';
 import '../widgets/chat_backdrop.dart';
+import '../widgets/chat_input_bar.dart';
 import '../widgets/council_transcript.dart';
 
 /// D-091: a free-form conversation with the whole Council, not scoped to
@@ -160,31 +161,21 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
             Expanded(
               child: session == null
                   ? const Center(child: CircularProgressIndicator())
-                  : CouncilTranscript(messages: session.messages),
+                  : CouncilTranscript(
+                      messages: session.messages,
+                      // D-101: the real next speaker (session.nextAdvisorKey
+                      // is meaningful here, unlike setup's solo-Mira turns —
+                      // this is a genuine four-advisor rotation) while
+                      // genuinely awaiting their reply.
+                      typingAdvisorKey:
+                          _busy ? session.nextAdvisorKey : null,
+                    ),
             ),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _textController,
-                        enabled: !_busy,
-                        style: const TextStyle(color: AppColors.textPrimary),
-                        decoration:
-                            const InputDecoration(hintText: 'Say something…'),
-                        onSubmitted: (_) => _sendUserMessage(),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: _busy ? null : _sendUserMessage,
-                      icon: const Icon(Icons.arrow_upward,
-                          color: AppColors.brandGreen),
-                    ),
-                  ],
-                ),
-              ),
+            ChatInputBar(
+              controller: _textController,
+              enabled: !_busy,
+              hintText: 'Say something…',
+              onSubmit: _sendUserMessage,
             ),
           ],
         ),

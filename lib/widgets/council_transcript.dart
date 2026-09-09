@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/board_session.dart';
 import '../theme/app_colors.dart';
 import 'advisor.dart';
+import 'typing_indicator.dart';
 
 /// D-091: the message-bubble transcript rendering shared by every screen
 /// the Council appears on (setup, category re-clarification, and the
@@ -12,25 +13,38 @@ import 'advisor.dart';
 /// [onAcceptEssence], when non-null, adds an "accept as essence" action
 /// under the user's own messages — only `council_screen.dart`'s
 /// category-scoped conversation uses this; every other caller omits it.
+///
+/// D-101: [typingAdvisorKey], when non-null, renders a [TypingIndicator]
+/// as the trailing item — every caller passes it only while genuinely
+/// awaiting that advisor's reply, never for an unrelated busy state (a
+/// data write, a habit commit), so the screen never goes visually dead
+/// after the person sends a message but also never claims someone is
+/// "typing" when nothing is actually being generated.
 class CouncilTranscript extends StatelessWidget {
   final List<BoardMessage> messages;
   final ScrollController? scrollController;
   final void Function(String text)? onAcceptEssence;
+  final String? typingAdvisorKey;
 
   const CouncilTranscript({
     super.key,
     required this.messages,
     this.scrollController,
     this.onAcceptEssence,
+    this.typingAdvisorKey,
   });
 
   @override
   Widget build(BuildContext context) {
+    final showTyping = typingAdvisorKey != null;
     return ListView.builder(
       controller: scrollController,
       padding: const EdgeInsets.all(12),
-      itemCount: messages.length,
+      itemCount: messages.length + (showTyping ? 1 : 0),
       itemBuilder: (context, index) {
+        if (showTyping && index == messages.length) {
+          return TypingIndicator(advisorKey: typingAdvisorKey!);
+        }
         final m = messages[index];
         final isUser = m.advisorKey == 'user';
         final advisor = isUser ? null : AdvisorConfig.forKey(m.advisorKey);

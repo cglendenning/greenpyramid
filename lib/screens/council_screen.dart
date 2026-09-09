@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../models/board_session.dart';
 import '../widgets/chat_backdrop.dart';
+import '../widgets/chat_input_bar.dart';
 import '../widgets/council_transcript.dart';
 import '../services/ai_guard.dart';
 import '../services/auth_service.dart';
@@ -191,31 +192,16 @@ class _CouncilScreenState extends State<CouncilScreen> {
                   : CouncilTranscript(
                       messages: session.messages,
                       onAcceptEssence: _acceptAsEssence,
+                      // D-101: session.nextAdvisorKey is the real next
+                      // speaker for this category-scoped rotation.
+                      typingAdvisorKey:
+                          _busy ? session.nextAdvisorKey : null,
                     ),
             ),
-            SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.all(8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _textController,
-                        enabled: !_busy,
-                        style: const TextStyle(color: AppColors.textPrimary),
-                        decoration:
-                            const InputDecoration(hintText: 'Say more…'),
-                        onSubmitted: (_) => _sendUserMessage(),
-                      ),
-                    ),
-                    IconButton(
-                      onPressed: _busy ? null : _sendUserMessage,
-                      icon: const Icon(Icons.arrow_upward,
-                          color: AppColors.brandGreen),
-                    ),
-                  ],
-                ),
-              ),
+            ChatInputBar(
+              controller: _textController,
+              enabled: !_busy,
+              onSubmit: _sendUserMessage,
             ),
           ],
         ),
