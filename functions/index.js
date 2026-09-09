@@ -339,16 +339,25 @@ async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conver
     }
     let readyToBuild = !!toolUse.input.readyToBuild;
     let reply = toolUse.input.reply;
-    // D-118: the very first time Mira decides she's ready — the initial
-    // (non-refining) conversation only, never the refinement loop — her
-    // decision is intercepted: instead of actually closing, her summary
-    // reply gets the fixed wrap-up question appended and readyToBuild is
-    // forced back to false, so the conversation continues for exactly one
-    // more round. hasAskedWrapUpQuestion makes this a one-time interception
-    // per conversation — once the fixed question already appears in
-    // history (the user has answered it), Mira's next readyToBuild: true
-    // is honored for real.
-    if (readyToBuild && !existingCategories && !hasAskedWrapUpQuestion(conversationHistory)) {
+    const wrapUpAlreadyAsked = !existingCategories && hasAskedWrapUpQuestion(conversationHistory);
+    // D-119: once the wrap-up question has already been asked (and just
+    // answered), the very next turn is the real close — forced
+    // deterministically, regardless of what the model itself returned for
+    // readyToBuild this turn. Found live: leaving this to the model's own
+    // per-turn judgment let it ask yet another follow-up question instead
+    // of closing, exactly the defect this guarantees can't happen —
+    // matching D-092's own lesson that a soft, once-per-conversation
+    // instruction is not something to trust the model to reliably follow
+    // on its own.
+    if (wrapUpAlreadyAsked) {
+      readyToBuild = true;
+    } else if (readyToBuild && !existingCategories) {
+      // D-118: the very first time Mira decides she's ready — the initial
+      // (non-refining) conversation only, never the refinement loop — her
+      // decision is intercepted: instead of actually closing, her summary
+      // reply gets the fixed wrap-up question appended and readyToBuild is
+      // forced back to false, so the conversation continues for exactly
+      // one more round.
       reply = `${(reply || '').trim()} ${SETUP_WRAP_UP_QUESTION}`;
       readyToBuild = false;
     } else {

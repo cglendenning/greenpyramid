@@ -92,17 +92,35 @@ test('D-114: /deriveProgressAnalysis exists, is gated the same way every '
   assert.match(route, /recordCost\(/);
 });
 
-test('D-118: handleSetupAdvisorTurn intercepts readyToBuild only for the '
-  + 'non-refining conversation and only before the wrap-up question has '
-  + 'already been asked — the refinement loop must never be intercepted',
-  () => {
+test('D-118/D-119: handleSetupAdvisorTurn appends the wrap-up question '
+  + 'only for the non-refining conversation, the first time it becomes '
+  + 'ready — the refinement loop must never be intercepted', () => {
     const start = indexSource.indexOf('async function handleSetupAdvisorTurn');
     assert.ok(start > -1, 'expected handleSetupAdvisorTurn to exist');
     const end = indexSource.indexOf('\n}\n', start);
     const body = indexSource.substring(start, end === -1 ? indexSource.length : end);
 
     assert.match(body, /!existingCategories/);
-    assert.match(body, /!hasAskedWrapUpQuestion\(conversationHistory\)/);
     assert.match(body, /SETUP_WRAP_UP_QUESTION/);
     assert.match(body, /readyToBuild\s*=\s*false/);
   });
+
+test('D-119: once the wrap-up question already appears in history, the '
+  + 'very next turn forces readyToBuild true deterministically — never '
+  + 'left to the model\'s own judgment that turn. Regression test for a '
+  + 'defect found live: "when I responded, then Mira dropped straight '
+  + 'back into yet another question" instead of closing', () => {
+  const start = indexSource.indexOf('async function handleSetupAdvisorTurn');
+  const end = indexSource.indexOf('\n}\n', start);
+  const body = indexSource.substring(start, end === -1 ? indexSource.length : end);
+
+  const wrapUpIdx = body.indexOf('wrapUpAlreadyAsked');
+  assert.ok(wrapUpIdx > -1, 'expected a wrapUpAlreadyAsked computation');
+  assert.match(body, /hasAskedWrapUpQuestion\(conversationHistory\)/);
+
+  const ifIdx = body.indexOf('if (wrapUpAlreadyAsked)');
+  assert.ok(ifIdx > -1);
+  const forcedTrueIdx = body.indexOf('readyToBuild = true', ifIdx);
+  assert.ok(forcedTrueIdx > ifIdx && forcedTrueIdx < ifIdx + 60,
+    'readyToBuild = true must be forced immediately inside the wrapUpAlreadyAsked branch');
+});

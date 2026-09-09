@@ -174,6 +174,36 @@ test('D-118: the refining branch\'s ready instruction is unchanged — the '
   assert.match(systemText, /telling them you're about to refine it/);
 });
 
+test('D-119: once the wrap-up question already appears in history, the '
+  + 'prompt tells Mira this is definitely the last reply — never another '
+  + 'question — instead of the generic "gather enough material" '
+  + 'instruction. Regression test for a defect found live: the model\'s '
+  + 'own readyToBuild judgment on this exact turn asked another question '
+  + 'instead of closing', () => {
+  const { systemText } = buildSetupAdvisorTurnPrompt({
+    conversationHistory: [
+      { advisor: 'mira', text: `Family and craft matter most. ${SETUP_WRAP_UP_QUESTION}` },
+      { advisor: 'user', text: 'No, that covers it.' },
+    ],
+  });
+  assert.match(systemText, /definitely their last reply/);
+  assert.match(systemText, /never another question/);
+  assert.doesNotMatch(systemText, /summary of what you've actually heard/);
+});
+
+test('D-119: the "definitely last reply" instruction is never selected '
+  + 'for a refinement round, even if the wrap-up question happens to '
+  + 'appear in its history', () => {
+  const { systemText } = buildSetupAdvisorTurnPrompt({
+    existingCategories: [{ position: 1, name: 'Health' }],
+    conversationHistory: [
+      { advisor: 'mira', text: `Something. ${SETUP_WRAP_UP_QUESTION}` },
+    ],
+  });
+  assert.doesNotMatch(systemText, /definitely their last reply/);
+  assert.match(systemText, /telling them you're about to refine it/);
+});
+
 test('D-118: hasAskedWrapUpQuestion is false for empty or unrelated history',
   () => {
     assert.equal(hasAskedWrapUpQuestion([]), false);

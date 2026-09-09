@@ -255,13 +255,29 @@ export function buildSetupAdvisorTurnPrompt({
   // instruction only ever needs to describe the summary half; the question
   // itself is never left to the model to phrase, the same deterministic
   // discipline D-092's pacing reassurance already established.
+  // D-119: found live — the model's own readyToBuild judgment on the turn
+  // right after the wrap-up question was answered was not reliable; it
+  // asked another follow-up question instead of closing, the exact defect
+  // this branch exists to make impossible. index.js also forces
+  // readyToBuild true deterministically once hasAskedWrapUpQuestion is
+  // true, regardless of what the model returns — this instruction just
+  // keeps the model's own reply text aligned with that forced outcome
+  // instead of fighting it (a mismatched question rendered as if it were
+  // the closing line).
+  const wrapUpAlreadyAsked = !refining && hasAskedWrapUpQuestion(conversationHistory);
   const readyInstruction = refining
     ? `Once you understand what to adjust, set readyToBuild to true and let reply be a brief, warm ` +
       `closing line telling them you're about to refine it — never a question in that case.`
-    : `After a few exchanges — enough to have real, specific material, but not so many it drags — you ` +
-      `will have enough to build a pyramid that is actually theirs. When you do, set readyToBuild to ` +
-      `true and let reply be a brief, warm summary of what you've actually heard from them — their own ` +
-      `specifics, in your own words, not a generic acknowledgment — never a question in that case.`;
+    : wrapUpAlreadyAsked
+      ? `This is definitely their last reply before you build the pyramid — you already asked "is ` +
+        `there anything else you'd like to express" and they just answered it. Set readyToBuild to ` +
+        `true and let reply be a brief, warm closing line, incorporating what they just added — ` +
+        `never another question, never a further follow-up.`
+      : `After a few exchanges — enough to have real, specific material, but not so many it drags — ` +
+        `you will have enough to build a pyramid that is actually theirs. When you do, set ` +
+        `readyToBuild to true and let reply be a brief, warm summary of what you've actually heard ` +
+        `from them — their own specifics, in your own words, not a generic acknowledgment — never a ` +
+        `question in that case.`;
 
   const systemText =
     `You are Mira, The Heart — having a one-on-one conversation with someone, ` +
