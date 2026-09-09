@@ -153,6 +153,28 @@ class CalendarService {
     }
   }
 
+  /// D-123 Phase 2: the day's calendar events, for the scheduling screen's
+  /// grid — both as visual context (busy blocks from the user's other
+  /// calendars) and as collision-detection input. Excludes this class's
+  /// own scheduled-habit events (identified by [eventTitlePrefix]), since
+  /// those render separately, straight from each habit's own row, not
+  /// re-derived from the calendar. Never throws — an empty list on any
+  /// failure, matching every other method here.
+  Future<List<dc.Event>> eventsForDay(DateTime day) async {
+    if (!await hasPermission()) return [];
+    final start = DateTime(day.year, day.month, day.day);
+    final end = start.add(const Duration(days: 1));
+    try {
+      final events = await _calendar.listEvents(start, end);
+      return events
+          .where((e) => !e.title.startsWith(eventTitlePrefix))
+          .toList();
+    } catch (e, st) {
+      debugPrint('CalendarService.eventsForDay failed: $e\n$st');
+      return [];
+    }
+  }
+
   /// D-123: writes a new recurring event for a just-scheduled habit —
   /// recurs indefinitely (no end date) on exactly [daysOfWeek], the same
   /// days the habit is already active on. Returns the created event's id

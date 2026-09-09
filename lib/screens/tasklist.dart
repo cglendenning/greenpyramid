@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:life_ops/widgets/category_edit_sheet.dart';
 import 'package:life_ops/widgets/navbar.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:life_ops/screens/schedule_habits_screen.dart';
 
 class TaskList extends StatefulWidget {
   final String category;
@@ -180,6 +181,20 @@ class _TaskListState extends State<TaskList> {
                       navigateToEditTaskList();
                     },
                     child: const Text('Edit Task List >'),
+                  ),
+                  const SizedBox(height: 10),
+                  // D-123: schedule a habit's recurring time — a separate
+                  // screen since it works across every category's habits
+                  // at once, not just this one.
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const ScheduleHabitsScreen()),
+                      );
+                    },
+                    child: const Text('Schedule Habits >'),
                   ),
                   const SizedBox(height: 30),
                   SizedBox(
