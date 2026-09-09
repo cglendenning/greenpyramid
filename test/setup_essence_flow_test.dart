@@ -124,26 +124,82 @@ void main() {
     expect(body, contains('_scrollToBottom()'));
   });
 
-  test('D-106: essence-deepening always speaks as Mira, never rotating '
-      'through the other three advisors — the owner\'s explicit call: '
-      '"multiple advisors should only be in the talk to the council '
-      'section... that can be a bit confusing during setup too"', () {
+  test('D-106: the opening conversation (openingRound/refining) still '
+      'always speaks as Mira — D-109 only reverses D-106 for '
+      'essence-deepening specifically, not the opening conversation', () {
+    final start = source.indexOf('Future<void> _sendOpeningReply()');
+    expect(start, greaterThan(-1));
+    final end = source.indexOf('\n  }', start);
+    expect(source.substring(start, end), contains('_runMiraTurn()'));
+  });
+
+  test('D-109: essence-deepening rotates through session.rotationOrder — '
+      'one advisor per category, varying across the three — reversing '
+      'D-106\'s "always Mira" for this specific case. The owner\'s '
+      'follow-up call, once D-105/D-108 fixed the actual context-leak '
+      'that made advisor variety look disjointed: "I would like to '
+      'randomize the council members that answer the various '
+      'questions... it gives this idea that there\'s different '
+      'personalities within the application"', () {
     final start = source.indexOf('Future<void> _askAboutCurrentFoundational()');
     expect(start, greaterThan(-1));
     final end = source.indexOf('\n  }', start);
     final body = source.substring(start, end);
 
-    expect(body, contains("advisorKey: 'mira'"));
-    expect(body, isNot(contains('session.rotationOrder[_essenceIndex')),
-        reason: 'the old per-category rotation must not reappear');
+    expect(body, contains('session.rotationOrder[_essenceIndex'));
+    expect(body, isNot(contains("advisorKey: 'mira'")),
+        reason: 'D-106\'s hardcoded Mira must not reappear here');
   });
 
-  test('D-106: the essence-phase typing indicator always shows Mira, '
-      'matching the advisor that will actually reply', () {
+  test('D-109: the essence-phase typing indicator matches the rotation '
+      'pick, not a hardcoded Mira', () {
     final start = source.indexOf('Widget _buildEssences()');
     final end = source.indexOf('\n  void _editHabit', start);
     final body = source.substring(start, end);
 
-    expect(body, contains("typingAdvisorKey: _busy ? 'mira' : null"));
+    expect(body, contains('_session!.rotationOrder[_essenceIndex'));
+  });
+
+  test('D-108: essence-deepening\'s kickoff call passes an explicit '
+      'empty conversationHistoryOverride — found live: without this, '
+      'a category\'s kickoff call inherited the whole session\'s '
+      'history (D-043, one continuous session), so "respond to what '
+      'was just said" reacted to the previous category\'s leftover '
+      'closing message instead of asking a fresh, directed question '
+      'about the new category', () {
+    final start = source.indexOf('Future<void> _askAboutCurrentFoundational()');
+    final end = source.indexOf('\n  }', start);
+    final body = source.substring(start, end);
+
+    expect(body, contains('conversationHistoryOverride: const []'));
+  });
+
+  test('D-110: a fixed acknowledgment is appended once a reply qualifies, '
+      'before the "save this" button — found live: the button appearing '
+      'with no acknowledgment at all was a hard, jarring cut straight '
+      'from "you typed something" to "here\'s a button"', () {
+    final start = source.indexOf('Future<void> _sendEssenceReply()');
+    expect(start, greaterThan(-1));
+    final end = source.indexOf('\n  }', start);
+    final body = source.substring(start, end);
+
+    expect(body, contains('_essenceAcknowledged'));
+    expect(body, contains('ResonanceService.qualifies(text)'));
+    expect(body, contains('appendAdvisorMessage('));
+  });
+
+  test('D-110: the acknowledgment fires at most once per category — reset '
+      'alongside _essenceStepStartIndex, which is captured fresh at the '
+      'start of every category\'s own exchange', () {
+    final start = source.indexOf('Future<void> _askAboutCurrentFoundational()');
+    final end = source.indexOf('\n  }', start);
+    final body = source.substring(start, end);
+
+    expect(body, contains('_essenceAcknowledged = false'));
+  });
+
+  test('D-110: the acknowledgment text is fixed, zero-cost copy — no new '
+      'model call for a purely transitional line', () {
+    expect(source, contains('_essenceAcknowledgment ='));
   });
 }

@@ -95,12 +95,23 @@ export function buildAdvisorTurnPrompt({
   ].filter(Boolean).join('\n');
 
   const safeHistory = (conversationHistory || []).slice(-30);
+  // D-108: found live — with no history, the system prompt's "respond to
+  // what was just said" has nothing to anchor to, and an empty history
+  // was previously indistinguishable from "say something in this
+  // ongoing conversation." Explicit framing here, not a systemText
+  // change (D-041: the system block must stay a static, cacheable
+  // per-advisor prefix — this varies per call, so it belongs in the
+  // user message, the same discipline D-100's convergence nudge and
+  // D-095's pyramid context already follow).
   const historyText = safeHistory.length > 0
     ? '\n\nCHAT SO FAR:\n' + safeHistory.map(m => {
         const name = m.advisor === 'user' ? 'You' : (ADVISORS[m.advisor]?.name || String(m.advisor));
         return `${name}: ${sanitize(m.text, 500)}`;
       }).join('\n')
-    : '';
+    : '\n\nThis is the start of a fresh conversation about this category specifically — nothing ' +
+      'said earlier, about a different category, is relevant here. Ask a genuine, warm, directed ' +
+      'question about this category that helps them articulate why it matters to them personally. ' +
+      'Do not react to or continue any other thread — this is an opening question, not a reply.';
 
   const userMessage = `USER CONTEXT:\n${contextLines}${historyText}\n\n${advisor.name}:`;
 

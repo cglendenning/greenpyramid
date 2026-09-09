@@ -75,6 +75,50 @@ test('user-supplied injection characters in category context cannot break '
   assert.doesNotMatch(userMessage, /"/);
 });
 
+test('D-108: with no conversationHistory, the user message frames this as '
+  + 'an opening question, not a reply — found live: essence-deepening\'s '
+  + 'kickoff call for category 2 reacted to category 1\'s leftover '
+  + 'closing message instead of asking a fresh question about category '
+  + '2, because "respond to what was just said" had nothing else to '
+  + 'anchor to once history was empty', () => {
+  const { userMessage } = buildAdvisorTurnPrompt({
+    advisorKey: 'mira',
+    categoryContext: { categoryName: 'Fitness Mindset' },
+    conversationHistory: [],
+  });
+  assert.match(userMessage, /start of a fresh conversation/i);
+  assert.match(userMessage, /ask a genuine, warm, directed question/i);
+  assert.doesNotMatch(userMessage, /CHAT SO FAR/);
+});
+
+test('D-108: with real conversationHistory, the fresh-start framing does '
+  + 'not appear — this only ever applies to a genuinely empty history',
+  () => {
+  const { userMessage } = buildAdvisorTurnPrompt({
+    advisorKey: 'mira',
+    categoryContext: { categoryName: 'Fitness Mindset' },
+    conversationHistory: [{ advisor: 'user', text: 'I care about this' }],
+  });
+  assert.doesNotMatch(userMessage, /start of a fresh conversation/i);
+  assert.match(userMessage, /CHAT SO FAR/);
+});
+
+test('D-108: the fresh-start framing lives in the user message, never the '
+  + 'system prompt — the system prompt stays identical regardless of '
+  + 'conversationHistory, preserving D-041\'s caching', () => {
+  const withHistory = buildAdvisorTurnPrompt({
+    advisorKey: 'eli',
+    categoryContext: { categoryName: 'Health' },
+    conversationHistory: [{ advisor: 'user', text: 'hello' }],
+  });
+  const withoutHistory = buildAdvisorTurnPrompt({
+    advisorKey: 'eli',
+    categoryContext: { categoryName: 'Health' },
+    conversationHistory: [],
+  });
+  assert.equal(withHistory.systemText, withoutHistory.systemText);
+});
+
 test('extractReplyText: finds the text block even when it is not first — '
   + 'the live bug where Opus 5 returned a thinking block at content[0]', () => {
   const content = [

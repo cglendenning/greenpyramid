@@ -134,6 +134,16 @@ class CouncilService {
     int? categoryTier,
     String? priorEssence,
     List<Map<String, dynamic>>? pyramidContext,
+    // D-108: overrides the default "the whole session so far" history.
+    // Needed because essence-deepening (D-009 step 3) shares one session
+    // across all three foundational categories (D-043) — session.messages
+    // for category 2's kickoff call already contains category 1's entire
+    // exchange, so "respond to what was just said" reacted to category
+    // 1's closing reply instead of asking a fresh question about category
+    // 2. Every other caller (CouncilScreen, GeneralCouncilScreen) leaves
+    // this null and keeps the existing full-history behavior, which is
+    // already correct for them.
+    List<Map<String, String>>? conversationHistoryOverride,
   }) async {
     await AiGuard.instance.acquire();
 
@@ -151,9 +161,10 @@ class CouncilService {
         if (priorEssence != null)
           'priorEssence': AiGuard.sanitizeField(priorEssence, maxChars: 400),
       },
-      conversationHistory: session.messages
-          .map((m) => {'advisor': m.advisorKey, 'text': m.text})
-          .toList(),
+      conversationHistory: conversationHistoryOverride ??
+          session.messages
+              .map((m) => {'advisor': m.advisorKey, 'text': m.text})
+              .toList(),
       isSetup: isSetup,
       sessionId: session.sessionId,
       pyramidContext: pyramidContext

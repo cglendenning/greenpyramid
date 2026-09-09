@@ -25,6 +25,7 @@ class _FakeCouncilClient extends CouncilClient {
   AdvisorTurnResult response = const AdvisorTurnResult(
       reply: 'a reply', inputTokens: 10, outputTokens: 5);
   Map<String, dynamic>? lastCategoryContext;
+  List<Map<String, String>>? lastConversationHistory;
 
   List<Map<String, String>>? lastExistingCategories;
   List<Map<String, String?>>? lastPyramidContext;
@@ -48,6 +49,7 @@ class _FakeCouncilClient extends CouncilClient {
     List<Map<String, String?>>? pyramidContext,
   }) async {
     lastCategoryContext = categoryContext;
+    lastConversationHistory = conversationHistory;
     lastExistingCategories = existingCategories;
     lastPyramidContext = pyramidContext;
     lastSoloSetup = soloSetup;
@@ -186,6 +188,45 @@ void main() {
       expect(active?.messages.length, 1);
       expect(active?.totalInputTokens, 10);
       expect(active?.totalOutputTokens, 5);
+    });
+
+    test('D-108: with no override, conversationHistory is derived from '
+        'session.messages, as before', () async {
+      final client = _FakeCouncilClient();
+      final svc = buildService(client: client);
+      final session = await svc.createSession(
+          type: BoardSessionType.category, categoryId: 1);
+
+      await svc.runAdvisorTurn(
+          session: session, advisorKey: 'mira', categoryName: 'Health');
+
+      expect(client.lastConversationHistory, isEmpty,
+          reason: 'a freshly-created session has no prior messages');
+    });
+
+    test('D-108: conversationHistoryOverride replaces the derived history '
+        'entirely — this is what lets essence-deepening ask a fresh '
+        'question about a new category instead of reacting to another '
+        'category\'s leftover closing message, since setup shares one '
+        'session across all three foundational categories (D-043)',
+        () async {
+      final client = _FakeCouncilClient();
+      final svc = buildService(client: client);
+      var session = await svc.createSession(type: BoardSessionType.setup);
+      await svc.appendUserMessage(session.sessionId, 'category 1 stuff');
+      session = (await svc.getActiveSession(type: BoardSessionType.setup))!;
+      expect(session.messages, isNotEmpty);
+
+      await svc.runAdvisorTurn(
+        session: session,
+        advisorKey: 'kenji',
+        categoryName: 'Fitness Mindset',
+        conversationHistoryOverride: const [],
+      );
+
+      expect(client.lastConversationHistory, isEmpty,
+          reason: 'the override must win over the session\'s real, '
+              'non-empty message history');
     });
 
     test('D-095: runAdvisorTurn passes pyramidContext through, sanitized '

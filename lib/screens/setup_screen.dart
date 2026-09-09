@@ -75,6 +75,16 @@ class _SetupScreenState extends State<SetupScreen> {
   static const _refinementPrompt =
       "What didn't feel right about this? Tell me more, and I'll refine it.";
 
+  // D-110: fixed, zero-cost — no model call, same rationale as
+  // _refinementPrompt above. Appended once a reply actually qualifies
+  // (ResonanceService.qualifies), before the "save this" button appears
+  // — found live: the button appearing with no acknowledgment at all
+  // read as jarring, a hard cut from "you typed something" straight to
+  // "here's a button," with nothing in between confirming what was said
+  // actually landed.
+  static const _essenceAcknowledgment =
+      "Got it — that's exactly what I needed. Ready to lock this in?";
+
   // D-051: the pyramid is fixed at 3/2/1 — shared by _buildCategories'
   // tier headers and _changeTier's tier-choice sheet, so the two never
   // drift into different ideas of which positions belong to which tier.
@@ -115,6 +125,11 @@ class _SetupScreenState extends State<SetupScreen> {
   // show only this category's Q&A rather than the whole session (see its
   // own doc comment for what that used to leak into view).
   int? _essenceStepStartIndex;
+  // D-110: whether this category's fixed acknowledgment has already been
+  // appended — reset per category (_askAboutCurrentFoundational) so it
+  // fires at most once, the first time a reply qualifies, not on every
+  // subsequent message the person sends.
+  bool _essenceAcknowledged = false;
   final Map<String, List<String>> _habitsByCategory = {};
   Set<String> _habitCategoriesLoading = {};
 
@@ -545,20 +560,29 @@ class _SetupScreenState extends State<SetupScreen> {
       // category's own exchange starts at, so _buildEssences can scope
       // the visible transcript to just this Q&A.
       _essenceStepStartIndex = session.messages.length;
-      // D-106: always Mira — never session.rotationOrder's shuffled pick.
-      // Found live: a different advisor appearing partway through
-      // essence-deepening (still nominally "one continuous setup
-      // conversation," D-043) read as a confusing non-sequitur switch,
-      // on top of the leftover-context defect above. The owner's
-      // decision: multiple advisors belong to the general Council
-      // conversation (D-091) and post-setup re-clarification (D-061),
-      // once there's real data for a council of voices to be useful
-      // against — setup itself stays one continuous voice throughout,
-      // matching D-090's opening conversation.
+      // D-110: reset per category — see the field's own doc comment.
+      _essenceAcknowledged = false;
+      // D-109: reverses D-106 — one advisor per category, varying across
+      // the three (session.rotationOrder, already shuffled per session,
+      // D-028), not always Mira. D-106's "always Mira" treated advisor
+      // variety itself as the source of confusion; the owner's live
+      // experience of D-105's fix (each category now a clean, bounded
+      // exchange) showed the real cause was D-108's context-leak — a
+      // different advisor's reply, sitting right after another advisor's
+      // leftover closing line from a different category, read as a
+      // random interjection mid-thread. With that fixed, a different
+      // single voice per category (never more than one per category's
+      // own exchange — that was never the actual problem) reads as
+      // "different personalities," not disjointed.
       await CouncilService.instance.runAdvisorTurn(
         session: session,
-        advisorKey: 'mira',
+        advisorKey:
+            session.rotationOrder[_essenceIndex % session.rotationOrder.length],
         categoryName: step.categoryName,
+        // D-108: no cross-category context — see runAdvisorTurn's own
+        // doc comment for why session.messages (the default) was wrong
+        // for this specific call.
+        conversationHistoryOverride: const [],
       );
       final refreshed = await CouncilService.instance
           .getActiveSession(type: BoardSessionType.setup);
@@ -577,6 +601,20 @@ class _SetupScreenState extends State<SetupScreen> {
     setState(() => _busy = true);
     try {
       await CouncilService.instance.appendUserMessage(session.sessionId, text);
+      // D-110: a fixed, zero-cost acknowledgment — never a new model
+      // call — once the reply actually qualifies, before the "save
+      // this" button appears. Found live: the button appearing with no
+      // acknowledgment at all was a hard cut from "you typed something"
+      // straight to "here's a button," nothing confirming what was said
+      // actually landed. Fires at most once per category.
+      if (!_essenceAcknowledged && ResonanceService.qualifies(text)) {
+        _essenceAcknowledged = true;
+        await CouncilService.instance.appendAdvisorMessage(
+          session.sessionId,
+          session.rotationOrder[_essenceIndex % session.rotationOrder.length],
+          _essenceAcknowledgment,
+        );
+      }
       final refreshed = await CouncilService.instance
           .getActiveSession(type: BoardSessionType.setup);
       setState(() => _session = refreshed ?? session);
@@ -1024,9 +1062,11 @@ class _SetupScreenState extends State<SetupScreen> {
         ),
         Expanded(child: _buildTranscript(
           stepMessages,
-          // D-106: always 'mira' — matches _askAboutCurrentFoundational,
-          // which no longer rotates through session.rotationOrder.
-          typingAdvisorKey: _busy ? 'mira' : null,
+          // D-109: matches _askAboutCurrentFoundational's per-category
+          // rotation pick, not a hardcoded 'mira'.
+          typingAdvisorKey: (_busy && _session != null)
+              ? _session!.rotationOrder[_essenceIndex % _session!.rotationOrder.length]
+              : null,
         )),
         if (userMessages.isNotEmpty)
           Padding(
