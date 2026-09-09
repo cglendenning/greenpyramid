@@ -160,9 +160,20 @@ class EntitlementService {
   Future<void> markSubscribedLocally() => _db.setAccountEntitlement(entitlement: 'subscribed');
 
   Future<bool> isEntitled() async {
-    final account = await _db.getAccountState();
-    final entitlement = account[DatabaseHelper.columnEntitlement] as String?;
+    final entitlement = await currentLocalEntitlement();
     return entitlement == 'trialing' || entitlement == 'subscribed';
+  }
+
+  /// D-115: the raw local entitlement string — 'trialing', 'subscribed',
+  /// 'lapsed', or 'pre_trial' — for a caller that needs to *display* the
+  /// account's state (the settings screen's subscription panel copy),
+  /// not gate a feature on it. [isEntitled] remains the gate; keeping the
+  /// raw DB column read here, not in `lib/screens/`, is what lets D-015's
+  /// "the tracker never checks entitlement" test scan screen files for
+  /// `columnEntitlement` and mean it.
+  Future<String?> currentLocalEntitlement() async {
+    final account = await _db.getAccountState();
+    return account[DatabaseHelper.columnEntitlement] as String?;
   }
 
   Future<void> _applyServerResult(Map<String, dynamic> result) async {

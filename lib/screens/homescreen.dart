@@ -175,27 +175,6 @@ class _HomeScreen extends State<HomeScreenWidget> {
 
   @override
   Widget build(BuildContext context) {
-    service.scheduleDailyNotification(
-        id: 0,
-        title: 'Morning Review',
-        hour: 9,
-        minute: 00,
-        payload: '/morning');
-
-    service.scheduleDailyNotification(
-        id: 1,
-        title: 'Afternoon Review',
-        hour: 12,
-        minute: 00,
-        payload: '/afternoon');
-
-    service.scheduleDailyNotification(
-        id: 2,
-        title: 'Evening Review',
-        hour: 20,
-        minute: 00,
-        payload: '/evening');
-
     return SafeArea(
         child: Scaffold(
             appBar: const CustomAppBar(currentScreen: 'homescreen'),

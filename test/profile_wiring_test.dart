@@ -29,15 +29,20 @@ void main() {
   });
 
   test(
-      'D-114/D-016: both AI actions are gated by EntitlementService before '
-      'the call, routing an unentitled account to the paywall first — the '
-      'same pattern every other non-setup AI surface uses', () {
+      'D-114/D-016: both AI actions are gated by the shared ensureEntitled '
+      'gate before the call, routing an unentitled account to the paywall '
+      'first — the same pattern every other non-setup AI surface uses. '
+      'Uses the shared entitlement_gate.dart helper rather than its own '
+      'private copy — found live during this same change that this '
+      'screen had drifted into duplicating that exact function', () {
     final source = File('lib/screens/profile.dart').readAsStringSync();
-    expect(source, contains('EntitlementService.instance.isEntitled()'));
+    expect(source, contains("import 'package:life_ops/services/entitlement_gate.dart';"));
     expect(source, contains('PaywallScreen('));
+    expect(source, isNot(contains('Future<bool> _ensureEntitled')),
+        reason: 'must use the shared ensureEntitled(), not a private duplicate');
     final regenIdx = source.indexOf('_regenerateVisionStatement()');
     final analysisIdx = source.indexOf('_generateProgressAnalysis()');
-    final ensureIdx = source.indexOf('_ensureEntitled');
+    final ensureIdx = source.indexOf('ensureEntitled(context');
     expect(regenIdx, greaterThan(-1));
     expect(analysisIdx, greaterThan(-1));
     expect(ensureIdx, greaterThan(-1));

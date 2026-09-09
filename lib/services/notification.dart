@@ -130,124 +130,72 @@ class LocalNotificationService {
     return messages[random.nextInt(messages.length)];
   }
 
-  // Generate a random question from the full pool (for testing)
+  static const int testNotificationId = 999999;
 
-  // Schedule test notification every 1 minute for 5 minutes
+  /// D-115: schedules a single local test notification 1 minute from
+  /// now, on the same delivery channel D-038's fallback notifications
+  /// use — lets the user confirm OS-level notification permission and
+  /// delivery actually work, mirroring Kansei's identical settings-screen
+  /// feature. Replaces the previous version's five-notification burst
+  /// that routed to '/morning', '/afternoon', '/evening' — screens D-083
+  /// deleted; those routes no longer exist in this app.
   Future<void> scheduleTestNotification() async {
-    try {
-      final random = Random();
-      // Cancel any existing test notifications
-      await _localNotificationService.cancel(999);
-      await _localNotificationService.cancel(998);
-      await _localNotificationService.cancel(997);
-      await _localNotificationService.cancel(996);
-      await _localNotificationService.cancel(995);
-      // Available routes for random selection
-      List<String> routes = ['/morning', '/afternoon', '/evening'];
-      // Schedule multiple notifications at 1-minute intervals
-      for (int i = 0; i < 5; i++) {
-        // Select route and corresponding question pool
-        int routeIndex = random.nextInt(routes.length);
-        String selectedRoute = routes[routeIndex];
-
-        // Get appropriate question based on route
-        String timeAppropriateQuestion =
-            _generateNotificationMessage(routeIndex);
-        // Use 1-minute intervals
-        final scheduledTime =
-            tz.TZDateTime.now(tz.local).add(Duration(minutes: i + 1));
-        // Create iOS details with the question as the body
-        final DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
-          sound: 'doublebeep.aiff',
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-        );
-        const AndroidNotificationDetails androidNotificationDetails =
-            AndroidNotificationDetails(
-          'green_pyramid_channel',
-          'Green Pyramid Notifications',
-          channelDescription: 'Notifications for Green Pyramid app',
-          importance: Importance.max,
-          priority: Priority.max,
-          sound: RawResourceAndroidNotificationSound('doublebeep'),
-          playSound: true,
-          enableVibration: true,
-          enableLights: true,
-          showWhen: true,
-          autoCancel: false,
-          ongoing: false,
-          channelShowBadge: true,
-          icon: '@mipmap/launcher_icon',
-          largeIcon: DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
-          category: AndroidNotificationCategory.reminder,
-          visibility: NotificationVisibility.public,
-          timeoutAfter: 30000,
-        );
-        final NotificationDetails details = NotificationDetails(
-          android: androidNotificationDetails,
-          iOS: iosDetails,
-        );
-        try {
-          await _localNotificationService.zonedSchedule(
-            999 - i, // Use IDs 999, 998, 997, 996, 995
-            'Green Pyramid',
-            timeAppropriateQuestion,
-            scheduledTime,
-            details,
-            androidScheduleMode: AndroidScheduleMode.exact,
-            payload:
-                selectedRoute, // Route to morning, afternoon, or evening based on question
-            matchDateTimeComponents: null,
-          );
-          if (kDebugMode) {
-            print(
-                '✅ Test notification  \\${999 - i} scheduled for \\${scheduledTime.toString()}');
-          }
-          if (kDebugMode) {
-            print('  Route: \\${selectedRoute}');
-          }
-          if (kDebugMode) {
-            print('  Question: \\${timeAppropriateQuestion}');
-          }
-          if (kDebugMode) {
-            print('  ---');
-          }
-        } catch (e) {
-          if (kDebugMode) {
-            print('❌ Failed to schedule notification \\${999 - i}: $e');
-          }
-        }
-      }
-      // Wait a moment then verify scheduled notifications
-      await Future.delayed(Duration(seconds: 2));
-      final pending =
-          await _localNotificationService.pendingNotificationRequests();
-      if (kDebugMode) {
-        print('📋 Total pending notifications: \\${pending.length}');
-      }
-      for (var notification in pending) {
-        if (kDebugMode) {
-          print('  - ID: \\${notification.id}, Title: \\${notification.title}');
-        }
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error scheduling test notifications: $e');
-      }
-    }
+    await _localNotificationService.cancel(testNotificationId);
+    final scheduledTime =
+        tz.TZDateTime.now(tz.local).add(const Duration(minutes: 1));
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      sound: 'doublebeep.aiff',
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    const AndroidNotificationDetails androidNotificationDetails =
+        AndroidNotificationDetails(
+      'green_pyramid_channel',
+      'Green Pyramid Notifications',
+      channelDescription: 'Notifications for Green Pyramid app',
+      importance: Importance.max,
+      priority: Priority.max,
+      sound: RawResourceAndroidNotificationSound('doublebeep'),
+      playSound: true,
+      enableVibration: true,
+      enableLights: true,
+      showWhen: true,
+      autoCancel: false,
+      ongoing: false,
+      channelShowBadge: true,
+      icon: '@mipmap/launcher_icon',
+      largeIcon: DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
+      category: AndroidNotificationCategory.reminder,
+      visibility: NotificationVisibility.public,
+      timeoutAfter: 30000,
+    );
+    const NotificationDetails details = NotificationDetails(
+      android: androidNotificationDetails,
+      iOS: iosDetails,
+    );
+    await _localNotificationService.zonedSchedule(
+      testNotificationId,
+      'Green Pyramid',
+      "Notifications are working — this is what a reminder from the "
+          'Council looks like.',
+      scheduledTime,
+      details,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      payload: '/',
+      matchDateTimeComponents: null,
+    );
   }
 
-  // Cancel test notification
-  Future<void> cancelTestNotification() async {
-    await _localNotificationService.cancel(999);
-    await _localNotificationService.cancel(998);
-    await _localNotificationService.cancel(997);
-    await _localNotificationService.cancel(996);
-    await _localNotificationService.cancel(995);
-    if (kDebugMode) {
-      print('All test notifications cancelled');
-    }
+  Future<void> cancelTestNotification() =>
+      _localNotificationService.cancel(testNotificationId);
+
+  /// Returns true if the test notification is still scheduled (hasn't
+  /// fired) — mirrors Kansei's identical `isTestNotificationPending`.
+  Future<bool> isTestNotificationPending() async {
+    final pending =
+        await _localNotificationService.pendingNotificationRequests();
+    return pending.any((n) => n.id == testNotificationId);
   }
 
   Future<void> intialize() async {

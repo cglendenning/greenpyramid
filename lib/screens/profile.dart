@@ -7,6 +7,7 @@ import 'package:life_ops/services/auth_service.dart';
 import 'package:life_ops/services/entitlement_service.dart';
 import 'package:life_ops/services/profile_service.dart';
 import 'package:life_ops/services/council_client.dart';
+import 'package:life_ops/services/entitlement_gate.dart';
 import 'package:life_ops/screens/paywall_screen.dart';
 
 /// D-114: both AI features on this screen — regenerating the vision
@@ -62,19 +63,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) setState(() => visionStatement = vision);
   }
 
-  /// D-016: the same client-side gate `CouncilCategoryPicker` already
-  /// uses — checked here, once, ahead of either AI action below, rather
-  /// than duplicated in each.
-  Future<bool> _ensureEntitled(String reason) async {
-    if (await EntitlementService.instance.isEntitled()) return true;
-    if (!mounted) return false;
-    final subscribed = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(builder: (context) => PaywallScreen(reason: reason)),
-    );
-    return subscribed == true;
-  }
-
   /// D-114: found live — this screen's local entitlement cache can say
   /// "trialing"/"subscribed" while the server's own record (Firestore's
   /// `users/{uid}/profile/main`) disagrees, so [_ensureEntitled] passes
@@ -102,7 +90,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _regenerateVisionStatement() async {
-    if (!await _ensureEntitled('Regenerate your vision statement')) return;
+    if (!await ensureEntitled(context, reason: 'Regenerate your vision statement')) return;
     if (!mounted) return;
     setState(() {
       isRegenerating = true;
@@ -157,7 +145,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _generateProgressAnalysis() async {
-    if (!await _ensureEntitled('See your 30-day progress analysis')) return;
+    if (!await ensureEntitled(context, reason: 'See your 30-day progress analysis')) return;
     if (!mounted) return;
     setState(() {
       isLoadingAnalysis = true;

@@ -1,15 +1,19 @@
-import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:life_ops/services/notification.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:life_ops/screens/council_category_picker.dart';
 import 'package:life_ops/screens/cancel_subscription_screen.dart';
 import 'package:life_ops/screens/domain_map_screen.dart';
+import 'package:life_ops/screens/paywall_screen.dart';
 import 'package:life_ops/services/calendar_service.dart';
 import 'package:life_ops/services/entitlement_gate.dart';
+import 'package:life_ops/services/entitlement_service.dart';
+import 'package:life_ops/services/notification.dart';
+import 'package:life_ops/services/subscription_panel_logic.dart';
+import 'package:life_ops/services/subscription_service.dart';
+import 'package:life_ops/theme/app_colors.dart';
 import 'dart:io' show Platform;
 
 Future<void> showPreviewWarningDialog(BuildContext context) async {
@@ -18,7 +22,9 @@ Future<void> showPreviewWarningDialog(BuildContext context) async {
   return showDialog(
     context: context,
     builder: (context) => AlertDialog(
-      title: const Text('How to Show Notification Previews'),
+      backgroundColor: AppColors.surface,
+      title: const Text('How to Show Notification Previews',
+          style: TextStyle(color: AppColors.textPrimary)),
       content: SizedBox(
         width: 350,
         child: SingleChildScrollView(
@@ -27,11 +33,14 @@ Future<void> showPreviewWarningDialog(BuildContext context) async {
             children: [
               const Text(
                 'To see the full content of notifications, you must set "Show Previews" to "Always" for Green Pyramid notifications.\n',
-                style: TextStyle(fontSize: 16),
+                style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
               ),
               const Text(
                 'Step 1:',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: AppColors.textPrimary),
               ),
               const SizedBox(height: 4),
               Image.asset(
@@ -43,12 +52,15 @@ Future<void> showPreviewWarningDialog(BuildContext context) async {
               const SizedBox(height: 8),
               const Text(
                 'Open your iPhone Settings, scroll down and tap on "Green Pyramid", then tap "Notifications".',
-                style: TextStyle(fontSize: 14),
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 16),
               const Text(
                 'Step 2:',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                    color: AppColors.textPrimary),
               ),
               const SizedBox(height: 4),
               Image.asset(
@@ -60,12 +72,15 @@ Future<void> showPreviewWarningDialog(BuildContext context) async {
               const SizedBox(height: 8),
               const Text(
                 'Scroll down to "Show Previews" and set it to "Always". This will allow notification content to be visible.',
-                style: TextStyle(fontSize: 14),
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 12),
               const Text(
                 'After making this change, return to the app and test notifications again.',
-                style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic),
+                style: TextStyle(
+                    fontSize: 14,
+                    fontStyle: FontStyle.italic,
+                    color: AppColors.textSecondary),
               ),
             ],
           ),
@@ -90,6 +105,12 @@ Future<void> showPreviewWarningDialog(BuildContext context) async {
   );
 }
 
+/// D-115: rebuilt on Kansei's settings-screen layout (`goal-executor`'s
+/// `settings_screen.dart`) — sectioned cards, an entitlement-aware
+/// subscription panel, and a "send test notification" control that
+/// mirrors Kansei's identical feature. Stays an embedded homescreen tab
+/// (D-024's `IndexedStack`), not a pushed screen, so it carries no
+/// `AppBar` of its own.
 class Settings extends StatefulWidget {
   const Settings();
 
@@ -98,179 +119,347 @@ class Settings extends StatefulWidget {
 }
 
 class _SettingsState extends State<Settings> {
-  DateFormat dowFmt = DateFormat('EEEE');
-  var todayFmt;
   late final LocalNotificationService lns;
 
   @override
   void initState() {
-    todayFmt = dowFmt.format(DateTime.now()).toString();
+    super.initState();
     lns = LocalNotificationService();
     lns.intialize();
-    super.initState();
   }
 
-  var allNotifications = const NotificationSwitch();
-
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
+
+  Widget _sectionLabel(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 10),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 1.4,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      );
+
+  Widget _card({required Widget child}) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.white.withOpacity(0.08)),
+        ),
+        child: child,
+      );
 
   @override
   Widget build(BuildContext context) {
     analytics.logEvent(name: 'settings');
-    double pyramidHeight = MediaQuery.of(context).size.width * 0.82;
-    SizedBox smallSpacer = SizedBox(height: pyramidHeight * .1);
-
-    var mainTextStyle = const TextStyle(
-        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
-
-    List<Map<String, String>> notifications = [];
-    notifications = [
-      {
-        'desc': 'Morning',
-        'timeofday': '9am',
-      },
-      {
-        'desc': 'Afternoon',
-        'timeofday': '12pm',
-      },
-      {
-        'desc': 'Evening',
-        'timeofday': '8pm',
-      },
-    ];
 
     return SafeArea(
-        child: Scaffold(
-            body: Center(
-                child: Column(children: [
-      smallSpacer,
-      Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: <Widget>[
-                Text(
-                  'Notifications',
-                  style: mainTextStyle,
-                )
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+          children: [
+            _sectionLabel('SUBSCRIPTION'),
+            _card(child: const _SubscriptionPanel()),
+            const SizedBox(height: 28),
 
-                /* Re-enable this once I store notifications in the db
+            _sectionLabel('NOTIFICATIONS'),
+            _card(child: _TestNotificationButton(lns: lns)),
+            if (Platform.isIOS) ...[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  onPressed: () => showPreviewWarningDialog(context),
+                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                  child: const Text('Adjust Previews'),
+                ),
+              ),
+            ],
+            const SizedBox(height: 28),
 
-                            Column(
-                                children: <Widget>[
-                                  Container(
-                                      width: (screenWidth/2) - 10,
-                                      height: 100,
-                                      // color: Colors.blue,
-                                    alignment: Alignment.centerLeft,
-                                    child: Text('Notifications')
-                                  ),
-                                ]),
-                            Column(
-                                children: <Widget>[
-                                  Container(
-                                    width: (screenWidth/2) - 10,
-                                    // color: Colors.yellow,
-                                    alignment: Alignment.topRight,
-                                    child: allNotifications,
-                                  ),
-                                ])
+            _sectionLabel('THE COUNCIL'),
+            _card(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // D-061: Council re-clarification entry point.
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const CouncilCategoryPicker()),
+                        );
+                      },
+                      child: const Text('Revisit a category with the Council'),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // D-049: the domain map — a destination visited
+                  // deliberately, gated as a paid capability (D-016).
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: TextButton(
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                      onPressed: () async {
+                        final allowed = await ensureEntitled(context,
+                            reason: 'See your domain map');
+                        if (!allowed || !context.mounted) return;
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const DomainMapScreen()),
+                        );
+                      },
+                      child: const Text('Your domain map'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 28),
 
-                            */
-              ])),
-      Container(
-          height: MediaQuery.of(context).size.height / 3,
-          child: Scrollbar(
-              child: ListView.builder(
-                  itemCount: notifications.length,
-                  itemBuilder: (BuildContext context, int index) {
-                    // D-083: these were previews of the time-of-day AI
-                    // commentary screens, now deleted and replaced by
-                    // D-036's server-generated notifications — the row
-                    // stays as a plain display of when notifications fire.
-                    return ListTile(
-                      title: Text('${notifications[index]['desc']}'),
-                      subtitle: Text('${notifications[index]['timeofday']}'),
-                    );
-                  }))),
-      // D-061: Council re-clarification entry point.
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4.0),
-        child: TextButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const CouncilCategoryPicker()),
-            );
-          },
-          child: const Text('Revisit a category with the Council'),
-        ),
-      ),
-      // D-070: subscription management. Cancellation itself always happens
-      // in the platform's own UI (Apple/Google require this) — this screen
-      // only frames the choice and points there.
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4.0),
-        child: TextButton(
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const CancelSubscriptionScreen()),
-            );
-          },
-          child: const Text('Manage subscription'),
-        ),
-      ),
-      // D-049: the domain map — a destination visited deliberately, gated
-      // as a paid capability (D-016).
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4.0),
-        child: TextButton(
-          onPressed: () async {
-            final allowed = await ensureEntitled(context, reason: 'See your domain map');
-            if (!allowed || !context.mounted) return;
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const DomainMapScreen()),
-            );
-          },
-          child: const Text('Your domain map'),
-        ),
-      ),
-      // D-025 step 7: opt-in only, requested here — never on launch.
-      Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 16.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: const [
-            Text('Let the Council see your calendar'),
-            CalendarAccessSwitch(),
+            _sectionLabel('CALENDAR'),
+            // D-025 step 7: opt-in only, requested here — never on launch.
+            _card(
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: const [
+                  Expanded(
+                    child: Text('Let the Council see your calendar',
+                        style: TextStyle(color: AppColors.textPrimary)),
+                  ),
+                  CalendarAccessSwitch(),
+                ],
+              ),
+            ),
           ],
         ),
       ),
-      // Adjust Previews link - only show on iOS
-      if (Platform.isIOS)
-        Padding(
-          padding: const EdgeInsets.only(bottom: 10.0),
-          child: TextButton(
-            onPressed: () async {
-              await showPreviewWarningDialog(context);
-            },
-            child: const Text(
-              'Adjust Previews',
-              style: TextStyle(
-                fontSize: 16,
-                decoration: TextDecoration.underline,
-                color: Colors.blue,
-              ),
-            ),
-          ),
-        ),
-    ]))));
+    );
+  }
+}
+
+/// D-115: mirrors Kansei's inline subscription panel — branches on
+/// RevenueCat's own `CustomerInfo` ([decideSubscriptionPanelState]) rather
+/// than assuming a purchase exists. Found live: the previous "Manage
+/// subscription" link always opened a cancel-only screen, even for a
+/// trialing account with nothing to cancel.
+class _SubscriptionPanel extends StatefulWidget {
+  const _SubscriptionPanel();
+
+  @override
+  State<_SubscriptionPanel> createState() => _SubscriptionPanelState();
+}
+
+class _SubscriptionPanelState extends State<_SubscriptionPanel> {
+  CustomerInfo? _info;
+  bool _loading = true;
+  String? _localEntitlement;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
   }
 
+  Future<void> _load() async {
+    final info = await SubscriptionService.syncAndGetCustomerInfo();
+    final localEntitlement = await EntitlementService.instance.currentLocalEntitlement();
+    if (!mounted) return;
+    setState(() {
+      _info = info;
+      _localEntitlement = localEntitlement;
+      _loading = false;
+    });
+  }
+
+  Future<void> _openPaywall() async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const PaywallScreen(reason: 'Subscribe to Green Pyramid'),
+      ),
+    );
+    if (result == true) _load();
+  }
+
+  Future<void> _openManage() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const CancelSubscriptionScreen()),
+    );
+    _load();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 4),
+        child: LinearProgressIndicator(minHeight: 2),
+      );
+    }
+
+    final entitlement = _info?.entitlements.active.values.firstOrNull;
+    final state = decideSubscriptionPanelState(
+      isActive: entitlement?.isActive ?? false,
+      willRenew: entitlement?.willRenew,
+    );
+
+    switch (state) {
+      case SubscriptionPanelState.loading:
+        return const LinearProgressIndicator(minHeight: 2);
+
+      case SubscriptionPanelState.activeRenewing:
+        final expiry = entitlement!.expirationDate != null
+            ? DateTime.tryParse(entitlement.expirationDate!)
+            : null;
+        final expiryStr = expiry != null
+            ? DateFormat("MMM d 'at' h:mm a").format(expiry.toLocal())
+            : null;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              expiryStr != null
+                  ? 'Subscribed — renews $expiryStr'
+                  : 'Active subscription',
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                onPressed: _openManage,
+                child: const Text('Manage subscription'),
+              ),
+            ),
+          ],
+        );
+
+      case SubscriptionPanelState.activeCancelling:
+        final expiry = entitlement!.expirationDate != null
+            ? DateTime.tryParse(entitlement.expirationDate!)
+            : null;
+        final expiryStr = expiry != null
+            ? DateFormat("MMM d 'at' h:mm a").format(expiry.toLocal())
+            : null;
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              expiryStr != null
+                  ? 'Cancellation pending — access until $expiryStr'
+                  : 'Subscription cancelled',
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _openPaywall,
+                child: const Text('Resubscribe'),
+              ),
+            ),
+          ],
+        );
+
+      case SubscriptionPanelState.needsSubscription:
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              subscriptionPanelMessage(_localEntitlement),
+              style: const TextStyle(
+                  color: AppColors.textSecondary, fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _openPaywall,
+                child: const Text('Subscribe'),
+              ),
+            ),
+          ],
+        );
+    }
+  }
+}
+
+/// D-115: schedules a single local test notification, mirroring Kansei's
+/// identical settings-screen control.
+class _TestNotificationButton extends StatefulWidget {
+  const _TestNotificationButton({required this.lns});
+  final LocalNotificationService lns;
+
+  @override
+  State<_TestNotificationButton> createState() => _TestNotificationButtonState();
+}
+
+class _TestNotificationButtonState extends State<_TestNotificationButton> {
+  bool _pending = false;
+  bool _scheduling = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.lns.isTestNotificationPending().then((p) {
+      if (mounted) setState(() => _pending = p);
+    });
+  }
+
+  Future<void> _send() async {
+    setState(() => _scheduling = true);
+    try {
+      await widget.lns.scheduleTestNotification();
+      if (mounted) setState(() => _pending = true);
+    } finally {
+      if (mounted) setState(() => _scheduling = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          _pending
+              ? 'A test notification is scheduled — it will fire in about a minute. Come back after it fires to send another.'
+              : 'Schedule a notification 1 minute from now to confirm delivery is working.',
+          style: const TextStyle(
+              color: AppColors.textSecondary, fontSize: 13, height: 1.4),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            onPressed: (_pending || _scheduling) ? null : _send,
+            child: _scheduling
+                ? const SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Text(_pending ? 'Pending…' : 'Send test notification'),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 /// D-025 step 7: reflects and toggles calendar read access. Turning it on
@@ -299,7 +488,7 @@ class _CalendarAccessSwitchState extends State<CalendarAccessSwitch> {
   Widget build(BuildContext context) {
     return Switch(
       value: _granted,
-      activeColor: Colors.blue,
+      activeColor: AppColors.brandGreen,
       onChanged: (value) async {
         if (!value) {
           setState(() => _granted = false);
@@ -309,142 +498,5 @@ class _CalendarAccessSwitchState extends State<CalendarAccessSwitch> {
         if (mounted) setState(() => _granted = granted);
       },
     );
-  }
-}
-
-class NotificationSwitch extends StatefulWidget {
-  const NotificationSwitch({super.key});
-
-  @override
-  State<NotificationSwitch> createState() => _NotificationSwitchState();
-}
-
-class _NotificationSwitchState extends State<NotificationSwitch> {
-  _NotificationSwitchState();
-
-  // A bit crazy that I am doing both of these, but could not
-  // easily consolidate to just LocalNotificationService...
-  late final LocalNotificationService lns;
-  final service = FlutterLocalNotificationsPlugin();
-  bool toggle = true;
-
-  @override
-  void initState() {
-    lns = LocalNotificationService();
-    lns.intialize();
-    super.initState();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // This is how I determine whether the toggle should be on or off.
-    // alternatively, I could store the toggle state in the database.
-    int notificationCount = 0;
-    getNotificationCount().then((value) {
-      notificationCount = value;
-      if (notificationCount == 0) {
-        toggle = false;
-      }
-    });
-
-    return Switch(
-      // This bool value toggles the switch.
-      value: toggle,
-      activeColor: Colors.blue,
-      onChanged: (bool value) {
-        // This is called when the user toggles the switch.
-        setState(() {
-          toggle = value;
-          if (!value) {
-            turnOffNotificationsDialog();
-          } else {
-            turnOnAllNotifications();
-          }
-        });
-      },
-    );
-  }
-
-  turnOnAllNotifications() {
-    lns.scheduleDailyNotification(
-        id: 0,
-        title: 'Morning Review',
-        hour: 9,
-        minute: 00,
-        payload: '/');
-
-    lns.scheduleDailyNotification(
-        id: 1,
-        title: 'Afternoon Review',
-        hour: 12,
-        minute: 00,
-        payload: '/');
-
-    lns.scheduleDailyNotification(
-        id: 2,
-        title: 'Evening Review',
-        hour: 20,
-        minute: 00,
-        payload: '/');
-  }
-
-  turnOffNotificationsDialog() {
-    // set up the buttons
-    Widget cancelButton = TextButton(
-      child: const Text("Cancel"),
-      onPressed: () {
-        toggle = true;
-        Navigator.pop(context);
-        setState(() {});
-      },
-    );
-    Widget continueButton = TextButton(
-      child: const Text("Turn Off"),
-      onPressed: () async {
-        setState(() {});
-        var res = await cancelAllNotifications();
-        if (kDebugMode) {
-          print(res);
-        }
-        Navigator.pop(context);
-      },
-    );
-    // set up the AlertDialog
-    AlertDialog alert = AlertDialog(
-      title: const Text("Turn Off All Notifications"),
-      content:
-          const Text("Are you sure you want to turn off all notifications? "
-              "Individual notifications can be disabled instead. "),
-      actions: [
-        cancelButton,
-        continueButton,
-      ],
-    );
-    // show the dialog
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return alert;
-      },
-    );
-  }
-
-  Future<int> cancelAllNotifications() async {
-    var notificationCount;
-    var pending = await service.pendingNotificationRequests();
-
-    if (pending.isNotEmpty) {
-      await service.cancelAll();
-      pending = await service.pendingNotificationRequests();
-      notificationCount = pending.length;
-    } else {
-      notificationCount = pending.length;
-    }
-    return notificationCount;
-  }
-
-  Future<int> getNotificationCount() async {
-    var pending = await service.pendingNotificationRequests();
-    return pending.length;
   }
 }
