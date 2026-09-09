@@ -55,8 +55,9 @@ void main() {
     });
     final service = EntitlementService(db: db, firestore: firestore);
 
-    await service.pullFromServer(uid);
+    final found = await service.pullFromServer(uid);
 
+    expect(found, isTrue);
     final account = await db.getAccountState();
     expect(account[DatabaseHelper.columnEntitlement], 'trialing');
     final storedExpiry = DateTime.parse(account[DatabaseHelper.columnTrialExpiresAt] as String);
@@ -70,10 +71,30 @@ void main() {
     await seedProfile(firestore, {'categories': []});
     final service = EntitlementService(db: db, firestore: firestore);
 
-    await service.pullFromServer(uid);
+    final found = await service.pullFromServer(uid);
 
+    expect(found, isFalse);
     final account = await db.getAccountState();
     expect(account[DatabaseHelper.columnEntitlement], 'pre_trial');
+  });
+
+  test(
+      'D-116: pullFromServer returns false whether the profile doc is '
+      'missing entirely or just missing the entitlement field — '
+      'main.dart\'s bootstrap uses this return value, not the local cache, '
+      'to decide whether a trial grant needs retrying. Regression test '
+      'for a defect found live: an account whose original '
+      'requestTrialAfterSetup() call failed (D-059\'s DeviceCheck '
+      'reliability issue) had a local cache stuck reading "trialing" from '
+      'before the failure, which permanently masked the retry condition '
+      'a check against the local cache would have relied on', () async {
+    final firestore = FakeFirebaseFirestore();
+    // No profile/main document at all — never synced even once.
+    final service = EntitlementService(db: db, firestore: firestore);
+
+    final found = await service.pullFromServer(uid);
+
+    expect(found, isFalse);
   });
 
   test('D-057: pullFromServer reflects a subscribed account (as written by '

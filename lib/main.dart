@@ -21,6 +21,7 @@ import 'package:life_ops/widgets/pyramid_painting.dart';
 import 'package:life_ops/services/push_messaging_service.dart';
 import 'package:life_ops/services/subscription_service.dart';
 import 'package:life_ops/services/entitlement_service.dart';
+import 'package:life_ops/services/council_service.dart';
 
 // Forces the App Check *debug* provider even in a release/OTA build, so a
 // sideloaded test build can authenticate with a registered debug token.
@@ -180,17 +181,27 @@ Future<void> _bootstrapAccountSync({required bool setupComplete}) async {
   // on every launch — a subscription confirmed via the RevenueCat webhook
   // never touches this device directly, so this is how it reaches the
   // local gate CouncilCategoryPicker reads.
-  await EntitlementService.instance.pullFromServer(uid);
+  final hasServerEntitlement = await EntitlementService.instance.pullFromServer(uid);
 
-  // D-071: an account that reached setup completion under the old flow (no
-  // Council setup, so no device-bound trial was ever requested) is the
-  // D-034 migration cohort — it gets the one-time 30-day grant here, on
-  // the first launch of this build. A brand-new user who just finished the
-  // new Council setup already has a real entitlement by this point
-  // (requested at setup completion, D-058), so this never double-grants.
-  if (setupComplete) {
-    final account = await dbHelper.getAccountState();
-    if (account[DatabaseHelper.columnEntitlement] == 'pre_trial') {
+  // D-071/D-116: a completed account with no real server entitlement gets
+  // its trial grant (re)requested here, on every launch until it succeeds.
+  // Checked against [hasServerEntitlement], never the local cache (D-116)
+  // — found live: `requestTrialAfterSetup()`'s original call can fail
+  // (D-059's DeviceCheck reliability issue) and is never otherwise
+  // retried, silently leaving the account permanently ungated while the
+  // local cache still reads whatever it read before that failure, masking
+  // the very condition this retry exists to catch. Which grant to retry
+  // depends on how this account reached completion: one that has a real
+  // `setup`-typed Council session (D-082) went through the new flow and
+  // gets D-058's normal request retried; one that doesn't is the D-034
+  // migration cohort (old flow, no Council setup, so no device-bound
+  // trial was ever requested) and gets D-071's one-time 30-day grant.
+  if (setupComplete && !hasServerEntitlement) {
+    final wentThroughCouncilSetup =
+        await CouncilService.instance.hasEverCreatedSetupSession();
+    if (wentThroughCouncilSetup) {
+      await EntitlementService.instance.requestTrialAfterSetup();
+    } else {
       await EntitlementService.instance.requestMigrationTrial();
     }
   }

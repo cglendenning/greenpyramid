@@ -132,7 +132,18 @@ class EntitlementService {
   /// cache. Called on every launch: a subscription confirmed via the
   /// RevenueCat webhook never touches this device directly, so this is how
   /// it reaches the local gate that CouncilCategoryPicker reads.
-  Future<void> pullFromServer(String uid) async {
+  ///
+  /// D-116: returns whether a real server entitlement was found and
+  /// applied — `main.dart`'s bootstrap uses this, not the local cache, to
+  /// decide whether a trial grant needs retrying. The local cache is
+  /// exactly the wrong signal for that decision: it never changes when
+  /// the server has nothing (this method's own `entitlement == null`
+  /// early return, by design — a doc that hasn't synced yet shouldn't
+  /// erase a device's last-known state), so a device whose original
+  /// requestTrialAfterSetup() call failed keeps reading whatever it read
+  /// before that failure, forever, and a retry-on-pre_trial check against
+  /// that cache never fires.
+  Future<bool> pullFromServer(String uid) async {
     try {
       final doc = await _firestore
           .collection('users')
@@ -142,14 +153,16 @@ class EntitlementService {
           .get();
       final data = doc.data();
       final entitlement = data?['entitlement'] as String?;
-      if (entitlement == null) return;
+      if (entitlement == null) return false;
       await _db.setAccountEntitlement(
         entitlement: entitlement,
         trialStartedAt: (data?['trialStartedAt'] as Timestamp?)?.toDate().toIso8601String(),
         trialExpiresAt: (data?['trialExpiresAt'] as Timestamp?)?.toDate().toIso8601String(),
       );
+      return true;
     } catch (e, st) {
       debugPrint('EntitlementService.pullFromServer failed: $e\n$st');
+      return false;
     }
   }
 
