@@ -43,6 +43,44 @@ void main() {
     }
   });
 
+  testWidgets('D-111: no back button when there is nowhere to go back to '
+      '— the fresh-install "/setup" route, where WelcomeScreen is the '
+      'very first screen', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: WelcomeScreen()));
+    await tester.pump();
+
+    expect(find.byIcon(Icons.arrow_back), findsNothing);
+  });
+
+  testWidgets('D-111: a back button appears, and works, when WelcomeScreen '
+      'is reached by pushing on top of another screen — the Settings-menu '
+      're-entry point. Found live: tapping Setup by accident had no way '
+      'out.', (tester) async {
+    await tester.pumpWidget(MaterialApp(
+      home: Builder(
+        builder: (context) => Scaffold(
+          body: Center(
+            child: ElevatedButton(
+              onPressed: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const WelcomeScreen())),
+              child: const Text('Open Setup'),
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('Open Setup'));
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.arrow_back), findsOneWidget);
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Open Setup'), findsOneWidget,
+        reason: 'popping the back button must return to the previous screen');
+    expect(find.byType(WelcomeScreen), findsNothing);
+  });
+
   test('D-089: both routes into setup (a fresh install\'s "/setup" route '
       'and the Settings-menu re-entry point) go through WelcomeScreen, '
       'not straight to SetupScreen', () {

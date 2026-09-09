@@ -176,10 +176,33 @@ class _SetupScreenState extends State<SetupScreen> {
     } on SetupAlreadyCompleteException {
       // D-082: this account already has a real local pyramid and already
       // completed a setup session — nothing here to resume or redo.
-      // Leave setup entirely rather than show an error inside a chat UI
-      // with nothing behind it.
+      // D-112: found live — this silently bounced straight back to the
+      // home screen with zero explanation, which read as "Begin flashes
+      // the chat screen and drops me back to the main screen" — a real
+      // defect, not the enforcement itself. A brief dialog explains why
+      // before leaving, instead of a silent pop.
       if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+        await showDialog<void>(
+          context: context,
+          builder: (context) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            title: const Text('Your pyramid is already built',
+                style: TextStyle(color: AppColors.textPrimary)),
+            content: const Text(
+              'Setup only ever runs once. To go deeper on a category with '
+              'the Council, use Settings instead.',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('OK')),
+            ],
+          ),
+        );
+        if (mounted) {
+          Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+        }
       }
     } catch (e, st) {
       debugPrint('SetupScreen: failed to start or resume setup: $e\n$st');

@@ -202,4 +202,19 @@ void main() {
       'model call for a purely transitional line', () {
     expect(source, contains('_essenceAcknowledgment ='));
   });
+
+  test('D-112: SetupAlreadyCompleteException shows an explanatory dialog '
+      'before leaving setup — regression test for a defect found live: '
+      '"I click begin it just flashes the chat screen and drops me right '
+      'back into the main screen" — a silent pop with zero explanation, '
+      'not the D-082 enforcement itself, which is correct', () {
+    final start = source.indexOf('on SetupAlreadyCompleteException');
+    expect(start, greaterThan(-1));
+    final end = source.indexOf('} catch (e, st) {', start);
+    expect(end, greaterThan(start));
+    final body = source.substring(start, end);
+
+    expect(body, contains('showDialog'));
+    expect(body, contains('pushNamedAndRemoveUntil'));
+  });
 }
