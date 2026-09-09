@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:life_ops/widgets/navbar.dart';
 import 'package:life_ops/theme/app_colors.dart';
 import 'package:life_ops/services/ai_guard.dart';
+import 'package:life_ops/services/auth_service.dart';
 import 'package:life_ops/services/entitlement_service.dart';
 import 'package:life_ops/services/profile_service.dart';
 import 'package:life_ops/services/council_client.dart';
@@ -74,6 +75,32 @@ class _ProfileScreenState extends State<ProfileScreen> {
     return subscribed == true;
   }
 
+  /// D-114: found live — this screen's local entitlement cache can say
+  /// "trialing"/"subscribed" while the server's own record (Firestore's
+  /// `users/{uid}/profile/main`) disagrees, so [_ensureEntitled] passes
+  /// and the backend still refuses with 402
+  /// ([EntitlementRequiredException], the exception's own doc comment
+  /// names exactly this: "the server-authoritative backstop for when a
+  /// local cache is stale"). Uncaught, that fell through to the generic
+  /// catch-all below and showed a dead-end "please try again" for a
+  /// condition retrying can never fix. This resyncs the local cache from
+  /// the server (so the next attempt reflects the truth) and sends the
+  /// user to the paywall — an actual path forward, not a stuck error.
+  Future<void> _handleEntitlementRefusal() async {
+    final uid = AuthService.instance.currentUid;
+    if (uid != null) {
+      await EntitlementService.instance.pullFromServer(uid);
+    }
+    if (!mounted) return;
+    await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) =>
+            const PaywallScreen(reason: 'Continue with Green Pyramid'),
+      ),
+    );
+  }
+
   Future<void> _regenerateVisionStatement() async {
     if (!await _ensureEntitled('Regenerate your vision statement')) return;
     if (!mounted) return;
@@ -90,6 +117,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         isReviewing = true;
         isRegenerating = false;
       });
+    } on EntitlementRequiredException {
+      setState(() => isRegenerating = false);
+      await _handleEntitlementRefusal();
     } on AiBudgetException catch (e) {
       setState(() {
         visionError = e.message;
@@ -139,6 +169,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         progressAnalysis = analysis;
         isLoadingAnalysis = false;
       });
+    } on EntitlementRequiredException {
+      setState(() => isLoadingAnalysis = false);
+      await _handleEntitlementRefusal();
     } on AiBudgetException catch (e) {
       setState(() {
         analysisError = e.message;

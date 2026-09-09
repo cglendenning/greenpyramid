@@ -56,4 +56,19 @@ void main() {
     expect(initStateBody, isNot(contains('_generateProgressAnalysis')));
     expect(initStateBody, isNot(contains('_loadProgressAnalysis')));
   });
+
+  test(
+      'D-114: a server-side entitlement refusal (EntitlementRequiredException) '
+      'is caught explicitly on both AI actions and sent to the paywall, not '
+      'left to fall into the generic catch-all — regression test for a '
+      'defect found live: this screen\'s local entitlement cache said '
+      '"trialing" while Firestore\'s own record disagreed, so the '
+      'client-side gate passed and the backend correctly refused with 402, '
+      'but the screen showed a dead-end "please try again" for a condition '
+      'retrying can never fix', () {
+    final source = File('lib/screens/profile.dart').readAsStringSync();
+    expect(source, contains('on EntitlementRequiredException'));
+    expect(source, contains('_handleEntitlementRefusal'));
+    expect(source, contains('pullFromServer'));
+  });
 }
