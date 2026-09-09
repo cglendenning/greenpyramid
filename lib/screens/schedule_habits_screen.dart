@@ -9,22 +9,25 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/services/calendar_service.dart';
 import 'package:life_ops/services/db.dart';
 import 'package:life_ops/services/utils.dart';
-import 'package:life_ops/theme/app_colors.dart';
-import 'package:life_ops/widgets/navbar.dart';
 
 /// D-123 Phase 2: drag a habit onto a time to give it a recurring
-/// scheduled time, backed by a real native-calendar event — the
-/// scheduling UI promised by D-123, ported from Kansei's
-/// `calendar_proposal_screen.dart` mechanics (long-press to pick up,
-/// 15-minute snap, collision detection, edge auto-scroll, a drop zone to
-/// remove) but adapted for Green Pyramid's model: a habit's days are
-/// already fixed by its own Sunday–Saturday flags (set elsewhere, in
-/// EditTaskDetail), so this screen only ever changes a habit's *time* —
-/// there is no cross-day dragging the way Kansei's week-wide session
-/// grid has, so a single scrollable day column replaces its 7-day Row.
-/// Every write goes straight to [CalendarService] and the database, the
-/// same immediate-write pattern the rest of Green Pyramid's editing
-/// screens already use — there is no separate "confirm" step to submit.
+/// scheduled time, backed by a real native-calendar event. A direct port
+/// of Kansei's `calendar_proposal_screen.dart` — the landscape, 7-day
+/// week grid, the aqua draggable event box, the same long-press-to-pick-
+/// up / 15-minute-snap / collision-detection / edge-auto-scroll / drag-
+/// to-a-red-zone-to-remove interaction — with only the data-model
+/// difference the two apps actually have: Kansei's `Session` is a
+/// one-time block whose calendar DAY is chosen by which column you drop
+/// it in. A Green Pyramid habit's active days are already fixed
+/// elsewhere (its own Sunday–Saturday flags, set in `EditTaskDetail`),
+/// so a habit already appears in every column matching those flags, all
+/// at the same time — dragging changes that one shared time, never which
+/// days the habit is active on; a drop on a day the habit isn't active
+/// on is rejected rather than silently reinterpreted as a day-flag edit
+/// (confirmed with the owner directly, 2026-09-09). Every write goes
+/// straight to [CalendarService] and the database — Green Pyramid has no
+/// equivalent of Kansei's per-session budget/draft state, so there is no
+/// separate "confirm" step the way Kansei's screen has.
 class ScheduleHabitsScreen extends StatefulWidget {
   const ScheduleHabitsScreen({super.key});
 
@@ -32,10 +35,21 @@ class ScheduleHabitsScreen extends StatefulWidget {
   State<ScheduleHabitsScreen> createState() => _ScheduleHabitsScreenState();
 }
 
+// Kansei's own palette (goal-executor/lib/theme/colors.dart) — carried over
+// unchanged rather than reinterpreted in Green Pyramid's own dark palette,
+// since the owner's own ask was to reuse Kansei's actual look.
+const Color _sumiBlack = Color(0xFF1a1714);
+const Color _aqua = Color(0xFF4FC3C8);
+const Color _washiCream = Color(0xFFf4ede0);
+const Color _bengaraRed = Color(0xFFa8453a);
+const Color _existingGrey = Color(0xFF3A3A3A);
+const Color _existingGreyBorder = Color(0xFF555555);
+
 const double _hourH = 60.0; // pixels per hour
 const double _timeW = 48.0; // width of the time-label column
 const int _startHour = 0;
 const int _endHour = 24;
+const int _dayCount = 7;
 const Duration _habitDuration = Duration(minutes: 15);
 
 double _timeToY(int hour, int minute) =>
@@ -70,37 +84,54 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
   final _dbHelper = DatabaseHelper.instance;
   final _utils = Utils();
   final _scrollCtrl = ScrollController();
-  final _gridKey = GlobalKey();
-  final _dowFmt = DateFormat('EEE');
-  final _dayFmt = DateFormat('d');
-  final _hourFmt = DateFormat('ha');
+  final _dayKeys = List<GlobalKey>.generate(_dayCount, (_) => GlobalKey());
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
   bool _loading = true;
   bool _permissionDenied = false;
-  late DateTime _selectedDay;
+  late DateTime _weekStart;
   List<HabitScheduleRow> _habits = [];
-  List<dc.Event> _existingEvents = [];
+  // One events list per day column, index-aligned with _dayKeys.
+  List<List<dc.Event>> _existingEventsByDay =
+      List.generate(_dayCount, (_) => []);
   HabitScheduleRow? _dragging;
   Timer? _autoScrollTimer;
   Timer? _nowTimer;
+
+  void _lockLandscape() {
+    SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
 
   @override
   void initState() {
     super.initState();
     analytics.logEvent(name: 'schedule_habits');
+    _lockLandscape();
     final now = DateTime.now();
-    _selectedDay = DateTime(now.year, now.month, now.day);
+    _weekStart = DateTime(now.year, now.month, now.day);
     _nowTimer = Timer.periodic(const Duration(minutes: 1), (_) {
       if (mounted) setState(() {});
     });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _init());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      _lockLandscape();
+      await _init();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _lockLandscape();
   }
 
   @override
   void dispose() {
     _autoScrollTimer?.cancel();
     _nowTimer?.cancel();
+    SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     _scrollCtrl.dispose();
     super.dispose();
   }
@@ -137,12 +168,15 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
     return await showDialog<bool>(
           context: context,
           builder: (ctx) => AlertDialog(
-            title: const Text('Calendar access'),
+            backgroundColor: _sumiBlack,
+            title:
+                const Text('Calendar access', style: TextStyle(color: _washiCream)),
             content: const Text(
                 'Scheduling a habit writes a real event to your device '
                 'calendar, so you can see it alongside everything else. '
                 'This is optional — you can keep using habits without a '
-                'time attached.'),
+                'time attached.',
+                style: TextStyle(color: _washiCream)),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
@@ -150,7 +184,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
               ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Continue'),
+                child: const Text('Continue', style: TextStyle(color: _aqua)),
               ),
             ],
           ),
@@ -161,60 +195,74 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
   Future<void> _loadAll() async {
     setState(() => _loading = true);
     final rows = await _dbHelper.queryAllTasks();
-    final events = await _calendarService.eventsForDay(_selectedDay);
+    final events = await Future.wait(List.generate(
+        _dayCount, (i) => _calendarService.eventsForDay(_weekStart.add(Duration(days: i)))));
     if (!mounted) return;
     setState(() {
       _habits = rows.map((m) => HabitScheduleRow.fromMap(m, _utils)).toList();
-      _existingEvents = events;
+      _existingEventsByDay = events;
       _loading = false;
     });
   }
 
-  Future<void> _selectDay(DateTime day) async {
-    setState(() => _selectedDay = day);
-    final events = await _calendarService.eventsForDay(day);
-    if (mounted) setState(() => _existingEvents = events);
-  }
+  List<HabitScheduleRow> get _unscheduled =>
+      _habits.where((h) => h.scheduledTime == null).toList();
 
-  List<HabitScheduleRow> get _habitsActiveToday =>
-      _habits.where((h) => h.activeOn(_selectedDay)).toList();
+  List<HabitScheduleRow> get _scheduled =>
+      _habits.where((h) => h.scheduledTime != null).toList();
 
-  List<HabitScheduleRow> get _scheduledToday =>
-      _habitsActiveToday.where((h) => h.scheduledTime != null).toList();
+  bool _sameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
-  List<HabitScheduleRow> get _unscheduledToday =>
-      _habitsActiveToday.where((h) => h.scheduledTime == null).toList();
+  /// D-123 Phase 2: a scheduled habit's time is shared across every day
+  /// it's active on (rescheduling moves the whole recurring series at
+  /// once), so a collision has to be checked on every one of those days,
+  /// not just the day column the drag was dropped into.
+  bool _hasCollision(int hour, int minute, HabitScheduleRow excluding) {
+    for (var i = 0; i < _dayCount; i++) {
+      final day = _weekStart.add(Duration(days: i));
+      if (!excluding.activeOn(day)) continue;
+      final newStart = DateTime(day.year, day.month, day.day, hour, minute);
+      final newEnd = newStart.add(_habitDuration);
 
-  bool _hasCollision(DateTime newStart, DateTime newEnd, HabitScheduleRow excluding) {
-    for (final e in _existingEvents) {
-      if (intervalsOverlap(newStart, newEnd, e.startDate, e.endDate)) {
-        return true;
+      for (final e in _existingEventsByDay[i]) {
+        if (intervalsOverlap(newStart, newEnd, e.startDate, e.endDate)) {
+          return true;
+        }
       }
-    }
-    for (final h in _scheduledToday) {
-      if (h.id == excluding.id) continue;
-      final t = h.parsedTime!;
-      final start = DateTime(_selectedDay.year, _selectedDay.month,
-          _selectedDay.day, t.$1, t.$2);
-      final end = start.add(_habitDuration);
-      if (intervalsOverlap(newStart, newEnd, start, end)) return true;
+      for (final h in _scheduled) {
+        if (h.id == excluding.id) continue;
+        if (!h.activeOn(day)) continue;
+        final t = h.parsedTime!;
+        final start = DateTime(day.year, day.month, day.day, t.$1, t.$2);
+        final end = start.add(_habitDuration);
+        if (intervalsOverlap(newStart, newEnd, start, end)) return true;
+      }
     }
     return false;
   }
 
-  Future<void> _handleDrop(HabitScheduleRow habit, Offset globalOffset) async {
-    final box = _gridKey.currentContext?.findRenderObject() as RenderBox?;
+  Future<void> _handleDrop(
+      HabitScheduleRow habit, int dayIndex, Offset globalOffset) async {
+    final day = _weekStart.add(Duration(days: dayIndex));
+    if (!habit.activeOn(day)) {
+      HapticFeedback.heavyImpact();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+            content: Text(
+                '"${habit.description}" isn\'t active on ${DateFormat('EEEE').format(day)}.')));
+      }
+      return;
+    }
+
+    final box = _dayKeys[dayIndex].currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
     final localY =
         box.globalToLocal(globalOffset).dy.clamp(0.0, double.infinity);
-    final (hour, minute) = snapDropToTime(localY,
-        durationMinutes: _habitDuration.inMinutes);
+    final (hour, minute) =
+        snapDropToTime(localY, durationMinutes: _habitDuration.inMinutes);
 
-    final newStart = DateTime(
-        _selectedDay.year, _selectedDay.month, _selectedDay.day, hour, minute);
-    final newEnd = newStart.add(_habitDuration);
-
-    if (_hasCollision(newStart, newEnd, habit)) {
+    if (_hasCollision(hour, minute, habit)) {
       HapticFeedback.heavyImpact();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
@@ -263,12 +311,9 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
       });
       HapticFeedback.mediumImpact();
       await _loadAll();
-    } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content:
-                Text("Couldn't write to your calendar. Nothing changed.")));
-      }
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text("Couldn't write to your calendar. Nothing changed.")));
     }
   }
 
@@ -276,10 +321,13 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Remove this time?'),
+        backgroundColor: _sumiBlack,
+        title:
+            const Text('Remove this time?', style: TextStyle(color: _washiCream)),
         content: Text(
             '"${habit.description}" will go back to being flexible, with '
-            'no time attached, and its calendar event will be deleted.'),
+            'no time attached, and its calendar event will be deleted.',
+            style: const TextStyle(color: _washiCream)),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
@@ -287,7 +335,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Remove'),
+            child: const Text('Remove', style: TextStyle(color: _bengaraRed)),
           ),
         ],
       ),
@@ -310,61 +358,83 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Scaffold(
-        appBar: const NavBar(),
-        backgroundColor: AppColors.background,
-        body: _loading
-            ? const Center(child: CircularProgressIndicator())
-            : _permissionDenied
-                ? _permissionBody()
-                : Column(
-                    children: [
-                      const Padding(
-                        padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-                        child: Text('Schedule Habits',
-                            style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                                fontFamily: 'Exo2',
-                                color: AppColors.textPrimary)),
-                      ),
-                      _daySelector(),
-                      const Divider(height: 1, color: AppColors.surfaceHigh),
-                      Expanded(
-                        child: Stack(
-                          children: [
-                            _calendarGrid(),
-                            if (_dragging != null) _deleteZone(),
-                          ],
-                        ),
-                      ),
-                      if (_unscheduledToday.isNotEmpty) _tray(),
-                    ],
-                  ),
+    if (_loading) return _stateView(_loadingBody());
+    if (_permissionDenied) return _stateView(_permissionBody());
+
+    final weekLabel =
+        '${DateFormat('MMMM d').format(_weekStart)} – ${DateFormat('MMMM d').format(_weekStart.add(const Duration(days: _dayCount - 1)))}';
+
+    return Scaffold(
+      backgroundColor: _sumiBlack,
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF111111),
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 18),
+          onPressed: () => Navigator.pop(context),
+        ),
+        titleSpacing: 0,
+        title: Text('Schedule Habits — $weekLabel',
+            style: const TextStyle(
+                fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+        actions: [
+          _legendChip(_existingGrey, 'Existing'),
+          const SizedBox(width: 12),
+          _legendChip(_aqua, 'Habit'),
+          const SizedBox(width: 16),
+        ],
+      ),
+      body: Stack(
+        children: [
+          Column(
+            children: [
+              _dayHeader(),
+              Expanded(child: _calendarGrid()),
+              if (_unscheduled.isNotEmpty) _tray(),
+            ],
+          ),
+          if (_dragging != null) _deleteZone(),
+        ],
       ),
     );
   }
+
+  Widget _legendChip(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(
+                color: color.withOpacity(0.8), borderRadius: BorderRadius.circular(3))),
+        const SizedBox(width: 4),
+        Text(label,
+            style: TextStyle(fontSize: 10, color: _washiCream.withOpacity(0.5))),
+      ],
+    );
+  }
+
+  Widget _stateView(Widget body) => Scaffold(backgroundColor: _sumiBlack, body: body);
+
+  Widget _loadingBody() => const Center(
+        child: CircularProgressIndicator(strokeWidth: 2, color: _aqua),
+      );
 
   Widget _permissionBody() => Center(
         child: Padding(
           padding: const EdgeInsets.all(40),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            const Icon(Icons.calendar_today_outlined,
-                size: 36, color: AppColors.textSecondary),
+            Icon(Icons.calendar_today_outlined, size: 36, color: _aqua.withOpacity(0.6)),
             const SizedBox(height: 20),
-            const Text('Calendar access needed to schedule habits.',
+            const Text('Calendar access needed.',
                 textAlign: TextAlign.center,
-                style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary)),
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w600, color: Colors.white)),
             const SizedBox(height: 8),
-            const Text(
-              'Grant access in Settings to give a habit a time on your '
-              'calendar, or try again below.',
+            Text(
+              'Grant access in Settings → Privacy → Calendars to schedule habits.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 13, color: _washiCream.withOpacity(0.5), height: 1.5),
             ),
             const SizedBox(height: 24),
             ElevatedButton(
@@ -372,59 +442,55 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
                 setState(() => _loading = true);
                 _init();
               },
+              style: ElevatedButton.styleFrom(backgroundColor: _aqua, foregroundColor: _sumiBlack),
               child: const Text('Try Again'),
             ),
           ]),
         ),
       );
 
-  Widget _daySelector() {
-    final today = DateTime.now();
-    return SizedBox(
-      height: 64,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        itemCount: 7,
-        itemBuilder: (context, i) {
-          final day = DateTime(today.year, today.month, today.day)
-              .add(Duration(days: i));
-          final isSelected = _sameDay(day, _selectedDay);
-          final isToday = _sameDay(day, today);
-          return GestureDetector(
-            onTap: () => _selectDay(day),
-            child: Container(
-              width: 44,
-              margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.brandGreen : AppColors.surface,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              alignment: Alignment.center,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(_dowFmt.format(day).toUpperCase(),
-                      style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: isSelected
-                              ? AppColors.background
-                              : isToday
-                                  ? AppColors.brandGreen
-                                  : AppColors.textSecondary)),
-                  Text(_dayFmt.format(day),
+  Widget _dayHeader() {
+    return Container(
+      color: const Color(0xFF111111),
+      child: Row(
+        children: [
+          const SizedBox(width: _timeW),
+          ...List.generate(_dayCount, (i) {
+            final day = _weekStart.add(Duration(days: i));
+            final isToday = _sameDay(day, DateTime.now());
+            return Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                alignment: Alignment.center,
+                child: Column(mainAxisSize: MainAxisSize.min, children: [
+                  Text(
+                    DateFormat('EEE').format(day).toUpperCase(),
+                    style: TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.0,
+                        color: isToday ? _aqua : _washiCream.withOpacity(0.35)),
+                  ),
+                  const SizedBox(height: 2),
+                  Container(
+                    width: 26,
+                    height: 26,
+                    decoration:
+                        isToday ? const BoxDecoration(color: _aqua, shape: BoxShape.circle) : null,
+                    alignment: Alignment.center,
+                    child: Text(
+                      DateFormat('d').format(day),
                       style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w600,
-                          color: isSelected
-                              ? AppColors.background
-                              : AppColors.textPrimary)),
-                ],
+                          color: isToday ? _sumiBlack : _washiCream.withOpacity(0.7)),
+                    ),
+                  ),
+                ]),
               ),
-            ),
-          );
-        },
+            );
+          }),
+        ],
       ),
     );
   }
@@ -432,7 +498,6 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
   Widget _calendarGrid() {
     final totalH = (_endHour - _startHour) * _hourH;
     final now = DateTime.now();
-    final showNow = _sameDay(_selectedDay, now);
     final nowY = _timeToY(now.hour, now.minute).clamp(0.0, totalH);
 
     return SingleChildScrollView(
@@ -458,9 +523,8 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
                           child: Padding(
                             padding: const EdgeInsets.only(right: 4),
                             child: Text(
-                              _hourFmt.format(DateTime(0, 1, 1, hour)),
-                              style: const TextStyle(
-                                  fontSize: 10, color: AppColors.textSecondary),
+                              DateFormat('ha').format(DateTime(0, 1, 1, hour)),
+                              style: TextStyle(fontSize: 10, color: _washiCream.withOpacity(0.6)),
                             ),
                           ),
                         ),
@@ -468,48 +532,49 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
                     }),
                   ),
                 ),
-                Expanded(child: _dayColumn(totalH)),
+                ...List.generate(_dayCount, (i) {
+                  final day = _weekStart.add(Duration(days: i));
+                  return Expanded(child: _dayColumn(day, totalH, i));
+                }),
               ],
             ),
-            if (showNow) ...[
-              Positioned(
-                top: nowY - 3,
-                left: _timeW - 4,
-                child: Container(
-                  width: 7,
-                  height: 7,
-                  decoration: const BoxDecoration(
-                      color: Colors.redAccent, shape: BoxShape.circle),
-                ),
+            Positioned(
+              top: nowY - 3,
+              left: _timeW - 4,
+              child: Container(
+                width: 7,
+                height: 7,
+                decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
               ),
-              Positioned(
-                top: nowY,
-                left: _timeW,
-                right: 0,
-                child: Container(height: 1, color: Colors.redAccent),
-              ),
-            ],
+            ),
+            Positioned(
+              top: nowY,
+              left: _timeW,
+              right: 0,
+              child: Container(height: 1, color: Colors.red.withOpacity(0.75)),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _dayColumn(double totalH) {
+  Widget _dayColumn(DateTime day, double totalH, int dayIndex) {
+    final dayExisting = _existingEventsByDay[dayIndex];
+    final dayHabits = _scheduled.where((h) => h.activeOn(day)).toList();
+
     return DragTarget<HabitScheduleRow>(
       onWillAcceptWithDetails: (_) => true,
-      onAcceptWithDetails: (details) => _handleDrop(details.data, details.offset),
+      onAcceptWithDetails: (details) =>
+          _handleDrop(details.data, dayIndex, details.offset),
       builder: (ctx, candidates, _) {
         final isTarget = candidates.isNotEmpty;
         return Container(
-          key: _gridKey,
+          key: _dayKeys[dayIndex],
           height: totalH,
           decoration: BoxDecoration(
-            border: const Border(
-                left: BorderSide(color: AppColors.surfaceHigh)),
-            color: isTarget
-                ? AppColors.brandGreen.withOpacity(0.06)
-                : Colors.transparent,
+            border: Border(left: BorderSide(color: _washiCream.withOpacity(0.07))),
+            color: isTarget ? _aqua.withOpacity(0.05) : Colors.transparent,
           ),
           child: Stack(
             children: [
@@ -519,19 +584,15 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
                         top: i * _hourH,
                         left: 0,
                         right: 0,
-                        child: Container(
-                            height: 0.5, color: AppColors.surfaceHigh),
+                        child: Container(height: 0.5, color: _washiCream.withOpacity(0.06)),
                       )),
-              ..._existingEvents.map(_positionedExisting),
-              ..._scheduledToday.map(_positionedHabit),
+              ...dayExisting.map((e) => _positionedExisting(e, day)),
+              ...dayHabits.map(_positionedHabit),
               if (isTarget)
                 Positioned.fill(
                   child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(
-                          color: AppColors.brandGreen.withOpacity(0.4),
-                          width: 1.5),
-                    ),
+                    decoration:
+                        BoxDecoration(border: Border.all(color: _aqua.withOpacity(0.3), width: 1.5)),
                   ),
                 ),
             ],
@@ -541,17 +602,13 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
     );
   }
 
-  Widget _positionedExisting(dc.Event e) {
-    final start = _sameDay(e.startDate, _selectedDay)
-        ? e.startDate
-        : DateTime(_selectedDay.year, _selectedDay.month, _selectedDay.day,
-            _startHour);
-    final end = _sameDay(e.endDate, _selectedDay)
-        ? e.endDate
-        : DateTime(
-            _selectedDay.year, _selectedDay.month, _selectedDay.day, _endHour);
-    final top = _timeToY(start.hour, start.minute).clamp(0.0, double.infinity);
-    final rawH = end.difference(start).inMinutes / 60 * _hourH;
+  Widget _positionedExisting(dc.Event e, DateTime day) {
+    final wakeStart = DateTime(day.year, day.month, day.day, _startHour);
+    final wakeEnd = DateTime(day.year, day.month, day.day, _endHour);
+    final dispStart = e.startDate.isBefore(wakeStart) ? wakeStart : e.startDate;
+    final dispEnd = e.endDate.isAfter(wakeEnd) ? wakeEnd : e.endDate;
+    final top = _timeToY(dispStart.hour, dispStart.minute).clamp(0.0, double.infinity);
+    final rawH = dispEnd.difference(dispStart).inMinutes / 60 * _hourH;
     final h = rawH.clamp(18.0, double.infinity);
     return Positioned(
       top: top,
@@ -560,15 +617,16 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
       height: h,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surfaceHigh,
+          color: _existingGrey,
           borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: _existingGreyBorder, width: 0.5),
         ),
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         child: Text(
           e.title,
-          maxLines: 1,
+          maxLines: rawH < 30 ? 1 : 2,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: _washiCream.withOpacity(0.65)),
         ),
       ),
     );
@@ -578,7 +636,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
     final t = h.parsedTime!;
     final top = _timeToY(t.$1, t.$2).clamp(0.0, double.infinity);
     final rawH = _habitDuration.inMinutes / 60 * _hourH;
-    final height = rawH.clamp(22.0, double.infinity);
+    final height = rawH.clamp(24.0, double.infinity);
 
     return Positioned(
       top: top,
@@ -601,42 +659,40 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
         feedback: Material(
           color: Colors.transparent,
           child: Container(
-            width: 160,
+            width: 80,
             height: height,
             decoration: BoxDecoration(
-              color: AppColors.brandGreen.withOpacity(0.85),
+              color: _aqua.withOpacity(0.8),
               borderRadius: BorderRadius.circular(4),
+              boxShadow: [BoxShadow(color: _aqua.withOpacity(0.4), blurRadius: 12)],
             ),
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            alignment: Alignment.centerLeft,
-            child: Text(h.description,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 11, color: Colors.black)),
           ),
         ),
         childWhenDragging: Container(
           decoration: BoxDecoration(
-            color: AppColors.brandGreen.withOpacity(0.1),
+            color: _aqua.withOpacity(0.1),
             borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: AppColors.brandGreen.withOpacity(0.3)),
+            border: Border.all(color: _aqua.withOpacity(0.3)),
           ),
         ),
         child: Container(
           decoration: BoxDecoration(
-            color: AppColors.brandGreen.withOpacity(0.25),
+            color: _aqua.withOpacity(0.18),
             borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: AppColors.brandGreen.withOpacity(0.6)),
+            border: Border.all(color: _aqua.withOpacity(0.55), width: 0.5),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-          child: Text(
-            h.description,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                h.description,
+                maxLines: rawH < 36 ? 1 : 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _aqua.withOpacity(0.95)),
+              ),
+            ],
           ),
         ),
       ),
@@ -656,17 +712,20 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
           return AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             height: hovered ? 72 : 56,
-            color: (hovered ? Colors.redAccent : Colors.redAccent.shade200)
-                .withOpacity(0.9),
+            color: hovered ? _bengaraRed.withOpacity(0.92) : _bengaraRed.withOpacity(0.75),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const Icon(Icons.delete_outline, color: Colors.white),
+                Icon(Icons.delete_outline,
+                    color: Colors.white.withOpacity(hovered ? 1.0 : 0.85), size: hovered ? 22 : 18),
                 const SizedBox(width: 8),
                 Text(
                   hovered ? 'Release to remove' : 'Drop here to unschedule',
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                      color: Colors.white.withOpacity(hovered ? 1.0 : 0.85),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.3),
                 ),
               ],
             ),
@@ -678,17 +737,17 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
 
   Widget _tray() {
     return Container(
-      height: 64,
-      decoration: const BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.surfaceHigh)),
+      height: 56,
+      decoration: BoxDecoration(
+        color: const Color(0xFF111111),
+        border: Border(top: BorderSide(color: _washiCream.withOpacity(0.08))),
       ),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        itemCount: _unscheduledToday.length,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        itemCount: _unscheduled.length,
         itemBuilder: (context, i) {
-          final h = _unscheduledToday[i];
+          final h = _unscheduled[i];
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: LongPressDraggable<HabitScheduleRow>(
@@ -708,22 +767,14 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
                 color: Colors.transparent,
                 child: Container(
                   width: 160,
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 10, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppColors.brandGreen.withOpacity(0.85),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
+                      color: _aqua.withOpacity(0.85), borderRadius: BorderRadius.circular(8)),
                   child: Text(h.description,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: Colors.black)),
+                      maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _sumiBlack)),
                 ),
               ),
-              childWhenDragging: Opacity(
-                opacity: 0.3,
-                child: _trayChip(h),
-              ),
+              childWhenDragging: Opacity(opacity: 0.3, child: _trayChip(h)),
               child: _trayChip(h),
             ),
           );
@@ -735,15 +786,13 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
   Widget _trayChip(HabitScheduleRow h) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: AppColors.surfaceHigh,
-          borderRadius: BorderRadius.circular(8),
-        ),
+            color: _aqua.withOpacity(0.12),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: _aqua.withOpacity(0.35))),
         alignment: Alignment.center,
         constraints: const BoxConstraints(maxWidth: 160),
         child: Text(h.description,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(color: AppColors.textPrimary)),
+            maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _washiCream)),
       );
 
   void _onDragUpdate(DragUpdateDetails details) {
@@ -766,8 +815,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
     if (delta != 0) {
       _autoScrollTimer = Timer.periodic(const Duration(milliseconds: 16), (_) {
         if (!_scrollCtrl.hasClients) return;
-        final next = (_scrollCtrl.offset + delta)
-            .clamp(0.0, _scrollCtrl.position.maxScrollExtent);
+        final next = (_scrollCtrl.offset + delta).clamp(0.0, _scrollCtrl.position.maxScrollExtent);
         _scrollCtrl.jumpTo(next);
       });
     }
@@ -777,9 +825,6 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
     _autoScrollTimer?.cancel();
     _autoScrollTimer = null;
   }
-
-  bool _sameDay(DateTime a, DateTime b) =>
-      a.year == b.year && a.month == b.month && a.day == b.day;
 }
 
 class HabitScheduleRow {
@@ -819,8 +864,7 @@ class HabitScheduleRow {
       friday: flag(m[DatabaseHelper.columnFriday]),
       saturday: flag(m[DatabaseHelper.columnSaturday]),
       scheduledTime: m[DatabaseHelper.columnScheduledTime] as String?,
-      scheduledEventId:
-          m[DatabaseHelper.columnScheduledCalendarEventId] as String?,
+      scheduledEventId: m[DatabaseHelper.columnScheduledCalendarEventId] as String?,
     );
   }
 
