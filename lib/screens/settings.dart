@@ -201,7 +201,8 @@ class _SettingsState extends State<Settings> {
                                   const CouncilCategoryPicker()),
                         );
                       },
-                      child: const Text('Revisit a category with the Council'),
+                      child: const Text(
+                          'Revisit a category with the Council of Advisors'),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -236,7 +237,8 @@ class _SettingsState extends State<Settings> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: const [
                   Expanded(
-                    child: Text('Let the Council see your calendar',
+                    child: Text(
+                        'Let the Council of Advisors see your calendar',
                         style: TextStyle(color: AppColors.textPrimary)),
                   ),
                   CalendarAccessSwitch(),

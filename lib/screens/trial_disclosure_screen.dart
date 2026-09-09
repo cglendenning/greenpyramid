@@ -41,8 +41,8 @@ class TrialDisclosureScreen extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 28),
                 child: Text(
                   _lapsed
-                      ? 'Your pyramid, habits, and history are yours to track for free, forever. The Council — tailored notifications and everything the advisors help you clarify — requires a subscription.'
-                      : 'The Council, tailored notifications, and everything the advisors help you clarify are open for the next three days. After that, your pyramid, habits, and history stay yours to track for free, forever — but the Council goes quiet until you subscribe.',
+                      ? 'Your pyramid, habits, and history are yours to track for free, forever. The Council of Advisors — tailored notifications and everything the advisors help you clarify — requires a subscription.'
+                      : 'The Council of Advisors, tailored notifications, and everything the advisors help you clarify are open for the next three days. After that, your pyramid, habits, and history stay yours to track for free, forever — but the Council of Advisors goes quiet until you subscribe.',
                   style: OnboardingStyles.subhead,
                 ),
               ),

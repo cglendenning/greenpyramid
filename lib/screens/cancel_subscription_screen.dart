@@ -71,7 +71,8 @@ class CancelSubscriptionScreen extends StatelessWidget {
               const Text(
                 'Cancelling ends your subscription at the close of your '
                 'current billing period. Your pyramid, habits, essences, '
-                'and history remain intact — only the Council stops.',
+                'and history remain intact — only the Council of Advisors '
+                'stops.',
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 15, height: 1.5),
               ),
               const SizedBox(height: 32),

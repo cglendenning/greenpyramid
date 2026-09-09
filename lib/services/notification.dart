@@ -178,7 +178,7 @@ class LocalNotificationService {
       testNotificationId,
       'Green Pyramid',
       "Notifications are working — this is what a reminder from the "
-          'Council looks like.',
+          'Council of Advisors looks like.',
       scheduledTime,
       details,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,

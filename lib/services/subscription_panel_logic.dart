@@ -47,11 +47,12 @@ String subscriptionPanelMessage(String? localEntitlement) {
   switch (localEntitlement) {
     case 'trialing':
       return "You're on your free trial. Subscribe now to keep the "
-          'Council after it ends.';
+          'Council of Advisors after it ends.';
     case 'lapsed':
-      return 'Your trial has ended. Subscribe to bring the Council back.';
+      return 'Your trial has ended. Subscribe to bring the Council of '
+          'Advisors back.';
     default:
-      return 'Subscribe to unlock the Council, tailored notifications, '
-          'and everything your advisors help you see.';
+      return 'Subscribe to unlock the Council of Advisors, tailored '
+          'notifications, and everything your advisors help you see.';
   }
 }

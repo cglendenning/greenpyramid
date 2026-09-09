@@ -12,6 +12,7 @@ import '../services/entitlement_service.dart';
 import '../services/resonance_service.dart';
 import '../services/setup_service.dart';
 import '../theme/app_colors.dart';
+import '../widgets/advisor.dart';
 import '../widgets/chat_backdrop.dart';
 import '../widgets/chat_input_bar.dart';
 import '../widgets/council_transcript.dart';
@@ -217,7 +218,7 @@ class _SetupScreenState extends State<SetupScreen> {
                 style: TextStyle(color: AppColors.textPrimary)),
             content: const Text(
               'Setup only ever runs once. To go deeper on a category with '
-              'the Council, use Settings instead.',
+              'the Council of Advisors, use Settings instead.',
               style: TextStyle(color: AppColors.textSecondary),
             ),
             actions: [
@@ -1024,38 +1025,85 @@ class _SetupScreenState extends State<SetupScreen> {
   // fight rather than match). OnboardingStyles gives it the same type
   // scale as the welcome screen without introducing a second background
   // treatment for one screen.
+  // D-121: this is the first mention of "the Council of Advisors" anywhere
+  // in setup, so it introduces the concept before using the term again —
+  // who the four advisors are, shown with their real portraits (D-027's
+  // ported AdvisorConfig) and a short description each — rather than the
+  // previous copy, which said "The Council will ask..." for what is
+  // actually just Mira, alone, per D-106.
   Widget _buildEssenceIntro() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28),
+    Widget advisorRow(AdvisorConfig advisor) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CircleAvatar(
+              radius: 26,
+              backgroundColor: advisor.fallbackColor,
+              backgroundImage: AssetImage(advisor.assetPath),
+              onBackgroundImageError: (_, __) {},
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('${advisor.name} — ${advisor.title}',
+                      style: OnboardingStyles.buttonLabel
+                          .copyWith(color: AppColors.textPrimary, fontSize: 15)),
+                  const SizedBox(height: 3),
+                  Text(advisor.description,
+                      style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 13,
+                          height: 1.35)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(28, 40, 28, 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Spacer(flex: 5),
           const Text(
-            'Now, three questions worth sitting with.',
+            'Meet the Council of Advisors.',
             style: OnboardingStyles.headline,
           ),
           const SizedBox(height: 14),
           OnboardingStyles.accentDivider,
           const SizedBox(height: 16),
           const Text(
-            "The Council will ask about your top three values, one at a "
-            "time. What you say here is what makes every habit — and "
-            "every conversation from here on — actually fit you, instead "
-            "of being generic.",
+            "Green Pyramid is built around four advisors, each with their "
+            "own way of seeing things. Right now you're talking with "
+            "Mira, alone — later, once your pyramid exists, all four are "
+            "here whenever you want a fuller conversation.",
             style: OnboardingStyles.subhead,
           ),
-          const Spacer(flex: 4),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 28),
-            child: SizedBox(
-              width: double.infinity,
-              height: 56,
-              child: ElevatedButton(
-                onPressed: _busy ? null : _beginEssenceDeepening,
-                style: OnboardingStyles.primaryButton,
-                child: const Text("Let's go deeper", style: OnboardingStyles.buttonLabel),
-              ),
+          const SizedBox(height: 24),
+          for (final key in AdvisorConfig.orderedKeys)
+            advisorRow(AdvisorConfig.forKey(key)),
+          const SizedBox(height: 8),
+          const Text(
+            "Now, three questions worth sitting with. Mira will ask about "
+            "your top three values, one at a time. What you say here is "
+            "what makes every habit — and every conversation from here on "
+            "— actually fit you, instead of being generic.",
+            style: OnboardingStyles.subhead,
+          ),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: _busy ? null : _beginEssenceDeepening,
+              style: OnboardingStyles.primaryButton,
+              child: const Text("Let's go deeper", style: OnboardingStyles.buttonLabel),
             ),
           ),
         ],
@@ -1198,9 +1246,9 @@ class _SetupScreenState extends State<SetupScreen> {
           // > peak weight order) rather than inventing new meaning.
           const Text(
             'Every habit you build lives inside one of these tiers. A '
-            "missed foundational habit gets more of the Council's "
-            "attention than a missed peak one — the tiers aren't just "
-            "labels, they shape how much each habit matters.",
+            "missed foundational habit gets more of the Council of "
+            "Advisors' attention than a missed peak one — the tiers "
+            "aren't just labels, they shape how much each habit matters.",
             style: OnboardingStyles.subhead,
           ),
           const Spacer(flex: 4),
@@ -1538,20 +1586,34 @@ class _SetupScreenState extends State<SetupScreen> {
                 runSpacing: 8,
                 children: [
                   for (final h in _habitsByCategory[c.name] ?? const [])
-                    InputChip(
-                      label: Text(h),
-                      backgroundColor: AppColors.surfaceHigh,
-                      labelStyle: const TextStyle(color: AppColors.textPrimary),
-                      // The auto-generated ones are a starting point, not
-                      // the final word: tap to change the wording, the x
-                      // to drop it entirely.
-                      onPressed: () => _editHabit(c.name, h),
-                      onDeleted: () => setState(() {
-                        _habitsByCategory[c.name] = [
-                          for (final x in _habitsByCategory[c.name]!)
-                            if (x != h) x,
-                        ];
-                      }),
+                    // D-122: found live — a habit that runs past the
+                    // model's own length guidance was hard-clipped
+                    // mid-word by the chip's edge, with no ellipsis and
+                    // no visual sign anything was cut off. Bounding the
+                    // chip's width and letting Text handle the overflow
+                    // is a defensive backstop independent of the prompt
+                    // fix — the tool schema's own maxLength isn't
+                    // strictly enforced by the model either, so the UI
+                    // must degrade gracefully regardless.
+                    ConstrainedBox(
+                      constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.7),
+                      child: InputChip(
+                        label: Text(h,
+                            overflow: TextOverflow.ellipsis, maxLines: 1),
+                        backgroundColor: AppColors.surfaceHigh,
+                        labelStyle: const TextStyle(color: AppColors.textPrimary),
+                        // The auto-generated ones are a starting point, not
+                        // the final word: tap to change the wording, the x
+                        // to drop it entirely.
+                        onPressed: () => _editHabit(c.name, h),
+                        onDeleted: () => setState(() {
+                          _habitsByCategory[c.name] = [
+                            for (final x in _habitsByCategory[c.name]!)
+                              if (x != h) x,
+                          ];
+                        }),
+                      ),
                     ),
                   ActionChip(
                     avatar: const Icon(Icons.add,

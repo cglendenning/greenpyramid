@@ -147,7 +147,7 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background,
-        title: const Text('The Council'),
+        title: const Text('The Council of Advisors'),
       ),
       body: ChatBackdrop(
         child: Column(

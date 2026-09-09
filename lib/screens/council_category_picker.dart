@@ -46,7 +46,7 @@ class _CouncilCategoryPickerState extends State<CouncilCategoryPicker> {
         context,
         MaterialPageRoute(
           builder: (context) => PaywallScreen(
-            reason: 'Revisit $categoryName with the Council',
+            reason: 'Revisit $categoryName with the Council of Advisors',
           ),
         ),
       );
@@ -71,7 +71,7 @@ class _CouncilCategoryPickerState extends State<CouncilCategoryPicker> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background,
-        title: const Text('Revisit a category with the Council'),
+        title: const Text('Revisit a category with the Council of Advisors'),
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _categories,

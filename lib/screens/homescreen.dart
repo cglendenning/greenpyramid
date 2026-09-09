@@ -359,7 +359,7 @@ class CustomAppBarState extends State<CustomAppBar> {
           ),
           const PopupMenuItem<String>(
             value: 'council',
-            child: Text('Talk to the Council'),
+            child: Text('Talk to the Council of Advisors'),
           ),
           const PopupMenuItem<String>(
             value: 'faq',
@@ -439,7 +439,7 @@ class CustomAppBarState extends State<CustomAppBar> {
       final subscribed = await Navigator.push<bool>(
         context,
         MaterialPageRoute(
-          builder: (context) => const PaywallScreen(reason: 'Talk to the Council'),
+          builder: (context) => const PaywallScreen(reason: 'Talk to the Council of Advisors'),
         ),
       );
       if (subscribed != true || !mounted) return;

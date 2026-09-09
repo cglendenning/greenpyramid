@@ -129,6 +129,19 @@ export function habitsTool(maxAllowed) {
   };
 }
 
+// D-122: strengthened after a live quality review found real, systematic
+// problems in generated habit sets — see the Decision Log for the
+// specific example. Three issues, all addressed below: (1) the three
+// habits for one category were often three phrasings of the *same*
+// underlying action (three hard workouts, three ways of studying one
+// narrow subject) rather than genuinely different levers on the value;
+// (2) several ran well past the "around five words" guidance and the
+// tool schema's own 40-character maxLength — that schema bound is not
+// strictly enforced by the model, so it must also be stated as a hard
+// rule in prose, not left to the schema alone; (3) some habits used a
+// range ("2-3 sprints") or bundled several conditions into one checkbox
+// ("desk clear, phone silent, distractions removed"), both ambiguous for
+// something meant to be a single yes/no daily check.
 export function buildDeriveHabitsPrompt({ categoryName, essence, existingHabits = [], maxAllowed = 3 }) {
   const name = sanitize(categoryName, 60);
   const essenceText = essence ? sanitize(essence, 400) : null;
@@ -139,13 +152,19 @@ export function buildDeriveHabitsPrompt({ categoryName, essence, existingHabits 
     (essenceText
       ? `Their own words for why this category matters to them: "${essenceText}" — let this shape which habits you propose, not just the category name.`
       : 'No stated reason exists for this category yet — propose from the category name alone, and do not invent one.') +
-    ' Each habit is a short, concrete, dailyable action someone can check off — around five words, never a full ' +
-    'sentence, never a vague aspiration like "be healthier" or "improve relationships". ' +
+    ' Each habit is a short, concrete, dailyable action someone can check off in one glance — a hard limit of ' +
+    '40 characters, ideally closer to five words, never a full sentence, never a vague aspiration like "be ' +
+    'healthier" or "improve relationships". Never a range ("2-3 times") — pick one clear number or drop the ' +
+    'count entirely. Never several conditions strung together into one checkbox ("X, Y, and Z") — pick the ' +
+    'single most important one and leave the rest for another habit or another day. ' +
     (blacklist.length
       ? `Never repeat or closely restate any of these already-chosen habits: ${blacklist.join('; ')}.`
       : '') +
-    ` Propose only as many as will genuinely move the needle for this specific value — a single well-chosen ` +
-    `habit beats three padded ones. Call propose_habits with 1 to ${max} habits.`;
+    ` If you're proposing more than one habit, each must target a genuinely different aspect of this value — ` +
+    `never multiple phrasings of the same underlying action (three different hard workouts is one habit said ` +
+    `three ways, not three habits; three flavors of studying the same narrow subject is the same trap). If you ` +
+    `can't think of habits that are truly distinct from each other, propose fewer, not more — a single ` +
+    `well-chosen habit beats three overlapping ones. Call propose_habits with 1 to ${max} habits.`;
   const user = `Category: '${name}'`;
   return { system, user };
 }

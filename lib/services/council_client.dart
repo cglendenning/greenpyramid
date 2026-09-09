@@ -263,7 +263,7 @@ class CouncilClient {
       if (looksLikePlaceholder(c.name) ||
           (c.description != null && looksLikePlaceholder(c.description!))) {
         throw CouncilClientException(
-            'The Council needs a bit more to go on — try adding a little '
+            'The Council of Advisors needs a bit more to go on — try adding a little '
             'more detail and try again.');
       }
     }
@@ -295,7 +295,7 @@ class CouncilClient {
         .toList();
     if (habits.any(looksLikePlaceholder)) {
       throw CouncilClientException(
-          'The Council needs a bit more to go on — try adding a little '
+          'The Council of Advisors needs a bit more to go on — try adding a little '
           'more detail and try again.');
     }
     return habits;

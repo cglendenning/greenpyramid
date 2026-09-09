@@ -55,9 +55,9 @@ class _DomainMapScreenState extends State<DomainMapScreen> {
               padding: EdgeInsets.all(32),
               child: Center(
                 child: Text(
-                  'Nothing here yet. As you talk with the Council, what '
-                  'supports you and what works against you will start to '
-                  'take shape here.',
+                  'Nothing here yet. As you talk with the Council of '
+                  'Advisors, what supports you and what works against you '
+                  'will start to take shape here.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.textSecondary, fontSize: 16, height: 1.5),
                 ),
@@ -84,8 +84,8 @@ class _DomainMapScreenState extends State<DomainMapScreen> {
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Built from what you\'ve named to the Council — never a '
-                  'questionnaire.',
+                  'Built from what you\'ve named to the Council of '
+                  'Advisors — never a questionnaire.',
                   style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
                 ),
               ],

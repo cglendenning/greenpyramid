@@ -63,7 +63,7 @@ class PushMessagingService {
   static const _fallbackIds = {0: 100, 1: 101, 2: 102};
   static const _fallbackSlots = [(9, 0), (12, 0), (20, 0)];
   static const _defaultFallbackBody =
-      'The Council is here whenever you\'re ready.';
+      'The Council of Advisors is here whenever you\'re ready.';
 
   DocumentReference<Map<String, dynamic>>? _profileDoc(String? uid) {
     if (uid == null) return null;

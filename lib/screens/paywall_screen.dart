@@ -145,8 +145,9 @@ class _PaywallScreenState extends State<PaywallScreen> {
               const SizedBox(height: 12),
               const Text(
                 'A subscription keeps your categories and essences '
-                'perpetually clarified — the Council, tailored '
-                'notifications, and everything the advisors help you see.',
+                'perpetually clarified — the Council of Advisors, '
+                'tailored notifications, and everything the advisors '
+                'help you see.',
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 15, height: 1.5),
               ),
               const SizedBox(height: 32),

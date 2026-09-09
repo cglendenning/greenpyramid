@@ -114,10 +114,40 @@ test('D-103: the habit prompt names the actual per-call ceiling and asks '
   + 'count', () => {
   const { system: two } = buildDeriveHabitsPrompt({ categoryName: 'Health', essence: null, maxAllowed: 2 });
   assert.match(two, /1 to 2 habits/);
-  assert.match(two, /genuinely move the needle/);
+  assert.match(two, /a single well-chosen habit beats three overlapping ones/);
 
   const { system: three } = buildDeriveHabitsPrompt({ categoryName: 'Health', essence: null, maxAllowed: 3 });
   assert.match(three, /1 to 3 habits/);
+});
+
+test('D-122: the habit prompt states a hard 40-character limit in prose, '
+  + 'not just the tool schema — found live: the schema\'s own maxLength '
+  + 'was not reliably respected, and several generated habits ran past '
+  + 'it, hard-clipped mid-word by the chip UI with no ellipsis', () => {
+  const { system } = buildDeriveHabitsPrompt({ categoryName: 'Health', essence: null });
+  assert.match(system, /hard limit of 40 characters/);
+});
+
+test('D-122: the habit prompt forbids a range and forbids bundling '
+  + 'several conditions into one checkbox — found live: "Add 2-3 '
+  + 'high-intensity interval sprints" (a range) and "Clear desk, phone '
+  + 'silent, distractions removed" (three conditions in one checkbox) are '
+  + 'both ambiguous for a single daily yes/no', () => {
+  const { system } = buildDeriveHabitsPrompt({ categoryName: 'Health', essence: null });
+  assert.match(system, /Never a range/);
+  assert.match(system, /Never several conditions strung together/);
+});
+
+test('D-122: the habit prompt requires the habits within one call to be '
+  + 'genuinely distinct from each other, not restatements of the same '
+  + 'action — found live: three "Physical Health" habits were all '
+  + 'variations of "do a hard workout," and three "Growth Mindset" '
+  + 'habits were all narrowly about linear algebra rather than the '
+  + 'broader value', () => {
+  const { system } = buildDeriveHabitsPrompt({ categoryName: 'Health', essence: null, maxAllowed: 3 });
+  assert.match(system, /genuinely different aspect of this value/);
+  assert.match(system, /never multiple phrasings of the same underlying action/);
+  assert.match(system, /propose fewer, not more/);
 });
 
 test('D-052: the habit prompt includes the essence when one exists', () => {

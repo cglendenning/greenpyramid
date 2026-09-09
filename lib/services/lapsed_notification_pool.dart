@@ -7,11 +7,11 @@ class LapsedNotificationPool {
 
   static const List<String> pool = [
     "You deserve to live your best life. Tap to bring your notifications back to life.",
-    "Your pyramid is still standing. The Council has been quiet.",
-    "Three things hold up everything else. Tap to hear what the Council noticed.",
+    "Your pyramid is still standing. The Council of Advisors has been quiet.",
+    "Three things hold up everything else. Tap to hear what the Council of Advisors noticed.",
     "You built this. Tap to keep building it.",
     "Your foundations are where you left them.",
-    "The Council is still here when you want them.",
+    "The Council of Advisors is still here when you want them.",
   ];
 
   /// Rotates deterministically across the three-times-daily cadence

@@ -39,7 +39,7 @@ class PushPermissionScreen extends StatelessWidget {
               const Padding(
                 padding: EdgeInsets.symmetric(horizontal: 28),
                 child: Text(
-                  'Allow notifications from the Council.',
+                  'Allow notifications from the Council of Advisors.',
                   style: OnboardingStyles.headline,
                 ),
               ),
@@ -53,8 +53,9 @@ class PushPermissionScreen extends StatelessWidget {
                 padding: EdgeInsets.symmetric(horizontal: 28),
                 child: Text(
                   'iOS will ask for permission to send push notifications. '
-                  'Say yes, and the Council reaches you between visits — a '
-                  'word at the right moment, not a schedule of pings.',
+                  'Say yes, and the Council of Advisors reaches you between '
+                  'visits — a word at the right moment, not a schedule of '
+                  'pings.',
                   style: OnboardingStyles.subhead,
                 ),
               ),
