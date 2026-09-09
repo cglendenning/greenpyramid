@@ -165,3 +165,19 @@ test('D-055: essences and the full transcript both reach the prompt', () => {
   assert.match(user, /my body carries me through/);
   assert.match(user, /a specific memory about running/);
 });
+
+test('D-114: an empty or missing transcript states plainly that this is a '
+  + 'regeneration, not a live conversation — profile.dart\'s regeneration '
+  + 'has no transcript at all, only the pyramid\'s current essences', () => {
+  const { user: withEmpty } = buildVisionStatementPrompt({
+    essences: [{ categoryName: 'Health', essence: 'my body carries me' }],
+    transcript: [],
+  });
+  assert.match(withEmpty, /regeneration from their current pyramid/);
+  assert.doesNotMatch(withEmpty, /for context only; do not continue/);
+
+  const { user: withMissing } = buildVisionStatementPrompt({
+    essences: [{ categoryName: 'Health', essence: 'my body carries me' }],
+  });
+  assert.match(withMissing, /regeneration from their current pyramid/);
+});

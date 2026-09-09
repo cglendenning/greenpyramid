@@ -1,24 +1,46 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:life_ops/services/db.dart';
 import 'package:life_ops/widgets/navbar.dart';
 import 'package:life_ops/theme/app_colors.dart';
 import 'package:life_ops/services/ai_guard.dart';
-import 'package:life_ops/services/ai_proxy_client.dart';
+import 'package:life_ops/services/entitlement_service.dart';
+import 'package:life_ops/services/profile_service.dart';
+import 'package:life_ops/services/council_client.dart';
+import 'package:life_ops/screens/paywall_screen.dart';
 
+/// D-114: both AI features on this screen — regenerating the vision
+/// statement and the 30-day progress analysis — are Claude-backed via
+/// [ProfileService], gated by D-016's entitlement check like every other
+/// non-setup AI surface. Neither is free, matching how the rest of the
+/// app treats Council-powered insight (D-013/D-016) versus the always-free
+/// tracker itself (D-015) — the stored vision statement and raw habit
+/// history remain visible to everyone; only *generating something new* is
+/// gated.
 class ProfileScreen extends StatefulWidget {
+  const ProfileScreen({super.key});
+
   @override
-  _ProfileScreenState createState() => _ProfileScreenState();
+  State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final _profile = ProfileService.instance;
+
   String? visionStatement;
   String? newVisionStatement;
   bool isRegenerating = false;
   bool isReviewing = false;
+  String? visionError;
+
+  // D-114: generation is now an explicit action, not fired automatically
+  // on screen open — the legacy version called the AI unconditionally
+  // every time this screen was opened, which is both a paywall surprise
+  // for an unentitled account and an unnecessary spend for an entitled
+  // one that just wants to check their vision statement.
   String? progressAnalysis;
   bool isLoadingAnalysis = false;
-  final dbHelper = DatabaseHelper.instance;
+  String? analysisError;
+
   final List<String> backdropImages = [
     'images/morning_1.jpg',
     'images/afternoon_1.jpg',
@@ -32,57 +54,62 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.initState();
     selectedBackdrop = backdropImages[Random().nextInt(backdropImages.length)];
     _loadVisionStatement();
-    _loadProgressAnalysis();
   }
 
   Future<void> _loadVisionStatement() async {
-    final vision = await dbHelper.getLatestVisionStatement();
-    setState(() {
-      visionStatement = vision;
-    });
+    final vision = await _profile.loadVisionStatement();
+    if (mounted) setState(() => visionStatement = vision);
+  }
+
+  /// D-016: the same client-side gate `CouncilCategoryPicker` already
+  /// uses — checked here, once, ahead of either AI action below, rather
+  /// than duplicated in each.
+  Future<bool> _ensureEntitled(String reason) async {
+    if (await EntitlementService.instance.isEntitled()) return true;
+    if (!mounted) return false;
+    final subscribed = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (context) => PaywallScreen(reason: reason)),
+    );
+    return subscribed == true;
   }
 
   Future<void> _regenerateVisionStatement() async {
+    if (!await _ensureEntitled('Regenerate your vision statement')) return;
+    if (!mounted) return;
     setState(() {
       isRegenerating = true;
       isReviewing = false;
       newVisionStatement = null;
+      visionError = null;
     });
-    final categories = await dbHelper.queryCategories();
-    final cats = categories
-            .map((c) =>
-                '"' + AiGuard.sanitizeField(c['cat'] ?? '', maxChars: 60) + '"')
-            .join('|') +
-        '~~';
-    String system =
-        "You are a seasoned, wise mindset and life coach with decades of experience helping people transform their lives through the Green Pyramid methodology. You have a laid-back, approachable personality with a subtle sense of humor - you're the kind of coach who can make someone laugh while delivering profound insights. You have mastered the art of delivering profound insights in just a few powerful words. Keep your responses to 100 words or less. Your client provided this data: $cats. The data is ranked in order of importance. Speak with the wisdom of experience - be conversational, supportive, and deliver specific, actionable guidance rather than generic advice. Your words should carry weight and inspire reflection."
-        "${AiGuard.untrustedDataNotice}";
-    String prompt =
-        "Build a vision statement for this person starting with the phrase 'I will become the kind of person that ...' and make it inspiring, concise, and personal.";
     try {
-      await AiGuard.instance.acquire();
-      final reply = await AiProxy.instance.chatText(
-        model: "gpt-4.1-mini-2025-04-14",
-        maxTokens: 350,
-        topP: 1,
-        temperature: 1,
-        timeout: const Duration(seconds: 45),
-        messages: [
-          {'role': 'system', 'content': system},
-          {'role': 'user', 'content': prompt},
-        ],
-      );
+      final vision = await _profile.regenerateVisionStatement();
       setState(() {
-        newVisionStatement =
-            (reply)
-                .trim();
+        newVisionStatement = vision;
         isReviewing = true;
+        isRegenerating = false;
+      });
+    } on AiBudgetException catch (e) {
+      setState(() {
+        visionError = e.message;
+        isRegenerating = false;
+      });
+    } on SpendLimitException catch (e) {
+      setState(() {
+        visionError =
+            'You\'ve reached this month\'s spend limit (\$${e.totalSpendUsd.toStringAsFixed(2)}'
+                ' of \$${e.spendCapUsd.toStringAsFixed(2)}). More can be purchased soon.';
+        isRegenerating = false;
+      });
+    } on CouncilClientException catch (e) {
+      setState(() {
+        visionError = e.message;
         isRegenerating = false;
       });
     } catch (e) {
       setState(() {
-        newVisionStatement = 'Failed to generate vision statement.';
-        isReviewing = true;
+        visionError = 'Could not generate a vision statement. Please try again.';
         isRegenerating = false;
       });
     }
@@ -90,7 +117,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Future<void> _replaceVisionStatement() async {
     if (newVisionStatement != null && newVisionStatement!.isNotEmpty) {
-      await dbHelper.insertVisionStatement(newVisionStatement!);
+      await _profile.saveVisionStatement(newVisionStatement!);
       setState(() {
         visionStatement = newVisionStatement;
         isReviewing = false;
@@ -99,45 +126,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  Future<void> _loadProgressAnalysis() async {
+  Future<void> _generateProgressAnalysis() async {
+    if (!await _ensureEntitled('See your 30-day progress analysis')) return;
+    if (!mounted) return;
     setState(() {
       isLoadingAnalysis = true;
+      analysisError = null;
     });
-    final taskLogs = await dbHelper.queryTaskLogs(30);
-    final List<String> categories = taskLogs
-        .map((cat) =>
-            '"${AiGuard.sanitizeField(cat['category'] ?? '', maxChars: 60)}"|'
-            '"${AiGuard.sanitizeField(cat['taskdescription'] ?? '')}"|'
-            '"${AiGuard.sanitizeField(cat['checked'] ?? '', maxChars: 5)}"|'
-            '"${AiGuard.sanitizeField(cat['taskdate'] ?? '', maxChars: 10)}"~~')
-        .toList();
-    String system =
-        "You are a seasoned, wise mindset and life coach with decades of experience helping people transform their lives through the Green Pyramid methodology. You have a laid-back, approachable personality with a subtle sense of humor - you're the kind of coach who can make someone laugh while delivering profound insights. You have mastered the art of delivering profound insights in just a few powerful words. Keep your responses to 100 words or less. Your client provided this data: $categories. The third column is true or false, indicating whether or not the client performed the activity on that day. Some days will not have entries. That is ok. Those days were scheduled days off. Speak with the wisdom of experience - be conversational, supportive, and deliver specific, actionable guidance rather than generic advice. Your words should carry weight and inspire reflection."
-        "${AiGuard.untrustedDataNotice}";
-    String prompt =
-        "Review the client's progress for the past 30 days across all categories and tasks. Provide an inspiring, concise analysis that highlights strengths, areas for improvement, and encouragement.";
     try {
-      await AiGuard.instance.acquire();
-      final reply = await AiProxy.instance.chatText(
-        model: "gpt-4.1-mini-2025-04-14",
-        maxTokens: 350,
-        topP: 1,
-        temperature: 1,
-        timeout: const Duration(seconds: 45),
-        messages: [
-          {'role': 'system', 'content': system},
-          {'role': 'user', 'content': prompt},
-        ],
-      );
+      final analysis = await _profile.generateProgressAnalysis();
       setState(() {
-        progressAnalysis =
-            (reply)
-                .trim();
+        progressAnalysis = analysis;
+        isLoadingAnalysis = false;
+      });
+    } on AiBudgetException catch (e) {
+      setState(() {
+        analysisError = e.message;
+        isLoadingAnalysis = false;
+      });
+    } on SpendLimitException catch (e) {
+      setState(() {
+        analysisError =
+            'You\'ve reached this month\'s spend limit (\$${e.totalSpendUsd.toStringAsFixed(2)}'
+                ' of \$${e.spendCapUsd.toStringAsFixed(2)}). More can be purchased soon.';
+        isLoadingAnalysis = false;
+      });
+    } on CouncilClientException catch (e) {
+      setState(() {
+        analysisError = e.message;
         isLoadingAnalysis = false;
       });
     } catch (e) {
       setState(() {
-        progressAnalysis = 'Failed to generate progress analysis.';
+        analysisError = 'Could not generate your progress analysis. Please try again.';
         isLoadingAnalysis = false;
       });
     }
@@ -209,6 +230,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ElevatedButton(
                         onPressed: _regenerateVisionStatement,
                         child: const Text('Regenerate Vision Statement'),
+                      ),
+                    if (visionError != null && !isRegenerating)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(visionError!,
+                            style: const TextStyle(color: Colors.redAccent),
+                            textAlign: TextAlign.center),
                       ),
                     if (isRegenerating)
                       const Padding(
@@ -296,6 +324,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           textAlign: TextAlign.center,
                         ),
+                      )
+                    else
+                      ElevatedButton(
+                        onPressed: _generateProgressAnalysis,
+                        child: const Text('Generate My Progress Analysis'),
+                      ),
+                    if (analysisError != null && !isLoadingAnalysis)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(analysisError!,
+                            style: const TextStyle(color: Colors.redAccent),
+                            textAlign: TextAlign.center),
                       ),
                   ],
                 ),

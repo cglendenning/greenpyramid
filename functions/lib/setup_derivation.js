@@ -153,25 +153,36 @@ export function buildDeriveHabitsPrompt({ categoryName, essence, existingHabits 
 // D-055: the closing synthesis. Written by the Council collectively (not
 // any one advisor's persona), from the three foundational essences and the
 // full transcript, in the user's own language — no fixed template opener.
+// D-114: essences are the only required input — transcript is optional,
+// since profile.dart's regeneration (outside any Council conversation)
+// has no transcript at all, only the pyramid's current essences. When
+// transcript is genuinely empty, the user message says so plainly rather
+// than rendering an empty "REFERENCE — THE CONVERSATION" section with
+// nothing after the colon — the same explicit-framing discipline D-108
+// established for an empty conversationHistory.
 export function buildVisionStatementPrompt({ essences, transcript }) {
   const essenceLines = (essences || [])
     .map((e) => `- ${sanitize(e.categoryName, 60)}: "${sanitize(e.essence, 400)}"`)
     .join('\n');
   const system =
     'You write exactly one thing: a short vision statement, referred to below as THE OUTPUT. You are not ' +
-    'a participant in the conversation shown to you — you do not reply to it, continue it, or add another ' +
-    'turn to it. The conversation is reference material only, describing someone who just finished a ' +
-    'setup exchange with a support system called the Council. THE OUTPUT is the Council\'s closing ' +
-    'synthesis, in their own language and specifics from the conversation, of who they are becoming. Draw ' +
-    'directly on the essences and what they said. Do not open with "I will become the kind of person ' +
-    'that" or any fixed template phrase — that formula is exactly what THE OUTPUT must avoid. THE OUTPUT ' +
-    'is two to four sentences, first person, as if they are hearing their own truest thought said back to ' +
-    'them — prose, never dialogue, never a speaker label, never a continuation of the conversation format. ' +
-    'Your entire response is THE OUTPUT and nothing else — no preamble, no quotation marks around it, no ' +
-    'commentary before or after it.';
+    'a participant in any conversation shown to you — you do not reply to it, continue it, or add another ' +
+    'turn to it. Any conversation given is reference material only. THE OUTPUT is the Council\'s ' +
+    'synthesis, in the person\'s own language and specifics, of who they are becoming — drawn directly ' +
+    'from their essences (their own words for why each category matters to them) and, when given, what ' +
+    'they said in conversation. Do not open with "I will become the kind of person that" or any fixed ' +
+    'template phrase — that formula is exactly what THE OUTPUT must avoid. THE OUTPUT is two to four ' +
+    'sentences, first person, as if they are hearing their own truest thought said back to them — prose, ' +
+    'never dialogue, never a speaker label, never a continuation of a conversation format. Your entire ' +
+    'response is THE OUTPUT and nothing else — no preamble, no quotation marks around it, no commentary ' +
+    'before or after it.';
+  const transcriptSection = (transcript || []).length > 0
+    ? `REFERENCE — THE CONVERSATION (for context only; do not continue or reply to it):\n${transcriptText(transcript)}\n\n`
+    : 'REFERENCE — THE CONVERSATION: none — this is a regeneration from their current pyramid, not ' +
+      'written during a live conversation. Draw only on their essences below.\n\n';
   const user =
     `REFERENCE — THEIR ESSENCES:\n${essenceLines}\n\n` +
-    `REFERENCE — THE CONVERSATION (for context only; do not continue or reply to it):\n${transcriptText(transcript)}\n\n` +
+    transcriptSection +
     'Now write THE OUTPUT: their vision statement, and only that.';
   return { system, user };
 }

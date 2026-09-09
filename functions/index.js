@@ -19,6 +19,7 @@ import { checkSpendLimit, recordCost, SpendLimitError } from './lib/billing.js';
 import { getCouncilModel, getNotificationModel } from './lib/model_config.js';
 import { guardAndCountSetupCall, SetupCallLimitError } from './lib/setup_guard.js';
 import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, CATEGORIES_TOOL, habitsTool } from './lib/setup_derivation.js';
+import { buildProgressAnalysisPrompt } from './lib/progress_analysis.js';
 import { buildDeriveDomainFindingsPrompt, buildDeriveGeneralDomainFindingsPrompt, DOMAIN_FINDING_TOOL, GENERAL_DOMAIN_FINDING_TOOL } from './lib/domain_finding_derivation.js';
 import { isEligibleForTailoredNotification } from './lib/notification_schedule.js';
 import { buildNotificationPrompt, NOTIFICATION_TOOL } from './lib/notification_derivation.js';
@@ -461,9 +462,15 @@ app.post('/deriveDomainFindings', requireFirebaseAuth, async (req, res) => {
   }
 });
 
+// D-114: isSetup now comes from the caller instead of being hardcoded
+// true — setup's own closing synthesis (D-055) still passes true and
+// stays free (D-017); profile.dart's regeneration, outside any setup
+// session, passes false and goes through D-016's entitlement gate like
+// every other non-setup AI surface. sessionId/transcript are optional —
+// a regeneration has neither, only the pyramid's current essences.
 app.post('/deriveVisionStatement', requireFirebaseAuth, async (req, res) => {
-  const { sessionId, essences, transcript } = req.body || {};
-  if (!(await guardCouncilCall(req, res, { isSetup: true, sessionId }))) return;
+  const { sessionId, essences, transcript, isSetup } = req.body || {};
+  if (!(await guardCouncilCall(req, res, { isSetup: !!isSetup, sessionId }))) return;
 
   const { system, user } = buildVisionStatementPrompt({ essences, transcript });
   const model = await getCouncilModel();
@@ -475,11 +482,43 @@ app.post('/deriveVisionStatement', requireFirebaseAuth, async (req, res) => {
       system: [{ type: 'text', text: system }],
       messages: [{ role: 'user', content: user }],
     });
+    if (!isSetup) {
+      recordCost(req.uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
+        .catch((e) => console.error('recordCost error:', e.message));
+    }
     const vision = extractReplyText(msg.content);
     if (!vision) return res.status(502).json({ error: 'empty_reply' });
     res.json({ vision });
   } catch (e) {
     console.error('deriveVisionStatement error:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// D-114: the profile screen's 30-day progress analysis — a new AI
+// surface, never gated by anything but D-016's standard entitlement
+// check (never free, since it isn't setup).
+app.post('/deriveProgressAnalysis', requireFirebaseAuth, async (req, res) => {
+  const { taskLogs } = req.body || {};
+  if (!(await guardCouncilCall(req, res, { isSetup: false }))) return;
+
+  const { system, user } = buildProgressAnalysisPrompt({ taskLogs });
+  const model = await getCouncilModel();
+  try {
+    const msg = await claude().messages.create({
+      model,
+      max_tokens: 300,
+      thinking: { type: 'disabled' },
+      system: [{ type: 'text', text: system }],
+      messages: [{ role: 'user', content: user }],
+    });
+    recordCost(req.uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
+      .catch((e) => console.error('recordCost error:', e.message));
+    const analysis = extractReplyText(msg.content);
+    if (!analysis) return res.status(502).json({ error: 'empty_reply' });
+    res.json({ analysis });
+  } catch (e) {
+    console.error('deriveProgressAnalysis error:', e.message);
     res.status(502).json({ error: e.message });
   }
 });

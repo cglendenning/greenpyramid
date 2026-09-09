@@ -76,9 +76,10 @@ class _FakeCouncilClient extends CouncilClient {
 
   @override
   Future<String> deriveVisionStatement({
-    required String sessionId,
     required List<Map<String, String>> essences,
-    required List<Map<String, String>> transcript,
+    required bool isSetup,
+    String? sessionId,
+    List<Map<String, String>>? transcript,
   }) async =>
       vision;
 }

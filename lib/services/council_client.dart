@@ -338,17 +338,34 @@ class CouncilClient {
         .toList();
   }
 
-  /// D-055: the closing synthesis — written once, at the end of setup.
+  /// D-055/D-114: the closing synthesis, written once at the end of setup
+  /// ([isSetup] true, free, [sessionId]/[transcript] required); also the
+  /// profile screen's regeneration, any time after ([isSetup] false, gated
+  /// by D-016 like every other non-setup AI surface, no session or
+  /// transcript — only the pyramid's current essences).
   Future<String> deriveVisionStatement({
-    required String sessionId,
     required List<Map<String, String>> essences,
-    required List<Map<String, String>> transcript,
+    required bool isSetup,
+    String? sessionId,
+    List<Map<String, String>>? transcript,
   }) async {
     final data = await _post('deriveVisionStatement', {
-      'sessionId': sessionId,
+      if (sessionId != null) 'sessionId': sessionId,
       'essences': essences,
-      'transcript': transcript,
+      if (transcript != null) 'transcript': transcript,
+      'isSetup': isSetup,
     });
     return (data['vision'] as String? ?? '').trim();
+  }
+
+  /// D-114: the profile screen's 30-day progress analysis — never free,
+  /// gated by D-016 like every other non-setup AI surface.
+  Future<String> deriveProgressAnalysis({
+    required List<Map<String, String>> taskLogs,
+  }) async {
+    final data = await _post('deriveProgressAnalysis', {
+      'taskLogs': taskLogs,
+    });
+    return (data['analysis'] as String? ?? '').trim();
   }
 }

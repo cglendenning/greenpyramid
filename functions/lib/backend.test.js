@@ -62,3 +62,32 @@ test('D-100: /deriveDomainFindings branches to the general (whole-pyramid) '
   assert.match(route, /buildDeriveDomainFindingsPrompt/);
   assert.match(route, /DOMAIN_FINDING_TOOL/);
 });
+
+test('D-114: /deriveVisionStatement reads isSetup from the caller instead '
+  + 'of hardcoding true — profile.dart\'s regeneration must go through '
+  + 'D-016\'s entitlement gate like every other non-setup AI surface, '
+  + 'not setup\'s free/bounded one', () => {
+  const routeStart = indexSource.indexOf("app.post('/deriveVisionStatement'");
+  assert.ok(routeStart > -1, 'expected the /deriveVisionStatement route to exist');
+  const routeEnd = indexSource.indexOf('\napp.post(', routeStart + 1);
+  const route = indexSource.substring(routeStart, routeEnd);
+
+  assert.doesNotMatch(route, /isSetup:\s*true\s*,\s*sessionId/,
+    'must not hardcode isSetup: true anymore');
+  assert.match(route, /isSetup:\s*!!isSetup/);
+});
+
+test('D-114: /deriveProgressAnalysis exists, is gated the same way every '
+  + 'other non-setup AI surface is (D-016), and records its cost — it is '
+  + 'never free, since it is never setup', () => {
+  const routeStart = indexSource.indexOf("app.post('/deriveProgressAnalysis'");
+  assert.ok(routeStart > -1, 'expected the /deriveProgressAnalysis route to exist');
+  const routeEnd = indexSource.indexOf('\napp.post(', routeStart + 1);
+  const route = routeStart > -1
+    ? indexSource.substring(routeStart, routeEnd === -1 ? indexSource.length : routeEnd)
+    : '';
+
+  assert.match(route, /guardCouncilCall\(req, res, \{ isSetup: false \}\)/);
+  assert.match(route, /buildProgressAnalysisPrompt/);
+  assert.match(route, /recordCost\(/);
+});

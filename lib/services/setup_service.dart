@@ -160,6 +160,7 @@ class SetupService {
     await AiGuard.instance.acquire();
     final vision = await _client.deriveVisionStatement(
       sessionId: session.sessionId,
+      isSetup: true,
       essences: essences
           .map((e) => {'categoryName': e.categoryName, 'essence': e.essence})
           .toList(),
