@@ -42,6 +42,12 @@ class SetupScreen extends StatefulWidget {
 enum _Phase {
   opening,
   openingRound,
+  // D-117: a brief, explicit explainer of the pyramid's three tiers —
+  // foundational, essential, peak — shown once before the first time the
+  // derived categories themselves are shown, and again after each
+  // refinement round only if it hasn't been shown yet this setup session
+  // (tracked by `_tierIntroShown`).
+  tierIntro,
   categories,
   refining,
   // D-102: a brief, explicit handoff between confirming categories and
@@ -109,6 +115,18 @@ class _SetupScreenState extends State<SetupScreen> {
   // right" — routes both the Mira turn and the eventual re-derivation
   // through the refine-not-replace path.
   bool _refining = false;
+
+  // D-117: the tier explainer is shown once per setup session, not on
+  // every refinement round.
+  bool _tierIntroShown = false;
+
+  // D-117: once the user hand-edits any category's name or description
+  // on the categories screen, that edit itself is the confirmation —
+  // "Not quite right" (re-enter chat) and "This feels right" (a separate
+  // confirm tap) both stop making sense, so the bottom row collapses to
+  // a single "Next" that commits, the same action "This feels right"
+  // already performs.
+  bool _categoriesEdited = false;
 
   /// The categories to treat as "already proposed" for this turn — only
   /// meaningful while [_refining], and read before any re-derivation
@@ -298,8 +316,9 @@ class _SetupScreenState extends State<SetupScreen> {
         // _refinementContext still reflects the proposal being refined.
         final priorCategories = _refinementContext;
         setState(() {
-          _phase = _Phase.categories;
+          _phase = _tierIntroShown ? _Phase.categories : _Phase.tierIntro;
           _refining = false;
+          _categoriesEdited = false;
         });
         await _loadCategories(existingCategories: priorCategories);
       }
@@ -313,8 +332,9 @@ class _SetupScreenState extends State<SetupScreen> {
       // D-072: approaching the bound — close gracefully rather than fail.
       final priorCategories = _refinementContext;
       setState(() {
-        _phase = _Phase.categories;
+        _phase = _tierIntroShown ? _Phase.categories : _Phase.tierIntro;
         _refining = false;
+        _categoriesEdited = false;
       });
       await _loadCategories(existingCategories: priorCategories);
     } on CouncilClientException catch (e) {
@@ -361,18 +381,48 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
-  void _renameCategory(int index) {
-    final controller = TextEditingController(text: _categories[index].name);
+  // D-117: name and description are edited together, in one place —
+  // extends D-051 step 4's "adjust by tapping" to cover the description
+  // too, matching D-113's principle that wherever a category can be
+  // renamed, its description must be editable there as well. Any actual
+  // change to either field sets [_categoriesEdited], which collapses
+  // _buildCategories' bottom row to a single "Next" (see its own
+  // comment). maxChars matches this screen's own derivation bounds —
+  // 24 for a name (D-051's amendment, "a label, not a clause") and 140
+  // for a description (the `deriveCategories` tool schema).
+  void _editCategory(int index) {
+    final original = _categories[index];
+    final nameController = TextEditingController(text: original.name);
+    final descriptionController =
+        TextEditingController(text: original.description ?? '');
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: const Text('Your own words',
             style: TextStyle(color: AppColors.textPrimary)),
-        content: TextField(
-          controller: controller,
-          style: const TextStyle(color: AppColors.textPrimary),
-          autofocus: true,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Name',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            const SizedBox(height: 4),
+            TextField(
+              controller: nameController,
+              style: const TextStyle(color: AppColors.textPrimary),
+              autofocus: true,
+            ),
+            const SizedBox(height: 16),
+            const Text('Description',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+            const SizedBox(height: 4),
+            TextField(
+              controller: descriptionController,
+              style: const TextStyle(color: AppColors.textPrimary),
+              maxLines: 2,
+            ),
+          ],
         ),
         actions: [
           TextButton(
@@ -380,14 +430,21 @@ class _SetupScreenState extends State<SetupScreen> {
               child: const Text('Cancel')),
           TextButton(
             onPressed: () {
-              final name = AiGuard.sanitizeField(controller.text, maxChars: 60);
+              final name =
+                  AiGuard.sanitizeField(nameController.text, maxChars: 24);
+              final description = AiGuard.sanitizeField(
+                  descriptionController.text,
+                  maxChars: 140);
               if (name.isNotEmpty) {
+                final changed = name != original.name ||
+                    description != (original.description ?? '');
                 setState(() {
                   _categories = [..._categories];
                   _categories[index] = CategoryProposal(
-                      position: _categories[index].position,
+                      position: original.position,
                       name: name,
-                      description: _categories[index].description);
+                      description: description.isEmpty ? null : description);
+                  if (changed) _categoriesEdited = true;
                 });
               }
               Navigator.pop(context);
@@ -819,6 +876,8 @@ class _SetupScreenState extends State<SetupScreen> {
         return 0.05;
       case _Phase.openingRound:
         return 0.15;
+      case _Phase.tierIntro:
+        return 0.3;
       case _Phase.categories:
         return 0.35;
       case _Phase.refining:
@@ -851,6 +910,8 @@ class _SetupScreenState extends State<SetupScreen> {
         // opening on every render of this phase, resumed or not.
         return _buildTranscript([_openingMessage, ...?_session?.messages],
             typingAdvisorKey: _busy ? 'mira' : null);
+      case _Phase.tierIntro:
+        return _buildTierIntro();
       case _Phase.categories:
         return _buildCategories();
       case _Phase.refining:
@@ -942,6 +1003,103 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
+  // D-117: a plain, static explainer of the pyramid's three tiers — no
+  // dependency on `_categories` (which may still be loading in the
+  // background, same as _buildEssenceIntro's D-102 precedent), shown
+  // once before the derived categories themselves so their arrangement
+  // ("three foundational, two essential, one peak," P-6/D-051) reads as
+  // legible structure rather than an unexplained layout.
+  Widget _buildTierIntro() {
+    Widget tierRow({
+      required String label,
+      required String blurb,
+      required double widthFactor,
+      required Color color,
+    }) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          FractionallySizedBox(
+            widthFactor: widthFactor,
+            child: Container(
+              height: 48,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: color,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                label,
+                style: OnboardingStyles.buttonLabel
+                    .copyWith(color: AppColors.background, fontSize: 14),
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            blurb,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+                color: AppColors.textSecondary, fontSize: 13, height: 1.35),
+          ),
+        ],
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Spacer(flex: 3),
+          const Text('Your pyramid has three tiers.',
+              style: OnboardingStyles.headline),
+          const SizedBox(height: 14),
+          OnboardingStyles.accentDivider,
+          const SizedBox(height: 20),
+          tierRow(
+            label: 'PEAK',
+            blurb: 'One value — the single thing at the very top.',
+            widthFactor: 0.42,
+            color: AppColors.brandGreen,
+          ),
+          const SizedBox(height: 14),
+          tierRow(
+            label: 'ESSENTIAL',
+            blurb: 'Two values that matter deeply, right behind it.',
+            widthFactor: 0.68,
+            color: AppColors.brandGreen.withValues(alpha: 0.75),
+          ),
+          const SizedBox(height: 14),
+          tierRow(
+            label: 'FOUNDATIONAL',
+            blurb: 'Three values everything else is built on.',
+            widthFactor: 0.94,
+            color: AppColors.brandGreen.withValues(alpha: 0.55),
+          ),
+          const Spacer(flex: 4),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 28),
+            child: SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: _busy
+                    ? null
+                    : () => setState(() {
+                          _tierIntroShown = true;
+                          _phase = _Phase.categories;
+                        }),
+                style: OnboardingStyles.primaryButton,
+                child: const Text('Next', style: OnboardingStyles.buttonLabel),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildCategories() {
     if (_categories.isEmpty) {
       return const Center(child: CircularProgressIndicator());
@@ -967,7 +1125,6 @@ class _SetupScreenState extends State<SetupScreen> {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: GestureDetector(
                   onLongPress: () => _changeTier(_categories.indexOf(c)),
-                  onTap: () => _renameCategory(_categories.indexOf(c)),
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
@@ -978,22 +1135,46 @@ class _SetupScreenState extends State<SetupScreen> {
                       border: Border.all(
                           color: AppColors.brandGreen.withValues(alpha: 0.18)),
                     ),
-                    child: Column(
+                    child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(c.name,
-                            style: const TextStyle(
-                                color: AppColors.textPrimary,
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600)),
-                        if (c.description != null) ...[
-                          const SizedBox(height: 3),
-                          Text(c.description!,
-                              style: const TextStyle(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 13,
-                                  height: 1.35)),
-                        ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(c.name,
+                                  style: const TextStyle(
+                                      color: AppColors.textPrimary,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600)),
+                              if (c.description != null) ...[
+                                const SizedBox(height: 3),
+                                Text(c.description!,
+                                    style: const TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 13,
+                                        height: 1.35)),
+                              ],
+                            ],
+                          ),
+                        ),
+                        // D-117: name and description are edited together,
+                        // in one place, matching D-113's shared category
+                        // editor — this screen is the one exception that
+                        // can't reuse showCategoryEditSheet, since these
+                        // categories are still in-memory proposals, not
+                        // yet committed rows a category id exists for.
+                        TextButton(
+                          onPressed: () =>
+                              _editCategory(_categories.indexOf(c)),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: const Text('Edit'),
+                        ),
                       ],
                     ),
                   ),
@@ -1014,33 +1195,47 @@ class _SetupScreenState extends State<SetupScreen> {
                 style: TextStyle(color: AppColors.textPrimary, fontSize: 18)),
             const SizedBox(height: 4),
             const Text(
-                'Tap a name to change it. Hold to move it to a different tier.',
+                'Tap Edit to change a name or description. Hold to move it to a different tier.',
                 style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
             for (final tier in _tierDefinitions)
               tierSection(tier.$1, tier.$2.length,
                   _categories.where((c) => tier.$2.contains(c.position))),
             const SizedBox(height: 16),
-            // D-093: "Not quite right" re-enters the conversation instead
-            // of only offering to accept the proposal — the owner
-            // specifically wanted a way to keep working on the list, not
-            // just confirm or abandon it.
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: _busy ? null : _requestRefinement,
-                    child: const Text('Not quite right'),
-                  ),
+            // D-117: once any card has been hand-edited, that edit is
+            // itself the confirmation — "Not quite right" (re-enter chat)
+            // and a separate "This feels right" tap both stop making
+            // sense, so only Next remains, performing the exact same
+            // commit _confirmCategories already does.
+            if (_categoriesEdited)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _busy ? null : _confirmCategories,
+                  child: const Text('Next'),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _busy ? null : _confirmCategories,
-                    child: const Text('This feels right'),
+              )
+            else
+              // D-093: "Not quite right" re-enters the conversation
+              // instead of only offering to accept the proposal — the
+              // owner specifically wanted a way to keep working on the
+              // list, not just confirm or abandon it.
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _busy ? null : _requestRefinement,
+                      child: const Text('Not quite right'),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _busy ? null : _confirmCategories,
+                      child: const Text('This feels right'),
+                    ),
+                  ),
+                ],
+              ),
           ],
         ),
       ),
