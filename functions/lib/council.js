@@ -265,6 +265,17 @@ export function buildSetupAdvisorTurnPrompt({
   // instead of fighting it (a mismatched question rendered as if it were
   // the closing line).
   const wrapUpAlreadyAsked = !refining && hasAskedWrapUpQuestion(conversationHistory);
+  // D-120: found live — once D-092's pacing reassurance ("almost there",
+  // "not much further to go") has already fired once, at turnsSoFar == 2,
+  // letting the model keep deciding for itself whether it's ready let a
+  // second, third, or more reassurance land on later turns — several in a
+  // row read as being dragged along, not reassured, the opposite of
+  // D-092's own intent. This forces exactly one more question at
+  // turnsSoFar == 3, the same as D-118/D-119's other "don't trust the
+  // model's per-turn judgment for something that must be guaranteed"
+  // cases — index.js also forces this deterministically regardless of
+  // what the model returns.
+  const mustWrapUpNow = !refining && !wrapUpAlreadyAsked && countMiraTurns(conversationHistory) >= 3;
   const readyInstruction = refining
     ? `Once you understand what to adjust, set readyToBuild to true and let reply be a brief, warm ` +
       `closing line telling them you're about to refine it — never a question in that case.`
@@ -273,11 +284,16 @@ export function buildSetupAdvisorTurnPrompt({
         `there anything else you'd like to express" and they just answered it. Set readyToBuild to ` +
         `true and let reply be a brief, warm closing line, incorporating what they just added — ` +
         `never another question, never a further follow-up.`
-      : `After a few exchanges — enough to have real, specific material, but not so many it drags — ` +
-        `you will have enough to build a pyramid that is actually theirs. When you do, set ` +
-        `readyToBuild to true and let reply be a brief, warm summary of what you've actually heard ` +
-        `from them — their own specifics, in your own words, not a generic acknowledgment — never a ` +
-        `question in that case.`;
+      : mustWrapUpNow
+        ? `You already have more than enough material — this conversation has gone on long enough that ` +
+          `asking anything further would feel like dragging them along. Set readyToBuild to true and ` +
+          `let reply be a brief, warm summary of what you've actually heard from them — their own ` +
+          `specifics — never a question, never asking for more.`
+        : `After a few exchanges — enough to have real, specific material, but not so many it drags — ` +
+          `you will have enough to build a pyramid that is actually theirs. When you do, set ` +
+          `readyToBuild to true and let reply be a brief, warm summary of what you've actually heard ` +
+          `from them — their own specifics, in your own words, not a generic acknowledgment — never a ` +
+          `question in that case.`;
 
   const systemText =
     `You are Mira, The Heart — having a one-on-one conversation with someone, ` +

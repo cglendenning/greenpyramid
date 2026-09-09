@@ -204,6 +204,49 @@ test('D-119: the "definitely last reply" instruction is never selected '
   assert.match(systemText, /telling them you're about to refine it/);
 });
 
+const threeMiraTurns = [
+  { advisor: 'mira', text: 'What energizes you?' },
+  { advisor: 'user', text: 'Family time.' },
+  { advisor: 'mira', text: 'What else?' },
+  { advisor: 'user', text: 'Creative work.' },
+  { advisor: 'mira', text: 'Family and creative work. Almost there.' },
+  { advisor: 'user', text: 'Also fitness.' },
+];
+
+test('D-120: once a pacing reassurance has already fired once (three '
+  + 'prior Mira turns), the next turn is forced to wrap up regardless of '
+  + 'whether the model itself thinks it has enough — never another '
+  + 'ordinary gathering question. Regression test for the owner\'s '
+  + 'report: "if multiple responses in a row indicate almost there or '
+  + 'just a little more" it feels like being dragged along', () => {
+  const { systemText } = buildSetupAdvisorTurnPrompt({
+    conversationHistory: threeMiraTurns,
+  });
+  assert.match(systemText, /gone on long enough that asking anything further/);
+  assert.doesNotMatch(systemText, /After a few exchanges/);
+});
+
+test('D-120: the post-reassurance cap never applies to a refinement '
+  + 'round, however many turns it has had', () => {
+  const { systemText } = buildSetupAdvisorTurnPrompt({
+    existingCategories: [{ position: 1, name: 'Health' }],
+    conversationHistory: threeMiraTurns,
+  });
+  assert.doesNotMatch(systemText, /gone on long enough that asking anything further/);
+  assert.match(systemText, /telling them you're about to refine it/);
+});
+
+test('D-120: the cap does not apply before the third Mira turn — the '
+  + 'first two questions, and the reassurance turn itself, still use the '
+  + 'ordinary gathering instruction', () => {
+  const twoMiraTurns = threeMiraTurns.slice(0, 4);
+  const { systemText } = buildSetupAdvisorTurnPrompt({
+    conversationHistory: twoMiraTurns,
+  });
+  assert.match(systemText, /After a few exchanges/);
+  assert.doesNotMatch(systemText, /gone on long enough that asking anything further/);
+});
+
 test('D-118: hasAskedWrapUpQuestion is false for empty or unrelated history',
   () => {
     assert.equal(hasAskedWrapUpQuestion([]), false);

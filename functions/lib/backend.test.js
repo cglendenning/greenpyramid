@@ -124,3 +124,16 @@ test('D-119: once the wrap-up question already appears in history, the '
   assert.ok(forcedTrueIdx > ifIdx && forcedTrueIdx < ifIdx + 60,
     'readyToBuild = true must be forced immediately inside the wrapUpAlreadyAsked branch');
 });
+
+test('D-120: mustWrapUpNow is computed from turnsSoFar >= 3 and forces '
+  + 'the wrap-up append the same way an already-ready model decision '
+  + 'does — regression test for the owner\'s report that multiple '
+  + '"almost there"/"not much further to go" reassurances in a row felt '
+  + 'like being dragged along', () => {
+  const start = indexSource.indexOf('async function handleSetupAdvisorTurn');
+  const end = indexSource.indexOf('\n}\n', start);
+  const body = indexSource.substring(start, end === -1 ? indexSource.length : end);
+
+  assert.match(body, /mustWrapUpNow\s*=\s*!existingCategories\s*&&\s*!wrapUpAlreadyAsked\s*&&\s*turnsSoFar\s*>=\s*3/);
+  assert.match(body, /readyToBuild \|\| mustWrapUpNow/);
+});

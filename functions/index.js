@@ -340,6 +340,15 @@ async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conver
     let readyToBuild = !!toolUse.input.readyToBuild;
     let reply = toolUse.input.reply;
     const wrapUpAlreadyAsked = !existingCategories && hasAskedWrapUpQuestion(conversationHistory);
+    const turnsSoFar = countMiraTurns(conversationHistory);
+    // D-120: once D-092's pacing reassurance has already fired once (at
+    // turnsSoFar == 2), only one more question is allowed — found live:
+    // several "almost there"/"not much further to go" reassurances in a
+    // row, across multiple turns the model kept deciding weren't ready
+    // yet, read as being dragged along rather than reassured. Forced the
+    // same deterministic way as D-119, never left to the model's own
+    // per-turn judgment.
+    const mustWrapUpNow = !existingCategories && !wrapUpAlreadyAsked && turnsSoFar >= 3;
     // D-119: once the wrap-up question has already been asked (and just
     // answered), the very next turn is the real close — forced
     // deterministically, regardless of what the model itself returned for
@@ -351,23 +360,21 @@ async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conver
     // on its own.
     if (wrapUpAlreadyAsked) {
       readyToBuild = true;
-    } else if (readyToBuild && !existingCategories) {
-      // D-118: the very first time Mira decides she's ready — the initial
-      // (non-refining) conversation only, never the refinement loop — her
-      // decision is intercepted: instead of actually closing, her summary
-      // reply gets the fixed wrap-up question appended and readyToBuild is
-      // forced back to false, so the conversation continues for exactly
-      // one more round.
+    } else if (!existingCategories && (readyToBuild || mustWrapUpNow)) {
+      // D-118: the first time Mira decides she's ready (or D-120: the
+      // conversation has hit its post-reassurance cap regardless of what
+      // she decided) — the initial (non-refining) conversation only,
+      // never the refinement loop — this is intercepted: instead of
+      // actually closing, the summary reply gets the fixed wrap-up
+      // question appended and readyToBuild is forced back to false, so
+      // the conversation continues for exactly one more round.
       reply = `${(reply || '').trim()} ${SETUP_WRAP_UP_QUESTION}`;
       readyToBuild = false;
     } else {
       // D-092: applied server-side, deterministically — found live that
       // asking the model to weave this into its own reply wasn't reliably
       // followed several turns into a real conversation.
-      reply = applyPacingReassurance(reply, {
-        turnsSoFar: countMiraTurns(conversationHistory),
-        readyToBuild,
-      });
+      reply = applyPacingReassurance(reply, { turnsSoFar, readyToBuild });
     }
     // D-017: setup is free — never charged against D-087's dollar ledger,
     // only counted against D-072's call limit (already done above).
