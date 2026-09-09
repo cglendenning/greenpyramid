@@ -3,6 +3,7 @@ import 'package:life_ops/services/db.dart';
 import 'package:life_ops/screens/edittasklist.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
+import 'package:life_ops/widgets/category_edit_sheet.dart';
 import 'package:life_ops/widgets/navbar.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
@@ -53,29 +54,38 @@ class _TaskListState extends State<TaskList> {
     return (categoryId, essence);
   }
 
-  Future<void> _editEssence(int categoryId, String currentEssence) async {
-    final controller = TextEditingController(text: currentEssence);
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Your essence'),
-        content: TextField(controller: controller, maxLines: 4, autofocus: true),
-        actions: [
-          TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel')),
-          TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('Save')),
-        ],
-      ),
+  // D-113: name and description together, in the same shared sheet
+  // editpyramid.dart uses — this used to be "essence" (P-12's internal
+  // spec term, never meant for user-facing copy) with no way to touch
+  // the category name from here at all. Found live: "wherever I can
+  // edit the category, I should also be able to edit the description of
+  // the category."
+  Future<void> _editCategory(int categoryId, String? currentEssence) async {
+    final result = await showCategoryEditSheet(
+      context,
+      currentName: category,
+      currentDescription: currentEssence,
     );
-    if (saved != true) return;
-    final text = controller.text.trim();
-    if (text.isEmpty) return;
-    // D-061: essences are versioned, never overwritten — this appends a
-    // new version rather than updating the existing row.
-    await dbHelper.insertCategoryEssence(categoryId: categoryId, essence: text);
+    if (result == null) return;
+
+    if (result.name != category) {
+      await dbHelper.renameCategoryCascading(
+          categoryid: categoryId, newName: result.name);
+    }
+    if (result.description != null) {
+      // D-061: essences are versioned, never overwritten — this appends
+      // a new version rather than updating the existing row.
+      await dbHelper.insertCategoryEssence(
+          categoryId: categoryId, essence: result.description!);
+    }
+
+    if (result.name != category) {
+      // `category` drives every task/task-log query on this screen —
+      // rather than live-patching every downstream reference to a new
+      // name, pop back so the caller re-navigates fresh.
+      if (mounted) Navigator.of(context).pop();
+      return;
+    }
     setState(() => _essenceContext = _loadEssenceContext());
   }
 
@@ -95,19 +105,25 @@ class _TaskListState extends State<TaskList> {
                     future: _essenceContext,
                     builder: (context, snapshot) {
                       final data = snapshot.data;
-                      if (data == null || data.$1 == null || data.$2 == null) {
+                      // D-113: a category with no description yet still
+                      // gets the Edit action — previously the whole block
+                      // (name-editing included) was hidden whenever no
+                      // essence existed, D-005/D-010's normal state for
+                      // essential/peak categories.
+                      if (data == null || data.$1 == null) {
                         return const SizedBox.shrink();
                       }
                       final categoryId = data.$1!;
-                      final essence = data.$2!;
+                      final essence = data.$2;
                       return Padding(
                         padding: const EdgeInsets.fromLTRB(24, 8, 24, 4),
                         child: Column(
                           children: [
-                            Text(essence,
-                                textAlign: TextAlign.center, style: _essenceStyle),
+                            if (essence != null)
+                              Text(essence,
+                                  textAlign: TextAlign.center, style: _essenceStyle),
                             TextButton(
-                              onPressed: () => _editEssence(categoryId, essence),
+                              onPressed: () => _editCategory(categoryId, essence),
                               child: const Text('Edit'),
                             ),
                           ],

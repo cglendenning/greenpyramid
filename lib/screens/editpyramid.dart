@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:life_ops/services/db.dart';
 import 'package:life_ops/services/dbtools.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:life_ops/theme/app_colors.dart';
+import 'package:life_ops/widgets/category_edit_sheet.dart';
 import 'package:life_ops/widgets/pyramid.dart' as pyr;
 
 // Normal blocks render the main-screen stone+glow look in the brand
@@ -29,8 +29,6 @@ class EditPyramid extends StatefulWidget {
 }
 
 class _EditPyramid extends State<EditPyramid> {
-  final TextEditingController categoryText = TextEditingController();
-
   final Future cat1Future;
   final Future cat2Future;
   final Future cat3Future;
@@ -290,96 +288,72 @@ class _EditPyramid extends State<EditPyramid> {
               return display;
             }),
       ]),
-      const Align(
-        alignment: Alignment.bottomCenter,
-        heightFactor: 2,
-        child: Text(
-          '*NOTE: If a category name is changed, all tasks and task log entries for the previous category name will be deleted.',
-          style: TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 15,
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ),
+      // D-113: this warning described the pre-fix behavior — renaming
+      // used to wipe every task and log row for the old name first. It
+      // no longer does (renameCategoryCascading moves them to the new
+      // name instead), so the warning was removed rather than left to
+      // describe destructive behavior that's no longer true.
     ]);
   }
 
-  // https://stackoverflow.com/questions/71286766/statefulwidget-does-not-refresh-after-alertdialog-is-closed
+  // D-113: name and description together, in one shared, styled sheet —
+  // replacing the old plain AlertDialog that only ever touched the name.
   Future<void> showEditDialog(
       BuildContext context, int categoryid, String category) async {
+    final currentEssence = await dbHelper.getLatestEssenceForCategory(categoryid);
+    if (!mounted) return;
+    final result = await showCategoryEditSheet(
+      context,
+      currentName: category,
+      currentDescription: currentEssence,
+    );
+    if (result == null) return;
+
+    // D-113: found live — renaming a category used to call
+    // deleteCategoryContents(category) *before* renameCategoryCascading,
+    // wiping every task and task-log row for the old name first. The
+    // cascade that followed then had nothing left to move — D-084's fix
+    // for exactly this ("renaming without cascading orphans every habit
+    // and log row") was being silently defeated by a leftover call to the
+    // pre-D-084 destructive path. Renaming a category to fix a typo was
+    // permanently deleting its entire habit history. Removed — the
+    // cascade alone is correct and sufficient.
+    if (result.name != category) {
+      await dbHelper.renameCategoryCascading(
+        categoryid: categoryid,
+        newName: result.name,
+      );
+    }
+    if (result.description != null) {
+      await dbHelper.insertCategoryEssence(
+        categoryId: categoryid,
+        essence: result.description!,
+      );
+    }
+
     setState(() {
-      categoryText.clear();
+      switch (categoryid) {
+        case 1:
+          _cat1Edited = true;
+          _drawCat1 = pyr.DrawCat1(_kGreenLG, result.name, 0);
+        case 2:
+          _cat2Edited = true;
+          _drawCat2 = pyr.DrawCat2(_kGreenLG, result.name, 0);
+        case 3:
+          _cat3Edited = true;
+          _drawCat3 = pyr.DrawCat3(_kGreenLG, result.name, 0);
+        case 4:
+          _cat4Edited = true;
+          _drawCat4 = pyr.DrawCat4(_kGreenLG, result.name, 0);
+        case 5:
+          _cat5Edited = true;
+          _drawCat5 = pyr.DrawCat5(_kGreenLG, result.name, 0);
+        case 6:
+          _cat6Edited = true;
+          _drawCat6 = pyr.DrawCat6(_kGreenLG, result.name, 0);
+        default:
+      }
     });
-
-    Widget cancelButton = TextButton(
-      child: const Text("Cancel"),
-      onPressed: () => {Navigator.pop(context)},
-    );
-    Widget continueButton = TextButton(
-      child: const Text("Update Category"),
-      onPressed: () async {
-        setState(() {});
-        if (category != categoryText.text) {
-          dbHelper.deleteCategoryContents(category);
-        }
-        dbHelper.renameCategoryCascading(
-          categoryid: categoryid,
-          newName: categoryText.text,
-        );
-        setState(() {});
-        switch (categoryid) {
-          case 1:
-            _cat1Edited = true;
-            _drawCat1 = pyr.DrawCat1(_kGreenLG, categoryText.text, 0);
-          case 2:
-            _cat2Edited = true;
-            _drawCat2 = pyr.DrawCat2(_kGreenLG, categoryText.text, 0);
-          case 3:
-            _cat3Edited = true;
-            _drawCat3 = pyr.DrawCat3(_kGreenLG, categoryText.text, 0);
-          case 4:
-            _cat4Edited = true;
-            _drawCat4 = pyr.DrawCat4(_kGreenLG, categoryText.text, 0);
-          case 5:
-            _cat5Edited = true;
-            _drawCat5 = pyr.DrawCat5(_kGreenLG, categoryText.text, 0);
-          case 6:
-            _cat6Edited = true;
-            _drawCat6 = pyr.DrawCat6(_kGreenLG, categoryText.text, 0);
-          default:
-        }
-        Navigator.pop(context);
-      },
-    );
-    Widget categoryField = TextField(
-      controller: categoryText,
-      textAlign: TextAlign.left,
-      maxLength: 20,
-      decoration: const InputDecoration(
-        border: OutlineInputBorder(),
-        hintText: 'Enter Your Category Here.',
-        hintStyle: TextStyle(color: Colors.grey),
-      ),
-    );
-
-    // set up the AlertDialog
-    AlertDialog alert = AlertDialog(
-      title: const Text("Update Category..."),
-      content: const Text("Enter the updated category name below."),
-      actions: [
-        categoryField,
-        cancelButton,
-        continueButton,
-      ],
-    );
-    // show the dialog
-    return showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return alert;
-      },
-    );
   }
 
   Future<List<Cat>> getCategories() async {
