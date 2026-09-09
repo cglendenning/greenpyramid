@@ -239,6 +239,10 @@ class SyncService {
             'friday': row[DatabaseHelper.columnFriday],
             'saturday': row[DatabaseHelper.columnSaturday],
             'createdate': row[DatabaseHelper.columnCreateDate],
+            // D-123: only the intended time syncs — the native calendar
+            // event id is this device's own, meaningless on another one
+            // (see restoreFromCloud's matching comment below).
+            'scheduledtime': row[DatabaseHelper.columnScheduledTime],
           },
           SetOptions(merge: true));
     }
@@ -311,6 +315,15 @@ class SyncService {
         DatabaseHelper.columnSaturday: t['saturday'] ?? 'true',
         DatabaseHelper.columnCreateDate:
             t['createdate'] ?? DateTime.now().toIso8601String(),
+        // D-123: the scheduled time itself restores — it's the user's
+        // own stated intent. The native calendar event id deliberately
+        // does not: it names an event on the *old* device's calendar,
+        // which means nothing here and would make deleteHabitEvent/
+        // rescheduleHabitEvent fail against a foreign, nonexistent id.
+        // A restored device with a scheduledtime but no event id is the
+        // signal a future screen needs to (re)create the native event
+        // fresh, on this device.
+        DatabaseHelper.columnScheduledTime: t['scheduledtime'],
       });
     }
 

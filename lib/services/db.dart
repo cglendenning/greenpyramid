@@ -8,11 +8,12 @@ import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 8; // 7: R3 schema — position, essences,
+  static const _databaseVersion = 9; // 7: R3 schema — position, essences,
   // domain findings, account state (Part IV). 8: R6/D-062 — discards an
   // incomplete old-flow setup so the user starts the new Council setup
   // fresh instead of landing on a half-populated pyramid with no way back
-  // into the (now-deleted) wizard.
+  // into the (now-deleted) wizard. 9: D-123 — a habit's optional recurring
+  // scheduled time and its native calendar event id.
 
   // DEMO MODE FLAG
   static final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
@@ -34,6 +35,17 @@ class DatabaseHelper {
   static const columnFriday = 'friday';
   static const columnSaturday = 'saturday';
   static const columnCreateDate = 'createdate';
+
+  // D-123: a habit's optional recurring scheduled time. Null (the
+  // default) means unscheduled — today's flexible, no-time behavior,
+  // unchanged. 'HH:mm', 24-hour, local time — recurs on whichever of the
+  // Sunday-Saturday flags above are already true, the same days the
+  // habit is already active on; there is no separate day-of-week field
+  // for scheduling. columnScheduledCalendarEventId is the native
+  // calendar event's own id, kept so it can be updated or deleted later
+  // without searching the calendar for it.
+  static const columnScheduledTime = 'scheduledtime';
+  static const columnScheduledCalendarEventId = 'scheduledcalendareventid';
 
   // The tasklog table. This stores the history of each task's
   // completion for each value.
@@ -275,6 +287,8 @@ class DatabaseHelper {
               $columnFriday TEXT NOT NULL DEFAULT 'true',
               $columnSaturday TEXT NOT NULL DEFAULT 'true',
               $columnCreateDate TEXT NOT NULL,
+              $columnScheduledTime TEXT,
+              $columnScheduledCalendarEventId TEXT,
               UNIQUE($columnCategory, $columnTaskDescription)
             )
             ''');
@@ -422,6 +436,8 @@ class DatabaseHelper {
             $columnFriday TEXT NOT NULL DEFAULT 'true',
             $columnSaturday TEXT NOT NULL DEFAULT 'true',
             $columnCreateDate TEXT NOT NULL,
+            $columnScheduledTime TEXT,
+            $columnScheduledCalendarEventId TEXT,
             UNIQUE($columnCategory, $columnTaskDescription)
           )
           ''');
@@ -533,6 +549,16 @@ class DatabaseHelper {
             // D-062: runs once, after v7 is guaranteed present above.
             await applyV8Migration(db);
             break;
+          case 9:
+            // D-123: a habit's optional recurring scheduled time, and the
+            // id of the native calendar event it wrote (if any) — both
+            // null on every existing row, matching the unscheduled
+            // default a fresh install already gets from v9's CREATE TABLE.
+            await db.execute(
+                'ALTER TABLE $taskTable ADD COLUMN $columnScheduledTime TEXT');
+            await db.execute(
+                'ALTER TABLE $taskTable ADD COLUMN $columnScheduledCalendarEventId TEXT');
+            break;
         }
       }
     }
@@ -557,6 +583,8 @@ class DatabaseHelper {
         $columnFriday TEXT NOT NULL DEFAULT 'true',
         $columnSaturday TEXT NOT NULL DEFAULT 'true',
         $columnCreateDate TEXT NOT NULL,
+        $columnScheduledTime TEXT,
+        $columnScheduledCalendarEventId TEXT,
         UNIQUE($columnCategory, $columnTaskDescription)
       )
     ''');
