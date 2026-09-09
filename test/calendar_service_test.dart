@@ -181,4 +181,60 @@ void main() {
     expect(CalendarService.eventTitleFor('Walk 20 minutes'),
         '[Green Pyramid] Walk 20 minutes');
   });
+
+  group('D-123 Phase 2: filterSchedulableEvents — regression for a defect '
+      'found live: an all-day Rosh Hashanah entry from the read-only '
+      'Holidays calendar "collided" with every hour and made the whole '
+      'grid unschedulable', () {
+    dc.Event event({
+      required String title,
+      required String calendarId,
+      DateTime? start,
+      DateTime? end,
+    }) =>
+        dc.Event(
+          eventId: 'e-$title',
+          instanceId: 'e-$title',
+          calendarId: calendarId,
+          title: title,
+          startDate: start ?? DateTime(2026, 9, 22),
+          endDate: end ?? DateTime(2026, 9, 23),
+          isAllDay: true,
+          availability: dc.EventAvailability.busy,
+          status: dc.EventStatus.none,
+          isRecurring: false,
+        );
+
+    test('drops an event from a calendar not in writableIds', () {
+      final events = [
+        event(title: 'Rosh Hashanah', calendarId: 'holidays-cal'),
+        event(title: 'Dentist', calendarId: 'personal-cal'),
+      ];
+      final result = CalendarService.filterSchedulableEvents(events,
+          writableIds: {'personal-cal'});
+      expect(result.map((e) => e.title), ['Dentist']);
+    });
+
+    test('drops this app\'s own scheduled-habit events regardless of '
+        'calendar', () {
+      final events = [
+        event(
+            title: CalendarService.eventTitleFor('Walk 20 minutes'),
+            calendarId: 'personal-cal'),
+        event(title: 'Dentist', calendarId: 'personal-cal'),
+      ];
+      final result = CalendarService.filterSchedulableEvents(events,
+          writableIds: {'personal-cal'});
+      expect(result.map((e) => e.title), ['Dentist']);
+    });
+
+    test('an empty writableIds means "don\'t filter by calendar," not '
+        '"everything is read-only" — a permission/listCalendars hiccup '
+        'must never silently block every day', () {
+      final events = [event(title: 'Dentist', calendarId: 'personal-cal')];
+      final result =
+          CalendarService.filterSchedulableEvents(events, writableIds: {});
+      expect(result.map((e) => e.title), ['Dentist']);
+    });
+  });
 }

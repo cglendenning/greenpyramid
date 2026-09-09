@@ -32,6 +32,27 @@ class CalendarService {
   static String eventTitleFor(String habitDescription) =>
       '$eventTitlePrefix $habitDescription';
 
+  /// D-123 Phase 2: keeps only events worth showing on the scheduling
+  /// grid and worth colliding against — drops this app's own
+  /// scheduled-habit events (rendered separately, straight from each
+  /// habit's own row) and, matching Kansei's own
+  /// `getWritableCalendarIds()`/`filterSchedulable` split, drops events
+  /// from a read-only calendar. Pure, so the defect this guards against
+  /// is directly testable: without it, an all-day entry from the iOS
+  /// Holidays calendar (e.g. Rosh Hashanah) "collided" with every hour
+  /// of the day and made the whole grid unschedulable. An empty
+  /// [writableIds] means "don't filter by calendar," never "everything
+  /// is read-only."
+  static List<dc.Event> filterSchedulableEvents(
+    List<dc.Event> events, {
+    required Set<String> writableIds,
+  }) {
+    return events
+        .where((e) => !e.title.startsWith(eventTitlePrefix))
+        .where((e) => writableIds.isEmpty || writableIds.contains(e.calendarId))
+        .toList();
+  }
+
   /// D-123: pure mapping from the task table's own Sunday-Saturday
   /// string flags to the plugin's day-of-week enum — factored out so
   /// it's testable without touching the (unmockable) calendar plugin at
@@ -153,22 +174,45 @@ class CalendarService {
     }
   }
 
+  /// D-123 Phase 2: the set of writable calendar ids — matching Kansei's
+  /// own `getWritableCalendarIds()`/`filterSchedulable` split. Events
+  /// from a read-only calendar (iOS Holidays, a subscribed sports
+  /// schedule, a shared read-only calendar) are excluded from scheduling
+  /// context by [eventsForDay] so they never block a drop, the same
+  /// defect found live on Kansei's side: an all-day Rosh Hashanah entry
+  /// from the Holidays calendar "collided" with every hour of the day
+  /// and made the whole grid unschedulable. Empty set on failure — an
+  /// empty set means "don't filter," never "everything is read-only."
+  Future<Set<String>> writableCalendarIds() async {
+    try {
+      final calendars = await _calendar.listCalendars();
+      return {for (final c in calendars) if (!c.readOnly) c.id};
+    } catch (e, st) {
+      debugPrint('CalendarService.writableCalendarIds failed: $e\n$st');
+      return {};
+    }
+  }
+
   /// D-123 Phase 2: the day's calendar events, for the scheduling screen's
   /// grid — both as visual context (busy blocks from the user's other
   /// calendars) and as collision-detection input. Excludes this class's
-  /// own scheduled-habit events (identified by [eventTitlePrefix]), since
-  /// those render separately, straight from each habit's own row, not
-  /// re-derived from the calendar. Never throws — an empty list on any
-  /// failure, matching every other method here.
-  Future<List<dc.Event>> eventsForDay(DateTime day) async {
+  /// own scheduled-habit events (identified by [eventTitlePrefix]) and
+  /// any event from a read-only calendar (see [writableCalendarIds]),
+  /// since those render separately, straight from each habit's own row,
+  /// not re-derived from the calendar. Pass [writableIds] when the
+  /// caller already fetched it (e.g. once for the whole week) to avoid a
+  /// redundant `listCalendars()` call per day; omitted, it's fetched
+  /// fresh. Never throws — an empty list on any failure, matching every
+  /// other method here.
+  Future<List<dc.Event>> eventsForDay(DateTime day,
+      {Set<String>? writableIds}) async {
     if (!await hasPermission()) return [];
     final start = DateTime(day.year, day.month, day.day);
     final end = start.add(const Duration(days: 1));
     try {
       final events = await _calendar.listEvents(start, end);
-      return events
-          .where((e) => !e.title.startsWith(eventTitlePrefix))
-          .toList();
+      final ids = writableIds ?? await writableCalendarIds();
+      return filterSchedulableEvents(events, writableIds: ids);
     } catch (e, st) {
       debugPrint('CalendarService.eventsForDay failed: $e\n$st');
       return [];

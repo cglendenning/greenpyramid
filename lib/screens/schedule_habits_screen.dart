@@ -141,6 +141,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
     if (!mounted) return;
     if (alreadyGranted) {
       await _loadAll();
+      _showDragHintOnce();
       return;
     }
     final proceed = await _showPermissionPrompt();
@@ -162,6 +163,24 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
       return;
     }
     await _loadAll();
+    _showDragHintOnce();
+  }
+
+  bool _dragHintShown = false;
+
+  /// D-123 Phase 2: a couple of seconds' worth of instruction the moment
+  /// the grid first appears — found live: a first-time user had no way
+  /// to know a habit could be dragged at all. Shown once per visit to
+  /// this screen, not on every reload (a drag-driven reload would
+  /// otherwise retrigger it after every single drop).
+  void _showDragHintOnce() {
+    if (_dragHintShown || !mounted) return;
+    _dragHintShown = true;
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      content: Text('Long-press a habit, then drag it onto a time to schedule it.'),
+      duration: Duration(seconds: 3),
+      backgroundColor: Color(0xFF111111),
+    ));
   }
 
   Future<bool> _showPermissionPrompt() async {
@@ -195,8 +214,15 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
   Future<void> _loadAll() async {
     setState(() => _loading = true);
     final rows = await _dbHelper.queryAllTasks();
+    // Fetched once and reused across all 7 days — also the fix for a
+    // defect found live: without it, a read-only Holidays calendar's
+    // all-day Rosh Hashanah entry "collided" with every hour of the day
+    // and made the whole grid unschedulable.
+    final writableIds = await _calendarService.writableCalendarIds();
     final events = await Future.wait(List.generate(
-        _dayCount, (i) => _calendarService.eventsForDay(_weekStart.add(Duration(days: i)))));
+        _dayCount,
+        (i) => _calendarService.eventsForDay(_weekStart.add(Duration(days: i)),
+            writableIds: writableIds)));
     if (!mounted) return;
     setState(() {
       _habits = rows.map((m) => HabitScheduleRow.fromMap(m, _utils)).toList();
