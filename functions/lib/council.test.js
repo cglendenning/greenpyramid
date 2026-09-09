@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sanitize, biasInstruction, applyPacingReassurance, buildAdvisorTurnPrompt, buildGeneralCouncilTurnPrompt, buildSetupAdvisorTurnPrompt, countMiraTurns, extractReplyText, ADVISORS, SETUP_TURN_TOOL } from './council.js';
+import { sanitize, biasInstruction, applyPacingReassurance, buildAdvisorTurnPrompt, buildGeneralCouncilTurnPrompt, buildSetupAdvisorTurnPrompt, countMiraTurns, extractReplyText, hasAskedWrapUpQuestion, SETUP_WRAP_UP_QUESTION, ADVISORS, SETUP_TURN_TOOL } from './council.js';
 
 test('D-029: exactly the four Council advisors exist', () => {
   assert.deepEqual(Object.keys(ADVISORS).sort(), ['eli', 'kenji', 'mira', 'noa']);
@@ -156,6 +156,41 @@ test('D-090: buildSetupAdvisorTurnPrompt tells Mira to signal readiness via '
 test('D-090: with no history yet, the prompt still renders cleanly', () => {
   const { userMessage } = buildSetupAdvisorTurnPrompt({ conversationHistory: [] });
   assert.match(userMessage, /nothing yet/);
+});
+
+test('D-118: the non-refining ready instruction asks Mira for a summary of '
+  + 'what she heard, not a generic "about to build it" closing line — '
+  + 'index.js appends the fixed wrap-up question itself', () => {
+  const { systemText } = buildSetupAdvisorTurnPrompt({});
+  assert.match(systemText, /summary of what you've actually heard/);
+  assert.doesNotMatch(systemText, /telling them you're about to build it/);
+});
+
+test('D-118: the refining branch\'s ready instruction is unchanged — the '
+  + 'wrap-up question only applies to the initial conversation', () => {
+  const { systemText } = buildSetupAdvisorTurnPrompt({
+    existingCategories: [{ position: 1, name: 'Health' }],
+  });
+  assert.match(systemText, /telling them you're about to refine it/);
+});
+
+test('D-118: hasAskedWrapUpQuestion is false for empty or unrelated history',
+  () => {
+    assert.equal(hasAskedWrapUpQuestion([]), false);
+    assert.equal(hasAskedWrapUpQuestion([{ advisor: 'mira', text: 'What matters most to you?' }]), false);
+  });
+
+test('D-118: hasAskedWrapUpQuestion finds the fixed question once Mira has '
+  + 'actually asked it, and ignores it if only the user happened to say '
+  + 'the same words', () => {
+  assert.equal(
+    hasAskedWrapUpQuestion([{ advisor: 'mira', text: `Family and craft. ${SETUP_WRAP_UP_QUESTION}` }]),
+    true,
+  );
+  assert.equal(
+    hasAskedWrapUpQuestion([{ advisor: 'user', text: SETUP_WRAP_UP_QUESTION }]),
+    false,
+  );
 });
 
 test('D-090: conversation history reaches the user message, sanitized the '

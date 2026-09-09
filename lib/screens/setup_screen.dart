@@ -42,6 +42,11 @@ class SetupScreen extends StatefulWidget {
 enum _Phase {
   opening,
   openingRound,
+  // D-118: right after the opening conversation concludes for real (the
+  // fixed wrap-up question has been asked and answered) — generates and
+  // shows the vision statement, before categories, essences, or habits
+  // exist. Precedes tierIntro.
+  openingVision,
   // D-117: a brief, explicit explainer of the pyramid's three tiers —
   // foundational, essential, peak — shown once before the first time the
   // derived categories themselves are shown, and again after each
@@ -127,6 +132,10 @@ class _SetupScreenState extends State<SetupScreen> {
   // a single "Next" that commits, the same action "This feels right"
   // already performs.
   bool _categoriesEdited = false;
+
+  // D-118: set once the opening conversation's vision statement has been
+  // generated — null while _buildOpeningVision is still waiting on it.
+  String? _visionStatement;
 
   /// The categories to treat as "already proposed" for this turn — only
   /// meaningful while [_refining], and read before any re-derivation
@@ -315,12 +324,7 @@ class _SetupScreenState extends State<SetupScreen> {
         // below, and before _refining resets — this is the last point
         // _refinementContext still reflects the proposal being refined.
         final priorCategories = _refinementContext;
-        setState(() {
-          _phase = _tierIntroShown ? _Phase.categories : _Phase.tierIntro;
-          _refining = false;
-          _categoriesEdited = false;
-        });
-        await _loadCategories(existingCategories: priorCategories);
+        await _proceedFromReadyToBuild(priorCategories);
       }
       // Otherwise: stay in the current phase. The text input is already
       // visible there, waiting for the user's next reply.
@@ -331,12 +335,7 @@ class _SetupScreenState extends State<SetupScreen> {
     } on SetupCallLimitException {
       // D-072: approaching the bound — close gracefully rather than fail.
       final priorCategories = _refinementContext;
-      setState(() {
-        _phase = _tierIntroShown ? _Phase.categories : _Phase.tierIntro;
-        _refining = false;
-        _categoriesEdited = false;
-      });
-      await _loadCategories(existingCategories: priorCategories);
+      await _proceedFromReadyToBuild(priorCategories);
     } on CouncilClientException catch (e) {
       setState(() => _error = e.message);
     } finally {
@@ -356,6 +355,64 @@ class _SetupScreenState extends State<SetupScreen> {
     final updated = refreshed ?? session;
     if (mounted) setState(() => _session = updated);
     return updated;
+  }
+
+  // ── Opening vision statement (D-118) ────────────────────────────────────
+
+  // D-118: routes the opening conversation's real conclusion — never a
+  // refinement round's — through the new vision-statement moment before
+  // the tier explainer/categories. [priorCategories] is null exactly when
+  // this is the very first, non-refining conclusion (see _runMiraTurn's
+  // own comment on why it must be captured before this call); by
+  // construction that makes this branch fire at most once per setup
+  // session, since every later readyToBuild is a refinement.
+  Future<void> _proceedFromReadyToBuild(
+      List<CategoryProposal>? priorCategories) async {
+    if (priorCategories == null) {
+      setState(() {
+        _phase = _Phase.openingVision;
+        _refining = false;
+        _categoriesEdited = false;
+      });
+      await _deriveOpeningVisionStatement();
+      return;
+    }
+    setState(() {
+      _phase = _tierIntroShown ? _Phase.categories : _Phase.tierIntro;
+      _refining = false;
+      _categoriesEdited = false;
+    });
+    await _loadCategories(existingCategories: priorCategories);
+  }
+
+  Future<void> _deriveOpeningVisionStatement() async {
+    final session = _session;
+    if (session == null) return;
+    setState(() => _busy = true);
+    try {
+      final vision = await _setup.deriveOpeningVisionStatement(session);
+      setState(() => _visionStatement = vision);
+    } on AiBudgetException catch (e) {
+      setState(() => _error = e.message);
+    } on SpendLimitException catch (e) {
+      setState(() => _error = e.toString());
+    } on CouncilClientException catch (e) {
+      setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  // D-118: the vision statement's own "Next" — fires the (background)
+  // category derivation the same way tierIntro's transition already did
+  // before this screen existed, then advances into the tier explainer
+  // (or straight to categories if it's already been shown this session,
+  // matching D-117's own once-per-session rule).
+  Future<void> _proceedFromOpeningVision() async {
+    setState(() {
+      _phase = _tierIntroShown ? _Phase.categories : _Phase.tierIntro;
+    });
+    await _loadCategories();
   }
 
   // ── Categories (D-051) ──────────────────────────────────────────────────
@@ -765,13 +822,12 @@ class _SetupScreenState extends State<SetupScreen> {
       for (final entry in _habitsByCategory.entries) {
         await _setup.commitHabits(entry.key, entry.value);
       }
-      final session = _session!;
-      final essences = _foundational
-          .where((f) => f.capturedEssence != null)
-          .map((f) =>
-              (categoryName: f.categoryName, essence: f.capturedEssence!))
-          .toList();
-      await _setup.closeSynthesis(session: session, essences: essences);
+      // D-118: the vision statement was already written once, right after
+      // the opening conversation (_deriveOpeningVisionStatement) — this
+      // moment only closes the session out; it no longer generates a
+      // second one. Reversing D-055's original "closing synthesis" — see
+      // deriveOpeningVisionStatement's own doc comment for why.
+      await CouncilService.instance.endSession(_session!.sessionId);
       await _setup.syncAfterSetup();
       // D-058: the trial clock starts here, at the pyramid reveal — awaited
       // before navigating so the D-014 disclosure screen below can show the
@@ -876,6 +932,8 @@ class _SetupScreenState extends State<SetupScreen> {
         return 0.05;
       case _Phase.openingRound:
         return 0.15;
+      case _Phase.openingVision:
+        return 0.25;
       case _Phase.tierIntro:
         return 0.3;
       case _Phase.categories:
@@ -910,6 +968,8 @@ class _SetupScreenState extends State<SetupScreen> {
         // opening on every render of this phase, resumed or not.
         return _buildTranscript([_openingMessage, ...?_session?.messages],
             typingAdvisorKey: _busy ? 'mira' : null);
+      case _Phase.openingVision:
+        return _buildOpeningVision();
       case _Phase.tierIntro:
         return _buildTierIntro();
       case _Phase.categories:
@@ -1009,6 +1069,57 @@ class _SetupScreenState extends State<SetupScreen> {
   // once before the derived categories themselves so their arrangement
   // ("three foundational, two essential, one peak," P-6/D-051) reads as
   // legible structure rather than an unexplained layout.
+  // D-118: shown once, right after the opening conversation's real
+  // conclusion — before categories, essences, or habits exist. Loading
+  // state while _visionStatement is still null (generation takes a real
+  // model call), matching this screen's own explicit-wait convention
+  // rather than a bare spinner with no words (compare _buildHabits'
+  // equivalent state).
+  Widget _buildOpeningVision() {
+    if (_visionStatement == null) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 28),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 20),
+            Text('Writing your vision statement…',
+                style: OnboardingStyles.subhead, textAlign: TextAlign.center),
+          ],
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Spacer(flex: 3),
+          const Text('Here is who you are becoming.',
+              style: OnboardingStyles.headline),
+          const SizedBox(height: 14),
+          OnboardingStyles.accentDivider,
+          const SizedBox(height: 20),
+          Text(_visionStatement!, style: OnboardingStyles.subhead),
+          const Spacer(flex: 4),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 28),
+            child: SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: _busy ? null : _proceedFromOpeningVision,
+                style: OnboardingStyles.primaryButton,
+                child: const Text('Next', style: OnboardingStyles.buttonLabel),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTierIntro() {
     Widget tierRow({
       required String label,
@@ -1051,7 +1162,7 @@ class _SetupScreenState extends State<SetupScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Spacer(flex: 3),
+          const Spacer(flex: 2),
           const Text('Your pyramid has three tiers.',
               style: OnboardingStyles.headline),
           const SizedBox(height: 14),
@@ -1076,6 +1187,21 @@ class _SetupScreenState extends State<SetupScreen> {
             blurb: 'Three values everything else is built on.',
             widthFactor: 0.94,
             color: AppColors.brandGreen.withValues(alpha: 0.55),
+          ),
+          const SizedBox(height: 22),
+          // D-117 amendment (D-118 round): the owner asked for "a little
+          // bit more detail about the hierarchy, and why the hierarchy
+          // matters in terms of habits — that habits fall into those
+          // categories, and that some habits matter more than other
+          // habits because of these categories that they are in." Ties
+          // directly to D-020's existing mechanic (foundational > essential
+          // > peak weight order) rather than inventing new meaning.
+          const Text(
+            'Every habit you build lives inside one of these tiers. A '
+            "missed foundational habit gets more of the Council's "
+            "attention than a missed peak one — the tiers aren't just "
+            "labels, they shape how much each habit matters.",
+            style: OnboardingStyles.subhead,
           ),
           const Spacer(flex: 4),
           Padding(

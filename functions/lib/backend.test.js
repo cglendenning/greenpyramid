@@ -91,3 +91,18 @@ test('D-114: /deriveProgressAnalysis exists, is gated the same way every '
   assert.match(route, /buildProgressAnalysisPrompt/);
   assert.match(route, /recordCost\(/);
 });
+
+test('D-118: handleSetupAdvisorTurn intercepts readyToBuild only for the '
+  + 'non-refining conversation and only before the wrap-up question has '
+  + 'already been asked — the refinement loop must never be intercepted',
+  () => {
+    const start = indexSource.indexOf('async function handleSetupAdvisorTurn');
+    assert.ok(start > -1, 'expected handleSetupAdvisorTurn to exist');
+    const end = indexSource.indexOf('\n}\n', start);
+    const body = indexSource.substring(start, end === -1 ? indexSource.length : end);
+
+    assert.match(body, /!existingCategories/);
+    assert.match(body, /!hasAskedWrapUpQuestion\(conversationHistory\)/);
+    assert.match(body, /SETUP_WRAP_UP_QUESTION/);
+    assert.match(body, /readyToBuild\s*=\s*false/);
+  });

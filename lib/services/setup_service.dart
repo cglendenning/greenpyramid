@@ -151,25 +151,27 @@ class SetupService {
     );
   }
 
-  /// D-055: the closing synthesis, written once at the end of setup, and
-  /// persisted locally (MIG-1's latest-wins vision_statement semantics).
-  Future<String> closeSynthesis({
-    required BoardSession session,
-    required List<({String categoryName, String essence})> essences,
-  }) async {
+  /// D-118: the vision statement, written once, right after the opening
+  /// conversation concludes — before categories, essences, or habits
+  /// exist. Reverses D-055's original "generated at the close of setup,
+  /// from essences and the full transcript" timing: the owner's explicit
+  /// instruction this round moved it to immediately after Mira's final
+  /// "anything else" exchange, so there are no essences yet to draw on —
+  /// only the opening conversation itself. Persisted locally (MIG-1's
+  /// latest-wins vision_statement semantics) but does NOT end the
+  /// session — setup continues through categories, essences, and habits
+  /// on the same session afterward.
+  Future<String> deriveOpeningVisionStatement(BoardSession session) async {
     await AiGuard.instance.acquire();
     final vision = await _client.deriveVisionStatement(
       sessionId: session.sessionId,
       isSetup: true,
-      essences: essences
-          .map((e) => {'categoryName': e.categoryName, 'essence': e.essence})
-          .toList(),
+      essences: const [],
       transcript: session.messages
           .map((m) => {'advisor': m.advisorKey, 'text': m.text})
           .toList(),
     );
     await _db.insertVisionStatement(vision);
-    await _council.endSession(session.sessionId);
     return vision;
   }
 

@@ -254,12 +254,21 @@ void main() {
 
     // The re-derivation after a refinement round must be handed the prior
     // proposal, never called with nothing — that would be indistinguishable
-    // from throwing the old categories away.
+    // from throwing the old categories away. D-118 extracted the actual
+    // "existingCategories: priorCategories" call into a shared
+    // _proceedFromReadyToBuild helper (also used by the fresh, non-
+    // refining path) — this scan now covers both, since that's where the
+    // call moved to.
     final turnStart = source.indexOf('Future<void> _runMiraTurn()');
     final turnEnd = source.indexOf('\n  Future<BoardSession> _runSetupTurn', turnStart);
     final turnBody = source.substring(turnStart, turnEnd);
     expect(turnBody, contains('existingCategories: _refinementContext'));
-    expect(turnBody, contains('existingCategories: priorCategories'));
+    expect(turnBody, contains('_proceedFromReadyToBuild(priorCategories)'));
+
+    final helperStart = source.indexOf('Future<void> _proceedFromReadyToBuild(');
+    final helperEnd = source.indexOf('\n  Future<void> _deriveOpeningVisionStatement', helperStart);
+    final helperBody = source.substring(helperStart, helperEnd);
+    expect(helperBody, contains('existingCategories: priorCategories'));
   });
 
   test(

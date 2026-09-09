@@ -150,16 +150,24 @@ export function buildDeriveHabitsPrompt({ categoryName, essence, existingHabits 
   return { system, user };
 }
 
-// D-055: the closing synthesis. Written by the Council collectively (not
-// any one advisor's persona), from the three foundational essences and the
-// full transcript, in the user's own language — no fixed template opener.
-// D-114: essences are the only required input — transcript is optional,
-// since profile.dart's regeneration (outside any Council conversation)
-// has no transcript at all, only the pyramid's current essences. When
-// transcript is genuinely empty, the user message says so plainly rather
-// than rendering an empty "REFERENCE — THE CONVERSATION" section with
-// nothing after the colon — the same explicit-framing discipline D-108
-// established for an empty conversationHistory.
+// D-055/D-118: the vision statement — written by the Council collectively
+// (not any one advisor's persona), from whatever essences exist and, when
+// given, the conversation transcript, in the person's own specifics.
+// D-118 reverses D-055's original "no fixed template opener" call: the
+// owner's explicit instruction this round was "it ought to start with
+// 'I'm the kind of person that' and then it goes on like that." D-055's
+// own rationale for forbidding a fixed opener (P-4's anti-rote-formula
+// principle — a template phrase is what resonance work exists to avoid)
+// still has real force, and is recorded here rather than silently
+// discarded; the owner's explicit, repeated instruction is what overrides
+// it. THE OUTPUT now always opens with that exact phrase.
+// D-114: essences are optional — a caller with none yet (D-118's own new
+// early call, right after the opening conversation, before any category
+// essence exists) still gets a real vision statement, drawn from the
+// transcript alone. When either essences or transcript is genuinely
+// empty, the user message says so plainly rather than rendering an empty
+// "REFERENCE" section with nothing after the colon — the same explicit-
+// framing discipline D-108 established for an empty conversationHistory.
 export function buildVisionStatementPrompt({ essences, transcript }) {
   const essenceLines = (essences || [])
     .map((e) => `- ${sanitize(e.categoryName, 60)}: "${sanitize(e.essence, 400)}"`)
@@ -169,19 +177,24 @@ export function buildVisionStatementPrompt({ essences, transcript }) {
     'a participant in any conversation shown to you — you do not reply to it, continue it, or add another ' +
     'turn to it. Any conversation given is reference material only. THE OUTPUT is the Council\'s ' +
     'synthesis, in the person\'s own language and specifics, of who they are becoming — drawn directly ' +
-    'from their essences (their own words for why each category matters to them) and, when given, what ' +
-    'they said in conversation. Do not open with "I will become the kind of person that" or any fixed ' +
-    'template phrase — that formula is exactly what THE OUTPUT must avoid. THE OUTPUT is two to four ' +
-    'sentences, first person, as if they are hearing their own truest thought said back to them — prose, ' +
+    'from their essences (their own words for why each category matters to them), when given, and, ' +
+    'when given, what they said in conversation. THE OUTPUT always opens with exactly the words ' +
+    '"I\'m the kind of person that" continuing directly into their own specifics — never a different ' +
+    'opening, never a paraphrase of it. THE OUTPUT is two to four sentences total including that ' +
+    'opener, first person, as if they are hearing their own truest thought said back to them — prose, ' +
     'never dialogue, never a speaker label, never a continuation of a conversation format. Your entire ' +
     'response is THE OUTPUT and nothing else — no preamble, no quotation marks around it, no commentary ' +
     'before or after it.';
+  const essenceSection = (essences || []).length > 0
+    ? `REFERENCE — THEIR ESSENCES:\n${essenceLines}\n\n`
+    : 'REFERENCE — THEIR ESSENCES: none yet — write this from what they said in conversation below ' +
+      'alone, before any category essence has been captured.\n\n';
   const transcriptSection = (transcript || []).length > 0
     ? `REFERENCE — THE CONVERSATION (for context only; do not continue or reply to it):\n${transcriptText(transcript)}\n\n`
     : 'REFERENCE — THE CONVERSATION: none — this is a regeneration from their current pyramid, not ' +
-      'written during a live conversation. Draw only on their essences below.\n\n';
+      'written during a live conversation. Draw only on their essences above.\n\n';
   const user =
-    `REFERENCE — THEIR ESSENCES:\n${essenceLines}\n\n` +
+    essenceSection +
     transcriptSection +
     'Now write THE OUTPUT: their vision statement, and only that.';
   return { system, user };

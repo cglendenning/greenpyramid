@@ -14,7 +14,7 @@ import cors from 'cors';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import admin from 'firebase-admin';
-import { applyPacingReassurance, buildAdvisorTurnPrompt, buildGeneralCouncilTurnPrompt, buildSetupAdvisorTurnPrompt, countMiraTurns, extractReplyText, SETUP_TURN_TOOL } from './lib/council.js';
+import { applyPacingReassurance, buildAdvisorTurnPrompt, buildGeneralCouncilTurnPrompt, buildSetupAdvisorTurnPrompt, countMiraTurns, extractReplyText, hasAskedWrapUpQuestion, SETUP_TURN_TOOL, SETUP_WRAP_UP_QUESTION } from './lib/council.js';
 import { checkSpendLimit, recordCost, SpendLimitError } from './lib/billing.js';
 import { getCouncilModel, getNotificationModel } from './lib/model_config.js';
 import { guardAndCountSetupCall, SetupCallLimitError } from './lib/setup_guard.js';
@@ -337,14 +337,29 @@ async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conver
       console.error('boardAdvisorTurn(setup): no tool_use in response, stop_reason:', msg.stop_reason);
       return res.status(502).json({ error: 'no_tool_use_in_response' });
     }
-    const readyToBuild = !!toolUse.input.readyToBuild;
-    // D-092: applied server-side, deterministically — found live that
-    // asking the model to weave this into its own reply wasn't reliably
-    // followed several turns into a real conversation.
-    const reply = applyPacingReassurance(toolUse.input.reply, {
-      turnsSoFar: countMiraTurns(conversationHistory),
-      readyToBuild,
-    });
+    let readyToBuild = !!toolUse.input.readyToBuild;
+    let reply = toolUse.input.reply;
+    // D-118: the very first time Mira decides she's ready — the initial
+    // (non-refining) conversation only, never the refinement loop — her
+    // decision is intercepted: instead of actually closing, her summary
+    // reply gets the fixed wrap-up question appended and readyToBuild is
+    // forced back to false, so the conversation continues for exactly one
+    // more round. hasAskedWrapUpQuestion makes this a one-time interception
+    // per conversation — once the fixed question already appears in
+    // history (the user has answered it), Mira's next readyToBuild: true
+    // is honored for real.
+    if (readyToBuild && !existingCategories && !hasAskedWrapUpQuestion(conversationHistory)) {
+      reply = `${(reply || '').trim()} ${SETUP_WRAP_UP_QUESTION}`;
+      readyToBuild = false;
+    } else {
+      // D-092: applied server-side, deterministically — found live that
+      // asking the model to weave this into its own reply wasn't reliably
+      // followed several turns into a real conversation.
+      reply = applyPacingReassurance(reply, {
+        turnsSoFar: countMiraTurns(conversationHistory),
+        readyToBuild,
+      });
+    }
     // D-017: setup is free — never charged against D-087's dollar ledger,
     // only counted against D-072's call limit (already done above).
     res.json({

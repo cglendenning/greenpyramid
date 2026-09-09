@@ -150,11 +150,13 @@ test('injection characters in category context cannot break out of the '
   assert.doesNotMatch(user, /"/);
 });
 
-test('D-055: the vision-statement prompt forbids the fixed template opener',
+test('D-118: the vision-statement prompt now requires the fixed opener '
+  + '"I\'m the kind of person that" — reverses D-055\'s original "no fixed '
+  + 'template opener" call, per the owner\'s explicit instruction',
   () => {
     const { system } = buildVisionStatementPrompt({ essences: [], transcript: [] });
-    assert.match(system, /I will become the kind of person that/);
-    assert.match(system, /must avoid/);
+    assert.match(system, /I'm the kind of person that/);
+    assert.doesNotMatch(system, /must avoid/);
   });
 
 test('D-055: essences and the full transcript both reach the prompt', () => {
@@ -181,3 +183,21 @@ test('D-114: an empty or missing transcript states plainly that this is a '
   });
   assert.match(withMissing, /regeneration from their current pyramid/);
 });
+
+test('D-118: an empty or missing essences list states plainly that none '
+  + 'have been captured yet — the new opening-conversation vision '
+  + 'statement (right after the resonance conversation, before any '
+  + 'category essence exists) has no essences at all, only a transcript',
+  () => {
+    const { user: withEmpty } = buildVisionStatementPrompt({
+      essences: [],
+      transcript: [{ advisor: 'user', text: 'family and creative work matter most' }],
+    });
+    assert.match(withEmpty, /none yet/);
+    assert.match(withEmpty, /family and creative work matter most/);
+
+    const { user: withMissing } = buildVisionStatementPrompt({
+      transcript: [{ advisor: 'user', text: 'family and creative work matter most' }],
+    });
+    assert.match(withMissing, /none yet/);
+  });

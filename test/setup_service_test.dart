@@ -74,14 +74,18 @@ class _FakeCouncilClient extends CouncilClient {
     return habits;
   }
 
+  List<Map<String, String>>? lastVisionEssences;
+
   @override
   Future<String> deriveVisionStatement({
     required List<Map<String, String>> essences,
     required bool isSetup,
     String? sessionId,
     List<Map<String, String>>? transcript,
-  }) async =>
-      vision;
+  }) async {
+    lastVisionEssences = essences;
+    return vision;
+  }
 }
 
 class _ThrowingCouncilClient extends _FakeCouncilClient {
@@ -505,31 +509,39 @@ void main() {
     });
   });
 
-  group('D-055: closing synthesis is written once and persisted locally',
-      () {
-    test('D-055: closeSynthesis persists the vision statement and ends the '
-        'session', () async {
+  group(
+      'D-118: the vision statement is written once, right after the '
+      'opening conversation, and persisted locally', () {
+    test(
+        'D-118: deriveOpeningVisionStatement persists the vision statement, '
+        'sends no essences (none exist yet at this point in setup), and '
+        'does not end the session — categories/essences/habits still '
+        'follow on the same session', () async {
       final client = _FakeCouncilClient();
       final svc = buildService(client: client);
       final session = await svc.startOrResumeSetup();
 
-      final vision = await svc.closeSynthesis(
-        session: session,
-        essences: const [(categoryName: 'Health', essence: 'my body carries me')],
-      );
+      final vision = await svc.deriveOpeningVisionStatement(session);
 
       expect(vision, client.vision);
+      expect(client.lastVisionEssences, isEmpty);
       final stored = await db.getLatestVisionStatement();
       expect(stored, client.vision);
+      // The session is still resumable — endSession was never called.
+      final resumed = await svc.startOrResumeSetup();
+      expect(resumed.sessionId, session.sessionId);
     });
 
-    test('D-055: the fixed template opener is never imposed by this layer '
-        '— whatever the backend returns is stored verbatim', () async {
-      final client = _FakeCouncilClient()..vision = 'a completely different closing line';
+    test('D-118: the fixed opener requirement lives in the backend prompt, '
+        'not this layer — whatever the backend returns is stored verbatim',
+        () async {
+      final client = _FakeCouncilClient()
+        ..vision = "I'm the kind of person that shows up fully.";
       final svc = buildService(client: client);
       final session = await svc.startOrResumeSetup();
-      await svc.closeSynthesis(session: session, essences: const []);
-      expect(await db.getLatestVisionStatement(), 'a completely different closing line');
+      await svc.deriveOpeningVisionStatement(session);
+      expect(await db.getLatestVisionStatement(),
+          "I'm the kind of person that shows up fully.");
     });
   });
 }

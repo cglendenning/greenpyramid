@@ -248,13 +248,20 @@ export function buildSetupAdvisorTurnPrompt({
     : `This is the very start of their relationship with the app. Ask genuine, warm follow-up ` +
       `questions about what energizes them and what they want more of in their life.`;
 
+  // D-118: the non-refining branch's reply, on the turn Mira decides she's
+  // ready, is now a brief summary of what she heard — index.js appends a
+  // fixed wrap-up question to it and forces readyToBuild back to false the
+  // first time this happens (see hasAskedWrapUpQuestion below), so this
+  // instruction only ever needs to describe the summary half; the question
+  // itself is never left to the model to phrase, the same deterministic
+  // discipline D-092's pacing reassurance already established.
   const readyInstruction = refining
     ? `Once you understand what to adjust, set readyToBuild to true and let reply be a brief, warm ` +
       `closing line telling them you're about to refine it — never a question in that case.`
     : `After a few exchanges — enough to have real, specific material, but not so many it drags — you ` +
       `will have enough to build a pyramid that is actually theirs. When you do, set readyToBuild to ` +
-      `true and let reply be a brief, warm closing line telling them you're about to build it — never ` +
-      `a question in that case.`;
+      `true and let reply be a brief, warm summary of what you've actually heard from them — their own ` +
+      `specifics, in your own words, not a generic acknowledgment — never a question in that case.`;
 
   const systemText =
     `You are Mira, The Heart — having a one-on-one conversation with someone, ` +
@@ -301,6 +308,28 @@ export function applyPacingReassurance(reply, { turnsSoFar, readyToBuild }) {
   if (readyToBuild || turnsSoFar < 2) return reply;
   const suffix = PACING_SUFFIXES[turnsSoFar % PACING_SUFFIXES.length];
   return `${(reply || '').trim()}${suffix}`;
+}
+
+// D-118: the fixed close of the opening conversation, appended
+// deterministically by index.js the first time Mira decides she's ready to
+// build — never left to the model to phrase consistently, matching D-092's
+// established discipline. The owner's own words: "a very brief summary of
+// what she heard and then a question[:] is there anything else that you
+// would like to express about what matters most to you?"
+export const SETUP_WRAP_UP_QUESTION =
+  "Is there anything else you'd like to express about what matters most to you?";
+
+// D-118: true once Mira's fixed wrap-up question already appears in this
+// conversation's history — the deterministic signal index.js uses to tell
+// "Mira just decided she's ready for the first time" (intercept: summarize
+// and ask the wrap-up question, hold readyToBuild false) apart from "Mira
+// is ready and the wrap-up has already happened" (let the real close
+// through). A plain substring check on the fixed string, not a stored
+// flag — this conversation's own history is already the complete record.
+export function hasAskedWrapUpQuestion(conversationHistory) {
+  return (conversationHistory || []).some(
+    (m) => m.advisor !== 'user' && (m.text || '').includes(SETUP_WRAP_UP_QUESTION),
+  );
 }
 
 // D-090: forced tool-use schema for the solo setup turn above — the
