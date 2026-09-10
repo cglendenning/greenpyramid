@@ -84,6 +84,13 @@ export function buildAdvisorTurnPrompt({
     `This is a chat room — crisp, warm, a little levity is welcome. No speeches.\n` +
     `Vary your response length naturally based on your personality. Sometimes a single word or phrase is the right move. Sometimes a full sentence or two. Max 2 sentences.\n` +
     `Respond to what was just said. If the person themselves wrote (shown as You:), speak to them directly.\n` +
+    // D-092-adjacent fix, found live 2026-09-10: a new advisor's first-ever
+    // turn in a conversation kept opening with a formulaic self-introduction
+    // that ignored whatever the person had just poured out — introducing
+    // yourself is not an exemption from the rule above.
+    `If this is the first time you're speaking in this chat, a brief self-introduction is fine — but it ` +
+    `must never come at the expense of responding to what was just said. Weave who you are into a real ` +
+    `response to their actual last message; never let introducing yourself become an excuse to ignore it.\n` +
     `If they share their name, acknowledge it once naturally — do not repeat their name in every reply.\n` +
     `Otherwise address your fellow advisors, referring to the person in the third person.\n` +
     `Never wrap your response in quotation marks.`;
@@ -154,6 +161,13 @@ export function buildGeneralCouncilTurnPrompt({
     `the right move. Sometimes a full sentence or two. Max 2 sentences.\n` +
     `Respond to what was just said. If the person themselves wrote (shown as You:), speak to them ` +
     `directly.\n` +
+    // Found live 2026-09-10: a new advisor's first-ever turn in this
+    // conversation opened with a formulaic self-introduction that ignored
+    // whatever the person had just poured out — introducing yourself is
+    // not an exemption from the rule above.
+    `If this is the first time you're speaking in this chat, a brief self-introduction is fine — but it ` +
+    `must never come at the expense of responding to what was just said. Weave who you are into a real ` +
+    `response to their actual last message; never let introducing yourself become an excuse to ignore it.\n` +
     `Otherwise address your fellow advisors, referring to the person in the third person.\n` +
     // D-100: found live — a direct question about the Council itself got
     // sidestepped in favor of continuing the diagnostic thread. A relevance-

@@ -445,6 +445,25 @@ test('D-100: the system prompt is identical regardless of nudgeConvergence '
   assert.equal(first.systemText, second.systemText);
 });
 
+test('D-125: the category-scoped Council prompt instructs that a first-turn '
+  + 'self-introduction never replaces responding to what was just said — '
+  + 'found live, a new advisor\'s first turn ignored a long, personal '
+  + 'message in favor of a formulaic introduction', () => {
+  const { systemText } = buildAdvisorTurnPrompt({
+    advisorKey: 'kenji',
+    categoryContext: { categoryName: 'Craft' },
+  });
+  assert.match(systemText, /first time you're speaking/i);
+  assert.match(systemText, /must never come at the expense of responding/i);
+});
+
+test('D-125: the general Council prompt carries the same first-turn '
+  + 'instruction', () => {
+  const { systemText } = buildGeneralCouncilTurnPrompt({ advisorKey: 'kenji' });
+  assert.match(systemText, /first time you're speaking/i);
+  assert.match(systemText, /must never come at the expense of responding/i);
+});
+
 test('D-028: conversation history is capped to the most recent 30 turns', () => {
   const history = Array.from({ length: 40 }, (_, i) => ({ advisor: 'user', text: `turn ${i}` }));
   const { userMessage } = buildAdvisorTurnPrompt({
