@@ -285,6 +285,15 @@ class PyramidPainting {
   // wrapping — with a dark stroked backing then a light fill on top, so
   // labels stay legible over the glow/gradient regardless of the
   // underlying category color.
+  //
+  // Found live: _fitFontSize shrinks down to an 8px floor and stops there
+  // even if the text still doesn't fit — for a long enough label (or a
+  // maxWidth that's too tight for the actual render size) that means real
+  // overflow, with nothing here containing it. A long category name spilled
+  // out of its own block and into a neighbor's. Clipped to a rect around
+  // [maxWidth] now, so a floor-sized label that still doesn't fit gets
+  // visually truncated at its own block's boundary instead of bleeding
+  // into whatever is drawn next to it.
   static void paintReadableLabel(
     Canvas canvas,
     String text,
@@ -309,6 +318,13 @@ class PyramidPainting {
       style: baseStyle.copyWith(color: Colors.white),
     );
 
+    canvas.save();
+    // A little horizontal slack for the stroke's own width (it extends
+    // past the glyph outline on each side); generous vertical slack for
+    // ascenders/descenders at any of the font sizes this ever renders at.
+    canvas.clipRect(Rect.fromLTWH(
+        offset.dx - 4, offset.dy - fitted, maxWidth + 8, fitted * 3));
+
     for (final span in [strokeSpan, fillSpan]) {
       final textPainter = TextPainter(
         maxLines: 1,
@@ -318,5 +334,6 @@ class PyramidPainting {
       )..layout(minWidth: 0, maxWidth: double.infinity);
       textPainter.paint(canvas, offset);
     }
+    canvas.restore();
   }
 }

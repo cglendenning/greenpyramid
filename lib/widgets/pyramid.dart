@@ -358,12 +358,21 @@ class DrawCat1 extends CustomPainter {
       PyramidPainting.paintGlowingSegment(canvas, cat1Path, lg.colors[0]);
     }
 
-    final textWidth = PyramidPainting.measureWidth(cat1, maxWidth: 95);
+    // Found live: a fixed pixel maxWidth (previously 95, tuned for one
+    // screen size) didn't scale with the actual render size — on a wider
+    // device a long category name shrank far more than it needed to; on a
+    // narrower one it could still overflow. Every block here is roughly
+    // size.width/3 wide at its label's row — 28% of size.width leaves a
+    // little margin either side. paintReadableLabel's own clip is the
+    // backstop if even the floor font size still doesn't fit.
+    final labelMaxWidth = size.width * 0.28;
+    final textWidth =
+        PyramidPainting.measureWidth(cat1, maxWidth: labelMaxWidth);
     var xCenter = ((size.width / 2.4) - textWidth) / 2;
     var yCenter = (size.height * 4.1 / 5);
 
     PyramidPainting.paintReadableLabel(canvas, cat1, Offset(xCenter, yCenter),
-        maxWidth: 95);
+        maxWidth: labelMaxWidth);
   }
 
   @override
@@ -408,12 +417,14 @@ class DrawCat2 extends CustomPainter {
       PyramidPainting.paintGlowingSegment(canvas, cat2Path, lg.colors[0]);
     }
 
-    final textWidth = PyramidPainting.measureWidth(cat2, maxWidth: 105);
+    final labelMaxWidth = size.width * 0.28;
+    final textWidth =
+        PyramidPainting.measureWidth(cat2, maxWidth: labelMaxWidth);
     var xCenter = (size.width - textWidth) / 2;
     var yCenter = (size.height * 4.1 / 5);
 
     PyramidPainting.paintReadableLabel(canvas, cat2, Offset(xCenter, yCenter),
-        maxWidth: 105);
+        maxWidth: labelMaxWidth);
   }
 
   @override
@@ -461,12 +472,14 @@ class DrawCat3 extends CustomPainter {
       PyramidPainting.paintGlowingSegment(canvas, cat3Path, lg.colors[0]);
     }
 
-    final textWidth = PyramidPainting.measureWidth(cat3, maxWidth: 95);
+    final labelMaxWidth = size.width * 0.28;
+    final textWidth =
+        PyramidPainting.measureWidth(cat3, maxWidth: labelMaxWidth);
     var xCenter = ((size.width / 0.63) - textWidth) / 2;
     var yCenter = (size.height * 4.1 / 5);
 
     PyramidPainting.paintReadableLabel(canvas, cat3, Offset(xCenter, yCenter),
-        maxWidth: 95);
+        maxWidth: labelMaxWidth);
   }
 
   @override
@@ -515,12 +528,14 @@ class DrawCat4 extends CustomPainter {
       PyramidPainting.paintGlowingSegment(canvas, cat4Path, lg.colors[0]);
     }
 
-    final textWidth = PyramidPainting.measureWidth(cat4, maxWidth: 95);
+    final labelMaxWidth = size.width * 0.28;
+    final textWidth =
+        PyramidPainting.measureWidth(cat4, maxWidth: labelMaxWidth);
     var xCenter = ((size.width / 1.35) - textWidth) / 2;
     var yCenter = (size.height / 2.1);
 
     PyramidPainting.paintReadableLabel(canvas, cat4, Offset(xCenter, yCenter),
-        maxWidth: 95);
+        maxWidth: labelMaxWidth);
   }
 
   @override
@@ -569,12 +584,14 @@ class DrawCat5 extends CustomPainter {
       PyramidPainting.paintGlowingSegment(canvas, cat5Path, lg.colors[0]);
     }
 
-    final textWidth = PyramidPainting.measureWidth(cat5, maxWidth: 95);
+    final labelMaxWidth = size.width * 0.28;
+    final textWidth =
+        PyramidPainting.measureWidth(cat5, maxWidth: labelMaxWidth);
     var xCenter = ((size.width / 0.8) - textWidth) / 2;
     var yCenter = (size.height / 2.1);
 
     PyramidPainting.paintReadableLabel(canvas, cat5, Offset(xCenter, yCenter),
-        maxWidth: 95);
+        maxWidth: labelMaxWidth);
   }
 
   @override
@@ -622,13 +639,14 @@ class DrawCat6 extends CustomPainter {
       PyramidPainting.paintGlowingSegment(canvas, cat6Path, lg.colors[0]);
     }
 
-    final textWidth =
-        PyramidPainting.measureWidth(cat6, maxWidth: 85, fontSize: 12);
+    final labelMaxWidth = size.width * 0.28;
+    final textWidth = PyramidPainting.measureWidth(cat6,
+        maxWidth: labelMaxWidth, fontSize: 12);
     var xCenter = ((size.width) - textWidth) / 2;
     var yCenter = (size.height / 5);
 
     PyramidPainting.paintReadableLabel(canvas, cat6, Offset(xCenter, yCenter),
-        maxWidth: 85, fontSize: 12);
+        maxWidth: labelMaxWidth, fontSize: 12);
   }
 
   @override

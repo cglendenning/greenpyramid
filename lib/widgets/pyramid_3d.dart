@@ -188,11 +188,24 @@ class _Pyramid3DState extends State<Pyramid3D> with TickerProviderStateMixin {
 
     final token = ++_wallRenderToken;
     final categories = widget.categories;
+    final scale = resolution / Pyramid3DGeometry.textureSize;
+    // The padded image is proportionally larger than the plain
+    // content-only resolution, at the same content crispness (same
+    // scale factor) — so the glow's blur sigma, specified in the
+    // pre-scale texture-logical space paintPyramidWallContent draws in,
+    // ends up the same effective pixel size it always did; only the
+    // blank margin around the content is new.
+    final paddedResolution =
+        (resolution + _wallTexturePadding * 2 * scale).round();
     final recorder = ui.PictureRecorder();
     final canvas = Canvas(recorder);
-    canvas.scale(resolution / Pyramid3DGeometry.textureSize);
+    canvas.scale(scale);
+    canvas.translate(_wallTexturePadding, _wallTexturePadding);
     paintPyramidWallContent(canvas, categories);
-    recorder.endRecording().toImage(resolution, resolution).then((image) {
+    recorder
+        .endRecording()
+        .toImage(paddedResolution, paddedResolution)
+        .then((image) {
       if (!mounted || token != _wallRenderToken) {
         image.dispose();
         return;
@@ -270,6 +283,24 @@ void paintPyramidWallContent(
   }
 }
 
+// Found live: the pyramid's three corners (the apex, and the two bottom
+// points) had a visibly hard-edged, flat-cut glow instead of the soft
+// bleed every other edge shows. paintPyramidWallContent lays the triangle
+// out to touch the recorded wall texture's own bounds exactly (0 and
+// Pyramid3DGeometry.textureSize on both axes) — the glow's outward blur
+// has nowhere to spread at those exact points, since the recorded image
+// simply ends there; along the middle of an edge the same blur has image
+// space on either side to fade into, so only the corners, where two such
+// edges meet, actually go visibly flat. _wallTexturePadding gives the
+// recorded texture blank margin on every side (comfortably past the
+// widest blur sigma paintSegmentGlow uses, 36) so the blur can fade
+// naturally there too — a rendering-only change: the actual triangle
+// geometry (segmentPaths, faceTriangle, labelAnchors, hit-testing) is
+// untouched, since only the recorded image's own size and the rect it
+// gets drawn back into change, not the logical texture coordinate space
+// itself.
+const double _wallTexturePadding = 80.0;
+
 class _Pyramid3DPainter extends CustomPainter {
   final double rotation;
   final List<PyramidCategoryData> categories;
@@ -279,7 +310,10 @@ class _Pyramid3DPainter extends CustomPainter {
       {required this.rotation, required this.categories, this.wallImage});
 
   static const Rect _dstRect = Rect.fromLTWH(
-      0, 0, Pyramid3DGeometry.textureSize, Pyramid3DGeometry.textureSize);
+      -_wallTexturePadding,
+      -_wallTexturePadding,
+      Pyramid3DGeometry.textureSize + _wallTexturePadding * 2,
+      Pyramid3DGeometry.textureSize + _wallTexturePadding * 2);
   static final Paint _imagePaint = Paint()
     ..filterQuality = FilterQuality.medium;
 
