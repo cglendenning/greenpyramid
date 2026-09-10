@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/screens/schedule_habits_screen.dart';
 import 'package:life_ops/services/db.dart';
@@ -244,6 +246,29 @@ void main() {
         'value shorter than the default', () {
       expect(habit(durationMinutes: 45).durationMinutes, 45);
       expect(habit(durationMinutes: 10).durationMinutes, 10);
+    });
+  });
+
+  group('D-128: the iOS/Android edge-swipe-back gesture is disabled on this '
+      'always-landscape screen', () {
+    test('build() wraps its content in PopScope(canPop: false) — found '
+        'live: swiping right near the left edge to scroll the bottom '
+        'habit tray was frequently misread as an edge-swipe-back gesture '
+        'and popped the whole screen instead of scrolling the tray', () {
+      final source =
+          File('lib/screens/schedule_habits_screen.dart').readAsStringSync();
+      expect(source, contains('PopScope(canPop: false, child: _content(context))'));
+    });
+
+    test('the AppBar back arrow still calls Navigator.pop directly, which '
+        'canPop: false does not gate — only the gesture is disabled, not '
+        'the explicit back button', () {
+      final source =
+          File('lib/screens/schedule_habits_screen.dart').readAsStringSync();
+      final leadingIdx = source.indexOf('leading: IconButton(');
+      final popIdx = source.indexOf('onPressed: () => Navigator.pop(context)', leadingIdx);
+      expect(leadingIdx, greaterThan(-1));
+      expect(popIdx, greaterThan(leadingIdx));
     });
   });
 }

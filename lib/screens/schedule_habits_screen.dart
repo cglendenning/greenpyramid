@@ -411,6 +411,20 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // D-128: this screen is always landscape (see _lockLandscape above) and
+    // the habit tray (_tray, a horizontal ListView.builder) sits right at
+    // the bottom where a swipe near the left edge to scroll it collided
+    // with iOS's edge-swipe-back gesture / Android's predictive back,
+    // frequently popping the screen by accident instead of scrolling the
+    // tray. canPop: false removes that gesture recognizer entirely
+    // (PageRoute.popGestureEnabled checks the route's pop disposition,
+    // which PopScope's canPop controls) — the explicit back arrow in the
+    // AppBar below still works, since it calls Navigator.pop directly,
+    // which canPop does not gate.
+    return PopScope(canPop: false, child: _content(context));
+  }
+
+  Widget _content(BuildContext context) {
     if (_loading) return _stateView(_loadingBody());
     if (_permissionDenied) return _stateView(_permissionBody());
 
