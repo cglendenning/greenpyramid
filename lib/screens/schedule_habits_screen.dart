@@ -117,6 +117,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
     });
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       _lockLandscape();
+      _showDragHintOnce();
       await _init();
     });
   }
@@ -141,7 +142,6 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
     if (!mounted) return;
     if (alreadyGranted) {
       await _loadAll();
-      _showDragHintOnce();
       return;
     }
     final proceed = await _showPermissionPrompt();
@@ -163,21 +163,23 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
       return;
     }
     await _loadAll();
-    _showDragHintOnce();
   }
 
   bool _dragHintShown = false;
 
-  /// D-123 Phase 2: a couple of seconds' worth of instruction the moment
-  /// the grid first appears — found live: a first-time user had no way
-  /// to know a habit could be dragged at all. Shown once per visit to
-  /// this screen, not on every reload (a drag-driven reload would
-  /// otherwise retrigger it after every single drop).
+  /// D-123 Phase 2: a couple of seconds' worth of instruction the instant
+  /// the screen arrives, before permission is even checked — found live:
+  /// a first-time user had no way to know the tray items at the bottom
+  /// could be dragged up onto the calendar at all. Fired once from the
+  /// very first post-frame callback, not gated behind permission/data
+  /// loading, so it never gets delayed by however long those take; the
+  /// guard flag keeps it from firing again on a drag-driven reload.
   void _showDragHintOnce() {
     if (_dragHintShown || !mounted) return;
     _dragHintShown = true;
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-      content: Text('Long-press a habit, then drag it onto a time to schedule it.'),
+      content: Text(
+          'Long-press a habit in the tray below, then drag it up onto the calendar to schedule it.'),
       duration: Duration(seconds: 3),
       backgroundColor: Color(0xFF111111),
     ));
