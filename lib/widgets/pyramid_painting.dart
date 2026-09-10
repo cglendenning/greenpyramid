@@ -240,69 +240,68 @@ class PyramidPainting {
         letterSpacing: 0.2,
       );
 
+  // Found live: labels used to be forced onto a single line and shrunk
+  // (down to an 8px floor) until they fit a width budget — a long name
+  // either went illegibly tiny to stay on one line, or, once the floor
+  // was hit, overflowed anyway with nothing containing it. Neither
+  // problem is fixable by tuning the width alone: a block has real
+  // vertical room too, and a label should use it — wrapping across a
+  // couple of lines at a readable size — before ever shrinking below a
+  // comfortable minimum.
+  //
   // Finds the largest font size (down to [minFontSize]) at which [text]
-  // renders on a single line no wider than [maxWidth], so category labels
-  // never wrap regardless of how long the name is.
-  static double _fitFontSize(
+  // wraps to fit within [maxWidth] and [maxLines] lines without exceeding
+  // [maxHeight] — wrapping is tried at every size before the size itself
+  // is reduced, so a label reaches for the floor font size only once
+  // wrapping alone genuinely can't make it fit.
+  static (double fontSize, TextPainter painter) _fitWrappedText(
     String text,
     double maxWidth,
+    double maxHeight,
     double startFontSize, {
-    double minFontSize = 8.0,
+    double minFontSize = 10.0,
+    int maxLines = 3,
   }) {
     double fontSize = startFontSize;
+    TextPainter layOut(double size) => TextPainter(
+          text: TextSpan(text: text, style: _labelStyle(size)),
+          textAlign: TextAlign.center,
+          textDirection: TextDirection.ltr,
+          maxLines: maxLines,
+        )..layout(maxWidth: maxWidth);
+
     while (fontSize > minFontSize) {
-      final textPainter = TextPainter(
-        text: TextSpan(text: text, style: _labelStyle(fontSize)),
-        maxLines: 1,
-        textDirection: TextDirection.ltr,
-      )..layout(minWidth: 0, maxWidth: double.infinity);
-      if (textPainter.width <= maxWidth) {
-        return fontSize;
+      final painter = layOut(fontSize);
+      if (!painter.didExceedMaxLines && painter.height <= maxHeight) {
+        return (fontSize, painter);
       }
       fontSize -= 0.5;
     }
-    return minFontSize;
+    return (minFontSize, layOut(minFontSize));
   }
 
-  // Measures how wide [text] renders at its fitted single-line font size,
-  // so callers can center it within their own hand-computed anchor box
-  // before painting.
-  static double measureWidth(
-    String text, {
-    required double maxWidth,
-    double fontSize = 14,
-  }) {
-    final fitted = _fitFontSize(text, maxWidth, fontSize);
-    final textPainter = TextPainter(
-      text: TextSpan(text: text, style: _labelStyle(fitted)),
-      maxLines: 1,
-      textDirection: TextDirection.ltr,
-    )..layout(minWidth: 0, maxWidth: double.infinity);
-    return textPainter.width;
-  }
-
-  // Draws [text] on a single line — shrinking to fit [maxWidth] rather than
-  // wrapping — with a dark stroked backing then a light fill on top, so
-  // labels stay legible over the glow/gradient regardless of the
-  // underlying category color.
-  //
-  // Found live: _fitFontSize shrinks down to an 8px floor and stops there
-  // even if the text still doesn't fit — for a long enough label (or a
-  // maxWidth that's too tight for the actual render size) that means real
-  // overflow, with nothing here containing it. A long category name spilled
-  // out of its own block and into a neighbor's. Clipped to a rect around
-  // [maxWidth] now, so a floor-sized label that still doesn't fit gets
-  // visually truncated at its own block's boundary instead of bleeding
-  // into whatever is drawn next to it.
+  // Draws [text] centered on [anchor], wrapping within a box up to
+  // [maxWidth] wide and [maxHeight] tall — a dark stroked backing then a
+  // light fill on top, so labels stay legible over the glow/gradient
+  // regardless of the underlying category color. Clipped to that box, so
+  // a label that still doesn't fit even at the floor font size and
+  // [maxLines] lines truncates at its own block's boundary rather than
+  // bleeding into whatever is drawn next to it.
   static void paintReadableLabel(
     Canvas canvas,
     String text,
-    Offset offset, {
+    Offset anchor, {
     required double maxWidth,
-    double fontSize = 14,
+    required double maxHeight,
+    double fontSize = 15,
+    int maxLines = 3,
   }) {
-    final fitted = _fitFontSize(text, maxWidth, fontSize);
+    final (fitted, layout) = _fitWrappedText(
+        text, maxWidth, maxHeight, fontSize,
+        maxLines: maxLines);
     final baseStyle = _labelStyle(fitted);
+    final topLeft =
+        Offset(anchor.dx - layout.width / 2, anchor.dy - layout.height / 2);
 
     final strokeSpan = TextSpan(
       text: text,
@@ -319,20 +318,19 @@ class PyramidPainting {
     );
 
     canvas.save();
-    // A little horizontal slack for the stroke's own width (it extends
-    // past the glyph outline on each side); generous vertical slack for
-    // ascenders/descenders at any of the font sizes this ever renders at.
-    canvas.clipRect(Rect.fromLTWH(
-        offset.dx - 4, offset.dy - fitted, maxWidth + 8, fitted * 3));
+    // A little slack on every side for the stroke's own width (it
+    // extends past the glyph outline) and for descenders.
+    canvas.clipRect(Rect.fromCenter(
+        center: anchor, width: maxWidth + 8, height: maxHeight + 8));
 
     for (final span in [strokeSpan, fillSpan]) {
       final textPainter = TextPainter(
-        maxLines: 1,
+        maxLines: maxLines,
         text: span,
         textDirection: TextDirection.ltr,
         textAlign: TextAlign.center,
-      )..layout(minWidth: 0, maxWidth: double.infinity);
-      textPainter.paint(canvas, offset);
+      )..layout(maxWidth: maxWidth);
+      textPainter.paint(canvas, topLeft);
     }
     canvas.restore();
   }

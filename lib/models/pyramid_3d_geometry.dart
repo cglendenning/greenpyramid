@@ -245,18 +245,24 @@ class PyramidFaceLayout {
     ];
   }
 
-  // (label center, max label width, font size) per category, in texture
-  // units. Width budgets are capped at roughly 80% of the block's width at
-  // the label's height, so even the longest names keep clear padding from
-  // the glowing block edges instead of touching them; the middle-row
-  // anchors sit low in their blocks where the trapezoids are widest.
-  static final List<(Offset, double, double)> labelAnchors = [
-    (Offset(_s * 0.20, _s * 0.86), _s * 0.22, 34),
-    (Offset(_s / 2, _s * 0.86), _s * 0.26, 34),
-    (Offset(_s * 0.80, _s * 0.86), _s * 0.22, 34),
-    (Offset(_s * 0.35, _s * 0.60), _s * 0.24, 30),
-    (Offset(_s * 0.65, _s * 0.60), _s * 0.24, 30),
-    (Offset(_s / 2, _s * 0.225), _s * 0.17, 27),
+  // (label center, max label width, starting font size, max label height)
+  // per category, in texture units. Width budgets stay clear of the
+  // glowing block edges at the label's own height; the max-height budget
+  // (added 2026-09-10, alongside PyramidPainting.paintReadableLabel
+  // gaining real wrapping) is how far the anchor sits from the nearer of
+  // the block's own top/bottom boundary, doubled — a wrapped label can
+  // grow that far in either direction from its anchor without crossing
+  // into a neighboring row. The middle-row anchors moved to each block's
+  // true vertical center (were biased low, toward the trapezoid's wider
+  // edge, back when a label was always exactly one line) so a wrapped
+  // label has symmetric room above and below.
+  static final List<(Offset, double, double, double)> labelAnchors = [
+    (Offset(_s * 0.20, _s * 0.86), _s * 0.22, 34, _s * 0.24),
+    (Offset(_s / 2, _s * 0.86), _s * 0.26, 34, _s * 0.24),
+    (Offset(_s * 0.80, _s * 0.86), _s * 0.22, 34, _s * 0.24),
+    (Offset(_s * 0.375, _s * 0.50), _s * 0.22, 30, _s * 0.33),
+    (Offset(_s * 0.625, _s * 0.50), _s * 0.22, 30, _s * 0.33),
+    (Offset(_s / 2, _s * 0.225), _s * 0.17, 27, _s * 0.20),
   ];
 
   // The wall's full triangular outline (used for the lighting overlay).

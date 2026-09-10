@@ -270,14 +270,14 @@ void paintPyramidWallContent(
         canvas, PyramidFaceLayout.segmentPaths[i], categories[i].color);
   }
   for (int i = 0; i < count; i++) {
-    final (anchor, maxWidth, fontSize) = PyramidFaceLayout.labelAnchors[i];
-    final textWidth = PyramidPainting.measureWidth(categories[i].label,
-        maxWidth: maxWidth, fontSize: fontSize);
+    final (anchor, maxWidth, fontSize, maxHeight) =
+        PyramidFaceLayout.labelAnchors[i];
     PyramidPainting.paintReadableLabel(
       canvas,
       categories[i].label,
-      Offset(anchor.dx - textWidth / 2, anchor.dy),
+      anchor,
       maxWidth: maxWidth,
+      maxHeight: maxHeight,
       fontSize: fontSize,
     );
   }
