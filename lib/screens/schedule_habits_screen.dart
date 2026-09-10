@@ -43,6 +43,10 @@ const Color _sumiBlack = Color(0xFF1a1714);
 const Color _aqua = Color(0xFF4FC3C8);
 const Color _washiCream = Color(0xFFf4ede0);
 const Color _bengaraRed = Color(0xFFa8453a);
+// D-123 Phase 2: found live — the drag hint's default snack bar text was
+// almost illegible against a dark background. A vivid green against the
+// near-black snack bar background gives the strongest legible contrast.
+const Color _hintGreen = Color(0xFF4ADE80);
 const Color _existingGrey = Color(0xFF3A3A3A);
 const Color _existingGreyBorder = Color(0xFF555555);
 
@@ -181,8 +185,14 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
     _dragHintShown = true;
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
       content: Text(
-          'Long-press a habit in the tray below, then drag it up onto the calendar to schedule it.'),
-      duration: Duration(seconds: 3),
+        'Long-press a habit in the tray below, then drag it up onto the calendar to schedule it.',
+        style: TextStyle(
+          color: _hintGreen,
+          fontWeight: FontWeight.w600,
+          fontSize: 14,
+        ),
+      ),
+      duration: Duration(seconds: 5),
       backgroundColor: Color(0xFF111111),
     ));
   }
