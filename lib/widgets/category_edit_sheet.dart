@@ -21,8 +21,12 @@ import '../theme/app_colors.dart';
 /// make category editing "more beautiful."
 class CategoryEditResult {
   final String name;
-  final String? description;
-  const CategoryEditResult({required this.name, this.description});
+  // D-127: always the field's final text, empty string included — never
+  // collapsed to null. Null here used to mean "field was empty," which a
+  // caller couldn't tell apart from "field was left untouched," so
+  // clearing a description to blank and saving silently did nothing.
+  final String description;
+  const CategoryEditResult({required this.name, required this.description});
 }
 
 Future<CategoryEditResult?> showCategoryEditSheet(
@@ -72,10 +76,9 @@ class _CategoryEditSheetState extends State<_CategoryEditSheet> {
   void _save() {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
-    final description = _descriptionController.text.trim();
     Navigator.of(context).pop(CategoryEditResult(
       name: name,
-      description: description.isEmpty ? null : description,
+      description: _descriptionController.text.trim(),
     ));
   }
 

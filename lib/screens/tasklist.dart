@@ -73,11 +73,14 @@ class _TaskListState extends State<TaskList> {
       await dbHelper.renameCategoryCascading(
           categoryid: categoryId, newName: result.name);
     }
-    if (result.description != null) {
+    // D-127: compare against what was actually loaded, not against
+    // null/empty — an intentionally-cleared description is itself a
+    // change and must be persisted, not skipped because it's blank.
+    if (result.description != (currentEssence ?? '')) {
       // D-061: essences are versioned, never overwritten — this appends
       // a new version rather than updating the existing row.
       await dbHelper.insertCategoryEssence(
-          categoryId: categoryId, essence: result.description!);
+          categoryId: categoryId, essence: result.description);
     }
 
     if (result.name != category) {

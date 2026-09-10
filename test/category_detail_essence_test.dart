@@ -70,6 +70,36 @@ void main() {
     });
   });
 
+  group('D-127: clearing a category description actually saves the clear', () {
+    test('D-127: insertCategoryEssence with an empty string persists an '
+        'empty latest essence, not null — the DB layer already supports '
+        'this, so the defect was purely in the two screens deciding '
+        'whether to call it', () async {
+      await db.insertCategory(
+          {DatabaseHelper.columnCategoryId: 1, DatabaseHelper.columnCat: 'Health'});
+      await db.insertCategoryEssence(categoryId: 1, essence: 'old text');
+      expect(await db.getLatestEssenceForCategory(1), 'old text');
+
+      await db.insertCategoryEssence(categoryId: 1, essence: '');
+      expect(await db.getLatestEssenceForCategory(1), '',
+          reason: 'the clear must land as the new latest version, not be '
+              'skipped and leave the old text as latest');
+    });
+
+    test('D-127: neither editpyramid.dart nor tasklist.dart gate the '
+        'essence write on result.description being non-null anymore — '
+        'that was the exact bug (an empty save was silently skipped)', () {
+      final editPyramidSource =
+          File('lib/screens/editpyramid.dart').readAsStringSync();
+      final taskListSource = File('lib/screens/tasklist.dart').readAsStringSync();
+
+      for (final source in [editPyramidSource, taskListSource]) {
+        expect(source, isNot(contains('result.description != null')));
+        expect(source, contains('result.description != (currentEssence ?? \'\')'));
+      }
+    });
+  });
+
   group('D-047: the category detail screen structure', () {
     test('D-047: category name, then essence, then habit checkboxes, in '
         'that order', () {

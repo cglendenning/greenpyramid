@@ -96,6 +96,36 @@ void main() {
         reason: 'the sheet is still open — Save silently did nothing');
   });
 
+  testWidgets(
+      'D-127: clearing an existing description and saving returns an '
+      'empty string, not null — a caller must be able to tell "cleared" '
+      'apart from "left untouched"', (tester) async {
+    late Future<CategoryEditResult?> result;
+    await tester.pumpWidget(MaterialApp(
+      home: Builder(
+        builder: (context) => ElevatedButton(
+          onPressed: () {
+            result = showCategoryEditSheet(context,
+                currentName: 'Health', currentDescription: 'old text');
+          },
+          child: const Text('Open'),
+        ),
+      ),
+    ));
+    await tester.tap(find.text('Open'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.text('old text'), '');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    final r = await result;
+    expect(r?.name, 'Health');
+    expect(r?.description, '',
+        reason: 'a cleared field must round-trip as "", never collapse to '
+            'null the way "no description was ever entered" would');
+  });
+
   testWidgets('D-113: an unambiguous DESCRIPTION label, not the internal '
       '"essence" term — found live, the owner called that term confusing: '
       '"it\'s really a subtitle or a description of the category"',

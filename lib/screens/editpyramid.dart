@@ -324,10 +324,13 @@ class _EditPyramid extends State<EditPyramid> {
         newName: result.name,
       );
     }
-    if (result.description != null) {
+    // D-127: compare against what was actually loaded, not against
+    // null/empty — an intentionally-cleared description is itself a
+    // change and must be persisted, not skipped because it's blank.
+    if (result.description != (currentEssence ?? '')) {
       await dbHelper.insertCategoryEssence(
         categoryId: categoryid,
-        essence: result.description!,
+        essence: result.description,
       );
     }
 
