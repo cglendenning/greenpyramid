@@ -8,12 +8,13 @@ import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 9; // 7: R3 schema — position, essences,
+  static const _databaseVersion = 10; // 7: R3 schema — position, essences,
   // domain findings, account state (Part IV). 8: R6/D-062 — discards an
   // incomplete old-flow setup so the user starts the new Council setup
   // fresh instead of landing on a half-populated pyramid with no way back
   // into the (now-deleted) wizard. 9: D-123 — a habit's optional recurring
-  // scheduled time and its native calendar event id.
+  // scheduled time and its native calendar event id. 10: D-124 — a
+  // tasklog row's optional voice-transcribed miss reason.
 
   // DEMO MODE FLAG
   static final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
@@ -55,6 +56,12 @@ class DatabaseHelper {
   static const columnTLTaskDescription = 'taskdescription';
   static const columnTLChecked = 'checked';
   static const columnTLTaskDate = 'taskdate';
+
+  // D-124: the voice-transcribed reason a scheduled habit's batch
+  // check-in was answered "No" for — null on every row that was never
+  // answered "No" from the check-in screen (including every row from
+  // before this column existed).
+  static const columnTLMissReason = 'missreason';
 
   // The quote table. This stores quotes displayed on the notification
   // response screen.
@@ -310,6 +317,7 @@ class DatabaseHelper {
               $columnTLTaskDescription TEXT NOT NULL,
               $columnTLChecked TEXT NOT NULL,
               $columnTLTaskDate TEXT NOT NULL,
+              $columnTLMissReason TEXT,
               UNIQUE($columnTLCategory, $columnTLTaskDescription, $columnTLTaskDate)
             )
             ''');
@@ -448,6 +456,7 @@ class DatabaseHelper {
             $columnTLTaskDescription TEXT NOT NULL,
             $columnTLChecked TEXT NOT NULL,
             $columnTLTaskDate TEXT NOT NULL,
+            $columnTLMissReason TEXT,
             UNIQUE($columnTLCategory, $columnTLTaskDescription, $columnTLTaskDate)
           )
           ''');
@@ -559,6 +568,14 @@ class DatabaseHelper {
             await db.execute(
                 'ALTER TABLE $taskTable ADD COLUMN $columnScheduledCalendarEventId TEXT');
             break;
+          case 10:
+            // D-124: a tasklog row's optional voice-transcribed miss
+            // reason — null on every existing row, matching the "never
+            // answered No from the check-in screen" default a fresh
+            // install already gets from v10's CREATE TABLE.
+            await db.execute(
+                'ALTER TABLE $taskLogTable ADD COLUMN $columnTLMissReason TEXT');
+            break;
         }
       }
     }
@@ -595,6 +612,7 @@ class DatabaseHelper {
         $columnTLTaskDescription TEXT NOT NULL,
         $columnTLChecked TEXT NOT NULL,
         $columnTLTaskDate TEXT NOT NULL,
+        $columnTLMissReason TEXT,
         UNIQUE($columnTLCategory, $columnTLTaskDescription, $columnTLTaskDate)
       )
     ''');
@@ -1382,6 +1400,43 @@ class DatabaseHelper {
     return db.update(
       getTaskLogTable(),
       {columnTLChecked: checked.toString()},
+      where: '$columnTLCategory = ? AND $columnTLTaskDescription = ? '
+          'AND $columnTLTaskDate = ?',
+      whereArgs: [category, taskDescription, taskDate],
+    );
+  }
+
+  /// D-124: records one habit's answer from the batch check-in screen —
+  /// Yes (`checked: true`, no reason) or No (`checked: false`, an
+  /// optional voice-transcribed reason). Ensures a tasklog row exists for
+  /// [taskDate] first (mirroring [insertTaskLogForCategory]'s own
+  /// insert-if-missing pattern via the UNIQUE constraint), since the push
+  /// that led here may have arrived on a device that never opened the
+  /// task list today and so never auto-created one.
+  Future<void> recordBatchCheckinResult({
+    required String category,
+    required String taskDescription,
+    required String taskDate,
+    required bool checked,
+    String? missReason,
+  }) async {
+    final db = await instance.database;
+    try {
+      await db.insert(getTaskLogTable(), {
+        columnTLCategory: category,
+        columnTLTaskDescription: taskDescription,
+        columnTLChecked: 'false',
+        columnTLTaskDate: taskDate,
+      });
+    } catch (_) {
+      // A row for today already exists — the update below is what matters.
+    }
+    await db.update(
+      getTaskLogTable(),
+      {
+        columnTLChecked: checked.toString(),
+        columnTLMissReason: missReason,
+      },
       where: '$columnTLCategory = ? AND $columnTLTaskDescription = ? '
           'AND $columnTLTaskDate = ?',
       whereArgs: [category, taskDescription, taskDate],

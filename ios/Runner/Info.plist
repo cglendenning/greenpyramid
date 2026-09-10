@@ -214,9 +214,13 @@
     <key>NSPhotoLibraryUsageDescription</key>
     <string>Ability to attach screenshots for feedback.</string>
     <key>NSCalendarsUsageDescription</key>
-    <string>Green Pyramid can read your calendar, only if you turn this on, so the Council's notifications can be aware of what your day looks like. Nothing is ever added to your calendar.</string>
+    <string>Green Pyramid can read your calendar, only if you turn this on, so the Council's notifications can be aware of what your day looks like, and can write an event when you schedule a habit's time.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>
-    <string>Green Pyramid can read your calendar, only if you turn this on, so the Council's notifications can be aware of what your day looks like. Nothing is ever added to your calendar.</string>
+    <string>Green Pyramid can read your calendar, only if you turn this on, so the Council's notifications can be aware of what your day looks like, and can write an event when you schedule a habit's time.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Green Pyramid uses your microphone, only if you choose to, so you can explain what happened when a scheduled habit gets missed.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Green Pyramid transcribes your voice on-device, only if you choose to, so you can explain what happened when a scheduled habit gets missed.</string>
     <key>CADisableMinimumFrameDurationOnPhone</key>
     <true/>
     <key>CFBundleDevelopmentRegion</key>

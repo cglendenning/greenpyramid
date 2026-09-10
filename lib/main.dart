@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:life_ops/screens/batch_checkin_screen.dart';
 import 'package:life_ops/screens/homescreen.dart';
 import 'package:life_ops/screens/database_recovery_screen.dart';
 import 'package:life_ops/services/notification.dart';
@@ -43,6 +45,34 @@ String payload = '';
 bool populateGap = true;
 DateTime installDate = DateTime.now();
 bool interventionShown = false;
+
+/// D-124 Phase 5: re-encodes an FCM message's `data` map as the
+/// structured JSON payload `LocalNotificationService.onSelectNotification`
+/// recognizes, so tapping a foreground-shown local notification for a
+/// batch-checkin push routes the same way tapping the real push does.
+/// Null for every other push type — this is deliberately scoped to
+/// batch-checkin only, not a general-purpose payload passthrough.
+String? batchCheckinPayloadFrom(Map<String, dynamic> data) {
+  if (data['type'] != 'batch_checkin') return null;
+  return jsonEncode(data);
+}
+
+/// D-124 Phase 5: opens [BatchCheckinScreen] from a real batch-checkin
+/// push's habit list — shared by the backgrounded-tap
+/// (`onMessageOpenedApp`) and terminated-launch (`getInitialMessage`)
+/// paths. A message of any other type is silently ignored.
+void handleBatchCheckinTap(RemoteMessage message) {
+  if (message.data['type'] != 'batch_checkin') return;
+  final habitsJson = message.data['habits'];
+  if (habitsJson == null) return;
+  try {
+    final habits = (jsonDecode(habitsJson) as List).cast<Map<String, dynamic>>();
+    navigatorKey.currentState?.push(
+        MaterialPageRoute(builder: (_) => BatchCheckinScreen(habits: habits)));
+  } catch (e, st) {
+    debugPrint('Failed to open BatchCheckinScreen from a push: $e\n$st');
+  }
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -110,6 +140,14 @@ Future<void> main() async {
   // auto-displayed by the OS on most platforms — show it via the same
   // local-notification channel. Registered unconditionally; it simply
   // never fires for an account with no FCM token registered.
+  //
+  // D-124 Phase 5: a batch-checkin push's `data` carries the habit list
+  // this app needs to open the right screen — threaded through as this
+  // local notification's own payload, in the structured JSON shape
+  // LocalNotificationService.onSelectNotification recognizes, so tapping
+  // this foreground-shown notification opens BatchCheckinScreen the same
+  // way tapping the real push does in the backgrounded/terminated cases
+  // below.
   try {
     FirebaseMessaging.onMessage.listen((message) {
       final notification = message.notification;
@@ -117,10 +155,32 @@ Future<void> main() async {
       LocalNotificationService().showImmediateNotification(
         title: notification.title ?? 'Green Pyramid',
         body: notification.body ?? '',
+        payload: batchCheckinPayloadFrom(message.data),
       );
     });
   } catch (e, st) {
     debugPrint('Failed to register foreground FCM listener: $e\n$st');
+  }
+
+  // D-124 Phase 5 / D-083 amendment: real pushes previously had zero
+  // tap-routing capability — no data payload was ever sent, and no
+  // onMessageOpenedApp/getInitialMessage handlers existed at all. The
+  // batch-checkin push is the first to carry a `data` payload
+  // (functions/index.js's batchCheckinJob), so these are the first
+  // handlers that can act on one: a tap while backgrounded fires
+  // onMessageOpenedApp; a tap that launches the app from terminated
+  // fires getInitialMessage instead — both are needed to cover every
+  // app state a tap can happen from.
+  try {
+    FirebaseMessaging.onMessageOpenedApp.listen(handleBatchCheckinTap);
+  } catch (e, st) {
+    debugPrint('Failed to register onMessageOpenedApp listener: $e\n$st');
+  }
+  try {
+    final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+    if (initialMessage != null) handleBatchCheckinTap(initialMessage);
+  } catch (e, st) {
+    debugPrint('Failed to read initial FCM message: $e\n$st');
   }
 
   // D-086: migration is best-effort. If the database cannot be opened or

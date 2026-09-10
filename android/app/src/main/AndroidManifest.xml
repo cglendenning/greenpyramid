@@ -16,6 +16,8 @@
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <!-- D-124 Phase 5: the batch check-in's voice-recorded miss reason. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
     <application
         android:label="Green Pyramid"

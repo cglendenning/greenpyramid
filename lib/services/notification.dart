@@ -1,9 +1,12 @@
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'dart:convert';
+import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
+import 'package:flutter/material.dart' show MaterialPageRoute;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:rxdart/subjects.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:life_ops/main.dart';
+import 'package:life_ops/screens/batch_checkin_screen.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'dart:math';
 import 'dart:io';
@@ -645,8 +648,32 @@ class LocalNotificationService {
 
   onSelectNotification(NotificationResponse notificationResponse) {
     var payload = notificationResponse.payload;
-    if (payload != null && payload.isNotEmpty) {
-      onNotificationClick.add(payload);
+    if (payload == null || payload.isEmpty) return;
+    // D-124 Phase 5: a structured JSON payload (currently only the batch
+    // check-in's foreground-shown local notification uses this shape,
+    // via main.dart's batchCheckinPayloadFrom) routes directly, rather
+    // than going through the plain route-string path below — which
+    // pushes a stacked duplicate HomeScreen for anything that isn't a
+    // real named route (D-083's amendment).
+    if (payload.startsWith('{')) {
+      _handleStructuredPayload(payload);
+      return;
+    }
+    onNotificationClick.add(payload);
+  }
+
+  void _handleStructuredPayload(String payload) {
+    try {
+      final data = jsonDecode(payload) as Map<String, dynamic>;
+      if (data['type'] != 'batch_checkin') return;
+      final habitsJson = data['habits'] as String?;
+      if (habitsJson == null) return;
+      final habits =
+          (jsonDecode(habitsJson) as List).cast<Map<String, dynamic>>();
+      navigatorKey.currentState?.push(MaterialPageRoute(
+          builder: (_) => BatchCheckinScreen(habits: habits)));
+    } catch (e, st) {
+      debugPrint('Failed to handle structured notification payload: $e\n$st');
     }
   }
 

@@ -76,11 +76,17 @@ dependencies:
   # it ever leaves the device.
   android_id: ^0.5.2+1
   crypto: ^3.0.0
-  # D-025 step 7: read-only calendar context feeding P-8. Green Pyramid
-  # never creates, edits, or deletes events — read is the only capability
-  # this plugin exposes above its gentler write-only tier, so a full-access
-  # grant is required even though only read is ever used.
+  # D-025 step 7: calendar context feeding P-8. D-123 (2026-09-09) added
+  # real writes for scheduled habits — full access was already requested
+  # for reading, so no permission-level change was needed.
   device_calendar_plus: ^0.8.0
+  # D-124 Phase 5: the OS's own native speech recognition (Apple's Speech
+  # framework / Android's SpeechRecognizer) for the batch check-in's
+  # voice-recorded miss reason — not a separate paid transcription
+  # service, so this does not require the standing "no new paid cloud
+  # service" approval gate. Matches Kansei's own version
+  # (goal-executor/pubspec.yaml).
+  speech_to_text: ^7.4.0
 
 dev_dependencies:
   flutter_test:
