@@ -8,6 +8,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 
 import 'package:life_ops/services/calendar_service.dart';
 import 'package:life_ops/services/db.dart';
+import 'package:life_ops/services/notification.dart';
 import 'package:life_ops/services/utils.dart';
 
 /// D-123 Phase 2: drag a habit onto a time to give it a recurring
@@ -82,6 +83,7 @@ bool intervalsOverlap(
 class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
   final _calendarService = CalendarService.instance;
   final _dbHelper = DatabaseHelper.instance;
+  final _localNotificationService = LocalNotificationService();
   final _utils = Utils();
   final _scrollCtrl = ScrollController();
   final _dayKeys = List<GlobalKey>.generate(_dayCount, (_) => GlobalKey());
@@ -337,6 +339,16 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
         DatabaseHelper.columnScheduledTime: timeStr,
         DatabaseHelper.columnScheduledCalendarEventId: eventId,
       });
+      // D-124 Phase 3: the local "starting soon" reminder, kept in sync
+      // with the calendar write above rather than a separate step the
+      // user could forget or that could drift out of sync.
+      await _localNotificationService.scheduleHabitReminders(
+        habitId: habit.id,
+        habitDescription: habit.description,
+        hour: hour,
+        minute: minute,
+        activeWeekdays: habit.activeDartWeekdays,
+      );
       HapticFeedback.mediumImpact();
       await _loadAll();
     } else if (mounted) {
@@ -378,6 +390,8 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
       DatabaseHelper.columnScheduledTime: null,
       DatabaseHelper.columnScheduledCalendarEventId: null,
     });
+    // D-124 Phase 3: no time, no reminder.
+    await _localNotificationService.cancelHabitReminders(habit.id);
     await _loadAll();
   }
 
@@ -926,4 +940,16 @@ class HabitScheduleRow {
     if (hour == null || minute == null) return null;
     return (hour, minute);
   }
+
+  /// D-124 Phase 3: this habit's active days as `DateTime.monday..sunday`
+  /// ints, for `LocalNotificationService.scheduleHabitReminders`.
+  List<int> get activeDartWeekdays => [
+        if (monday) DateTime.monday,
+        if (tuesday) DateTime.tuesday,
+        if (wednesday) DateTime.wednesday,
+        if (thursday) DateTime.thursday,
+        if (friday) DateTime.friday,
+        if (saturday) DateTime.saturday,
+        if (sunday) DateTime.sunday,
+      ];
 }

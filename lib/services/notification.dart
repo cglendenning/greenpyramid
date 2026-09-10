@@ -9,6 +9,80 @@ import 'dart:math';
 import 'dart:io';
 import 'package:permission_handler/permission_handler.dart';
 
+/// D-124 Phase 3: one "starting soon" reminder slot for a scheduled
+/// habit — one per day it recurs on. Pure value object, no plugin
+/// calls, so the scheduling math is directly testable.
+class HabitReminderSlot {
+  final int notificationId;
+  final int weekday; // the habit's own day (DateTime.monday..sunday) — the
+  // notification id's identity, independent of which calendar day
+  // [fireTime] actually lands on (see buildHabitReminderSlots).
+  final DateTime fireTime;
+
+  const HabitReminderSlot({
+    required this.notificationId,
+    required this.weekday,
+    required this.fireTime,
+  });
+}
+
+/// D-124 Phase 3: a habit-reminder notification id is derived from the
+/// habit's own row id and the specific weekday it reminds for — stable
+/// and collision-free (distinct from the small, hand-picked ids D-038's
+/// three daily fallbacks and D-115's test notification already use: 100,
+/// 101, 102, 999999) so a reminder can be found and cancelled later
+/// without re-deriving it from a hash.
+const int habitReminderBaseId = 600000000;
+
+int habitReminderId(int habitId, int weekday) =>
+    habitReminderBaseId + habitId * 10 + weekday;
+
+/// D-124 Phase 3: the fire time for each of a scheduled habit's
+/// "starting soon" reminders — [leadMinutes] before the habit's own
+/// time, on every day in [activeWeekdays] (`DateTime.monday..sunday`).
+/// Pure — no plugin calls — so it's testable without a live drag
+/// gesture or a registered notification plugin, the same pattern this
+/// codebase already uses for `CalendarService.anchorFor`.
+///
+/// Subtracting [leadMinutes] can roll the reminder itself onto the
+/// *previous* calendar day (a habit at 00:05 with a 10-minute lead
+/// reminds at 23:55 the day before) — [HabitReminderSlot.fireTime]
+/// reflects that correctly, but [HabitReminderSlot.weekday] still names
+/// the habit's own day, since that's the slot's stable identity for
+/// [habitReminderId], not the day the reminder happens to fire on.
+List<HabitReminderSlot> buildHabitReminderSlots({
+  required int habitId,
+  required int hour,
+  required int minute,
+  required List<int> activeWeekdays,
+  int leadMinutes = 10,
+  DateTime? now,
+}) {
+  final reference = now ?? DateTime.now();
+  final slots = <HabitReminderSlot>[];
+  for (final weekday in activeWeekdays) {
+    final anchorDate = _nextOrSameWeekday(reference, weekday);
+    final habitTime =
+        DateTime(anchorDate.year, anchorDate.month, anchorDate.day, hour, minute);
+    var fireTime = habitTime.subtract(Duration(minutes: leadMinutes));
+    if (!fireTime.isAfter(reference)) {
+      fireTime = fireTime.add(const Duration(days: 7));
+    }
+    slots.add(HabitReminderSlot(
+      notificationId: habitReminderId(habitId, weekday),
+      weekday: weekday,
+      fireTime: fireTime,
+    ));
+  }
+  return slots;
+}
+
+DateTime _nextOrSameWeekday(DateTime from, int weekday) {
+  final fromDate = DateTime(from.year, from.month, from.day);
+  final diff = (weekday - fromDate.weekday) % 7;
+  return fromDate.add(Duration(days: diff));
+}
+
 class LocalNotificationService {
   LocalNotificationService();
 
@@ -459,6 +533,83 @@ class LocalNotificationService {
   /// no-ops when the id is already pending).
   Future<void> cancelDailyNotification(int id) =>
       _localNotificationService.cancel(id);
+
+  /// D-124 Phase 3: schedules a "starting soon" reminder [leadMinutes]
+  /// before a scheduled habit's own time, recurring weekly on every day
+  /// it's active — matching Kansei's own `scheduleSessionReminders`, but
+  /// as a genuinely *recurring* notification per active day
+  /// (`DateTimeComponents.dayOfWeekAndTime`) rather than Kansei's
+  /// one-time `zonedSchedule`, since a habit repeats every week rather
+  /// than firing once like a dated session. Deliberately does NOT port
+  /// the other half of Kansei's pair — the "Did you do it?" reminder at
+  /// session-end — D-124 replaces that with one server-triggered,
+  /// batched push per day instead, not a per-habit local notification.
+  /// Cancels every one of the habit's 7 possible weekday slots first, so
+  /// a day that's no longer active never leaves a stale reminder behind.
+  Future<void> scheduleHabitReminders({
+    required int habitId,
+    required String habitDescription,
+    required int hour,
+    required int minute,
+    required List<int> activeWeekdays,
+    int leadMinutes = 10,
+  }) async {
+    await cancelHabitReminders(habitId);
+    if (activeWeekdays.isEmpty) return;
+
+    final slots = buildHabitReminderSlots(
+      habitId: habitId,
+      hour: hour,
+      minute: minute,
+      activeWeekdays: activeWeekdays,
+      leadMinutes: leadMinutes,
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      sound: 'doublebeep.aiff',
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    const androidDetails = AndroidNotificationDetails(
+      'green_pyramid_channel',
+      'Green Pyramid Notifications',
+      channelDescription: 'Notifications for Green Pyramid app',
+      importance: Importance.max,
+      priority: Priority.max,
+      sound: RawResourceAndroidNotificationSound('doublebeep'),
+      playSound: true,
+      category: AndroidNotificationCategory.reminder,
+      visibility: NotificationVisibility.public,
+    );
+    const details =
+        NotificationDetails(android: androidDetails, iOS: iosDetails);
+
+    for (final slot in slots) {
+      await _localNotificationService.zonedSchedule(
+        slot.notificationId,
+        'Starting soon',
+        '$habitDescription — starts in $leadMinutes min.',
+        tz.TZDateTime.from(slot.fireTime, tz.local),
+        details,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
+        payload: '/',
+      );
+    }
+  }
+
+  /// D-124 Phase 3: cancels all 7 possible weekday reminder slots for a
+  /// habit — unconditional and idempotent, since cancelling an id with
+  /// no pending notification is a no-op. Called both when a habit is
+  /// unscheduled entirely and as the first step of
+  /// [scheduleHabitReminders], so a changed set of active days never
+  /// leaves a stale reminder for a day that's no longer active.
+  Future<void> cancelHabitReminders(int habitId) async {
+    for (var weekday = DateTime.monday; weekday <= DateTime.sunday; weekday++) {
+      await _localNotificationService.cancel(habitReminderId(habitId, weekday));
+    }
+  }
 
   /// D-036: a push arriving while the app is in the foreground is not
   /// auto-displayed by the OS on most platforms — this shows it
