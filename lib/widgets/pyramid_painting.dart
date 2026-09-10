@@ -240,53 +240,127 @@ class PyramidPainting {
         letterSpacing: 0.2,
       );
 
-  // Found live: labels used to be forced onto a single line and shrunk
-  // (down to an 8px floor) until they fit a width budget — a long name
-  // either went illegibly tiny to stay on one line, or, once the floor
-  // was hit, overflowed anyway with nothing containing it. Neither
-  // problem is fixable by tuning the width alone: a block has real
-  // vertical room too, and a label should use it — wrapping across a
-  // couple of lines at a readable size — before ever shrinking below a
-  // comfortable minimum.
-  //
+  // D-126: labels wrap at word boundaries only — never inside a word, no
+  // hyphenation — and every line of a given label shares one font size,
+  // never a larger size for a short line just because it has room. Found
+  // live, twice: first, forcing a label onto one line and shrinking it
+  // meant a long name either went illegibly tiny or (once the shrink
+  // floor was hit) overflowed with nothing containing it; then, letting
+  // Flutter's own TextPainter wrap multi-line text meant it broke *inside*
+  // long words ("Settle-\ndness") whenever a single word didn't fit the
+  // width, which Flutter's default line-breaking permits but this app's
+  // labels must never do. Both problems come from the same root: relying
+  // on a general-purpose text layout that isn't actually the algorithm
+  // this design calls for. `_wrapWords` implements that algorithm
+  // directly instead: pack whole words onto a line greedily, and report
+  // failure (rather than splitting a word) the moment even one word alone
+  // can't fit — the caller's signal to shrink the font size for the
+  // *entire* label and re-wrap from scratch, not just that one word.
+
+  static const double _labelPaddingFraction = 0.06;
+
+  // The rendered width of [text] at [fontSize] in this label style — the
+  // exact measurement [wrapWords]/[fitWrappedLabel] make their fit
+  // decisions from. Public so tests can construct exact, font-metric-
+  // independent scenarios (an active-font substitution in the test
+  // environment would otherwise make a hand-guessed pixel width in a
+  // test meaningless) rather than guess pixel budgets.
+  @visibleForTesting
+  static double measureLabelWidth(String text, double fontSize) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: _labelStyle(fontSize)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    return painter.width;
+  }
+
+  // Whether [word] alone fits [maxWidth] at [fontSize] — the test that
+  // decides whether wrapping can help at this size at all.
+  static bool _wordFits(String word, double maxWidth, double fontSize) =>
+      measureLabelWidth(word, fontSize) <= maxWidth;
+
+  // Greedily packs [words] onto as few lines as fit within [maxWidth] at
+  // [fontSize], adding one word at a time and starting a new line only
+  // once the next word would overflow the current one. Returns null —
+  // never a line containing a mid-word break — the instant a single word
+  // doesn't fit even alone on its own line, since no arrangement of
+  // whole words at this font size can accommodate it. Public (but
+  // annotated, not part of the real API) so D-126's actual wrapping rule
+  // — the thing most worth getting right here — is directly testable.
+  @visibleForTesting
+  static List<String>? wrapWords(
+      List<String> words, double maxWidth, double fontSize) {
+    final lines = <String>[];
+    var current = '';
+    for (final word in words) {
+      if (current.isEmpty) {
+        if (!_wordFits(word, maxWidth, fontSize)) return null;
+        current = word;
+        continue;
+      }
+      final candidate = '$current $word';
+      if (_wordFits(candidate, maxWidth, fontSize)) {
+        current = candidate;
+      } else {
+        lines.add(current);
+        if (!_wordFits(word, maxWidth, fontSize)) return null;
+        current = word;
+      }
+    }
+    if (current.isNotEmpty) lines.add(current);
+    return lines;
+  }
+
+  static double _lineHeight(double fontSize) {
+    final painter = TextPainter(
+      text: TextSpan(text: 'Ag', style: _labelStyle(fontSize)),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    return painter.height;
+  }
+
   // Finds the largest font size (down to [minFontSize]) at which [text]
-  // wraps to fit within [maxWidth] and [maxLines] lines without exceeding
-  // [maxHeight] — wrapping is tried at every size before the size itself
-  // is reduced, so a label reaches for the floor font size only once
-  // wrapping alone genuinely can't make it fit.
-  static (double fontSize, TextPainter painter) _fitWrappedText(
+  // word-wraps (never mid-word) to fit within [maxWidth] and [maxHeight]
+  // — the size only ever decreases as far as fitting actually requires:
+  // wrapping is tried again at every candidate size before the size
+  // itself is reduced further, and the same size always applies to every
+  // line the label ends up wrapped to. Public for the same reason as
+  // [wrapWords] — directly testable without a Canvas.
+  @visibleForTesting
+  static (double fontSize, List<String> lines) fitWrappedLabel(
     String text,
     double maxWidth,
     double maxHeight,
     double startFontSize, {
-    double minFontSize = 10.0,
-    int maxLines = 3,
+    double minFontSize = 6.0,
   }) {
-    double fontSize = startFontSize;
-    TextPainter layOut(double size) => TextPainter(
-          text: TextSpan(text: text, style: _labelStyle(size)),
-          textAlign: TextAlign.center,
-          textDirection: TextDirection.ltr,
-          maxLines: maxLines,
-        )..layout(maxWidth: maxWidth);
+    final words = text.trim().split(RegExp(r'\s+')).where((w) => w.isNotEmpty).toList();
+    if (words.isEmpty) return (startFontSize, const []);
 
+    double fontSize = startFontSize;
     while (fontSize > minFontSize) {
-      final painter = layOut(fontSize);
-      if (!painter.didExceedMaxLines && painter.height <= maxHeight) {
-        return (fontSize, painter);
+      final lines = wrapWords(words, maxWidth, fontSize);
+      if (lines != null && lines.length * _lineHeight(fontSize) <= maxHeight) {
+        return (fontSize, lines);
       }
       fontSize -= 0.5;
     }
-    return (minFontSize, layOut(minFontSize));
+    // Floor reached: still prefer a real word-wrap over a mid-word split
+    // if one exists at this size, even if it technically overflows
+    // maxHeight — paintReadableLabel's own clip is what contains that,
+    // and a clipped whole word reads better than a clipped word-fragment.
+    final lines = wrapWords(words, maxWidth, minFontSize) ?? [text];
+    return (minFontSize, lines);
   }
 
-  // Draws [text] centered on [anchor], wrapping within a box up to
-  // [maxWidth] wide and [maxHeight] tall — a dark stroked backing then a
-  // light fill on top, so labels stay legible over the glow/gradient
-  // regardless of the underlying category color. Clipped to that box, so
-  // a label that still doesn't fit even at the floor font size and
-  // [maxLines] lines truncates at its own block's boundary rather than
-  // bleeding into whatever is drawn next to it.
+  // Draws [text] centered on [anchor], word-wrapped (D-126: never inside
+  // a word) within a box up to [maxWidth] wide and [maxHeight] tall, with
+  // a small padding inset from that box's own edges — a dark stroked
+  // backing then a light fill on top, so labels stay legible over the
+  // glow/gradient regardless of the underlying category color. Clipped to
+  // the box, so a label that still doesn't fit even at the floor font
+  // size truncates at its own block's boundary rather than bleeding into
+  // whatever is drawn next to it.
   static void paintReadableLabel(
     Canvas canvas,
     String text,
@@ -294,43 +368,48 @@ class PyramidPainting {
     required double maxWidth,
     required double maxHeight,
     double fontSize = 15,
-    int maxLines = 3,
   }) {
-    final (fitted, layout) = _fitWrappedText(
-        text, maxWidth, maxHeight, fontSize,
-        maxLines: maxLines);
-    final baseStyle = _labelStyle(fitted);
-    final topLeft =
-        Offset(anchor.dx - layout.width / 2, anchor.dy - layout.height / 2);
+    final paddedWidth = maxWidth * (1 - _labelPaddingFraction * 2);
+    final paddedHeight = maxHeight * (1 - _labelPaddingFraction * 2);
+    final (fitted, lines) =
+        fitWrappedLabel(text, paddedWidth, paddedHeight, fontSize);
+    if (lines.isEmpty) return;
 
-    final strokeSpan = TextSpan(
-      text: text,
-      style: baseStyle.copyWith(
-        foreground: Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 3
-          ..color = Colors.black.withOpacity(0.6),
-      ),
-    );
-    final fillSpan = TextSpan(
-      text: text,
-      style: baseStyle.copyWith(color: Colors.white),
-    );
+    final baseStyle = _labelStyle(fitted);
+    final lineHeight = _lineHeight(fitted);
+    final blockHeight = lines.length * lineHeight;
+    final blockTop = anchor.dy - blockHeight / 2;
 
     canvas.save();
-    // A little slack on every side for the stroke's own width (it
-    // extends past the glyph outline) and for descenders.
+    // A little slack for the stroke's own width (it extends past the
+    // glyph outline) and for descenders, beyond the padded box itself.
     canvas.clipRect(Rect.fromCenter(
         center: anchor, width: maxWidth + 8, height: maxHeight + 8));
 
-    for (final span in [strokeSpan, fillSpan]) {
-      final textPainter = TextPainter(
-        maxLines: maxLines,
-        text: span,
-        textDirection: TextDirection.ltr,
-        textAlign: TextAlign.center,
-      )..layout(maxWidth: maxWidth);
-      textPainter.paint(canvas, topLeft);
+    for (var i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      final strokeSpan = TextSpan(
+        text: line,
+        style: baseStyle.copyWith(
+          foreground: Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3
+            ..color = Colors.black.withOpacity(0.6),
+        ),
+      );
+      final fillSpan = TextSpan(
+        text: line,
+        style: baseStyle.copyWith(color: Colors.white),
+      );
+      for (final span in [strokeSpan, fillSpan]) {
+        final textPainter = TextPainter(
+          text: span,
+          textDirection: TextDirection.ltr,
+        )..layout();
+        final lineTopLeft = Offset(
+            anchor.dx - textPainter.width / 2, blockTop + i * lineHeight);
+        textPainter.paint(canvas, lineTopLeft);
+      }
     }
     canvas.restore();
   }
