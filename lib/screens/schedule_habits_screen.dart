@@ -191,7 +191,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
           fontSize: 14,
         ),
       ),
-      duration: Duration(seconds: 5),
+      duration: Duration(seconds: 4),
       backgroundColor: Color(0xFF111111),
     ));
   }
