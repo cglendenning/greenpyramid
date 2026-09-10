@@ -36,25 +36,33 @@ class PyramidPainting {
     }
   }
 
-  // Ancient-stone-block-meets-HUD treatment for a lit (non-muted) segment:
-  // the segment reads as one monolithic carved stone block (the
-  // photographic dark-granite slab texture fitted to the segment's own
-  // bounds, a procedural gradient until it loads, plus an inset shadow
-  // bevel), then a saturated colored bloom, a translucent status-color
-  // wash, fine scanlines, and a crisp neon edge are layered on top — like
-  // circuitry glowing on carved rock. [pulse] is a 0.0-1.0 breathing value
-  // reserved for a subtle intensity animation.
-  static void paintGlowingSegment(
+  static Color _neonFor(Color baseColor) =>
+      HSLColor.fromColor(baseColor).withSaturation(1.0).withLightness(0.62).toColor();
+
+  static double _pulseBoost(double pulse) => 0.85 + (pulse * 0.3); // 0.85..1.15
+
+  /// The outward-blurred ambient bloom, on its own so it can be drawn for
+  /// every segment on a shared canvas *before* any segment's opaque body
+  /// fill — found live: when a whole segment (glow, then stone fill, then
+  /// edge, in that order) was painted one segment at a time on the
+  /// pyramid's single shared canvas, each segment's rightward/upward glow
+  /// bleeding into a neighbor's territory got silently painted over by
+  /// that neighbor's own later, opaque stone fill — most visible as the
+  /// glow looking "cut off" on whichever side of a block was drawn over
+  /// by the next one, since [_buildSegmentPaths]' draw order is bottom
+  /// row left-to-right, then the middle row, then the apex. Splitting
+  /// into three passes (glow, then body, then edge) run across every
+  /// segment in turn — rather than one segment fully painted at a time —
+  /// fixes this without changing what any single segment looks like in
+  /// isolation.
+  static void paintSegmentGlow(
     Canvas canvas,
     Path path,
     Color baseColor, {
     double pulse = 0.5,
   }) {
-    final bounds = path.getBounds();
-    final hsl = HSLColor.fromColor(baseColor);
-    final neon = hsl.withSaturation(1.0).withLightness(0.62).toColor();
-    final pulseBoost = 0.85 + (pulse * 0.3); // 0.85..1.15
-
+    final neon = _neonFor(baseColor);
+    final pulseBoost = _pulseBoost(pulse);
     for (final stop in const [
       (sigma: 36.0, alpha: 0.22),
       (sigma: 22.0, alpha: 0.30),
@@ -65,6 +73,23 @@ class PyramidPainting {
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, stop.sigma);
       canvas.drawPath(path, glowPaint);
     }
+  }
+
+  // Ancient-stone-block-meets-HUD treatment for a lit (non-muted) segment's
+  // opaque body: the segment reads as one monolithic carved stone block
+  // (the photographic dark-granite slab texture fitted to the segment's
+  // own bounds, a procedural gradient until it loads, plus an inset
+  // shadow bevel), then a saturated colored bloom, a translucent
+  // status-color wash, and fine scanlines are layered on top. Clipped to
+  // [path], so — unlike the glow — this never reaches past the segment's
+  // own edges into a neighbor's territory.
+  static void paintSegmentBody(
+    Canvas canvas,
+    Path path,
+    Color baseColor,
+  ) {
+    final bounds = path.getBounds();
+    final hsl = HSLColor.fromColor(baseColor);
 
     canvas.save();
     canvas.clipPath(path);
@@ -144,6 +169,20 @@ class PyramidPainting {
     canvas.drawPath(path, insetBevel);
 
     canvas.restore();
+  }
+
+  /// The neon edge — a soft blurred stroke plus a crisp 1.4px line on top —
+  /// drawn last across every segment so a shared boundary's edge glow
+  /// (which, like the ambient glow, blurs slightly past the path itself)
+  /// is never covered by a later segment's opaque body fill either.
+  static void paintSegmentEdge(
+    Canvas canvas,
+    Path path,
+    Color baseColor, {
+    double pulse = 0.5,
+  }) {
+    final neon = _neonFor(baseColor);
+    final pulseBoost = _pulseBoost(pulse);
 
     final edgeGlow = Paint()
       ..color = neon.withOpacity((0.75 * pulseBoost).clamp(0.0, 1.0))
@@ -157,6 +196,26 @@ class PyramidPainting {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.4;
     canvas.drawPath(path, edgeCrisp);
+  }
+
+  /// The single-call convenience for painting one segment fully in
+  /// isolation (glow, then body, then edge) — correct on its own, but do
+  /// NOT use this to paint multiple segments that share a canvas and may
+  /// touch or overlap (like the pyramid's own six blocks): call
+  /// [paintSegmentGlow] for every segment first, then [paintSegmentBody]
+  /// for every segment, then [paintSegmentEdge] for every segment, or a
+  /// later segment's opaque body will paint over an earlier segment's
+  /// glow bleeding into its territory (see [paintSegmentGlow]'s own
+  /// comment for the defect this was found from).
+  static void paintGlowingSegment(
+    Canvas canvas,
+    Path path,
+    Color baseColor, {
+    double pulse = 0.5,
+  }) {
+    paintSegmentGlow(canvas, path, baseColor, pulse: pulse);
+    paintSegmentBody(canvas, path, baseColor);
+    paintSegmentEdge(canvas, path, baseColor, pulse: pulse);
   }
 
   // Flat fill with a plain outline, no glow — used for the muted/toggled

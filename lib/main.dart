@@ -46,31 +46,54 @@ bool populateGap = true;
 DateTime installDate = DateTime.now();
 bool interventionShown = false;
 
-/// D-124 Phase 5: re-encodes an FCM message's `data` map as the
-/// structured JSON payload `LocalNotificationService.onSelectNotification`
-/// recognizes, so tapping a foreground-shown local notification for a
-/// batch-checkin push routes the same way tapping the real push does.
-/// Null for every other push type — this is deliberately scoped to
-/// batch-checkin only, not a general-purpose payload passthrough.
-String? batchCheckinPayloadFrom(Map<String, dynamic> data) {
-  if (data['type'] != 'batch_checkin') return null;
-  return jsonEncode(data);
+/// D-124 Phase 5 / D-083 amendment Phase 6 (2026-09-10): the payload a
+/// foreground-shown local notification gets for a real FCM push, keyed
+/// off the push's own `data.type` — batch-checkin needs the full habit
+/// list re-encoded as the structured JSON payload
+/// `LocalNotificationService.onSelectNotification` recognizes; a
+/// tailored notification (D-036) needs only the same plain `/` payload
+/// every other "go to the pyramid tab" local notification already uses,
+/// since `onNotificationListener` (homescreen.dart) already handles that
+/// string correctly. Null for any other/unknown type — this is a
+/// deliberate allowlist, not a general-purpose passthrough.
+String? pushTapPayloadFrom(Map<String, dynamic> data) {
+  switch (data['type']) {
+    case 'batch_checkin':
+      return jsonEncode(data);
+    case 'tailored':
+      return '/';
+    default:
+      return null;
+  }
 }
 
-/// D-124 Phase 5: opens [BatchCheckinScreen] from a real batch-checkin
-/// push's habit list — shared by the backgrounded-tap
+/// D-124 Phase 5 / D-083 amendment Phase 6: routes a tap on a real FCM
+/// push, keyed off `data.type` — shared by the backgrounded-tap
 /// (`onMessageOpenedApp`) and terminated-launch (`getInitialMessage`)
-/// paths. A message of any other type is silently ignored.
-void handleBatchCheckinTap(RemoteMessage message) {
-  if (message.data['type'] != 'batch_checkin') return;
-  final habitsJson = message.data['habits'];
-  if (habitsJson == null) return;
-  try {
-    final habits = (jsonDecode(habitsJson) as List).cast<Map<String, dynamic>>();
-    navigatorKey.currentState?.push(
-        MaterialPageRoute(builder: (_) => BatchCheckinScreen(habits: habits)));
-  } catch (e, st) {
-    debugPrint('Failed to open BatchCheckinScreen from a push: $e\n$st');
+/// paths. `batch_checkin` opens [BatchCheckinScreen] directly from the
+/// push's own habit list. `tailored` (D-036) routes through the exact
+/// same `onNotificationClick` stream every local notification already
+/// uses — `/` on that stream already means "switch to the pyramid tab,"
+/// correctly, since `onNotificationListener`'s Phase-6 fix — rather than
+/// duplicating that navigation here. A message of any other/unknown type
+/// is silently ignored.
+void handlePushTap(RemoteMessage message) {
+  switch (message.data['type']) {
+    case 'batch_checkin':
+      final habitsJson = message.data['habits'];
+      if (habitsJson == null) return;
+      try {
+        final habits =
+            (jsonDecode(habitsJson) as List).cast<Map<String, dynamic>>();
+        navigatorKey.currentState?.push(MaterialPageRoute(
+            builder: (_) => BatchCheckinScreen(habits: habits)));
+      } catch (e, st) {
+        debugPrint('Failed to open BatchCheckinScreen from a push: $e\n$st');
+      }
+      break;
+    case 'tailored':
+      LocalNotificationService().onNotificationClick.add('/');
+      break;
   }
 }
 
@@ -141,13 +164,12 @@ Future<void> main() async {
   // local-notification channel. Registered unconditionally; it simply
   // never fires for an account with no FCM token registered.
   //
-  // D-124 Phase 5: a batch-checkin push's `data` carries the habit list
-  // this app needs to open the right screen — threaded through as this
-  // local notification's own payload, in the structured JSON shape
-  // LocalNotificationService.onSelectNotification recognizes, so tapping
-  // this foreground-shown notification opens BatchCheckinScreen the same
-  // way tapping the real push does in the backgrounded/terminated cases
-  // below.
+  // D-124 Phase 5 / D-083 amendment Phase 6: a real push's `data` carries
+  // what this app needs to route a tap on it correctly — threaded
+  // through as this local notification's own payload (pushTapPayloadFrom
+  // dispatches on `data.type`), so tapping this foreground-shown
+  // notification routes the same way tapping the real push does in the
+  // backgrounded/terminated cases below.
   try {
     FirebaseMessaging.onMessage.listen((message) {
       final notification = message.notification;
@@ -155,30 +177,30 @@ Future<void> main() async {
       LocalNotificationService().showImmediateNotification(
         title: notification.title ?? 'Green Pyramid',
         body: notification.body ?? '',
-        payload: batchCheckinPayloadFrom(message.data),
+        payload: pushTapPayloadFrom(message.data),
       );
     });
   } catch (e, st) {
     debugPrint('Failed to register foreground FCM listener: $e\n$st');
   }
 
-  // D-124 Phase 5 / D-083 amendment: real pushes previously had zero
-  // tap-routing capability — no data payload was ever sent, and no
-  // onMessageOpenedApp/getInitialMessage handlers existed at all. The
-  // batch-checkin push is the first to carry a `data` payload
-  // (functions/index.js's batchCheckinJob), so these are the first
-  // handlers that can act on one: a tap while backgrounded fires
-  // onMessageOpenedApp; a tap that launches the app from terminated
-  // fires getInitialMessage instead — both are needed to cover every
-  // app state a tap can happen from.
+  // D-124 Phase 5 / D-083 amendment Phase 6: real pushes previously had
+  // zero tap-routing capability at all — no `data` payload was ever
+  // sent, for any push type, and no onMessageOpenedApp/getInitialMessage
+  // handlers existed. Both are needed to cover every app state a tap can
+  // happen from: a tap while backgrounded fires onMessageOpenedApp; a
+  // tap that launches the app from terminated fires getInitialMessage
+  // instead. handlePushTap dispatches on `data.type`, covering both the
+  // batch-checkin push (D-124) and the tailored notification (D-036,
+  // fixed alongside this).
   try {
-    FirebaseMessaging.onMessageOpenedApp.listen(handleBatchCheckinTap);
+    FirebaseMessaging.onMessageOpenedApp.listen(handlePushTap);
   } catch (e, st) {
     debugPrint('Failed to register onMessageOpenedApp listener: $e\n$st');
   }
   try {
     final initialMessage = await FirebaseMessaging.instance.getInitialMessage();
-    if (initialMessage != null) handleBatchCheckinTap(initialMessage);
+    if (initialMessage != null) handlePushTap(initialMessage);
   } catch (e, st) {
     debugPrint('Failed to read initial FCM message: $e\n$st');
   }

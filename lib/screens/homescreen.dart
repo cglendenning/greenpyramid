@@ -228,9 +228,38 @@ class _HomeScreen extends State<HomeScreenWidget> {
   void listenToNotification() =>
       service.onNotificationClick.stream.listen(onNotificationListener);
 
+  /// D-083 amendment / Phase 6 fix (2026-09-10): every tap-routing path
+  /// that isn't the new D-124 batch check-in — D-038's local fallback,
+  /// D-023's lapsed static pool, and now D-036's real tailored push (once
+  /// it carries a `type: 'tailored'` data payload, wired in main.dart) —
+  /// funnels through this one listener via [payload]. It used to call
+  /// `navigatorKey.currentState?.pushNamed(payload)` for every payload,
+  /// which is wrong for `/` (and the legacy `/morning`/`/afternoon`/
+  /// `/evening` payloads a notification scheduled before this fix might
+  /// still carry): those aren't real named routes here — the four tabs
+  /// are plain widgets in a list indexed by `currentScreenIndex`, not
+  /// pushed routes — so `pushNamed` stacked a whole second `HomeScreen`
+  /// on top of the one already showing. `/paywall` was worse: never
+  /// registered as a route at all, so it hit `HomeScreen`'s error route
+  /// and showed a literal "Homescreen Error." screen. Both are switch
+  /// cases now, not a blind push.
   void onNotificationListener(String? payload) {
-    if (payload != null && payload.isNotEmpty) {
-      navigatorKey.currentState?.pushNamed(payload);
+    if (payload == null || payload.isEmpty) return;
+    switch (payload) {
+      case '/':
+      case '/morning':
+      case '/afternoon':
+      case '/evening':
+        setState(() => currentScreenIndex = 0); // the pyramid tab
+        break;
+      case '/paywall':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) =>
+                const PaywallScreen(reason: 'Continue with Green Pyramid'),
+          ),
+        );
     }
   }
 

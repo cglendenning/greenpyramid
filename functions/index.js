@@ -633,7 +633,17 @@ async function sendTailoredNotification(uid, profileData) {
   }
 
   try {
-    await admin.messaging().send({ token: fcmToken, notification: { title, body } });
+    // D-083 amendment / Phase 6 fix (2026-09-10): this send previously
+    // carried no `data` field at all — the reason a tap on a real
+    // tailored push had nothing to route on. `type: 'tailored'` is all a
+    // tap handler needs here; unlike batchCheckinJob's push there's no
+    // per-notification payload to carry, since every tailored
+    // notification's destination is the same (the pyramid tab).
+    await admin.messaging().send({
+      token: fcmToken,
+      notification: { title, body },
+      data: { type: 'tailored' },
+    });
   } catch (e) {
     // D-038: a delivery failure is logged and surfaced, never swallowed —
     // lastNotificationTitle/Body above is what lets the client recover.

@@ -227,12 +227,37 @@ class _Pyramid3DState extends State<Pyramid3D> with TickerProviderStateMixin {
 // The full stepped six-block stone-and-glow wall content, shared by the
 // cache-rendering pass (drawn once into a bitmap) and the live painter's
 // one-time fallback for the handful of frames before that bitmap is ready.
+//
+// Found live: painting each block fully (glow, then its own opaque body,
+// then its edge) one block at a time, in the order
+// PyramidFaceLayout.segmentPaths lists them (bottom row left-to-right,
+// then the middle row, then the apex), meant every later block's opaque
+// body silently painted over the glow the previous block had bled
+// outward across their shared boundary — most visible as a block's glow
+// looking "cut off" on whichever side the next-drawn block sat on (e.g.
+// the bottom-left "Health" block's right edge, painted over by "Mindset"
+// drawn right after it). Four passes across every block, in this order —
+// every glow, then every body, then every edge, then every label —
+// instead of one block fully painted at a time, fixes this: nothing
+// later in the same pass can still be ahead of an earlier block's glow.
 void paintPyramidWallContent(
     Canvas canvas, List<PyramidCategoryData> categories) {
-  for (int i = 0; i < categories.length && i < 6; i++) {
-    final path = PyramidFaceLayout.segmentPaths[i];
+  final count = categories.length < 6 ? categories.length : 6;
+
+  for (int i = 0; i < count; i++) {
+    PyramidPainting.paintSegmentGlow(
+        canvas, PyramidFaceLayout.segmentPaths[i], categories[i].color);
+  }
+  for (int i = 0; i < count; i++) {
+    PyramidPainting.paintSegmentBody(
+        canvas, PyramidFaceLayout.segmentPaths[i], categories[i].color);
+  }
+  for (int i = 0; i < count; i++) {
+    PyramidPainting.paintSegmentEdge(
+        canvas, PyramidFaceLayout.segmentPaths[i], categories[i].color);
+  }
+  for (int i = 0; i < count; i++) {
     final (anchor, maxWidth, fontSize) = PyramidFaceLayout.labelAnchors[i];
-    PyramidPainting.paintGlowingSegment(canvas, path, categories[i].color);
     final textWidth = PyramidPainting.measureWidth(categories[i].label,
         maxWidth: maxWidth, fontSize: fontSize);
     PyramidPainting.paintReadableLabel(
