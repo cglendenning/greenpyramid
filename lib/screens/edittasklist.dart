@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:life_ops/services/calendar_service.dart';
 import 'package:life_ops/services/db.dart';
+import 'package:life_ops/services/notification.dart';
 import 'package:life_ops/screens/edittaskdetail.dart';
 import 'package:flutter/gestures.dart';
 import 'package:intl/intl.dart' as intl;
@@ -64,8 +66,7 @@ class _EditTaskListState extends State<EditTaskList> {
                                                   setState(() {
                                                     showDeleteAlertDialog(
                                                         context,
-                                                        snapshot.data[index]
-                                                            .taskdescription);
+                                                        snapshot.data[index]);
                                                   });
                                                 },
                                                 child: const Icon(
@@ -116,7 +117,10 @@ class _EditTaskListState extends State<EditTaskList> {
           id: maps[i]['id'],
           category: maps[i]['category'],
           taskdescription: maps[i]['taskdescription'],
-          createDate: maps[i]['createdate']);
+          createDate: maps[i]['createdate'],
+          scheduledEventId:
+              maps[i][DatabaseHelper.columnScheduledCalendarEventId]
+                  as String?);
     });
   }
 
@@ -124,7 +128,7 @@ class _EditTaskListState extends State<EditTaskList> {
     return s != '0' && s != 'false' && s != '';
   }
 
-  showDeleteAlertDialog(BuildContext context, String taskdescription) {
+  showDeleteAlertDialog(BuildContext context, EditTask task) {
     // set up the buttons
     Widget cancelButton = TextButton(
       child: const Text("Cancel"),
@@ -134,9 +138,20 @@ class _EditTaskListState extends State<EditTaskList> {
       child: const Text("Delete!"),
       onPressed: () async {
         final nav = Navigator.of(context);
+        // D-123/D-124: deleting a habit tears down everything scheduling
+        // ever attached to it — found live, deleteTaskAndLog only ever
+        // removed the task/tasklog rows, leaving a scheduled habit's
+        // calendar event AND its recurring local "starting soon"
+        // reminders (Phase 3) behind forever, referencing a habit that
+        // no longer exists.
+        final eventId = task.scheduledEventId;
+        if (eventId != null) {
+          await CalendarService.instance.deleteHabitEvent(eventId);
+        }
+        await LocalNotificationService().cancelHabitReminders(task.id);
         // Await the delete so the list rebuild below reflects the removal
         // (including today's log entry), instead of racing an unawaited call.
-        await dbHelper.deleteTaskAndLog(category, taskdescription);
+        await dbHelper.deleteTaskAndLog(category, task.taskdescription);
         nav.pop();
         if (mounted) setState(() {});
       },
@@ -239,17 +254,23 @@ class EditTask {
   String category = '';
   String taskdescription = '';
   String createDate = '';
+  // D-123: the habit's native calendar event id, if it currently has one
+  // scheduled — null otherwise. Lets the delete flow clean up the
+  // calendar event along with the habit itself.
+  String? scheduledEventId;
 
   EditTask(
       {required this.id,
       required this.category,
       required this.taskdescription,
-      required this.createDate});
+      required this.createDate,
+      this.scheduledEventId});
 
   EditTask.fromMap(dynamic obj) {
     id = obj["id"];
     category = obj["category"];
     taskdescription = obj["taskdescription"];
     createDate = obj["createdate"];
+    scheduledEventId = obj["scheduledcalendareventid"];
   }
 }

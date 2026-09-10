@@ -190,6 +190,60 @@ void main() {
       expect(row.scheduledTime, isNull);
       expect(row.scheduledEventId, isNull);
       expect(row.parsedTime, isNull);
+      expect(row.durationMinutes, HabitScheduleRow.defaultDurationMinutes);
+    });
+
+    test('a row with an explicit duration parses and uses it, not the '
+        'default', () {
+      final utils = Utils();
+      final row = HabitScheduleRow.fromMap({
+        DatabaseHelper.columnId: 7,
+        DatabaseHelper.columnCategory: 'Health',
+        DatabaseHelper.columnTaskDescription: 'Deep clean',
+        DatabaseHelper.columnSunday: 'true',
+        DatabaseHelper.columnMonday: 'true',
+        DatabaseHelper.columnTuesday: 'true',
+        DatabaseHelper.columnWednesday: 'true',
+        DatabaseHelper.columnThursday: 'true',
+        DatabaseHelper.columnFriday: 'true',
+        DatabaseHelper.columnSaturday: 'true',
+        DatabaseHelper.columnScheduledTime: null,
+        DatabaseHelper.columnScheduledCalendarEventId: null,
+        DatabaseHelper.columnScheduledDurationMinutes: 60,
+      }, utils);
+
+      expect(row.scheduledDurationMinutes, 60);
+      expect(row.durationMinutes, 60);
+    });
+  });
+
+  group('D-123: HabitScheduleRow.durationMinutes — falls back to the '
+      "default when the habit hasn't chosen one", () {
+    HabitScheduleRow habit({int? durationMinutes}) => HabitScheduleRow(
+          id: 1,
+          category: 'Health',
+          description: 'Walk',
+          sunday: true,
+          monday: true,
+          tuesday: true,
+          wednesday: true,
+          thursday: true,
+          friday: true,
+          saturday: true,
+          scheduledTime: null,
+          scheduledEventId: null,
+          scheduledDurationMinutes: durationMinutes,
+        );
+
+    test('no chosen duration falls back to the default (15 minutes)', () {
+      expect(habit().durationMinutes, 15);
+      expect(HabitScheduleRow.defaultDurationMinutes, 15);
+    });
+
+    test('an explicitly chosen duration is used verbatim, including a '
+        'value shorter than the default', () {
+      expect(habit(durationMinutes: 45).durationMinutes, 45);
+      expect(habit(durationMinutes: 10).durationMinutes, 10);
     });
   });
 }

@@ -41,11 +41,50 @@ void main() {
     return info.map((c) => c['name'] as String).toSet();
   }
 
-  test('D-123: task gains scheduledtime and scheduledcalendareventid',
-      () async {
+  test('D-123: task gains scheduledtime, scheduledcalendareventid, and '
+      'scheduleddurationminutes', () async {
     final cols = await columnsOf(DatabaseHelper.taskTable);
     expect(cols, contains(DatabaseHelper.columnScheduledTime));
     expect(cols, contains(DatabaseHelper.columnScheduledCalendarEventId));
+    expect(cols, contains(DatabaseHelper.columnScheduledDurationMinutes));
+  });
+
+  test('D-123: a habit inserted without a chosen duration defaults to '
+      "null (ScheduleHabitsScreen's own fallback interprets that as the "
+      '15-minute default), not zero or some other value', () async {
+    final id = await db.insertTask({
+      DatabaseHelper.columnCategory: 'Health',
+      DatabaseHelper.columnTaskDescription: 'Walk 20 minutes',
+      DatabaseHelper.columnCreateDate: '2026-01-01',
+    });
+    final tasks = await db.queryTasksByCategory('Health');
+    final row = tasks.firstWhere((t) => t[DatabaseHelper.columnId] == id);
+    expect(row[DatabaseHelper.columnScheduledDurationMinutes], isNull);
+  });
+
+  test('D-123: setting and clearing a habit\'s duration round-trips '
+      'through the existing generic update()', () async {
+    final id = await db.insertTask({
+      DatabaseHelper.columnCategory: 'Health',
+      DatabaseHelper.columnTaskDescription: 'Walk 20 minutes',
+      DatabaseHelper.columnCreateDate: '2026-01-01',
+    });
+
+    await db.update({
+      DatabaseHelper.columnId: id,
+      DatabaseHelper.columnScheduledDurationMinutes: 45,
+    });
+    var tasks = await db.queryTasksByCategory('Health');
+    var row = tasks.firstWhere((t) => t[DatabaseHelper.columnId] == id);
+    expect(row[DatabaseHelper.columnScheduledDurationMinutes], 45);
+
+    await db.update({
+      DatabaseHelper.columnId: id,
+      DatabaseHelper.columnScheduledDurationMinutes: null,
+    });
+    tasks = await db.queryTasksByCategory('Health');
+    row = tasks.firstWhere((t) => t[DatabaseHelper.columnId] == id);
+    expect(row[DatabaseHelper.columnScheduledDurationMinutes], isNull);
   });
 
   test('D-123: a habit inserted without a scheduled time defaults to '

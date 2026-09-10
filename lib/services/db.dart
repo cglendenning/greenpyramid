@@ -8,13 +8,14 @@ import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 10; // 7: R3 schema — position, essences,
+  static const _databaseVersion = 11; // 7: R3 schema — position, essences,
   // domain findings, account state (Part IV). 8: R6/D-062 — discards an
   // incomplete old-flow setup so the user starts the new Council setup
   // fresh instead of landing on a half-populated pyramid with no way back
   // into the (now-deleted) wizard. 9: D-123 — a habit's optional recurring
   // scheduled time and its native calendar event id. 10: D-124 — a
-  // tasklog row's optional voice-transcribed miss reason.
+  // tasklog row's optional voice-transcribed miss reason. 11: D-123 — a
+  // habit's own scheduled-event duration, in minutes.
 
   // DEMO MODE FLAG
   static final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
@@ -47,6 +48,14 @@ class DatabaseHelper {
   // without searching the calendar for it.
   static const columnScheduledTime = 'scheduledtime';
   static const columnScheduledCalendarEventId = 'scheduledcalendareventid';
+
+  // D-123: how long the habit's scheduled block/native-calendar event
+  // runs, in minutes. Null means "use the default" (15 minutes,
+  // ScheduleHabitsScreen's own fallback) — set explicitly once the owner
+  // taps a tray habit and chooses a duration. Applies whether or not the
+  // habit is currently scheduled, so a duration chosen once survives an
+  // unschedule/reschedule cycle rather than resetting to the default.
+  static const columnScheduledDurationMinutes = 'scheduleddurationminutes';
 
   // The tasklog table. This stores the history of each task's
   // completion for each value.
@@ -296,6 +305,7 @@ class DatabaseHelper {
               $columnCreateDate TEXT NOT NULL,
               $columnScheduledTime TEXT,
               $columnScheduledCalendarEventId TEXT,
+              $columnScheduledDurationMinutes INTEGER,
               UNIQUE($columnCategory, $columnTaskDescription)
             )
             ''');
@@ -446,6 +456,7 @@ class DatabaseHelper {
             $columnCreateDate TEXT NOT NULL,
             $columnScheduledTime TEXT,
             $columnScheduledCalendarEventId TEXT,
+              $columnScheduledDurationMinutes INTEGER,
             UNIQUE($columnCategory, $columnTaskDescription)
           )
           ''');
@@ -576,6 +587,13 @@ class DatabaseHelper {
             await db.execute(
                 'ALTER TABLE $taskLogTable ADD COLUMN $columnTLMissReason TEXT');
             break;
+          case 11:
+            // D-123: a habit's own scheduled-event duration — null on
+            // every existing row, matching the "use the default" behavior
+            // a fresh install already gets from v11's CREATE TABLE.
+            await db.execute(
+                'ALTER TABLE $taskTable ADD COLUMN $columnScheduledDurationMinutes INTEGER');
+            break;
         }
       }
     }
@@ -602,6 +620,7 @@ class DatabaseHelper {
         $columnCreateDate TEXT NOT NULL,
         $columnScheduledTime TEXT,
         $columnScheduledCalendarEventId TEXT,
+              $columnScheduledDurationMinutes INTEGER,
         UNIQUE($columnCategory, $columnTaskDescription)
       )
     ''');

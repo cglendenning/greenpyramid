@@ -55,7 +55,6 @@ const double _timeW = 48.0; // width of the time-label column
 const int _startHour = 0;
 const int _endHour = 24;
 const int _dayCount = 7;
-const Duration _habitDuration = Duration(minutes: 15);
 
 double _timeToY(int hour, int minute) =>
     ((hour - _startHour) + minute / 60.0) * _hourH;
@@ -259,11 +258,12 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
   /// once), so a collision has to be checked on every one of those days,
   /// not just the day column the drag was dropped into.
   bool _hasCollision(int hour, int minute, HabitScheduleRow excluding) {
+    final excludingDuration = Duration(minutes: excluding.durationMinutes);
     for (var i = 0; i < _dayCount; i++) {
       final day = _weekStart.add(Duration(days: i));
       if (!excluding.activeOn(day)) continue;
       final newStart = DateTime(day.year, day.month, day.day, hour, minute);
-      final newEnd = newStart.add(_habitDuration);
+      final newEnd = newStart.add(excludingDuration);
 
       for (final e in _existingEventsByDay[i]) {
         if (intervalsOverlap(newStart, newEnd, e.startDate, e.endDate)) {
@@ -275,7 +275,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
         if (!h.activeOn(day)) continue;
         final t = h.parsedTime!;
         final start = DateTime(day.year, day.month, day.day, t.$1, t.$2);
-        final end = start.add(_habitDuration);
+        final end = start.add(Duration(minutes: h.durationMinutes));
         if (intervalsOverlap(newStart, newEnd, start, end)) return true;
       }
     }
@@ -300,7 +300,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
     final localY =
         box.globalToLocal(globalOffset).dy.clamp(0.0, double.infinity);
     final (hour, minute) =
-        snapDropToTime(localY, durationMinutes: _habitDuration.inMinutes);
+        snapDropToTime(localY, durationMinutes: habit.durationMinutes);
 
     if (_hasCollision(hour, minute, habit)) {
       HapticFeedback.heavyImpact();
@@ -324,13 +324,14 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
 
     bool ok;
     String? eventId = habit.scheduledEventId;
+    final duration = Duration(minutes: habit.durationMinutes);
     if (habit.scheduledTime == null) {
       eventId = await _calendarService.createHabitEvent(
         habitDescription: habit.description,
         hour: hour,
         minute: minute,
         daysOfWeek: days,
-        duration: _habitDuration,
+        duration: duration,
       );
       ok = eventId != null;
     } else {
@@ -339,7 +340,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
         hour: hour,
         minute: minute,
         daysOfWeek: days,
-        duration: _habitDuration,
+        duration: duration,
       );
     }
 
@@ -687,7 +688,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
   Widget _positionedHabit(HabitScheduleRow h) {
     final t = h.parsedTime!;
     final top = _timeToY(t.$1, t.$2).clamp(0.0, double.infinity);
-    final rawH = _habitDuration.inMinutes / 60 * _hourH;
+    final rawH = h.durationMinutes / 60 * _hourH;
     final height = rawH.clamp(24.0, double.infinity);
 
     return Positioned(
@@ -789,45 +790,52 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
 
   Widget _tray() {
     return Container(
-      height: 56,
+      height: 60,
       decoration: BoxDecoration(
         color: const Color(0xFF111111),
         border: Border(top: BorderSide(color: _washiCream.withOpacity(0.08))),
       ),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         itemCount: _unscheduled.length,
         itemBuilder: (context, i) {
           final h = _unscheduled[i];
           return Padding(
             padding: const EdgeInsets.only(right: 8),
-            child: LongPressDraggable<HabitScheduleRow>(
-              data: h,
-              delay: const Duration(milliseconds: 250),
-              onDragStarted: () => setState(() => _dragging = h),
-              onDragUpdate: _onDragUpdate,
-              onDragEnd: (_) {
-                _stopAutoScroll();
-                if (mounted) setState(() => _dragging = null);
-              },
-              onDraggableCanceled: (v, o) {
-                _stopAutoScroll();
-                if (mounted) setState(() => _dragging = null);
-              },
-              feedback: Material(
-                color: Colors.transparent,
-                child: Container(
-                  width: 160,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                  decoration: BoxDecoration(
-                      color: _aqua.withOpacity(0.85), borderRadius: BorderRadius.circular(8)),
-                  child: Text(h.description,
-                      maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _sumiBlack)),
+            child: GestureDetector(
+              // D-123: tap to set a duration before dragging — a plain
+              // tap coexists fine with LongPressDraggable's own long-press
+              // recognizer below (different gesture types, so Flutter's
+              // gesture arena never has to arbitrate between them).
+              onTap: () => _editDuration(h),
+              child: LongPressDraggable<HabitScheduleRow>(
+                data: h,
+                delay: const Duration(milliseconds: 250),
+                onDragStarted: () => setState(() => _dragging = h),
+                onDragUpdate: _onDragUpdate,
+                onDragEnd: (_) {
+                  _stopAutoScroll();
+                  if (mounted) setState(() => _dragging = null);
+                },
+                onDraggableCanceled: (v, o) {
+                  _stopAutoScroll();
+                  if (mounted) setState(() => _dragging = null);
+                },
+                feedback: Material(
+                  color: Colors.transparent,
+                  child: Container(
+                    width: 160,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                        color: _aqua.withOpacity(0.85), borderRadius: BorderRadius.circular(8)),
+                    child: Text(h.description,
+                        maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _sumiBlack)),
+                  ),
                 ),
+                childWhenDragging: Opacity(opacity: 0.3, child: _trayChip(h)),
+                child: _trayChip(h),
               ),
-              childWhenDragging: Opacity(opacity: 0.3, child: _trayChip(h)),
-              child: _trayChip(h),
             ),
           );
         },
@@ -836,16 +844,74 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
   }
 
   Widget _trayChip(HabitScheduleRow h) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
             color: _aqua.withOpacity(0.12),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: _aqua.withOpacity(0.35))),
         alignment: Alignment.center,
         constraints: const BoxConstraints(maxWidth: 160),
-        child: Text(h.description,
-            maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _washiCream)),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(h.description,
+                maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: _washiCream)),
+            Text('${h.durationMinutes} min · tap to change',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 9, color: _washiCream.withOpacity(0.5))),
+          ],
+        ),
       );
+
+  static const List<int> _durationChoicesMinutes = [10, 15, 20, 30, 45, 60, 90];
+
+  /// D-123: lets a habit's scheduled-event duration be set before it's
+  /// dragged onto the calendar — persists to the habit's own row
+  /// (survives an unschedule/reschedule cycle, since duration lives on
+  /// the habit, not on any one drag) but does NOT itself write anything
+  /// to the calendar; the user still drags to actually schedule it.
+  Future<void> _editDuration(HabitScheduleRow habit) async {
+    final selected = await showDialog<int>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: _sumiBlack,
+        title: Text(habit.description,
+            style: const TextStyle(color: _washiCream, fontSize: 16)),
+        content: Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _durationChoicesMinutes.map((minutes) {
+            final isSelected = minutes == habit.durationMinutes;
+            return ChoiceChip(
+              label: Text('$minutes min'),
+              selected: isSelected,
+              onSelected: (_) => Navigator.pop(ctx, minutes),
+              selectedColor: _aqua,
+              backgroundColor: const Color(0xFF111111),
+              labelStyle: TextStyle(
+                  color: isSelected ? _sumiBlack : _washiCream,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w400),
+              side: BorderSide(color: _aqua.withOpacity(0.4)),
+            );
+          }).toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
+    if (selected == null || !mounted) return;
+
+    await _dbHelper.update({
+      DatabaseHelper.columnId: habit.id,
+      DatabaseHelper.columnScheduledDurationMinutes: selected,
+    });
+    await _loadAll();
+  }
 
   void _onDragUpdate(DragUpdateDetails details) {
     if (!_scrollCtrl.hasClients) return;
@@ -886,6 +952,14 @@ class HabitScheduleRow {
   final bool sunday, monday, tuesday, wednesday, thursday, friday, saturday;
   final String? scheduledTime;
   final String? scheduledEventId;
+  // Raw column value — null means "use the default," not "zero minutes."
+  final int? scheduledDurationMinutes;
+
+  static const int defaultDurationMinutes = 15;
+
+  /// The duration actually used for scheduling/collision/display — the
+  /// habit's own chosen duration if it has one, otherwise the default.
+  int get durationMinutes => scheduledDurationMinutes ?? defaultDurationMinutes;
 
   HabitScheduleRow({
     required this.id,
@@ -900,6 +974,7 @@ class HabitScheduleRow {
     required this.saturday,
     required this.scheduledTime,
     required this.scheduledEventId,
+    this.scheduledDurationMinutes,
   });
 
   factory HabitScheduleRow.fromMap(Map<String, dynamic> m, Utils utils) {
@@ -917,6 +992,8 @@ class HabitScheduleRow {
       saturday: flag(m[DatabaseHelper.columnSaturday]),
       scheduledTime: m[DatabaseHelper.columnScheduledTime] as String?,
       scheduledEventId: m[DatabaseHelper.columnScheduledCalendarEventId] as String?,
+      scheduledDurationMinutes:
+          m[DatabaseHelper.columnScheduledDurationMinutes] as int?,
     );
   }
 
