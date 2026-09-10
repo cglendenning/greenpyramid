@@ -22,6 +22,7 @@ import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatem
 import { buildProgressAnalysisPrompt } from './lib/progress_analysis.js';
 import { buildDeriveDomainFindingsPrompt, buildDeriveGeneralDomainFindingsPrompt, DOMAIN_FINDING_TOOL, GENERAL_DOMAIN_FINDING_TOOL } from './lib/domain_finding_derivation.js';
 import { isEligibleForTailoredNotification } from './lib/notification_schedule.js';
+import { shouldSendBatchCheckin, todaysScheduledHabits, localDateParts } from './lib/batch_checkin_schedule.js';
 import { buildNotificationPrompt, NOTIFICATION_TOOL } from './lib/notification_derivation.js';
 import { requireEntitlement, EntitlementRequiredError } from './lib/entitlement.js';
 import { grantTrialIfEligible, grantMigrationTrial, DeviceTrialError } from './lib/device_trial.js';
@@ -670,6 +671,103 @@ export const notificationJob = onSchedule(
         await sendTailoredNotification(uid, data);
       } catch (e) {
         console.error(`notificationJob: failed for ${uid}:`, e.message);
+      }
+    }
+  },
+);
+
+// D-124: once per account per day, after the *latest* scheduled habit
+// (D-123) of that day has passed in the account's own local time (D-039),
+// sends a single push naming every one of that day's scheduled, active
+// habits — replacing Kansei's per-session "Did you do it?" with one
+// batched push, per the owner's explicit choice that Green Pyramid's
+// higher daily habit volume makes a per-habit notification the wrong
+// design here. batch_checkin_schedule.js's shouldSendBatchCheckin decides
+// the "when" (data-dependent, unlike D-036's fixed clock slots) and its
+// own "already sent today" field is the once-per-day guard.
+//
+// Unlike notificationJob, this calls no model and costs nothing to run —
+// so it is NOT restricted to non-lapsed accounts, matching D-015's
+// tracker-is-free-forever and D-123's own "scheduling is available
+// regardless of entitlement."
+async function maybeSendBatchCheckin(uid, profileData, now) {
+  const db = admin.firestore();
+  const timezone = profileData?.timezone;
+  if (!timezone) return;
+
+  const tasksSnap = await db.collection('users').doc(uid).collection('tasks').get();
+  const tasks = tasksSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+  const shouldSend = shouldSendBatchCheckin({
+    tasks,
+    timezone,
+    now,
+    lastSentDate: profileData.lastBatchCheckinSentDate,
+  });
+  if (!shouldSend) return;
+
+  const { dateString, weekday } = localDateParts(timezone, now);
+  const habits = todaysScheduledHabits(tasks, weekday);
+  if (habits.length === 0) return; // defensive — shouldSendBatchCheckin already checked this.
+
+  // D-124: the payload the batch check-in screen renders from, not a
+  // fresh query — so what the user sees on tap matches what the push was
+  // actually about even if the pyramid changes in between. Also the
+  // once-per-day guard for every later run today.
+  await db.collection('users').doc(uid).collection('profile').doc('main').set({
+    lastBatchCheckinSentDate: dateString,
+    lastBatchCheckinHabits: habits,
+  }, { merge: true });
+
+  const fcmToken = profileData.fcmToken;
+  if (!fcmToken) {
+    console.log(`batchCheckinJob: ${uid} has no fcmToken registered — nothing to send.`);
+    return;
+  }
+
+  const body = habits.length === 1
+    ? `${habits[0].description} — how did it go?`
+    : `${habits.length} habits scheduled today — how did they go?`;
+
+  try {
+    await admin.messaging().send({
+      token: fcmToken,
+      notification: { title: 'Did you do it?', body },
+      // D-083's amendment noted real FCM pushes carry no `data` field at
+      // all today — this is the first push that needs one, so it's added
+      // here rather than for every push type at once.
+      data: {
+        type: 'batch_checkin',
+        date: dateString,
+        habits: JSON.stringify(habits),
+      },
+    });
+  } catch (e) {
+    console.error(`batchCheckinJob: FCM send failed for ${uid}:`, e.message);
+  }
+}
+
+export const batchCheckinJob = onSchedule(
+  {
+    schedule: 'every 15 minutes',
+    timeoutSeconds: 300,
+    memory: '256MiB',
+  },
+  async () => {
+    ensureAdmin();
+    const db = admin.firestore();
+    const now = new Date();
+
+    const snapshot = await db.collectionGroup('profile').get();
+    for (const doc of snapshot.docs) {
+      if (doc.id !== 'main') continue;
+      const data = doc.data();
+
+      const uid = doc.ref.parent.parent.id;
+      try {
+        await maybeSendBatchCheckin(uid, data, now);
+      } catch (e) {
+        console.error(`batchCheckinJob: failed for ${uid}:`, e.message);
       }
     }
   },
