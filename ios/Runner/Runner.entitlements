@@ -11,5 +11,14 @@
 	     this value is not something to "match" to the signing method. -->
 	<key>com.apple.developer.devicecheck.appattest-environment</key>
 	<string>production</string>
+	<!-- D-130: required for sign_in_with_apple (AccountLinkService). Xcode's
+	     automatic signing (already in use for this project) is expected to
+	     self-provision the "Sign In with Apple" capability on the App ID
+	     from this key alone; verify at the next build and fall back to a
+	     manual Apple Developer portal toggle if it doesn't. -->
+	<key>com.apple.developer.applesignin</key>
+	<array>
+		<string>Default</string>
+	</array>
 </dict>
 </plist>

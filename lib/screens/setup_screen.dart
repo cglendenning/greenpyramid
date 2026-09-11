@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../models/board_session.dart';
@@ -18,6 +19,7 @@ import '../widgets/chat_input_bar.dart';
 import '../widgets/council_transcript.dart';
 import '../widgets/onboarding_backdrop.dart';
 import '../widgets/setup_progress_indicator.dart';
+import 'account_creation_screen.dart';
 import 'setup_completion_screen.dart';
 import 'push_permission_screen.dart';
 import 'trial_disclosure_screen.dart';
@@ -838,25 +840,41 @@ class _SetupScreenState extends State<SetupScreen> {
       final account = await DatabaseHelper.instance.getAccountState();
       final entitlement = account[DatabaseHelper.columnEntitlement] as String?;
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(MaterialPageRoute(
-        builder: (context) => SetupCompletionScreen(
-          onDone: () => Navigator.of(context).pushReplacement(MaterialPageRoute(
-            builder: (context) => TrialDisclosureScreen(
-              entitlement: entitlement,
-              // D-065: push permission is requested here — immediately
-              // after the completion moment settles, before the home
-              // screen, never on first launch.
-              onDone: () =>
-                  Navigator.of(context).pushReplacement(MaterialPageRoute(
-                builder: (context) => PushPermissionScreen(
-                  onDone: () => Navigator.of(context)
-                      .pushNamedAndRemoveUntil('/', (route) => false),
-                ),
-              )),
-            ),
-          )),
-        ),
-      ));
+
+      void goToCompletion() {
+        Navigator.of(context).pushReplacement(MaterialPageRoute(
+          builder: (context) => SetupCompletionScreen(
+            onDone: () => Navigator.of(context).pushReplacement(MaterialPageRoute(
+              builder: (context) => TrialDisclosureScreen(
+                entitlement: entitlement,
+                // D-065: push permission is requested here — immediately
+                // after the completion moment settles, before the home
+                // screen, never on first launch.
+                onDone: () =>
+                    Navigator.of(context).pushReplacement(MaterialPageRoute(
+                  builder: (context) => PushPermissionScreen(
+                    onDone: () => Navigator.of(context)
+                        .pushNamedAndRemoveUntil('/', (route) => false),
+                  ),
+                )),
+              ),
+            )),
+          ),
+        ));
+      }
+
+      // D-130 (supersedes D-033/Q-28): a real account is now required
+      // here, before the pyramid reveal. Guard against a user somehow
+      // already non-anonymous at this point (shouldn't happen mid-setup,
+      // but linkWithCredential throws if called on one) — skip straight
+      // to completion rather than showing a screen with nothing to do.
+      if (FirebaseAuth.instance.currentUser?.isAnonymous == false) {
+        goToCompletion();
+      } else {
+        Navigator.of(context).pushReplacement(MaterialPageRoute(
+          builder: (context) => AccountCreationScreen(onDone: goToCompletion),
+        ));
+      }
     } on AiBudgetException catch (e) {
       // Found live: this whole method had no catch clause at all — any
       // failure here (most plausibly this one, a client-side rate/day

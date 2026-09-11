@@ -67,6 +67,9 @@ dependencies:
   uuid: ^4.6.0
   firebase_auth: ^6.6.1
   sign_in_with_apple: ^8.1.0
+  # D-130: account creation before the pyramid reveal (Apple + Google
+  # one-tap only). Same version goal-executor uses.
+  google_sign_in: ^7.2.0
   # D-070: RevenueCat, ported from Kansei. Pinned to the same major version
   # Kansei's already-tested integration uses (D-070's acceptance criterion),
   # not the latest — 10.x carries breaking API changes not yet verified here.
@@ -99,6 +102,10 @@ dev_dependencies:
   sqflite_common_ffi: ^2.3.0
   fake_cloud_firestore: ^4.2.0
   firebase_auth_mocks: ^0.15.2
+  # D-130: firebase_auth_mocks' own exception-stubbing mechanism
+  # (whenCalling/maybeThrowException) — already a transitive dependency,
+  # declared directly since account_link_service_test.dart imports it.
+  mock_exceptions: ^0.8.2
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
