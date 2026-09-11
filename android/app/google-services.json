@@ -2,7 +2,7 @@
   "project_info": {
     "project_number": "240516747661",
     "project_id": "life-ops",
-    "storage_bucket": "life-ops.appspot.com"
+    "storage_bucket": "life-ops.firebasestorage.app"
   },
   "client": [
     {
@@ -14,7 +14,15 @@
       },
       "oauth_client": [
         {
-          "client_id": "240516747661-es5ehopa4jkii4m1l3l88gb61njg60lr.apps.googleusercontent.com",
+          "client_id": "240516747661-v82c7110268bkk065o3vl1ann3h0n2v9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.cglendenning.life_ops",
+            "certificate_hash": "330b30b43773b6a81138234f3b031cd68ffa3196"
+          }
+        },
+        {
+          "client_id": "240516747661-8iaoe3c9jf84rhtinpe24untpf5q3rct.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -27,14 +35,14 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "240516747661-es5ehopa4jkii4m1l3l88gb61njg60lr.apps.googleusercontent.com",
+              "client_id": "240516747661-8iaoe3c9jf84rhtinpe24untpf5q3rct.apps.googleusercontent.com",
               "client_type": 3
             },
             {
-              "client_id": "240516747661-gujolp1q1bdm9351kj53mh89h0ba2t1u.apps.googleusercontent.com",
+              "client_id": "240516747661-pr6nr2s3it3vlna51mm0vc5kaisjindg.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.lifeOps"
+                "bundle_id": "com.cglendenning.lifeops"
               }
             }
           ]
@@ -50,7 +58,7 @@
       },
       "oauth_client": [
         {
-          "client_id": "240516747661-es5ehopa4jkii4m1l3l88gb61njg60lr.apps.googleusercontent.com",
+          "client_id": "240516747661-8iaoe3c9jf84rhtinpe24untpf5q3rct.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
@@ -63,14 +71,14 @@
         "appinvite_service": {
           "other_platform_oauth_client": [
             {
-              "client_id": "240516747661-es5ehopa4jkii4m1l3l88gb61njg60lr.apps.googleusercontent.com",
+              "client_id": "240516747661-8iaoe3c9jf84rhtinpe24untpf5q3rct.apps.googleusercontent.com",
               "client_type": 3
             },
             {
-              "client_id": "240516747661-gujolp1q1bdm9351kj53mh89h0ba2t1u.apps.googleusercontent.com",
+              "client_id": "240516747661-pr6nr2s3it3vlna51mm0vc5kaisjindg.apps.googleusercontent.com",
               "client_type": 2,
               "ios_info": {
-                "bundle_id": "com.example.lifeOps"
+                "bundle_id": "com.cglendenning.lifeops"
               }
             }
           ]

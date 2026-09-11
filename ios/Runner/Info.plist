@@ -2,6 +2,20 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
   <dict>
+    <!-- D-132: required for google_sign_in's iOS redirect to complete —
+         the reversed client ID from GoogleService-Info.plist (regenerated
+         once Google was enabled as a Firebase Auth provider). -->
+    <key>CFBundleURLTypes</key>
+    <array>
+      <dict>
+        <key>CFBundleTypeRole</key>
+        <string>Editor</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>com.googleusercontent.apps.240516747661-pr6nr2s3it3vlna51mm0vc5kaisjindg</string>
+        </array>
+      </dict>
+    </array>
     <key>GADApplicationIdentifier</key>
     <string>ca-app-pub-4402198490627677~1066120376</string>
     <key>SKAdNetworkItems</key>
