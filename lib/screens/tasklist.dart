@@ -203,14 +203,22 @@ class _TaskListState extends State<TaskList> {
                         } else {
                           return _card(
                             padding: EdgeInsets.zero,
-                            child: ConstrainedBox(
-                              // constrain the scrollview to 1/3 of the
-                              // height of the screen.
-                              constraints: BoxConstraints(
-                                  maxHeight: MediaQuery.of(context).size.height / 3),
+                            child: SizedBox(
+                              // D-145: a fixed height, not just a max —
+                              // found live, a jarring layout shift: with
+                              // shrinkWrap the card (and everything below
+                              // it, including the buttons) sized itself to
+                              // however many tasks a given category had,
+                              // so switching dates to a category with a
+                              // different task count moved the buttons up
+                              // or down the screen. A fixed height keeps
+                              // every element below in exactly the same
+                              // place regardless of task count; a category
+                              // with too few tasks to fill it just leaves
+                              // empty space in the card instead.
+                              height: MediaQuery.of(context).size.height / 3,
                               child: Scrollbar(
                                   child: ListView.separated(
-                                      shrinkWrap: true,
                                       padding: const EdgeInsets.symmetric(vertical: 4),
                                       itemCount: snapshot.data.length,
                                       separatorBuilder: (context, index) => Divider(

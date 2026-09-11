@@ -64,4 +64,23 @@ void main() {
       expect(source, contains('result.description != (currentEssence ?? \'\')'));
     });
   });
+
+  group('D-145: the task-list card has a fixed height, not just a max — '
+      'found live: "The two buttons should remain in exactly the same '
+      'spot when the calendar is changed to a date that has a different '
+      'number of tasks... when I switched from the 11th to the 10th the '
+      'location of the buttons moved"', () {
+    test('the task-list card uses a fixed SizedBox height, not a '
+        'ConstrainedBox(maxHeight:) that lets it shrink to content', () {
+      expect(source, contains('height: MediaQuery.of(context).size.height / 3'));
+      expect(source, isNot(contains('BoxConstraints(')));
+      expect(source, isNot(contains('maxHeight:')));
+    });
+
+    test('shrinkWrap is gone from the task ListView — a fixed-height '
+        'parent already bounds it, and shrinkWrap would size it to '
+        'content again, reintroducing the exact bug this fixes', () {
+      expect(source, isNot(contains('shrinkWrap: true')));
+    });
+  });
 }
