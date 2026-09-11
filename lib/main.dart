@@ -218,6 +218,21 @@ Future<void> main() async {
     return;
   }
 
+  // D-137: iOS Keychain survives app deletion even though local SQLite
+  // does not — found live: deleting and reinstalling the app still
+  // resumed the old (anonymous, never-linked) Firebase session, so
+  // `defaultCats == 6` (local storage genuinely fresh) disagreed with
+  // `currentUser != null` (Firebase disagrees). That mismatch landed on
+  // the home screen's D-132 gate instead of the true first screen. Local
+  // storage being empty is the one signal actually guaranteed to reflect
+  // a real reinstall (the OS wipes the app's own sandboxed files, no
+  // Keychain-style survival) — when it disagrees with Firebase, Firebase
+  // is what's stale, so it's what gets corrected: sign out, matching
+  // what local storage already shows, before anything else runs.
+  if (defaultCats == 6 && FirebaseAuth.instance.currentUser != null) {
+    await AuthService.instance.signOut();
+  }
+
   // D-136: "signed out" is read live from Firebase itself, not from any
   // app-managed history — sign-out (homescreen.dart, settings.dart)
   // deliberately leaves `currentUser` null rather than eagerly
@@ -225,7 +240,9 @@ Future<void> main() async {
   // after sign-out to WelcomeScreen exactly like a fresh install (both
   // are, structurally, "no session yet"). `defaultCats == 6` stays as an
   // independent signal for the case local storage is empty but a session
-  // already exists (shouldn't normally happen, cheap to keep).
+  // already exists — the D-137 check above is what keeps that case from
+  // actually happening in practice, but this stays as a second,
+  // independent guarantee rather than relying on the first alone.
   if (FirebaseAuth.instance.currentUser == null || defaultCats == 6) {
     routeToGo = '/setup';
   }
