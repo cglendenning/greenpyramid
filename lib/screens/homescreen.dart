@@ -3,6 +3,7 @@ import 'dart:ui' show ImageFilter;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:life_ops/screens/account_creation_screen.dart';
+import 'package:life_ops/services/account_link_service.dart';
 import 'package:life_ops/services/auth_service.dart';
 import 'package:life_ops/services/notification.dart';
 import 'package:life_ops/services/db.dart';
@@ -71,7 +72,7 @@ class HomeScreen extends StatelessWidget {
           case '/setup':
             // D-089: a fresh install lands here first via routeToGo — the
             // welcome screen, not straight into Mira's opening line.
-            return MaterialPageRoute(builder: (context) => const WelcomeScreen());
+            return MaterialPageRoute(builder: (context) => WelcomeScreen());
           default:
             return _errorRoute();
         }
@@ -415,6 +416,9 @@ class CustomAppBarState extends State<CustomAppBar> {
           case 'profile':
             navigateToProfile(context);
             break;
+          case 'signOut':
+            signOut(context);
+            break;
           case 'demoMode':
             final homeScreenState = context.findAncestorStateOfType<_HomeScreen>();
             if (homeScreenState != null) {
@@ -432,7 +436,7 @@ class CustomAppBarState extends State<CustomAppBar> {
           ),
           const PopupMenuItem<String>(
             value: 'setup',
-            child: Text('Setup'),
+            child: Text('Set up again'),
           ),
           const PopupMenuItem<String>(
             value: 'council',
@@ -446,6 +450,14 @@ class CustomAppBarState extends State<CustomAppBar> {
             value: 'profile',
             child: Text('Profile'),
           ),
+          // D-133: only offered when actually signed in with a real
+          // account — checked live (AuthService.instance.isAnonymous),
+          // not cached, so it can never go stale across a sign-out.
+          if (!AuthService.instance.isAnonymous)
+            const PopupMenuItem<String>(
+              value: 'signOut',
+              child: Text('Sign out'),
+            ),
           const PopupMenuItem<String>(
             value: 'demoMode',
             child: Text('Toggle Demo Mode'),
@@ -457,33 +469,40 @@ class CustomAppBarState extends State<CustomAppBar> {
 
     List<Widget> actions = [menu];
 
-    // Was an opaque purple-to-blue gradient block; now a translucent,
-    // frosted panel with rounded bottom corners so it reads as a floating
-    // toolbar over whatever sits behind it (the main screen's full-bleed
-    // pyramid background, or AppColors.background on every other tab).
-    // Material(color: transparent) keeps Material's own default opaque
-    // surface paint from defeating the transparency; elevation still
-    // draws a subtle shadow for depth on the now-transparent panel.
+    // D-131 originally replaced this gradient with an opaque-feeling
+    // rounded frosted panel — found live not to be what was wanted
+    // ("I like what I had before... I really wanted was simply to have
+    // more transparency so that the background image... shine through
+    // it and to make it look a little glassier like the modern iOS
+    // glass interface"). Reverted to the original gradient shape (no
+    // rounded corners) and colors, with the gradient itself now
+    // translucent (0.45 alpha) over a BackdropFilter blur — the photo
+    // genuinely shows through, blurred, rather than sitting behind a
+    // solid tint. Material(color: transparent) keeps Material's own
+    // default opaque surface paint from defeating that; elevation still
+    // draws the same subtle shadow the original had.
     return Material(
       color: Colors.transparent,
       elevation: elevation,
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(24),
-          bottomRight: Radius.circular(24),
-        ),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: Container(
-            decoration: BoxDecoration(color: AppColors.surface.withValues(alpha: 0.55)),
-            child: AppBar(
-              centerTitle: true,
-              elevation: 0.0,
-              title: svgLogo,
-              backgroundColor: Colors.transparent,
-              actions: actions,
-              leading: null,
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.centerLeft,
+              end: Alignment.centerRight,
+              colors: AppColors.appBarGradient
+                  .map((c) => c.withValues(alpha: 0.45))
+                  .toList(),
             ),
+          ),
+          child: AppBar(
+            centerTitle: true,
+            elevation: 0.0,
+            title: svgLogo,
+            backgroundColor: Colors.transparent,
+            actions: actions,
+            leading: null,
           ),
         ),
       ),
@@ -499,13 +518,56 @@ class CustomAppBarState extends State<CustomAppBar> {
     setState(() {});
   }
 
+  // D-133: "Set up again" in the hamburger menu — the user is already
+  // signed in with a real account and a real pyramid here, so this needs
+  // WelcomeScreen's isResetup mode (different button copy, and the local
+  // wipe-and-restart behavior when tapped), not the plain first-run one.
   void navigateToSetup(BuildContext context) async {
     utils.Utils().changeSystemColor(Brightness.dark);
-    await Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const WelcomeScreen()))
+    await Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => WelcomeScreen(isResetup: true)))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
+  }
+
+  // D-133: hamburger-menu sign-out — same underlying flow Settings'
+  // ACCOUNT section already uses (confirm, sign out, re-establish a
+  // fresh anonymous session, land on WelcomeScreen's resetup mode), just
+  // reachable from the menu too, per the owner's explicit request.
+  Future<void> signOut(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Sign out?', style: TextStyle(color: AppColors.textPrimary)),
+        content: const Text(
+          'Your pyramid and history are saved to your account.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    await AccountLinkService.instance.signOut();
+    await AuthService.instance.signInSilently();
+    if (!context.mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => WelcomeScreen(isResetup: true)),
+      (route) => false,
+    );
   }
 
   // D-091/D-016: same client-side entitlement gate CouncilCategoryPicker

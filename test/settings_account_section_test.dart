@@ -34,10 +34,10 @@ void main() {
     });
 
     test('after sign-out, the whole nav stack is replaced with '
-        'WelcomeScreen(showStartFreshOption: true) — never left reachable '
-        'by backing out into the now-signed-out home screen', () {
+        'WelcomeScreen(isResetup: true) — never left reachable by backing '
+        'out into the now-signed-out home screen', () {
       expect(source, contains('pushAndRemoveUntil('));
-      expect(source, contains('const WelcomeScreen(showStartFreshOption: true)'));
+      expect(source, contains('WelcomeScreen(isResetup: true)'));
       expect(source, contains('(route) => false,'));
     });
   });

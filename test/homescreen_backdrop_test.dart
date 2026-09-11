@@ -8,9 +8,16 @@ import 'package:flutter_test/flutter_test.dart';
 /// are pumped in a widget test here either (Firebase Core isn't mocked
 /// anywhere in this suite). Same source-text-assertion pattern
 /// schedule_habits_screen_test.dart already uses for its D-128 group.
+///
+/// The toolbar's own look was revised once already, live, in the same
+/// session: the first pass (rounded corners, a flat translucent
+/// AppColors.surface fill) wasn't what was wanted — "I like what I had
+/// before... I really wanted was simply to have more transparency...
+/// and to make it look a little glassier like the modern iOS glass
+/// interface." The tests below assert the *current*, corrected shape.
 void main() {
-  group('D-131: main-screen background is full-bleed, toolbar is '
-      'translucent and rounded', () {
+  group('D-131: main-screen background is full-bleed, toolbar is a '
+      'translucent glass version of the original gradient', () {
     final pyramidSource = File('lib/widgets/pyramid.dart').readAsStringSync();
     final homescreenSource = File('lib/screens/homescreen.dart').readAsStringSync();
 
@@ -37,17 +44,25 @@ void main() {
       expect(pyramidSource, contains('color: AppColors.textPrimary'));
     });
 
-    test('CustomAppBar no longer paints the opaque purple-to-blue gradient '
-        '— found live: "the top tool bar that has the gradient from purple '
-        'to blue, I would like to make transparent"', () {
-      expect(homescreenSource, isNot(contains('AppColors.appBarGradient')));
+    test('CustomAppBar keeps the original purple-to-blue gradient — '
+        'reverted after a first pass replaced it entirely, which wasn\'t '
+        'wanted: "I like what I had before"', () {
+      expect(homescreenSource, contains('AppColors.appBarGradient'));
     });
 
-    test('CustomAppBar is translucent (frosted, via BackdropFilter) with '
-        'rounded bottom corners, not a flat opaque fill', () {
+    test('the gradient itself is translucent (not a solid fill) over a '
+        'BackdropFilter blur — the background photo genuinely shows '
+        'through it, blurred, rather than sitting behind an opaque or '
+        'flat-tinted panel', () {
       expect(homescreenSource, contains('BackdropFilter'));
-      expect(homescreenSource, contains('bottomLeft: Radius.circular'));
-      expect(homescreenSource, contains('bottomRight: Radius.circular'));
+      expect(homescreenSource, contains('.withValues(alpha: 0.45)'));
+    });
+
+    test('no rounded corners on the toolbar — the original shape had '
+        'none, and rounding wasn\'t reaffirmed when the transparency/glass '
+        'request was clarified', () {
+      expect(homescreenSource, isNot(contains('bottomLeft: Radius.circular')));
+      expect(homescreenSource, isNot(contains('bottomRight: Radius.circular')));
     });
 
     test('the shared Scaffold sets an explicit backgroundColor — without '

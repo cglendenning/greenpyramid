@@ -3,6 +3,7 @@ import 'package:life_ops/services/db.dart';
 import 'package:life_ops/screens/edittasklist.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
+import 'package:life_ops/theme/app_colors.dart';
 import 'package:life_ops/widgets/category_edit_sheet.dart';
 import 'package:life_ops/widgets/navbar.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -29,11 +30,56 @@ class _TaskListState extends State<TaskList> {
 
   final dbHelper = DatabaseHelper.instance;
 
+  // D-134: modernized to the app's established dark visual language
+  // (AppColors, Exo2) — found live: "I don't like the aesthetics of the
+  // links and the functionality within that screen." Previously unstyled
+  // (default Material colors), which read as visually inconsistent with
+  // the rest of the app.
   var pctCompleteTextStyle = const TextStyle(
-      fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
-  static const _categoryNameStyle =
-      TextStyle(fontSize: 22, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
-  static const _essenceStyle = TextStyle(fontSize: 15, fontStyle: FontStyle.italic);
+      fontSize: 15,
+      fontWeight: FontWeight.w600,
+      fontFamily: 'Exo2',
+      color: AppColors.textSecondary);
+  static const _categoryNameStyle = TextStyle(
+      fontSize: 24,
+      fontWeight: FontWeight.bold,
+      fontFamily: 'Exo2',
+      color: AppColors.textPrimary);
+  static const _essenceStyle = TextStyle(
+      fontSize: 15,
+      fontStyle: FontStyle.italic,
+      fontFamily: 'Exo2',
+      color: AppColors.textSecondary,
+      height: 1.4);
+
+  static final ButtonStyle _primaryButtonStyle = ElevatedButton.styleFrom(
+    backgroundColor: AppColors.brandGreen,
+    foregroundColor: AppColors.background,
+    minimumSize: const Size.fromHeight(52),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    elevation: 0,
+  );
+
+  static final ButtonStyle _secondaryButtonStyle = OutlinedButton.styleFrom(
+    foregroundColor: AppColors.textPrimary,
+    side: const BorderSide(color: AppColors.textSecondary),
+    minimumSize: const Size.fromHeight(52),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+  );
+
+  static const _buttonLabelStyle =
+      TextStyle(fontFamily: 'Exo2', fontWeight: FontWeight.w600, fontSize: 16);
+
+  Widget _card({required Widget child, EdgeInsetsGeometry? padding}) => Container(
+        width: double.infinity,
+        padding: padding ?? const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        child: child,
+      );
 
   late Future<(int?, String?)> _essenceContext;
 
@@ -98,13 +144,15 @@ class _TaskListState extends State<TaskList> {
     analytics.logEvent(name: 'tasklist');
     return SafeArea(
         child: Scaffold(
+            backgroundColor: AppColors.background,
             appBar: const NavBar(),
-            body: Center(
+            body: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
                 child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                  Text(category, style: _categoryNameStyle),
+                  Center(child: Text(category, style: _categoryNameStyle)),
+                  const SizedBox(height: 16),
                   FutureBuilder<(int?, String?)>(
                     future: _essenceContext,
                     builder: (context, snapshot) {
@@ -120,17 +168,24 @@ class _TaskListState extends State<TaskList> {
                       final categoryId = data.$1!;
                       final essence = data.$2;
                       return Padding(
-                        padding: const EdgeInsets.fromLTRB(24, 8, 24, 4),
-                        child: Column(
-                          children: [
-                            if (essence != null)
-                              Text(essence,
-                                  textAlign: TextAlign.center, style: _essenceStyle),
-                            TextButton(
-                              onPressed: () => _editCategory(categoryId, essence),
-                              child: const Text('Edit'),
-                            ),
-                          ],
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: _card(
+                          child: Column(
+                            children: [
+                              if (essence != null)
+                                Text(essence,
+                                    textAlign: TextAlign.center, style: _essenceStyle),
+                              if (essence != null) const SizedBox(height: 12),
+                              TextButton(
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppColors.brandGreen,
+                                  padding: EdgeInsets.zero,
+                                ),
+                                onPressed: () => _editCategory(categoryId, essence),
+                                child: const Text('Edit'),
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     },
@@ -139,57 +194,72 @@ class _TaskListState extends State<TaskList> {
                       future: getTaskLog(),
                       builder: (context, AsyncSnapshot snapshot) {
                         if (!snapshot.hasData) {
-                          return const Center(
-                              child: CircularProgressIndicator());
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 24),
+                            child: Center(
+                                child: CircularProgressIndicator(
+                                    color: AppColors.brandGreen)),
+                          );
                         } else {
-                          return Container(
-                              // constrain the scrollview to 1/3 of the height
-                              // of the screen.
-                              height: MediaQuery.of(context).size.height / 3,
+                          return _card(
+                            padding: EdgeInsets.zero,
+                            child: ConstrainedBox(
+                              // constrain the scrollview to 1/3 of the
+                              // height of the screen.
+                              constraints: BoxConstraints(
+                                  maxHeight: MediaQuery.of(context).size.height / 3),
                               child: Scrollbar(
-                                  child: ListView.builder(
+                                  child: ListView.separated(
+                                      shrinkWrap: true,
+                                      padding: const EdgeInsets.symmetric(vertical: 4),
                                       itemCount: snapshot.data.length,
+                                      separatorBuilder: (context, index) => Divider(
+                                          height: 1,
+                                          color: Colors.white.withValues(alpha: 0.08)),
                                       itemBuilder:
                                           (BuildContext context, int index) {
+                                        final task = snapshot.data[index];
                                         return CheckboxListTile(
+                                            controlAffinity:
+                                                ListTileControlAffinity.leading,
+                                            activeColor: AppColors.brandGreen,
+                                            checkColor: AppColors.background,
                                             title: Text(
-                                                '${snapshot.data[index].taskdescription}'),
-                                            subtitle: Text(
-                                                '${snapshot.data[index].category}'),
-                                            value: toBoolean(
-                                                snapshot.data[index].checked),
+                                                '${task.taskdescription}',
+                                                style: const TextStyle(
+                                                    color: AppColors.textPrimary,
+                                                    fontFamily: 'Exo2')),
+                                            value: toBoolean(task.checked),
                                             onChanged: (bool? value) {
                                               setState(() {
-                                                var v = value.toString();
-                                                snapshot.data[index].checked =
-                                                    v;
+                                                task.checked = value.toString();
                                                 dbHelper.setTaskLogChecked(
-                                                  category: snapshot
-                                                      .data[index].category,
-                                                  taskDescription: snapshot
-                                                      .data[index]
-                                                      .taskdescription,
-                                                  taskDate: snapshot
-                                                      .data[index].taskdate,
+                                                  category: task.category,
+                                                  taskDescription:
+                                                      task.taskdescription,
+                                                  taskDate: task.taskdate,
                                                   checked: value ?? false,
                                                 );
                                               });
                                             });
-                                      })));
+                                      })),
+                            ),
+                          );
                         }
                       }),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () {
                       navigateToEditTaskList();
                     },
-                    child: const Text('Edit Task List >'),
+                    style: _primaryButtonStyle,
+                    child: const Text('Edit Task List', style: _buttonLabelStyle),
                   ),
                   const SizedBox(height: 10),
                   // D-123: schedule a habit's recurring time — a separate
                   // screen since it works across every category's habits
                   // at once, not just this one.
-                  TextButton(
+                  OutlinedButton(
                     onPressed: () {
                       Navigator.push(
                         context,
@@ -197,32 +267,38 @@ class _TaskListState extends State<TaskList> {
                             builder: (context) => const ScheduleHabitsScreen()),
                       );
                     },
-                    child: const Text('Schedule Habits >'),
+                    style: _secondaryButtonStyle,
+                    child: const Text('Schedule Habits', style: _buttonLabelStyle),
                   ),
-                  const SizedBox(height: 30),
-                  SizedBox(
-                    height: 80,
-                    width: MediaQuery.of(context).size.width * 0.87,
-                    child: CupertinoDatePicker(
-                      key: UniqueKey(),
-                      mode: CupertinoDatePickerMode.date,
-                      minimumDate: DateFormat("yyyy-MM-dd").parse("2023-06-01"),
-                      maximumDate: DateTime.now(),
-                      showDayOfWeek: true,
-                      dateOrder: DatePickerDateOrder.dmy,
-                      initialDateTime:
-                          DateFormat("yyyy-MM-dd").parse(taskLogDate),
-                      onDateTimeChanged: (DateTime newDateTime) {
-                        setState(() {
-                          DateFormat formatter = DateFormat('yyyy-MM-dd');
-                          taskLogDate = formatter.format(newDateTime);
-                          todayFmt = dowFmt.format(newDateTime).toString();
-                        });
-                        // Do something
-                      },
+                  const SizedBox(height: 24),
+                  _card(
+                    child: CupertinoTheme(
+                      data: const CupertinoThemeData(brightness: Brightness.dark),
+                      child: SizedBox(
+                        height: 80,
+                        child: CupertinoDatePicker(
+                          key: UniqueKey(),
+                          mode: CupertinoDatePickerMode.date,
+                          minimumDate:
+                              DateFormat("yyyy-MM-dd").parse("2023-06-01"),
+                          maximumDate: DateTime.now(),
+                          showDayOfWeek: true,
+                          dateOrder: DatePickerDateOrder.dmy,
+                          initialDateTime:
+                              DateFormat("yyyy-MM-dd").parse(taskLogDate),
+                          onDateTimeChanged: (DateTime newDateTime) {
+                            setState(() {
+                              DateFormat formatter = DateFormat('yyyy-MM-dd');
+                              taskLogDate = formatter.format(newDateTime);
+                              todayFmt = dowFmt.format(newDateTime).toString();
+                            });
+                            // Do something
+                          },
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 16),
                   FutureBuilder(
                       future: combined(7),
                       builder: (context, AsyncSnapshot snapshot) {
@@ -234,31 +310,35 @@ class _TaskListState extends State<TaskList> {
                           if (snapshot.data == -1) {
                             return const Center(child: Text(''));
                           } else {
-                            return Text(
-                                '${snapshot.data.toString()} Percent Complete (7 days)',
-                                style: pctCompleteTextStyle);
+                            return Center(
+                                child: Text(
+                                    '${snapshot.data.toString()} Percent Complete (7 days)',
+                                    style: pctCompleteTextStyle));
                           }
                         }
                       }),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 8),
                   FutureBuilder(
                       future: combined(30),
                       builder: (context, AsyncSnapshot snapshot) {
                         if (!snapshot.hasData) {
                           return const Center(
                               child: Text(
-                                  'Click "Edit Task List >" to add tasks.'));
+                                  'Tap "Edit Task List" to add tasks.',
+                                  style: TextStyle(color: AppColors.textSecondary)));
                         } else {
                           // if there are no tasks at all, getCompletionPercentage()
                           // will return -1.
                           if (snapshot.data == -1) {
                             return const Center(
                                 child: Text(
-                                    'Click "Edit Task List >" to add tasks.'));
+                                    'Tap "Edit Task List" to add tasks.',
+                                    style: TextStyle(color: AppColors.textSecondary)));
                           } else {
-                            return Text(
-                                '${snapshot.data.toString()} Percent Complete (30 days)',
-                                style: pctCompleteTextStyle);
+                            return Center(
+                                child: Text(
+                                    '${snapshot.data.toString()} Percent Complete (30 days)',
+                                    style: pctCompleteTextStyle));
                           }
                         }
                       }),

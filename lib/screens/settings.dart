@@ -511,12 +511,14 @@ class _CalendarAccessSwitchState extends State<CalendarAccessSwitch> {
   }
 }
 
-/// D-132: shows the linked provider (if any) and lets the user sign out.
-/// After sign-out, a fresh anonymous session is re-established immediately
+/// D-132/D-133: shows the linked provider (if any) and lets the user sign
+/// out — the same underlying flow the hamburger menu's "Sign out" item
+/// now also offers (homescreen.dart's CustomAppBarState.signOut). After
+/// sign-out, a fresh anonymous session is re-established immediately
 /// (AuthService.signInSilently) — every Firestore-touching screen in this
 /// app assumes at least an anonymous uid exists (D-032) — before routing
-/// to WelcomeScreen(showStartFreshOption: true), where the user picks
-/// "Sign in" (to the same or a different account) or "Start fresh".
+/// to WelcomeScreen(isResetup: true), where the user picks "Sign in" (to
+/// the same or a different account) or "Set up again."
 class _AccountSection extends StatefulWidget {
   const _AccountSection();
 
@@ -566,7 +568,7 @@ class _AccountSectionState extends State<_AccountSection> {
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(
-        builder: (_) => const WelcomeScreen(showStartFreshOption: true),
+        builder: (_) => WelcomeScreen(isResetup: true),
       ),
       (route) => false,
     );
