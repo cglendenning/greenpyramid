@@ -1,3 +1,5 @@
+import 'dart:ui' show ImageFilter;
+
 import 'package:flutter/material.dart';
 import 'package:life_ops/services/notification.dart';
 import 'package:life_ops/services/db.dart';
@@ -177,6 +179,10 @@ class _HomeScreen extends State<HomeScreenWidget> {
   Widget build(BuildContext context) {
     return SafeArea(
         child: Scaffold(
+            // The app bar is now translucent (CustomAppBar) — without an
+            // explicit backgroundColor here, Flutter's Material default
+            // (white) would show through it on every tab.
+            backgroundColor: AppColors.background,
             appBar: const CustomAppBar(currentScreen: 'homescreen'),
             bottomNavigationBar: BottomNavBar(
                 _cat1Future,
@@ -409,23 +415,34 @@ class CustomAppBarState extends State<CustomAppBar> {
 
     List<Widget> actions = [menu];
 
+    // Was an opaque purple-to-blue gradient block; now a translucent,
+    // frosted panel with rounded bottom corners so it reads as a floating
+    // toolbar over whatever sits behind it (the main screen's full-bleed
+    // pyramid background, or AppColors.background on every other tab).
+    // Material(color: transparent) keeps Material's own default opaque
+    // surface paint from defeating the transparency; elevation still
+    // draws a subtle shadow for depth on the now-transparent panel.
     return Material(
+      color: Colors.transparent,
       elevation: elevation,
-      child: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.centerLeft,
-            end: Alignment.centerRight,
-            colors: AppColors.appBarGradient,
-          ),
+      child: ClipRRect(
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
         ),
-        child: AppBar(
-          centerTitle: true,
-          elevation: 0.0,
-          title: svgLogo,
-          backgroundColor: Colors.transparent,
-          actions: actions,
-          leading: null,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: Container(
+            decoration: BoxDecoration(color: AppColors.surface.withValues(alpha: 0.55)),
+            child: AppBar(
+              centerTitle: true,
+              elevation: 0.0,
+              title: svgLogo,
+              backgroundColor: Colors.transparent,
+              actions: actions,
+              leading: null,
+            ),
+          ),
         ),
       ),
     );

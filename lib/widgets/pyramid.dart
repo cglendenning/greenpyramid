@@ -5,6 +5,7 @@ import 'package:life_ops/services/dbtools.dart';
 import 'package:life_ops/screens/tasklist.dart';
 import 'package:life_ops/services/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:life_ops/theme/app_colors.dart';
 import 'package:life_ops/widgets/pyramid_3d.dart';
 import 'package:life_ops/widgets/pyramid_painting.dart';
 
@@ -60,17 +61,70 @@ class _Pyramid extends State<Pyramid> {
     analytics.logEvent(name: 'pyramid');
 
     double pyramidWidth = MediaQuery.of(context).size.width * 0.87;
-    double pyramidHeight = MediaQuery.of(context).size.width * 0.82;
-    SizedBox smallSpacer = SizedBox(height: pyramidHeight * .07);
-    // SizedBox bigSpacer = SizedBox(height: pyramidHeight * .2);
 
+    // D-131: text now sits over a full-bleed photo (was previously over a
+    // plain default background) — explicit light colors so it stays
+    // legible against the scrim below.
     var mainTextStyle = const TextStyle(
-        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+        fontFamily: 'Exo2',
+        color: AppColors.textPrimary);
 
     var pctCompleteTextStyle = const TextStyle(
-        fontSize: 18, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
+        fontSize: 18,
+        fontWeight: FontWeight.bold,
+        fontFamily: 'Exo2',
+        color: AppColors.textPrimary);
 
-    var timeScaleTextStyle = const TextStyle(fontSize: 10);
+    var timeScaleTextStyle = const TextStyle(fontSize: 10, color: AppColors.textPrimary);
+
+    return Stack(
+      children: [
+        // D-131: the jungle background now fills the entire screen (was
+        // bounded to a small rounded card behind the pyramid). A gradient
+        // scrim keeps the title/percent text and the segmented control
+        // legible against the photo, same technique OnboardingBackdrop
+        // already uses for onboarding screens — heavier at the very top
+        // and bottom where text sits, lighter through the middle so the
+        // photo (and the pyramid itself) still reads clearly.
+        Positioned.fill(
+          child: Image.asset(
+            'images/jungle_bg.jpg',
+            fit: BoxFit.cover,
+            alignment: Alignment.topCenter,
+          ),
+        ),
+        Positioned.fill(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.background.withValues(alpha: 0.55),
+                  AppColors.background.withValues(alpha: 0.15),
+                  AppColors.background.withValues(alpha: 0.15),
+                  AppColors.background.withValues(alpha: 0.6),
+                ],
+                stops: const [0.0, 0.25, 0.75, 1.0],
+              ),
+            ),
+          ),
+        ),
+        _pyramidContent(pyramidWidth, mainTextStyle, pctCompleteTextStyle, timeScaleTextStyle),
+      ],
+    );
+  }
+
+  Widget _pyramidContent(
+    double pyramidWidth,
+    TextStyle mainTextStyle,
+    TextStyle pctCompleteTextStyle,
+    TextStyle timeScaleTextStyle,
+  ) {
+    double pyramidHeight = pyramidWidth / 0.87 * 0.82;
+    SizedBox smallSpacer = SizedBox(height: pyramidHeight * .07);
 
     return SingleChildScrollView(
       child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
@@ -208,29 +262,11 @@ class _Pyramid extends State<Pyramid> {
     );
   }
 
-  // The photo-real jungle clearing the pyramid sits inside: the backdrop
-  // fills a rounded card slightly taller than the pyramid so its base lands
-  // on the clearing's stone plaza near the bottom of the image crop.
+  // D-131: the photo-real jungle clearing is now the whole screen's
+  // background (build()'s own Stack), not a card bounded to this widget —
+  // this just centers the pyramid over it, no separate image of its own.
   Widget _jungleScene(double pyramidWidth, Widget pyramid) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(24),
-      child: SizedBox(
-        width: pyramidWidth,
-        height: pyramidWidth * 1.12,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Image.asset(
-                'images/jungle_bg.jpg',
-                fit: BoxFit.cover,
-                alignment: Alignment.topCenter,
-              ),
-            ),
-            Align(alignment: Alignment.topCenter, child: pyramid),
-          ],
-        ),
-      ),
-    );
+    return Align(alignment: Alignment.topCenter, child: pyramid);
   }
 
   void navigateToTaskList(
