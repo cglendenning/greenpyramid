@@ -4,6 +4,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../services/account_link_service.dart';
 import '../theme/app_colors.dart';
@@ -97,9 +98,34 @@ class _AccountCreationScreenState extends State<AccountCreationScreen> {
         print('AccountCreationScreen: $provider sign-in failed: $error');
       }
       if (!mounted) return;
+      // D-139: found live — this catch previously discarded the real
+      // error entirely (only `print`ed it, invisible on a release
+      // build with nothing attached) and Firebase Auth's client-side
+      // sign-in calls aren't Cloud-Logged server-side either, so a
+      // failure here left no trail anywhere to diagnose from. Logging
+      // the real code via the analytics event this screen already
+      // sends, and surfacing it in the UI, are both new — the next
+      // failure is diagnosable instead of a dead end.
+      if (error is SignInWithAppleAuthorizationException &&
+          error.code == AuthorizationErrorCode.canceled) {
+        // The user dismissed Apple's own sheet — not a failure.
+        setState(() => _submitting = false);
+        return;
+      }
+      final errorCode = switch (error) {
+        FirebaseAuthException e => e.code,
+        SignInWithAppleAuthorizationException e => 'apple.${e.code.name}',
+        SignInWithAppleException _ => 'apple.${error.runtimeType}',
+        _ => error.runtimeType.toString(),
+      };
+      unawaited(_analytics.logEvent(
+        name: 'account_creation_failed',
+        parameters: {'provider': provider, 'error_code': errorCode},
+      ));
       setState(() {
         _submitting = false;
-        _error = "Couldn't sign in — check your connection and try again.";
+        _error = "Couldn't sign in — check your connection and try again. "
+            "($errorCode)";
       });
     }
   }

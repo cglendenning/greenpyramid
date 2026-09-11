@@ -81,4 +81,24 @@ void main() {
       expect(setupSource, contains('FirebaseAuth.instance.currentUser?.isAnonymous == false'));
     });
   });
+
+  group('D-139: a failed sign-in is diagnosable, not a silent dead end', () {
+    test('a canceled Apple sheet is not treated as an error — no message '
+        'shown, submitting simply resets', () {
+      expect(source, contains('AuthorizationErrorCode.canceled'));
+    });
+
+    test('the real error code is logged via analytics — Firebase Auth\'s '
+        'client-side sign-in calls leave no server-side trail otherwise, '
+        'and the prior kDebugMode-only print was invisible on a release '
+        'build', () {
+      expect(source, contains("name: 'account_creation_failed'"));
+      expect(source, contains("'error_code': errorCode"));
+    });
+
+    test('the error code is surfaced in the user-facing message too, not '
+        'just logged — so a report from the field is actionable', () {
+      expect(source, contains(r'"($errorCode)"'));
+    });
+  });
 }
