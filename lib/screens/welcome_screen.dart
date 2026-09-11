@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -55,6 +57,36 @@ import 'setup_screen.dart';
 /// pyramid — never touches this screen at all; see
 /// `CustomAppBarState.navigateToSetup` (`homescreen.dart`) for that
 /// flow's own explicit confirmation.
+/// D-141: shown as [AccountCreationScreen]'s subhead on the "Welcome
+/// back." sign-in screen — owner: "'Sign up with the account you set up
+/// before' is not a phrase that I like. I want a phrase to be inspiring
+/// ... short and inspiring and related to living a life aligned with
+/// values that truly matter." One is chosen at random each time the
+/// screen is shown, rather than a single fixed line, so it stays fresh
+/// across repeat sign-ins.
+const List<String> welcomeBackTaglines = [
+  'Your pyramid is exactly where you left it.',
+  "What matters to you hasn't gone anywhere.",
+  "Come back to the life you're building.",
+  'The values you chose are still here, waiting.',
+  'Pick up where you left off — nothing was lost.',
+  'A life built on what matters is worth returning to.',
+  'Some things are worth signing back in for.',
+  'The foundation you laid is still standing.',
+  'Return to the life you started shaping.',
+  'What you value deserves to keep growing.',
+  "You already began. Let's keep building.",
+  'Your life, aligned — right where you left it.',
+  'Living with intention starts with showing up again.',
+  "The thread is still there. Pick it back up.",
+  'Your values were never going anywhere.',
+  'Come home to what matters most.',
+  'What you started still matters.',
+  'Everything you value is right where you left it.',
+  'Nothing here was lost while you were away.',
+  "The life you're shaping is still waiting.",
+];
+
 class WelcomeScreen extends StatelessWidget {
   const WelcomeScreen({super.key});
 
@@ -62,7 +94,7 @@ class WelcomeScreen extends StatelessWidget {
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => AccountCreationScreen(
         headline: 'Welcome back.',
-        subhead: 'Sign in with the account you set up before.',
+        subhead: welcomeBackTaglines[Random().nextInt(welcomeBackTaglines.length)],
         onDone: ({required switchedToExistingAccount}) async {
           if (switchedToExistingAccount) {
             final uid = FirebaseAuth.instance.currentUser?.uid;

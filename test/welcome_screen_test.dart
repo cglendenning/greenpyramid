@@ -110,4 +110,32 @@ void main() {
     expect(navigateToSetupBody, contains('SetupScreen'));
     expect(navigateToSetupBody, contains("title: const Text('Set up again?'"));
   });
+
+  group('D-141: the "Welcome back." sign-in screen shows a random '
+      'inspiring tagline instead of a fixed, disliked phrase — owner: '
+      '"\'Sign up with the account you set up before\' is not a phrase '
+      'that I like."', () {
+    test('exactly 20 taglines, each short, non-empty, and distinct', () {
+      expect(welcomeBackTaglines.length, 20);
+      expect(welcomeBackTaglines.toSet().length, 20,
+          reason: 'no duplicates');
+      for (final tagline in welcomeBackTaglines) {
+        expect(tagline.trim(), tagline, reason: 'no stray whitespace');
+        expect(tagline, isNotEmpty);
+        expect(tagline.length, lessThanOrEqualTo(70),
+            reason: 'short, per the owner\'s ask');
+      }
+    });
+
+    test('the removed phrase is gone for good', () {
+      expect(welcomeBackTaglines,
+          isNot(contains('Sign in with the account you set up before.')));
+    });
+
+    test('_signIn wires the subhead from welcomeBackTaglines, chosen at '
+        'random — not a single fixed line', () {
+      final source = File('lib/screens/welcome_screen.dart').readAsStringSync();
+      expect(source, contains('welcomeBackTaglines[Random().nextInt(welcomeBackTaglines.length)]'));
+    });
+  });
 }
