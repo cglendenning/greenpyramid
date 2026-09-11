@@ -25,6 +25,15 @@ void main() {
       expect(source, contains('showDialog<bool>'));
     });
 
+    test('D-144: the confirmation is a single question, "Sign out?" — '
+        'no body text explaining that data is saved to the account', () {
+      final start = source.indexOf('Future<void> _confirmSignOut()');
+      final end = source.indexOf('\n  }', start);
+      final body = source.substring(start, end);
+      expect(body, isNot(contains('content:')));
+      expect(body, isNot(contains('saved to your account')));
+    });
+
     test('D-136: confirmed sign-out goes through AccountLinkService and '
         'leaves the app genuinely signed out — no eager re-anonymization; '
         'a screen that actually needs a session establishes one lazily, '

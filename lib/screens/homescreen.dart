@@ -599,10 +599,6 @@ class CustomAppBarState extends State<CustomAppBar> {
       builder: (dialogContext) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: const Text('Sign out?', style: TextStyle(color: AppColors.textPrimary)),
-        content: const Text(
-          'Your pyramid and history are saved to your account.',
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),

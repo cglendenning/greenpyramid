@@ -63,5 +63,18 @@ void main() {
       expect(body, contains('pushAndRemoveUntil('));
       expect(body, contains('const WelcomeScreen()'));
     });
+
+    test('D-144: the sign-out confirmation is a single question, "Sign '
+        'out?" — no body text explaining that data is saved to the '
+        'account. Owner: "I don\'t think it is necessary on the sign out '
+        'Confirmation dialog box to tell users that their pyramid and '
+        'history are saved to their account. I think it can just be the '
+        'single question \'sign out?\'"', () {
+      final start = source.indexOf('Future<void> signOut(BuildContext context)');
+      final end = source.indexOf('\n  }', start);
+      final body = source.substring(start, end);
+      expect(body, isNot(contains('content:')));
+      expect(body, isNot(contains('saved to your account')));
+    });
   });
 }
