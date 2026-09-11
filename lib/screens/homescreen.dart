@@ -52,40 +52,61 @@ class HomeScreen extends StatelessWidget {
         fontFamily: 'Exo2',
       ),
       initialRoute: routeToGo,
-      onGenerateRoute: (RouteSettings settings) {
-        switch (settings.name) {
-          case '/':
-            return MaterialPageRoute(
-              builder: (_) => const HomeScreenWidget(),
-            );
-          // D-083: morning/afternoon/evening are deleted, replaced by
-          // D-036's server-generated notifications. These three cases stay
-          // only so a stale local notification already scheduled on a
-          // device before the upgrade lands on the pyramid rather than an
-          // error route.
-          case '/morning':
-          case '/afternoon':
-          case '/evening':
-            return MaterialPageRoute(
-              builder: (_) => const HomeScreenWidget(),
-            );
-          case '/setup':
-            // D-089/D-136: a fresh install lands here first via
-            // routeToGo — the welcome screen, not straight into Mira's
-            // opening line. A relaunch right after sign-out lands here
-            // too now, identically — both are just "no session yet."
-            return MaterialPageRoute(builder: (context) => const WelcomeScreen());
-          default:
-            return _errorRoute();
+      onGenerateRoute: _generateRoute,
+      // D-138: Flutter's default initial-route generation
+      // (Navigator.defaultGenerateInitialRoutes) unconditionally mounts
+      // '/' *and* the requested initialRoute — found live: a fresh
+      // install correctly showed WelcomeScreen ('/setup') first, then
+      // 2-3 seconds later AccountCreationScreen popped up on top of it.
+      // Root cause, confirmed against the Flutter SDK source: '/' (this
+      // screen's HomeScreenWidget) was silently mounted underneath
+      // WelcomeScreen the whole time, so its own D-132
+      // _enforceRealAccount gate fired once its signInSilently() call
+      // resolved. Overriding onGenerateInitialRoutes mounts exactly the
+      // one route actually requested.
+      onGenerateInitialRoutes: (String initialRouteName) {
+        if (initialRouteName == '/') {
+          return [MaterialPageRoute(builder: (_) => _home)];
         }
+        return [_generateRoute(RouteSettings(name: initialRouteName)) ?? _errorRoute()];
       },
       debugShowCheckedModeBanner: false,
-      home: DemoModeOverlay(
-        child: const Scaffold(
-          body: HomeScreenWidget(),
-        ),
-      ),
+      home: _home,
     );
+  }
+
+  static const Widget _home = DemoModeOverlay(
+    child: Scaffold(
+      body: HomeScreenWidget(),
+    ),
+  );
+
+  static Route<dynamic>? _generateRoute(RouteSettings settings) {
+    switch (settings.name) {
+      case '/':
+        return MaterialPageRoute(
+          builder: (_) => const HomeScreenWidget(),
+        );
+      // D-083: morning/afternoon/evening are deleted, replaced by
+      // D-036's server-generated notifications. These three cases stay
+      // only so a stale local notification already scheduled on a
+      // device before the upgrade lands on the pyramid rather than an
+      // error route.
+      case '/morning':
+      case '/afternoon':
+      case '/evening':
+        return MaterialPageRoute(
+          builder: (_) => const HomeScreenWidget(),
+        );
+      case '/setup':
+        // D-089/D-136: a fresh install lands here first via
+        // routeToGo — the welcome screen, not straight into Mira's
+        // opening line. A relaunch right after sign-out lands here
+        // too now, identically — both are just "no session yet."
+        return MaterialPageRoute(builder: (context) => const WelcomeScreen());
+      default:
+        return _errorRoute();
+    }
   }
 
   static Route<dynamic> _errorRoute() {
