@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// D-030/D-032/D-033: identity, held separately from data sync
 /// ([SyncService]) so habit check-off (D-031) never depends on this
@@ -61,4 +62,45 @@ class AuthService {
   /// caller is expected to follow this with [signInSilently] to
   /// re-establish that baseline before showing anything else.
   Future<void> signOut() => _auth.signOut();
+
+  static const _justSignedOutKey = 'justSignedOut';
+
+  /// D-135: sign-out never touches local SQLite (the local pyramid stays
+  /// exactly as it was), so `main.dart`'s launch routing — which only
+  /// ever looks at local data — has no way to tell "an existing user who
+  /// never linked an account" (D-132's home-screen gate is correct for
+  /// them) apart from "a user who just deliberately signed out and
+  /// hasn't chosen sign-in-or-rebuild yet" (found live: the latter landed
+  /// on the home screen showing the wrong, setup-flavored account
+  /// screen, because nothing told it a sign-out had just happened). This
+  /// flag is the missing signal, persisted so it survives the app being
+  /// killed between sign-out and the user's next choice — an in-session
+  /// sign-out alone doesn't need it (the caller navigates directly), but
+  /// a kill-and-relaunch in between does.
+  Future<void> markJustSignedOut() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_justSignedOutKey, true);
+  }
+
+  /// Reads and clears the flag in one step — it only ever matters for
+  /// the single next launch it's read on; leaving it set after that
+  /// would incorrectly reroute a much later launch too, long after the
+  /// user has since signed in or rebuilt normally.
+  Future<bool> consumeJustSignedOutFlag() async {
+    final prefs = await SharedPreferences.getInstance();
+    final value = prefs.getBool(_justSignedOutKey) ?? false;
+    if (value) await prefs.remove(_justSignedOutKey);
+    return value;
+  }
+
+  /// Called as soon as the sign-out is actually resolved (a successful
+  /// sign-in, or "Set up again" completing) — in-session, before any
+  /// relaunch ever reads the flag. Without this, signing back in
+  /// normally and using the app for weeks would still leave a stale
+  /// flag on disk, waiting to incorrectly reroute the next unrelated
+  /// relaunch.
+  Future<void> clearJustSignedOutFlag() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_justSignedOutKey);
+  }
 }

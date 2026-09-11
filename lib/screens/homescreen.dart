@@ -70,7 +70,11 @@ class HomeScreen extends StatelessWidget {
           case '/setup':
             // D-089: a fresh install lands here first via routeToGo — the
             // welcome screen, not straight into Mira's opening line.
-            return MaterialPageRoute(builder: (context) => WelcomeScreen());
+            // D-135: routeToGoIsResetup is set instead when this launch
+            // followed an unresolved sign-out, not a fresh install.
+            return MaterialPageRoute(
+                builder: (context) =>
+                    WelcomeScreen(isResetup: routeToGoIsResetup));
           default:
             return _errorRoute();
         }
@@ -559,6 +563,11 @@ class CustomAppBarState extends State<CustomAppBar> {
     );
     if (confirmed != true || !context.mounted) return;
 
+    // D-135: local data is untouched by sign-out — persisted so a kill-
+    // and-relaunch before the user picks Sign in/Set up again still
+    // routes them here next launch, instead of the home screen's
+    // unrelated D-132 gate.
+    await AuthService.instance.markJustSignedOut();
     await AccountLinkService.instance.signOut();
     await AuthService.instance.signInSilently();
     if (!context.mounted) return;

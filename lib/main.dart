@@ -41,6 +41,12 @@ final GlobalKey<NavigatorState> navigatorKey =
     GlobalKey(debugLabel: "Main Navigator");
 
 String routeToGo = '/';
+// D-135: set when the app launches right after a sign-out that was never
+// resolved before the app was killed — routes to WelcomeScreen's resetup
+// mode (same screen as fresh install, not the home screen's unrelated
+// D-132 "link your account" gate) instead of `defaultCats`'s normal
+// local-data check, which can't tell the two situations apart on its own.
+bool routeToGoIsResetup = false;
 String payload = '';
 bool populateGap = true;
 DateTime installDate = DateTime.now();
@@ -217,7 +223,15 @@ Future<void> main() async {
     return;
   }
 
-  if (defaultCats == 6) {
+  // D-135: checked before the local-data check — sign-out never touches
+  // local SQLite, so `defaultCats` alone can't distinguish "a genuine
+  // existing anonymous pyramid owner" (D-132's home-screen gate is
+  // correct for them) from "just signed out, hasn't chosen yet."
+  final justSignedOut = await AuthService.instance.consumeJustSignedOutFlag();
+  if (justSignedOut) {
+    routeToGo = '/setup';
+    routeToGoIsResetup = true;
+  } else if (defaultCats == 6) {
     routeToGo = '/setup';
   }
   runApp(HomeScreen());

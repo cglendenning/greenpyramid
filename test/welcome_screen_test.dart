@@ -144,7 +144,7 @@ void main() {
 
     final setupRouteCase = source.indexOf("case '/setup':");
     expect(setupRouteCase, greaterThan(-1));
-    final setupRouteEnd = source.indexOf('\n', source.indexOf('MaterialPageRoute', setupRouteCase));
+    final setupRouteEnd = source.indexOf('default:', setupRouteCase);
     expect(source.substring(setupRouteCase, setupRouteEnd), contains('WelcomeScreen'));
 
     final navigateToSetupStart = source.indexOf('void navigateToSetup(');

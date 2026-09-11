@@ -67,6 +67,9 @@ class WelcomeScreen extends StatelessWidget {
         subhead: 'Sign in with the account you set up before.',
         onDone: ({required switchedToExistingAccount}) async {
           if (switchedToExistingAccount) {
+            // D-135: resolved — clear before the flag could otherwise
+            // reroute some much-later, unrelated relaunch.
+            await authService.clearJustSignedOutFlag();
             final uid = FirebaseAuth.instance.currentUser?.uid;
             if (uid != null) {
               await SyncService.instance.restoreFromCloud(uid);
@@ -131,6 +134,9 @@ class WelcomeScreen extends StatelessWidget {
     );
     if (confirmed != true || !context.mounted) return;
     await LocalPyramidResetService.instance.wipeLocalPyramid();
+    // D-135: resolved — clear before the flag could otherwise reroute
+    // some much-later, unrelated relaunch.
+    await authService.clearJustSignedOutFlag();
     if (!context.mounted) return;
     Navigator.of(context)
         .pushReplacement(MaterialPageRoute(builder: (_) => const SetupScreen()));

@@ -563,6 +563,11 @@ class _AccountSectionState extends State<_AccountSection> {
     if (confirmed != true || !mounted) return;
 
     setState(() => _signingOut = true);
+    // D-135: local data is untouched by sign-out — persisted so a kill-
+    // and-relaunch before the user picks Sign in/Set up again still
+    // routes them here next launch, instead of the home screen's
+    // unrelated D-132 gate.
+    await AuthService.instance.markJustSignedOut();
     await AccountLinkService.instance.signOut();
     await AuthService.instance.signInSilently();
     if (!mounted) return;
