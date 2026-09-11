@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:life_ops/screens/batch_checkin_screen.dart';
 import 'package:life_ops/screens/homescreen.dart';
@@ -41,12 +42,6 @@ final GlobalKey<NavigatorState> navigatorKey =
     GlobalKey(debugLabel: "Main Navigator");
 
 String routeToGo = '/';
-// D-135: set when the app launches right after a sign-out that was never
-// resolved before the app was killed — routes to WelcomeScreen's resetup
-// mode (same screen as fresh install, not the home screen's unrelated
-// D-132 "link your account" gate) instead of `defaultCats`'s normal
-// local-data check, which can't tell the two situations apart on its own.
-bool routeToGoIsResetup = false;
 String payload = '';
 bool populateGap = true;
 DateTime installDate = DateTime.now();
@@ -223,15 +218,15 @@ Future<void> main() async {
     return;
   }
 
-  // D-135: checked before the local-data check — sign-out never touches
-  // local SQLite, so `defaultCats` alone can't distinguish "a genuine
-  // existing anonymous pyramid owner" (D-132's home-screen gate is
-  // correct for them) from "just signed out, hasn't chosen yet."
-  final justSignedOut = await AuthService.instance.consumeJustSignedOutFlag();
-  if (justSignedOut) {
-    routeToGo = '/setup';
-    routeToGoIsResetup = true;
-  } else if (defaultCats == 6) {
+  // D-136: "signed out" is read live from Firebase itself, not from any
+  // app-managed history — sign-out (homescreen.dart, settings.dart)
+  // deliberately leaves `currentUser` null rather than eagerly
+  // re-anonymizing, so this check alone is enough to route a relaunch
+  // after sign-out to WelcomeScreen exactly like a fresh install (both
+  // are, structurally, "no session yet"). `defaultCats == 6` stays as an
+  // independent signal for the case local storage is empty but a session
+  // already exists (shouldn't normally happen, cheap to keep).
+  if (FirebaseAuth.instance.currentUser == null || defaultCats == 6) {
     routeToGo = '/setup';
   }
   runApp(HomeScreen());

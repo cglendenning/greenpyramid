@@ -1,8 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:life_ops/screens/account_creation_screen.dart';
+import 'package:life_ops/screens/setup_screen.dart';
 import 'package:life_ops/services/account_link_service.dart';
 import 'package:life_ops/services/auth_service.dart';
+import 'package:life_ops/services/local_pyramid_reset_service.dart';
 import 'package:life_ops/services/notification.dart';
 import 'package:life_ops/services/db.dart';
 import 'package:life_ops/services/dbtools.dart';
@@ -68,13 +70,11 @@ class HomeScreen extends StatelessWidget {
               builder: (_) => const HomeScreenWidget(),
             );
           case '/setup':
-            // D-089: a fresh install lands here first via routeToGo — the
-            // welcome screen, not straight into Mira's opening line.
-            // D-135: routeToGoIsResetup is set instead when this launch
-            // followed an unresolved sign-out, not a fresh install.
-            return MaterialPageRoute(
-                builder: (context) =>
-                    WelcomeScreen(isResetup: routeToGoIsResetup));
+            // D-089/D-136: a fresh install lands here first via
+            // routeToGo — the welcome screen, not straight into Mira's
+            // opening line. A relaunch right after sign-out lands here
+            // too now, identically — both are just "no session yet."
+            return MaterialPageRoute(builder: (context) => const WelcomeScreen());
           default:
             return _errorRoute();
         }
@@ -520,25 +520,58 @@ class CustomAppBarState extends State<CustomAppBar> {
     setState(() {});
   }
 
-  // D-133: "Set up again" in the hamburger menu — the user is already
-  // signed in with a real account and a real pyramid here, so this needs
-  // WelcomeScreen's isResetup mode (different button copy, and the local
-  // wipe-and-restart behavior when tapped), not the plain first-run one.
-  void navigateToSetup(BuildContext context) async {
+  // D-136: "Set up again" in the hamburger menu — the user stays signed
+  // in throughout (never touches AuthService.signOut) and is rebuilding
+  // their existing, cloud-synced pyramid, not starting from a signed-out
+  // state — a genuinely different, more consequential action than
+  // anything WelcomeScreen handles, so it never goes near that screen.
+  // Confirms explicitly (this erases real, synced data) before wiping
+  // local storage and going straight into setup. setup_screen.dart's own
+  // existing anonymous-check at completion already skips the D-130
+  // account-creation screen for a non-anonymous user, so nothing else
+  // is needed to honor "they will not be presented with the screen to
+  // create an account because they're already signed in."
+  Future<void> navigateToSetup(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Set up again?', style: TextStyle(color: AppColors.textPrimary)),
+        content: const Text(
+          "Your existing pyramid and all of its habits and history will be "
+          "erased, and you'll start again from scratch. This can't be "
+          "undone.",
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Set up again'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+
+    await LocalPyramidResetService.instance.wipeLocalPyramid();
+    if (!context.mounted) return;
     utils.Utils().changeSystemColor(Brightness.dark);
-    await Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => WelcomeScreen(isResetup: true)))
+    await Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const SetupScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
   }
 
-  // D-133: hamburger-menu sign-out — same underlying flow Settings'
-  // ACCOUNT section already uses (confirm, sign out, re-establish a
-  // fresh anonymous session, land on WelcomeScreen's resetup mode), just
-  // reachable from the menu too, per the owner's explicit request.
+  // D-136: hamburger-menu sign-out — same underlying flow Settings'
+  // ACCOUNT section already uses. Leaves the app genuinely signed out
+  // (no eager re-anonymization) and lands on the plain WelcomeScreen —
+  // identical to a fresh install, per the owner's explicit correction
+  // that "logged out" has no sub-states.
   Future<void> signOut(BuildContext context) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -563,16 +596,10 @@ class CustomAppBarState extends State<CustomAppBar> {
     );
     if (confirmed != true || !context.mounted) return;
 
-    // D-135: local data is untouched by sign-out — persisted so a kill-
-    // and-relaunch before the user picks Sign in/Set up again still
-    // routes them here next launch, instead of the home screen's
-    // unrelated D-132 gate.
-    await AuthService.instance.markJustSignedOut();
     await AccountLinkService.instance.signOut();
-    await AuthService.instance.signInSilently();
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => WelcomeScreen(isResetup: true)),
+      MaterialPageRoute(builder: (_) => const WelcomeScreen()),
       (route) => false,
     );
   }

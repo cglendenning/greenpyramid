@@ -1,10 +1,8 @@
-import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/screens/push_permission_screen.dart';
 import 'package:life_ops/screens/trial_disclosure_screen.dart';
 import 'package:life_ops/screens/welcome_screen.dart';
-import 'package:life_ops/services/auth_service.dart';
 import 'package:life_ops/widgets/crossfading_stock_images.dart';
 
 /// D-099: welcome, trial-disclosure, and push-permission screens share one
@@ -59,11 +57,7 @@ void main() {
 
   testWidgets('D-099: WelcomeScreen still renders the shared backdrop after '
       'being refactored onto OnboardingBackdrop', (tester) async {
-    final authService = AuthService(
-        auth: MockFirebaseAuth(
-            signedIn: true, mockUser: MockUser(uid: 'anon', isAnonymous: true)));
-    await tester.pumpWidget(
-        MaterialApp(home: WelcomeScreen(authService: authService)));
+    await tester.pumpWidget(const MaterialApp(home: WelcomeScreen()));
     await tester.pump();
 
     expect(find.byType(CrossfadingStockImages), findsOneWidget);

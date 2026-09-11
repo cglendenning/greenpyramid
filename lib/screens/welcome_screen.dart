@@ -1,7 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-import '../services/auth_service.dart';
 import '../services/local_pyramid_reset_service.dart';
 import '../services/sync_service.dart';
 import '../theme/app_colors.dart';
@@ -36,29 +35,28 @@ import 'setup_screen.dart';
 /// it to return to). Nothing has been created or committed at this point
 /// in either case, so backing out here is always safe.
 ///
-/// D-132/D-133: "Already have an account? Sign in" is shown only when the
-/// signed-in user is actually anonymous — computed live from
-/// `AuthService.instance.isAnonymous` on every build, never from a flag a
-/// caller could forget to set correctly. This screen now has three real
-/// entry points: a fresh install (anonymous, no local pyramid); Settings'
-/// sign-out flow (anonymous again, but local storage still holds the
-/// pyramid that belonged to the account just signed out of); and the
-/// hamburger menu's "Set up again" (still signed in for real — the
-/// sign-in check above is what makes the link correctly disappear here
-/// without a separate flag). [isResetup] covers the second and third
-/// cases together: the primary button reads "Set up again" instead of
-/// "Begin," and tapping it wipes this device's local pyramid (behind its
-/// own explicit confirmation) before starting a fresh setup conversation.
+/// D-136 (supersedes D-132/D-133/D-135's flag-based approach): this
+/// screen is now a pure function of nothing at all — it looks and behaves
+/// identically every single time, whether reached by a genuine fresh
+/// install or by signing out. No persisted flag, no "resetup mode," no
+/// per-visit local-data check. Found live, after a real bug where a
+/// persisted flag's lifetime was wrong (it survived exactly one relaunch,
+/// not "however many launches until the user decides"): "Don't ever do
+/// that — when you're logged out you're in the logged out state, PERIOD."
+/// This screen is *only* ever reached while signed out (anonymous or no
+/// session at all) — there is no other entry point anymore. Tapping
+/// "Begin" always silently resets local storage first (harmless even
+/// when it's already empty) and starts a fresh setup conversation; no
+/// confirmation, because nothing of value can be destroyed by a signed-
+/// out user starting over — their real data, if any, lives under
+/// whichever real account they'd need to sign back into to see it again.
+/// The *separate*, genuinely destructive case — an already signed-in
+/// user explicitly choosing to rebuild their existing, cloud-synced
+/// pyramid — never touches this screen at all; see
+/// `CustomAppBarState.navigateToSetup` (`homescreen.dart`) for that
+/// flow's own explicit confirmation.
 class WelcomeScreen extends StatelessWidget {
-  final bool isResetup;
-  // Injectable for tests: the real singleton touches FirebaseAuth.instance,
-  // which needs Firebase.initializeApp() and would otherwise break this
-  // screen's widget-testability (the one thing its own doc comment above
-  // specifically prizes, unlike SetupScreen).
-  final AuthService authService;
-
-  WelcomeScreen({super.key, this.isResetup = false, AuthService? authService})
-      : authService = authService ?? AuthService.instance;
+  const WelcomeScreen({super.key});
 
   Future<void> _signIn(BuildContext context) async {
     await Navigator.of(context).push(MaterialPageRoute(
@@ -67,9 +65,6 @@ class WelcomeScreen extends StatelessWidget {
         subhead: 'Sign in with the account you set up before.',
         onDone: ({required switchedToExistingAccount}) async {
           if (switchedToExistingAccount) {
-            // D-135: resolved — clear before the flag could otherwise
-            // reroute some much-later, unrelated relaunch.
-            await authService.clearJustSignedOutFlag();
             final uid = FirebaseAuth.instance.currentUser?.uid;
             if (uid != null) {
               await SyncService.instance.restoreFromCloud(uid);
@@ -78,65 +73,24 @@ class WelcomeScreen extends StatelessWidget {
             Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
             return;
           }
-          if (!isResetup) {
-            // A genuine fresh install: this identity had no prior
-            // account, but local storage was already empty — nothing to
-            // lose by just continuing into setup as a newly-linked user.
-            if (!context.mounted) return;
-            Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (_) => const SetupScreen()));
-            return;
-          }
-          // Reached via sign-out: this device's local pyramid still
-          // belongs to the account just signed out of. Never silently
-          // touch it on an unexpected "no prior account" outcome — surface
-          // it and let the user make an explicit choice ("Set up again"
-          // below) instead.
+          // No prior account for that identity — it just linked onto the
+          // current (signed-out-until-now) session. Nothing to lose:
+          // reset local storage the same way "Begin" does, then proceed
+          // into setup as this newly-linked user.
+          await LocalPyramidResetService.instance.wipeLocalPyramid();
           if (!context.mounted) return;
-          Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text(
-                'No existing pyramid found for that sign-in. Tap "Set up '
-                'again" below to build a new one instead.'),
-          ));
+          Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => const SetupScreen()));
         },
       ),
     ));
   }
 
-  Future<void> _beginOrResetup(BuildContext context) async {
-    if (!isResetup) {
-      Navigator.of(context)
-          .pushReplacement(MaterialPageRoute(builder: (_) => const SetupScreen()));
-      return;
-    }
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.surfaceHigh,
-        title: const Text('Set up again?', style: TextStyle(color: AppColors.textPrimary)),
-        content: const Text(
-          "Setting up again will permanently delete this device's current "
-          "pyramid, habits, and history. This can't be undone.",
-          style: TextStyle(color: AppColors.textSecondary),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: const Text('Set up again'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !context.mounted) return;
+  Future<void> _begin(BuildContext context) async {
+    // Idempotent — harmless when local storage is already empty (a
+    // genuine fresh install). No confirmation: a signed-out user has
+    // nothing here that isn't already recoverable by signing back in.
     await LocalPyramidResetService.instance.wipeLocalPyramid();
-    // D-135: resolved — clear before the flag could otherwise reroute
-    // some much-later, unrelated relaunch.
-    await authService.clearJustSignedOutFlag();
     if (!context.mounted) return;
     Navigator.of(context)
         .pushReplacement(MaterialPageRoute(builder: (_) => const SetupScreen()));
@@ -145,7 +99,6 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final canGoBack = Navigator.of(context).canPop();
-    final showSignIn = authService.isAnonymous;
     return Scaffold(
       backgroundColor: AppColors.background,
       body: OnboardingBackdrop(
@@ -179,33 +132,31 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const Spacer(flex: 4),
                   Padding(
-                    padding: EdgeInsets.fromLTRB(28, 0, 28, showSignIn ? 16 : 28),
+                    padding: const EdgeInsets.fromLTRB(28, 0, 28, 16),
                     child: SizedBox(
                       width: double.infinity,
                       height: 56,
                       child: ElevatedButton(
-                        onPressed: () => _beginOrResetup(context),
+                        onPressed: () => _begin(context),
                         style: OnboardingStyles.primaryButton,
-                        child: Text(isResetup ? 'Set up again' : 'Begin',
-                            style: OnboardingStyles.buttonLabel),
+                        child: const Text('Begin', style: OnboardingStyles.buttonLabel),
                       ),
                     ),
                   ),
-                  if (showSignIn)
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: TextButton(
-                          style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                          onPressed: () => _signIn(context),
-                          child: const Text(
-                            'Already have an account? Sign in',
-                            style: TextStyle(color: AppColors.textPrimary),
-                          ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                        onPressed: () => _signIn(context),
+                        child: const Text(
+                          'Already have an account? Sign in',
+                          style: TextStyle(color: AppColors.textPrimary),
                         ),
                       ),
                     ),
+                  ),
                 ],
               ),
               if (canGoBack)

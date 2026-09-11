@@ -25,19 +25,21 @@ void main() {
       expect(source, contains('showDialog<bool>'));
     });
 
-    test('confirmed sign-out goes through AccountLinkService, then '
-        're-establishes a fresh anonymous session before showing anything '
-        'else — every Firestore-touching screen in this app assumes at '
-        'least an anonymous uid exists (D-032)', () {
+    test('D-136: confirmed sign-out goes through AccountLinkService and '
+        'leaves the app genuinely signed out — no eager re-anonymization; '
+        'a screen that actually needs a session establishes one lazily, '
+        'exactly when it needs it (AccountLinkService.signInWithApple/'
+        'signInWithGoogle)', () {
       expect(source, contains('await AccountLinkService.instance.signOut();'));
-      expect(source, contains('await AuthService.instance.signInSilently();'));
+      expect(source, isNot(contains('signInSilently()')));
     });
 
-    test('after sign-out, the whole nav stack is replaced with '
-        'WelcomeScreen(isResetup: true) — never left reachable by backing '
-        'out into the now-signed-out home screen', () {
+    test('D-136: after sign-out, the whole nav stack is replaced with the '
+        'plain WelcomeScreen — identical to a fresh install, never left '
+        'reachable by backing out into the now-signed-out home screen',
+        () {
       expect(source, contains('pushAndRemoveUntil('));
-      expect(source, contains('WelcomeScreen(isResetup: true)'));
+      expect(source, contains('const WelcomeScreen()'));
       expect(source, contains('(route) => false,'));
     });
   });

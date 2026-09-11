@@ -10,7 +10,6 @@ import 'package:life_ops/screens/domain_map_screen.dart';
 import 'package:life_ops/screens/paywall_screen.dart';
 import 'package:life_ops/screens/welcome_screen.dart';
 import 'package:life_ops/services/account_link_service.dart';
-import 'package:life_ops/services/auth_service.dart';
 import 'package:life_ops/services/calendar_service.dart';
 import 'package:life_ops/services/entitlement_gate.dart';
 import 'package:life_ops/services/entitlement_service.dart';
@@ -511,14 +510,14 @@ class _CalendarAccessSwitchState extends State<CalendarAccessSwitch> {
   }
 }
 
-/// D-132/D-133: shows the linked provider (if any) and lets the user sign
+/// D-132/D-136: shows the linked provider (if any) and lets the user sign
 /// out — the same underlying flow the hamburger menu's "Sign out" item
-/// now also offers (homescreen.dart's CustomAppBarState.signOut). After
-/// sign-out, a fresh anonymous session is re-established immediately
-/// (AuthService.signInSilently) — every Firestore-touching screen in this
-/// app assumes at least an anonymous uid exists (D-032) — before routing
-/// to WelcomeScreen(isResetup: true), where the user picks "Sign in" (to
-/// the same or a different account) or "Set up again."
+/// also offers (homescreen.dart's CustomAppBarState.signOut). Sign-out
+/// deliberately leaves the app genuinely signed out (no eager
+/// re-anonymization) and routes to the plain `WelcomeScreen` — identical
+/// to a fresh install, not a special "just signed out" variant. Any
+/// screen that actually needs a session again (linking a credential,
+/// entering setup) establishes one lazily, exactly when it needs it.
 class _AccountSection extends StatefulWidget {
   const _AccountSection();
 
@@ -563,18 +562,10 @@ class _AccountSectionState extends State<_AccountSection> {
     if (confirmed != true || !mounted) return;
 
     setState(() => _signingOut = true);
-    // D-135: local data is untouched by sign-out — persisted so a kill-
-    // and-relaunch before the user picks Sign in/Set up again still
-    // routes them here next launch, instead of the home screen's
-    // unrelated D-132 gate.
-    await AuthService.instance.markJustSignedOut();
     await AccountLinkService.instance.signOut();
-    await AuthService.instance.signInSilently();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(
-        builder: (_) => WelcomeScreen(isResetup: true),
-      ),
+      MaterialPageRoute(builder: (_) => const WelcomeScreen()),
       (route) => false,
     );
   }

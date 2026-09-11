@@ -27,7 +27,15 @@ class AccountLinkService {
   /// same uid, nothing lost (AuthService.linkWithCredential, D-033). Uses
   /// a hashed nonce (Apple's recommended flow) so the identity token
   /// can't be replayed.
+  ///
+  /// D-136: `signInSilently()` first, defensively — D-135's eager
+  /// re-anonymization right after sign-out was removed, so `currentUser`
+  /// can genuinely be null here (freshly signed out, not yet acted on).
+  /// `linkWithCredential` requires an existing anonymous user; this
+  /// creates one lazily, exactly when it's actually needed, rather than
+  /// assuming one was already provisioned somewhere upstream.
   Future<User?> signInWithApple() async {
+    await _authService.signInSilently();
     final rawNonce = _generateNonce();
     final hashedNonce = _sha256ofString(rawNonce);
     final appleCredential = await SignInWithApple.getAppleIDCredential(
@@ -44,8 +52,11 @@ class AccountLinkService {
     return linkWithCredentialOrSwitch(oauthCredential);
   }
 
-  /// Same for Google — no nonce concept in google_sign_in's flow.
+  /// Same for Google — no nonce concept in google_sign_in's flow. See
+  /// [signInWithApple]'s doc comment for why `signInSilently()` comes
+  /// first.
   Future<User?> signInWithGoogle() async {
+    await _authService.signInSilently();
     final googleUser = await GoogleSignIn.instance.authenticate();
     final idToken = googleUser.authentication.idToken;
     final credential = GoogleAuthProvider.credential(idToken: idToken);
