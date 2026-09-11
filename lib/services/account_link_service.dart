@@ -81,7 +81,19 @@ class AccountLinkService {
       return await _authService.linkWithCredential(credential);
     } on FirebaseAuthException catch (e) {
       if (e.code != 'credential-already-in-use') rethrow;
-      final result = await _auth.signInWithCredential(credential);
+      // D-140: found live — Apple's (idToken, nonce) pair is single-use
+      // against Firebase's servers. Resubmitting the same `credential`
+      // here (already consumed by the failed linkWithCredential call
+      // above) always failed with missing-or-invalid-nonce, 100% of the
+      // time, for every real Apple sign-in that hit this exact branch.
+      // Firebase's own exception carries a fresh, already-revalidated
+      // credential meant specifically for this fallback — using it
+      // instead of the stale original is Firebase's documented recovery
+      // path (the updated credential in FIRAuthErrorUserInfoUpdatedCredentialKey
+      // on iOS/Android; e.credential here). Falls back to the original
+      // credential when absent, matching prior behavior exactly (Google's
+      // flow has no nonce and has never needed this).
+      final result = await _auth.signInWithCredential(e.credential ?? credential);
       return result.user;
     }
   }

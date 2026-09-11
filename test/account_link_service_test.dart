@@ -65,6 +65,34 @@ void main() {
   });
 
   test(
+      'D-140: credential-already-in-use uses the exception\'s own '
+      '[credential] for the fallback sign-in, not the original — Apple\'s '
+      '(idToken, nonce) pair is single-use against Firebase\'s servers, '
+      'so resubmitting the already-consumed original credential always '
+      'failed live with missing-or-invalid-nonce', () async {
+    final anonUser = MockUser(uid: 'anon-uid-fresh-credential', isAnonymous: true);
+    final authForLinking = MockFirebaseAuth(signedIn: true, mockUser: anonUser);
+    final freshCredential = GoogleAuthProvider.credential(idToken: 'fresh-id-token');
+    whenCalling(Invocation.method(#linkWithCredential, null))
+        .on(anonUser)
+        .thenThrow(FirebaseAuthException(
+            code: 'credential-already-in-use', credential: freshCredential));
+    final authService = AuthService(auth: authForLinking);
+
+    final existingUser = MockUser(uid: 'existing-uid-fresh-credential', isAnonymous: false);
+    final authForFallback = _CredentialCapturingAuth(
+      MockFirebaseAuth(signedIn: true, mockUser: existingUser),
+    );
+    final linkService = AccountLinkService(auth: authForFallback, authService: authService);
+
+    final staleCredential = GoogleAuthProvider.credential(idToken: 'stale-id-token');
+    final result = await linkService.linkWithCredentialOrSwitch(staleCredential);
+
+    expect(result?.uid, 'existing-uid-fresh-credential');
+    expect(authForFallback.lastCredential, freshCredential);
+  });
+
+  test(
       'D-132: signOut clears the Firebase session even when the native '
       'Google sign-out call fails — Google sign-out is best-effort, '
       'Firebase sign-out is what actually matters for Firestore access',
@@ -125,6 +153,29 @@ class _FakeUserCredential implements UserCredential {
 
   @override
   final User? user;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Wraps a real [MockFirebaseAuth] to record which [AuthCredential] was
+/// actually passed to [signInWithCredential] — MockFirebaseAuth itself
+/// doesn't expose this, and it's the entire point of the D-140 regression
+/// test above (that the *fresh* credential from the exception is used,
+/// not the stale original). AccountLinkService.linkWithCredentialOrSwitch
+/// only ever calls signInWithCredential on this field, never anything
+/// else, so nothing more needs implementing.
+class _CredentialCapturingAuth implements FirebaseAuth {
+  _CredentialCapturingAuth(this._delegate);
+
+  final FirebaseAuth _delegate;
+  AuthCredential? lastCredential;
+
+  @override
+  Future<UserCredential> signInWithCredential(AuthCredential credential) {
+    lastCredential = credential;
+    return _delegate.signInWithCredential(credential);
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
