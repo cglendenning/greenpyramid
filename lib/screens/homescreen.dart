@@ -9,7 +9,7 @@ import 'package:life_ops/screens/welcome_screen.dart';
 import 'package:life_ops/screens/general_council_screen.dart';
 import 'package:life_ops/screens/paywall_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:life_ops/services/email.dart';
+import 'package:life_ops/screens/feedback_screen.dart';
 import 'package:life_ops/screens/editpyramid.dart';
 import 'package:life_ops/services/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
@@ -434,7 +434,7 @@ class CustomAppBarState extends State<CustomAppBar> {
   void navigateToFeedback(BuildContext context) async {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const EmailSender()))
+            MaterialPageRoute(builder: (context) => const FeedbackScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});

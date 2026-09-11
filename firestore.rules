@@ -6,6 +6,12 @@ rules_version = '2';
 // user who produced it) and D-075 (nothing outside the enumerated set is
 // written). Server-side jobs (D-036's notification generator) run under
 // the Admin SDK, which bypasses these rules entirely.
+//
+// D-129: users/{uid}/feedback/{id} (app feedback) is covered by this same
+// recursive rule, not a separate one — it needs no broader access than any
+// other subcollection here, and retrieval (reading across every user's
+// feedback) happens via the Admin SDK from the Firebase console, which
+// bypasses these rules the same way the notification generator does.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{uid}/{document=**} {
