@@ -1,5 +1,3 @@
-import 'dart:ui' show ImageFilter;
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:life_ops/screens/account_creation_screen.dart';
@@ -473,37 +471,37 @@ class CustomAppBarState extends State<CustomAppBar> {
     // rounded frosted panel — found live not to be what was wanted
     // ("I like what I had before... I really wanted was simply to have
     // more transparency so that the background image... shine through
-    // it and to make it look a little glassier like the modern iOS
-    // glass interface"). Reverted to the original gradient shape (no
-    // rounded corners) and colors, with the gradient itself now
-    // translucent (0.45 alpha) over a BackdropFilter blur — the photo
-    // genuinely shows through, blurred, rather than sitting behind a
-    // solid tint. Material(color: transparent) keeps Material's own
-    // default opaque surface paint from defeating that; elevation still
-    // draws the same subtle shadow the original had.
+    // it"). Reverted to the original gradient shape (no rounded
+    // corners) and colors, with the gradient itself now translucent
+    // (0.45 alpha) so the photo genuinely shows through it. A
+    // BackdropFilter blur was tried here too, for the "glassier" look —
+    // reverted a second time, found live: BackdropFilter blurs
+    // everything painted beneath it in the same layer without clipping
+    // to its own bounds, and the blur bled down into the pyramid itself
+    // well past the toolbar's own height. Material(color: transparent)
+    // keeps Material's own default opaque surface paint from defeating
+    // the transparency; elevation still draws the same subtle shadow
+    // the original had.
     return Material(
       color: Colors.transparent,
       elevation: elevation,
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.centerLeft,
-              end: Alignment.centerRight,
-              colors: AppColors.appBarGradient
-                  .map((c) => c.withValues(alpha: 0.45))
-                  .toList(),
-            ),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: AppColors.appBarGradient
+                .map((c) => c.withValues(alpha: 0.45))
+                .toList(),
           ),
-          child: AppBar(
-            centerTitle: true,
-            elevation: 0.0,
-            title: svgLogo,
-            backgroundColor: Colors.transparent,
-            actions: actions,
-            leading: null,
-          ),
+        ),
+        child: AppBar(
+          centerTitle: true,
+          elevation: 0.0,
+          title: svgLogo,
+          backgroundColor: Colors.transparent,
+          actions: actions,
+          leading: null,
         ),
       ),
     );

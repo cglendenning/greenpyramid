@@ -9,15 +9,19 @@ import 'package:flutter_test/flutter_test.dart';
 /// anywhere in this suite). Same source-text-assertion pattern
 /// schedule_habits_screen_test.dart already uses for its D-128 group.
 ///
-/// The toolbar's own look was revised once already, live, in the same
+/// The toolbar's own look was revised twice already, live, in the same
 /// session: the first pass (rounded corners, a flat translucent
 /// AppColors.surface fill) wasn't what was wanted — "I like what I had
-/// before... I really wanted was simply to have more transparency...
-/// and to make it look a little glassier like the modern iOS glass
-/// interface." The tests below assert the *current*, corrected shape.
+/// before... I really wanted was simply to have more transparency."
+/// The second pass added a BackdropFilter blur for a "glassier" feel,
+/// which was also reverted — found live: BackdropFilter blurs whatever
+/// is painted beneath it without clipping to its own bounds, and the
+/// blur bled down into the pyramid itself ("Now the pyramid itself is a
+/// blur"). The tests below assert the *current*, corrected shape: a
+/// translucent gradient, no blur, no rounded corners.
 void main() {
   group('D-131: main-screen background is full-bleed, toolbar is a '
-      'translucent glass version of the original gradient', () {
+      'translucent (not blurred) version of the original gradient', () {
     final pyramidSource = File('lib/widgets/pyramid.dart').readAsStringSync();
     final homescreenSource = File('lib/screens/homescreen.dart').readAsStringSync();
 
@@ -50,12 +54,21 @@ void main() {
       expect(homescreenSource, contains('AppColors.appBarGradient'));
     });
 
-    test('the gradient itself is translucent (not a solid fill) over a '
-        'BackdropFilter blur — the background photo genuinely shows '
-        'through it, blurred, rather than sitting behind an opaque or '
-        'flat-tinted panel', () {
-      expect(homescreenSource, contains('BackdropFilter'));
+    test('the gradient itself is translucent (not a solid fill) — the '
+        'background photo genuinely shows through it, rather than '
+        'sitting behind an opaque panel', () {
       expect(homescreenSource, contains('.withValues(alpha: 0.45)'));
+    });
+
+    test('no BackdropFilter blur widget on the toolbar — reverted after '
+        'it bled into the pyramid below it, found live: "the pyramid '
+        'itself is a blur." BackdropFilter has no bounds-clipping of '
+        'its own, so a blur here isn\'t safely confined to the toolbar '
+        '(the class name may still appear in an explanatory comment '
+        'about why it was removed, so this checks for actual '
+        'instantiation, not the bare word)', () {
+      expect(homescreenSource, isNot(contains('BackdropFilter(')));
+      expect(homescreenSource, isNot(contains('ImageFilter.blur(')));
     });
 
     test('no rounded corners on the toolbar — the original shape had '
