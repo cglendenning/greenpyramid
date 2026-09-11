@@ -22,13 +22,26 @@ import '../widgets/onboarding_backdrop.dart';
 /// Council session (setup_screen.dart), so there is nothing coherent left
 /// to go back to.
 class AccountCreationScreen extends StatefulWidget {
-  final VoidCallback onDone;
+  // D-132: every caller needs to know whether AccountLinkService actually
+  // linked the current (anonymous) account, or switched into a different,
+  // already-existing one via the credential-already-in-use path — those
+  // two outcomes call for genuinely different next steps (see setup_screen
+  // .dart, homescreen.dart, and welcome_screen.dart's respective onDone).
+  final void Function({required bool switchedToExistingAccount}) onDone;
+  final String headline;
+  final String subhead;
   // Injectable for tests: the real singleton talks to the native Apple/
   // Google SDKs, which can't run in a widget test.
   final AccountLinkService linkService;
 
-  AccountCreationScreen({super.key, required this.onDone, AccountLinkService? linkService})
-      : linkService = linkService ?? AccountLinkService.instance;
+  AccountCreationScreen({
+    super.key,
+    required this.onDone,
+    this.headline = 'One last step.',
+    this.subhead = "Create your account so your pyramid is never lost — one "
+        "tap, nothing to type.",
+    AccountLinkService? linkService,
+  }) : linkService = linkService ?? AccountLinkService.instance;
 
   @override
   State<AccountCreationScreen> createState() => _AccountCreationScreenState();
@@ -78,7 +91,7 @@ class _AccountCreationScreenState extends State<AccountCreationScreen> {
       } else {
         setState(() => _submitting = false);
       }
-      widget.onDone();
+      widget.onDone(switchedToExistingAccount: switchedAccount);
     } catch (error) {
       if (kDebugMode) {
         print('AccountCreationScreen: $provider sign-in failed: $error');
@@ -103,9 +116,9 @@ class _AccountCreationScreenState extends State<AccountCreationScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Spacer(flex: 5),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 28),
-                  child: Text('One last step.', style: OnboardingStyles.headline),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  child: Text(widget.headline, style: OnboardingStyles.headline),
                 ),
                 const SizedBox(height: 14),
                 const Padding(
@@ -113,13 +126,9 @@ class _AccountCreationScreenState extends State<AccountCreationScreen> {
                   child: OnboardingStyles.accentDivider,
                 ),
                 const SizedBox(height: 16),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 28),
-                  child: Text(
-                    "Create your account so your pyramid is never lost — one tap, "
-                    "nothing to type.",
-                    style: OnboardingStyles.subhead,
-                  ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 28),
+                  child: Text(widget.subhead, style: OnboardingStyles.subhead),
                 ),
                 const Spacer(flex: 4),
                 if (_welcomeBackMessage != null)

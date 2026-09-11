@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -7,6 +8,9 @@ import 'package:life_ops/screens/council_category_picker.dart';
 import 'package:life_ops/screens/cancel_subscription_screen.dart';
 import 'package:life_ops/screens/domain_map_screen.dart';
 import 'package:life_ops/screens/paywall_screen.dart';
+import 'package:life_ops/screens/welcome_screen.dart';
+import 'package:life_ops/services/account_link_service.dart';
+import 'package:life_ops/services/auth_service.dart';
 import 'package:life_ops/services/calendar_service.dart';
 import 'package:life_ops/services/entitlement_gate.dart';
 import 'package:life_ops/services/entitlement_service.dart';
@@ -245,6 +249,10 @@ class _SettingsState extends State<Settings> {
                 ],
               ),
             ),
+            const SizedBox(height: 28),
+
+            _sectionLabel('ACCOUNT'),
+            _card(child: const _AccountSection()),
           ],
         ),
       ),
@@ -499,6 +507,97 @@ class _CalendarAccessSwitchState extends State<CalendarAccessSwitch> {
         final granted = await CalendarService.instance.requestPermission();
         if (mounted) setState(() => _granted = granted);
       },
+    );
+  }
+}
+
+/// D-132: shows the linked provider (if any) and lets the user sign out.
+/// After sign-out, a fresh anonymous session is re-established immediately
+/// (AuthService.signInSilently) — every Firestore-touching screen in this
+/// app assumes at least an anonymous uid exists (D-032) — before routing
+/// to WelcomeScreen(showStartFreshOption: true), where the user picks
+/// "Sign in" (to the same or a different account) or "Start fresh".
+class _AccountSection extends StatefulWidget {
+  const _AccountSection();
+
+  @override
+  State<_AccountSection> createState() => _AccountSectionState();
+}
+
+class _AccountSectionState extends State<_AccountSection> {
+  bool _signingOut = false;
+
+  String? get _providerLabel {
+    final providers = FirebaseAuth.instance.currentUser?.providerData ?? const [];
+    for (final p in providers) {
+      if (p.providerId == 'apple.com') return 'Signed in with Apple';
+      if (p.providerId == 'google.com') return 'Signed in with Google';
+    }
+    return null;
+  }
+
+  Future<void> _confirmSignOut() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Sign out?', style: TextStyle(color: AppColors.textPrimary)),
+        content: const Text(
+          'Your pyramid and history are saved to your account.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Sign out'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _signingOut = true);
+    await AccountLinkService.instance.signOut();
+    await AuthService.instance.signInSilently();
+    if (!mounted) return;
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(
+        builder: (_) => const WelcomeScreen(showStartFreshOption: true),
+      ),
+      (route) => false,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final providerLabel = _providerLabel;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          providerLabel ?? 'Not signed in with a real account yet',
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            style: TextButton.styleFrom(padding: EdgeInsets.zero),
+            onPressed: _signingOut ? null : _confirmSignOut,
+            child: _signingOut
+                ? const SizedBox(
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Text('Sign out'),
+          ),
+        ),
+      ],
     );
   }
 }

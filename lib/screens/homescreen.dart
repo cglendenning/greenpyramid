@@ -1,9 +1,13 @@
 import 'dart:ui' show ImageFilter;
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:life_ops/screens/account_creation_screen.dart';
+import 'package:life_ops/services/auth_service.dart';
 import 'package:life_ops/services/notification.dart';
 import 'package:life_ops/services/db.dart';
 import 'package:life_ops/services/dbtools.dart';
+import 'package:life_ops/services/sync_service.dart';
 import 'package:life_ops/main.dart';
 import 'package:life_ops/widgets/pyramid.dart';
 import 'package:life_ops/screens/settings.dart';
@@ -142,6 +146,10 @@ class _HomeScreen extends State<HomeScreenWidget> {
     setFutures();
     // Listen for demo mode changes and refresh data
     DatabaseHelper.demoModeNotifier.addListener(_onDemoModeChanged);
+    // D-132: enforced once per app session, not once per tab switch —
+    // this StatefulWidget is mounted once at launch; currentScreenIndex
+    // changes are just an index swap, not a remount.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _enforceRealAccount());
     super.initState();
   }
 
@@ -149,6 +157,40 @@ class _HomeScreen extends State<HomeScreenWidget> {
   void dispose() {
     DatabaseHelper.demoModeNotifier.removeListener(_onDemoModeChanged);
     super.dispose();
+  }
+
+  // D-132: catches an existing user whose account predates D-130 — Craig's
+  // own situation: setup already completed before D-130 existed, so
+  // nothing ever prompted him to link a real credential. D-032's own
+  // convention (every Firestore-touching screen awaits signInSilently()
+  // first, since main.dart's bootstrap is fire-and-forget and not
+  // guaranteed to have run yet) is what makes the isAnonymous check below
+  // reliable rather than racy.
+  Future<void> _enforceRealAccount() async {
+    await AuthService.instance.signInSilently();
+    if (!mounted || !AuthService.instance.isAnonymous) return;
+    var accountWasSwitched = false;
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => AccountCreationScreen(
+        onDone: ({required bool switchedToExistingAccount}) {
+          accountWasSwitched = switchedToExistingAccount;
+          Navigator.of(context).pop();
+        },
+      ),
+    ));
+    if (accountWasSwitched) {
+      // D-132: a real edge case — this device already has a local
+      // pyramid *and* the Apple/Google identity just used already
+      // belongs to a different, real account. That account's own cloud
+      // data (if any) needs restoring; the local pyramid that was here
+      // before belonged to the abandoned anonymous account.
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        await SyncService.instance.restoreFromCloud(uid);
+      }
+    }
+    if (!mounted) return;
+    setState(() => setFutures());
   }
 
   void _onDemoModeChanged() {

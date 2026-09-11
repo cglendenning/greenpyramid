@@ -13,7 +13,8 @@ import 'package:life_ops/screens/welcome_screen.dart';
 /// be genuinely widget-tested rather than only source-checked.
 void main() {
   testWidgets('D-089: shows the welcome photograph, headline, and a '
-      'single "Begin" action — no feature list, no carousel', (tester) async {
+      'single primary "Begin" action — no feature list, no carousel',
+      (tester) async {
     await tester.pumpWidget(const MaterialApp(home: WelcomeScreen()));
     await tester.pump();
 
@@ -21,9 +22,31 @@ void main() {
     expect(find.text('Say what matters. We’ll build your life around it.'),
         findsOneWidget);
     expect(find.widgetWithText(ElevatedButton, 'Begin'), findsOneWidget);
-    // One action only (P-14): no other buttons anywhere on the screen.
+    // One *primary* action only (P-14) — but D-132 deliberately adds a
+    // secondary "Sign in" link below it for someone who already has an
+    // account, mirroring goal-executor's own first-screen pattern.
     expect(find.byType(ElevatedButton), findsOneWidget);
-    expect(find.byType(TextButton), findsNothing);
+  });
+
+  testWidgets('D-132: offers a secondary "Sign in" link for someone who '
+      'already has an account — Start fresh stays hidden by default, since '
+      'a genuine fresh install has nothing to "start fresh" from', (tester) async {
+    await tester.pumpWidget(const MaterialApp(home: WelcomeScreen()));
+    await tester.pump();
+
+    expect(find.widgetWithText(TextButton, 'Already have an account? Sign in'),
+        findsOneWidget);
+    expect(find.text('Start fresh instead'), findsNothing);
+  });
+
+  testWidgets('D-132: shows "Start fresh instead" only when reached via '
+      'sign-out (showStartFreshOption: true) — never on a genuine fresh '
+      'install, where "Begin" already starts from empty', (tester) async {
+    await tester.pumpWidget(
+        const MaterialApp(home: WelcomeScreen(showStartFreshOption: true)));
+    await tester.pump();
+
+    expect(find.text('Start fresh instead'), findsOneWidget);
   });
 
   testWidgets('D-089: does not explain the pyramid mechanic — no tier '

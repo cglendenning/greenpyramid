@@ -796,7 +796,12 @@ class DatabaseHelper {
 // -----------------------------------------------------------------------------
 //                                                            populateCategory()
 // -----------------------------------------------------------------------------
-  void populateCategory() async {
+  // D-132: was `void populateCategory() async` — nothing could await it, so
+  // a caller that genuinely needs all six rows to exist before proceeding
+  // (LocalPyramidResetService.wipeLocalPyramid) had no way to wait for
+  // them. Existing fire-and-forget callers (main.dart, this class itself)
+  // are unaffected — a Future can always be left unawaited.
+  Future<void> populateCategory() async {
     await rawInsert("insert into category(categoryid, cat) values"
         "(1, 'Empty1') "
         " on conflict (categoryid) do nothing");

@@ -8,6 +8,7 @@ import '../services/ai_guard.dart';
 import '../services/auth_service.dart';
 import '../services/council_client.dart';
 import '../services/council_service.dart';
+import '../services/sync_service.dart';
 import '../services/db.dart';
 import '../services/entitlement_service.dart';
 import '../services/resonance_service.dart';
@@ -872,7 +873,27 @@ class _SetupScreenState extends State<SetupScreen> {
         goToCompletion();
       } else {
         Navigator.of(context).pushReplacement(MaterialPageRoute(
-          builder: (context) => AccountCreationScreen(onDone: goToCompletion),
+          builder: (context) => AccountCreationScreen(
+            onDone: ({required switchedToExistingAccount}) async {
+              if (!switchedToExistingAccount) {
+                goToCompletion();
+                return;
+              }
+              // D-132: the Apple/Google identity just used already
+              // belongs to a different, real account — the pyramid this
+              // session just built lives under the now-abandoned
+              // anonymous uid, not this one. That real account's own
+              // data (if any) needs restoring instead of showing the
+              // fresh, session-local pyramid as if it were theirs.
+              final uid = FirebaseAuth.instance.currentUser?.uid;
+              if (uid != null) {
+                await SyncService.instance.restoreFromCloud(uid);
+              }
+              if (!context.mounted) return;
+              Navigator.of(context)
+                  .pushNamedAndRemoveUntil('/', (route) => false);
+            },
+          ),
         ));
       }
     } on AiBudgetException catch (e) {

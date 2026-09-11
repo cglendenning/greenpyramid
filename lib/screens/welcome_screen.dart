@@ -1,7 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../services/local_pyramid_reset_service.dart';
+import '../services/sync_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/onboarding_backdrop.dart';
+import 'account_creation_screen.dart';
 import 'setup_screen.dart';
 
 /// D-089: a single screen, shown once per entry into setup, that tells the
@@ -30,8 +34,89 @@ import 'setup_screen.dart';
 /// `/setup` route (this is the very first screen; there is nothing before
 /// it to return to). Nothing has been created or committed at this point
 /// in either case, so backing out here is always safe.
+///
+/// D-132: "Already have an account? Sign in" — mirrors goal-executor's
+/// own first-screen pattern (its splash screen routes an onboarded-but-
+/// signed-out user to its auth screen, which itself toggles between sign-
+/// in and create-account). [showStartFreshOption] is true only when this
+/// screen is reached via Settings' sign-out flow (see settings.dart) —
+/// on a genuine fresh install there is no local pyramid to "start fresh"
+/// from, and "Begin" already does exactly that.
 class WelcomeScreen extends StatelessWidget {
-  const WelcomeScreen({super.key});
+  final bool showStartFreshOption;
+  const WelcomeScreen({super.key, this.showStartFreshOption = false});
+
+  Future<void> _signIn(BuildContext context) async {
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (_) => AccountCreationScreen(
+        headline: 'Welcome back.',
+        subhead: 'Sign in with the account you set up before.',
+        onDone: ({required switchedToExistingAccount}) async {
+          if (switchedToExistingAccount) {
+            final uid = FirebaseAuth.instance.currentUser?.uid;
+            if (uid != null) {
+              await SyncService.instance.restoreFromCloud(uid);
+            }
+            if (!context.mounted) return;
+            Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+            return;
+          }
+          if (!showStartFreshOption) {
+            // A genuine fresh install: this identity had no prior
+            // account, but local storage was already empty — nothing to
+            // lose by just continuing into setup as a newly-linked user.
+            if (!context.mounted) return;
+            Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => const SetupScreen()));
+            return;
+          }
+          // Reached via sign-out: this device's local pyramid still
+          // belongs to the account just signed out of. Never silently
+          // touch it on an unexpected "no prior account" outcome — surface
+          // it and let the user make an explicit choice ("Start fresh"
+          // below) instead.
+          if (!context.mounted) return;
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text(
+                'No existing pyramid found for that sign-in. Use "Start fresh" '
+                'below to set up a new one instead.'),
+          ));
+        },
+      ),
+    ));
+  }
+
+  Future<void> _confirmAndStartFresh(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surfaceHigh,
+        title: const Text('Start fresh?', style: TextStyle(color: AppColors.textPrimary)),
+        content: const Text(
+          "Starting fresh will permanently delete this device's current "
+          "pyramid, habits, and history. This can't be undone unless you "
+          "sign back into your account.",
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Start fresh'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    await LocalPyramidResetService.instance.wipeLocalPyramid();
+    if (!context.mounted) return;
+    Navigator.of(context)
+        .pushReplacement(MaterialPageRoute(builder: (_) => const SetupScreen()));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +154,7 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   const Spacer(flex: 4),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
+                    padding: const EdgeInsets.fromLTRB(28, 0, 28, 16),
                     child: SizedBox(
                       width: double.infinity,
                       height: 56,
@@ -81,6 +166,37 @@ class WelcomeScreen extends StatelessWidget {
                       ),
                     ),
                   ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 0, 28, 12),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                        onPressed: () => _signIn(context),
+                        child: const Text(
+                          'Already have an account? Sign in',
+                          style: TextStyle(color: AppColors.textPrimary),
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (showStartFreshOption)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton(
+                          style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                          onPressed: () => _confirmAndStartFresh(context),
+                          child: const Text(
+                            'Start fresh instead',
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
+                        ),
+                      ),
+                    )
+                  else
+                    const SizedBox(height: 16),
                 ],
               ),
               if (canGoBack)

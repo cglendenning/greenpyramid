@@ -16,6 +16,11 @@ class AuthService {
 
   String? get currentUid => _auth.currentUser?.uid;
 
+  // D-132: defaults to true (no signed-in user at all) — callers gating on
+  // "is this a real account" should fail closed, not treat "unknown" as
+  // "yes, real."
+  bool get isAnonymous => _auth.currentUser?.isAnonymous ?? true;
+
   Stream<User?> get userChanges => _auth.userChanges();
 
   /// D-032: silently create (or resume) an anonymous account. Never throws
@@ -49,4 +54,11 @@ class AuthService {
     final result = await current.linkWithCredential(credential);
     return result.user;
   }
+
+  /// D-132: signs out of the current (real) Firebase account. Never
+  /// leaves the app fully signed out — every screen that touches
+  /// Firestore assumes at least an anonymous uid exists (D-032) — so the
+  /// caller is expected to follow this with [signInSilently] to
+  /// re-establish that baseline before showing anything else.
+  Future<void> signOut() => _auth.signOut();
 }

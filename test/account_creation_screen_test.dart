@@ -41,10 +41,12 @@ void main() {
       expect(source, contains('OnboardingBackdrop('));
     });
 
-    test('calls onDone after a successful sign-in, matching the onDone '
-        'callback-chain shape every other screen in this navigation '
-        'sequence already uses', () {
-      expect(source, contains('widget.onDone()'));
+    test('D-132: calls onDone with whether AccountLinkService switched to a '
+        'different, already-existing account (credential-already-in-use) '
+        'rather than linking the current one — every caller needs to react '
+        'differently to the two outcomes', () {
+      expect(source, contains('widget.onDone(switchedToExistingAccount: switchedAccount)'));
+      expect(source, contains('void Function({required bool switchedToExistingAccount}) onDone'));
     });
 
     test('AccountLinkService is injectable, not hardcoded to the '
@@ -60,7 +62,17 @@ void main() {
 
     test('_confirmHabitsAndClose navigates to AccountCreationScreen, not '
         'straight to SetupCompletionScreen', () {
-      expect(setupSource, contains('AccountCreationScreen(onDone: goToCompletion)'));
+      expect(setupSource, contains('AccountCreationScreen('));
+      expect(setupSource, contains('onDone: ({required switchedToExistingAccount}) async {'));
+    });
+
+    test('D-132: a credential-already-in-use switch restores the real '
+        'account\'s cloud data and goes straight home, skipping '
+        'SetupCompletionScreen entirely — the pyramid just built in this '
+        'session belongs to the abandoned anonymous account, not the real '
+        'one just switched into', () {
+      expect(setupSource, contains('SyncService.instance.restoreFromCloud(uid)'));
+      expect(setupSource, contains("pushNamedAndRemoveUntil('/', (route) => false)"));
     });
 
     test('an already non-anonymous current user (shouldn\'t happen mid-'

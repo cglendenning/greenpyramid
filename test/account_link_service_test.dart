@@ -65,6 +65,25 @@ void main() {
   });
 
   test(
+      'D-132: signOut clears the Firebase session even when the native '
+      'Google sign-out call fails — Google sign-out is best-effort, '
+      'Firebase sign-out is what actually matters for Firestore access',
+      () async {
+    final user = MockUser(uid: 'signout-uid', isAnonymous: false);
+    final auth = MockFirebaseAuth(signedIn: true, mockUser: user);
+    final authService = AuthService(auth: auth);
+    final linkService = AccountLinkService(auth: auth, authService: authService);
+
+    expect(auth.currentUser, isNotNull);
+    // GoogleSignIn.instance.signOut() has no real platform binding in a
+    // unit test and is expected to throw here — signOut() must swallow
+    // that and still sign out of Firebase.
+    await linkService.signOut();
+
+    expect(auth.currentUser, isNull);
+  });
+
+  test(
       'D-130: a FirebaseAuthException other than credential-already-in-use '
       'is rethrown, not swallowed', () async {
     final anonUser = MockUser(uid: 'anon-uid-other-error', isAnonymous: true);

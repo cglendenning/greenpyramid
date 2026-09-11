@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
@@ -72,6 +73,22 @@ class AccountLinkService {
       final result = await _auth.signInWithCredential(credential);
       return result.user;
     }
+  }
+
+  /// D-132: signs out of both the native Google session and Firebase.
+  /// Apple has no equivalent SDK-level session to clear — Sign in with
+  /// Apple's own dialog always lets the user pick an identity, so there's
+  /// nothing cached client-side to invalidate the way Google's silent
+  /// re-auth would otherwise bypass. Google sign-out is best-effort: if it
+  /// fails, Firebase sign-out (what actually matters — Firestore access
+  /// checks the Firebase session, not Google's) still proceeds.
+  Future<void> signOut() async {
+    try {
+      await GoogleSignIn.instance.signOut();
+    } catch (e, st) {
+      debugPrint('AccountLinkService: Google sign-out failed (non-fatal): $e\n$st');
+    }
+    await _authService.signOut();
   }
 }
 
