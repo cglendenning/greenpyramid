@@ -271,6 +271,64 @@ void main() {
     });
   });
 
+  group('D-158: the two welcome cards are never adjacent to each other in '
+      'the feed — found live: "make sure that these static content cards '
+      'are separated by at least two dynamic cards because it looks '
+      'weird to have them right next to each other"', () {
+    test('with several real items, at least two of them sit between '
+        'welcome-1 and welcome-2 in the displayed feed order', () async {
+      await seedCategory(1, 'Craft');
+      await db.insertCategoryEssence(categoryId: 1, essence: 'One.');
+      await db.insertCategoryEssence(categoryId: 1, essence: 'Two.');
+      await db.insertCategoryEssence(categoryId: 1, essence: 'Three.');
+
+      await service.generateNewItems();
+
+      final feed = await service.getFeed(limit: 50, offset: 0);
+      final keys = feed.map((i) => i['dedupekey'] as String).toList();
+      final pos2 = keys.indexOf('welcome-2');
+      final pos1 = keys.indexOf('welcome-1');
+      expect(pos2, greaterThanOrEqualTo(0));
+      expect(pos1, greaterThan(pos2));
+      expect(pos1 - pos2 - 1, greaterThanOrEqualTo(2),
+          reason: 'at least two other cards must sit strictly between '
+              'welcome-2 and welcome-1');
+    });
+
+    test('welcome-1 is always the oldest item in the feed — the anchor '
+        'the spacing is built around', () async {
+      await seedCategory(1, 'Craft');
+      await db.insertCategoryEssence(categoryId: 1, essence: 'One.');
+
+      await service.generateNewItems();
+
+      final feed = await service.getFeed(limit: 50, offset: 0);
+      expect(feed.last['dedupekey'], 'welcome-1');
+    });
+
+    test('after a targeted wipe of only type=welcome rows (D-158\'s own '
+        "migration scenario), the cards reseed correctly on an account "
+        'that already has plenty of real content — not just on a '
+        'genuinely empty table', () async {
+      await seedCategory(1, 'Craft');
+      await db.insertCategoryEssence(categoryId: 1, essence: 'One.');
+      await db.insertCategoryEssence(categoryId: 1, essence: 'Two.');
+      await service.generateNewItems();
+
+      // Simulate the v14->v15 migration: delete only the welcome rows,
+      // leaving the real essence content in place.
+      final d = await db.database;
+      await d.delete(DatabaseHelper.newsfeedItemTable,
+          where: '${DatabaseHelper.columnNewsfeedType} = ?', whereArgs: ['welcome']);
+
+      await service.generateNewItems();
+
+      final feed = await service.getFeed(limit: 50, offset: 0);
+      final keys = feed.map((i) => i['dedupekey'] as String).toSet();
+      expect(keys, containsAll(['welcome-1', 'welcome-2']));
+    });
+  });
+
   group('D-154: no emoji anywhere in generated copy — found live: "do not '
       'use emojis" in the copy used for each new item', () {
     bool containsEmoji(String s) =>

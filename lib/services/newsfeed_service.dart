@@ -78,28 +78,56 @@ class NewsfeedService {
     }
     newItems.addAll(await _generateEssenceItems(categories: categories));
 
-    // D-154: if the table is still empty even after everything real this
-    // pass just generated, this is a genuine first-ever launch — seed the
-    // two welcome cards. Self-limiting without a separate "was it empty
-    // before this call" snapshot: once seeded, the table is never empty
-    // again, so this branch can only ever fire once per install.
-    if (await _db.countNewsfeedItems() == newItems.length) {
+    // D-154: seed the two welcome cards the first time the newsfeed has
+    // nothing else in it yet. D-158 amendment: checks the welcome cards'
+    // own existence directly, rather than D-154's original "is the whole
+    // table still empty after this pass" — that heuristic couldn't
+    // reseed them after a *targeted* wipe (D-158's own migration, which
+    // clears only stale-spaced welcome rows, leaving real content
+    // intact) since the table is never actually empty on an account with
+    // existing essence/streak history. Still self-limiting: once
+    // 'welcome-1' exists, this never fires again.
+    if (!await _db.newsfeedItemExists('welcome-1')) {
       await _seedWelcomeCards();
     }
 
     return newItems;
   }
 
+  // D-158: found live — seeded back-to-back with near-identical
+  // timestamps, the two welcome cards landed right next to each other at
+  // the top of the feed, which "looks weird." Rather than reorder at
+  // read time, each card gets a deliberately placed [createdAt]: welcome
+  // 2 stays "now" (near the top, alongside whatever real content exists
+  // at seed time), welcome 1 is backdated far into the past — older than
+  // any real content ever could be, so it always sorts at the very
+  // bottom. Since every future real item inserts at its own
+  // DateTime.now() (always newer than welcome 1's fixed backdate), this
+  // spacing holds permanently, not just at the moment of seeding — it
+  // never needs revisiting as more content accumulates between them.
+  // With fewer than two real items to separate them, the two cards can
+  // still end up adjacent; there is no way around that without inventing
+  // fake content to fill the gap, so it's accepted rather than forced.
+  static const _welcomeCardBackdate = Duration(days: 3650);
+
   Future<void> _seedWelcomeCards() async {
-    for (var i = 0; i < _welcomeCopy.length; i++) {
-      final (title, body) = _welcomeCopy[i];
-      await _db.insertNewsfeedItem(
-        type: 'welcome',
-        title: title,
-        body: body,
-        dedupeKey: 'welcome-${i + 1}',
-      );
-    }
+    final now = DateTime.now();
+    final (title2, body2) = _welcomeCopy[1];
+    await _db.insertNewsfeedItem(
+      type: 'welcome',
+      title: title2,
+      body: body2,
+      dedupeKey: 'welcome-2',
+      createdAt: now,
+    );
+    final (title1, body1) = _welcomeCopy[0];
+    await _db.insertNewsfeedItem(
+      type: 'welcome',
+      title: title1,
+      body: body1,
+      dedupeKey: 'welcome-1',
+      createdAt: now.subtract(_welcomeCardBackdate),
+    );
   }
 
   // D-154: rewritten from a single flat sentence per milestone to a

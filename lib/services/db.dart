@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 14; // 7: R3 schema — position, essences,
+  static const _databaseVersion = 15; // 7: R3 schema — position, essences,
   // domain findings, account state (Part IV). 8: R6/D-062 — discards an
   // incomplete old-flow setup so the user starts the new Council setup
   // fresh instead of landing on a half-populated pyramid with no way back
@@ -25,7 +25,11 @@ class DatabaseHelper {
   // type='article' rows, discarding the one real article generated
   // before the backend's markdown-code-fence parsing bug was fixed
   // server-side, so the daily dedupeKey is free again immediately
-  // rather than only tomorrow.
+  // rather than only tomorrow. 15: D-158 — a third, narrower one-time
+  // wipe: only type='welcome' rows, discarding the two welcome cards
+  // seeded (by D-156's own wipe, on the previous build) with the old,
+  // adjacent-at-the-top timestamps, so they reseed with D-158's spacing
+  // fix in effect the next time anything touches the newsfeed.
 
   // DEMO MODE FLAG
   static final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
@@ -676,6 +680,19 @@ class DatabaseHelper {
             // are fine and untouched) frees the slot immediately.
             await db.delete(newsfeedItemTable,
                 where: '$columnNewsfeedType = ?', whereArgs: ['article']);
+            break;
+          case 15:
+            // D-158: found live — the two welcome cards, seeded
+            // back-to-back with near-identical timestamps, landed right
+            // next to each other at the top of the feed. Fixed in
+            // NewsfeedService._seedWelcomeCards (deliberate, permanent
+            // timestamp placement instead of "now" for both), but the
+            // two rows already on-device were seeded under the old
+            // logic. Deleting only type='welcome' rows — not the whole
+            // table — lets them reseed correctly on next use, leaving
+            // every real essence/streak/article card untouched.
+            await db.delete(newsfeedItemTable,
+                where: '$columnNewsfeedType = ?', whereArgs: ['welcome']);
             break;
         }
       }
@@ -1842,12 +1859,17 @@ class DatabaseHelper {
   /// sqflite package, not assumed), which is what a caller needs to know
   /// whether this is a genuinely *new* item worth firing a local
   /// notification for.
+  /// D-158: [createdAt] lets a caller place an item at a deliberate
+  /// position in the feed's newest-first order rather than always "now"
+  /// — the seeded welcome cards use this to stay apart from each other
+  /// (see NewsfeedService._seedWelcomeCards).
   Future<bool> insertNewsfeedItem({
     required String type,
     required String title,
     required String body,
     int? categoryId,
     required String dedupeKey,
+    DateTime? createdAt,
   }) async {
     final db = await database;
     final id = await db.insert(
@@ -1857,7 +1879,7 @@ class DatabaseHelper {
         columnNewsfeedTitle: title,
         columnNewsfeedBody: body,
         columnNewsfeedCategoryId: categoryId,
-        columnNewsfeedCreated: DateTime.now().toIso8601String(),
+        columnNewsfeedCreated: (createdAt ?? DateTime.now()).toIso8601String(),
         columnNewsfeedDedupeKey: dedupeKey,
       },
       conflictAlgorithm: ConflictAlgorithm.ignore,
@@ -1892,16 +1914,6 @@ class DatabaseHelper {
     return rows.isNotEmpty;
   }
 
-  /// D-154: how many rows are in the newsfeed at all — used to detect a
-  /// genuinely first-ever launch (the table is still empty right before
-  /// this generation pass) so the seeded welcome cards are inserted
-  /// exactly once, not re-checked against every individual dedupeKey.
-  Future<int> countNewsfeedItems() async {
-    final db = await database;
-    final result =
-        await db.rawQuery('SELECT COUNT(*) AS c FROM $newsfeedItemTable');
-    return Sqflite.firstIntValue(result) ?? 0;
-  }
 
   /// D-154: the 0-based rank of the item identified by [dedupeKey] within
   /// the same newest-first ordering [queryNewsfeedItems] pages through —

@@ -83,12 +83,15 @@ void main() {
     expect(rows, isEmpty);
   });
 
-  test('D-157: the v13->v14 migration deletes only type=article rows, '
-      "leaving essence/streak/welcome cards D-156 just regenerated "
-      'untouched — found live: a real article generated before the '
-      "backend's markdown-code-fence parsing bug was fixed server-side "
-      "consumed that day's dedupeKey, so only that row needs clearing to "
-      'free the slot immediately rather than waiting until tomorrow',
+  test('D-157: upgrading from v13 removes type=article rows along the '
+      'way, leaving essence/streak cards untouched — found live: a real '
+      "article generated before the backend's markdown-code-fence "
+      "parsing bug was fixed server-side consumed that day's dedupeKey, "
+      'so only that row needed clearing to free the slot immediately '
+      'rather than waiting until tomorrow. (This exercises the full '
+      "migration chain to whatever the app's current version is, not an "
+      'isolated v13->v14 hop in isolation — v14->v15/D-158 also removes '
+      "type=welcome in the same chain, covered by its own test below.)",
       () async {
     // Same schema as v12 (v13's own migration was a DELETE, not a
     // schema change), with one row of each type already in it.
@@ -115,7 +118,38 @@ void main() {
     final rows = await upgraded.query(DatabaseHelper.newsfeedItemTable);
     final remainingTypes = rows.map((r) => r[DatabaseHelper.columnNewsfeedType]).toSet();
 
-    expect(remainingTypes, {'essence', 'streak', 'welcome'});
+    expect(remainingTypes, {'essence', 'streak'});
     expect(remainingTypes, isNot(contains('article')));
+  });
+
+  test('D-158: the v14->v15 migration deletes only type=welcome rows, '
+      'leaving essence/streak/article cards untouched — clears the two '
+      "welcome cards seeded under the old, adjacent-at-the-top spacing "
+      "so they reseed correctly under D-158's fix", () async {
+    final path = '${tempDir.path}/LifeOps.db';
+    final raw = await databaseFactory.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 14,
+        onCreate: (db, version) => DatabaseHelper.applyV12Schema(db),
+      ),
+    );
+    for (final type in ['welcome', 'essence', 'streak', 'article']) {
+      await raw.insert(DatabaseHelper.newsfeedItemTable, {
+        DatabaseHelper.columnNewsfeedType: type,
+        DatabaseHelper.columnNewsfeedTitle: '$type title',
+        DatabaseHelper.columnNewsfeedBody: '$type body',
+        DatabaseHelper.columnNewsfeedCreated: DateTime.now().toIso8601String(),
+        DatabaseHelper.columnNewsfeedDedupeKey: '$type-key',
+      });
+    }
+    await raw.close();
+
+    final upgraded = await db.database;
+    final rows = await upgraded.query(DatabaseHelper.newsfeedItemTable);
+    final remainingTypes = rows.map((r) => r[DatabaseHelper.columnNewsfeedType]).toSet();
+
+    expect(remainingTypes, {'essence', 'streak', 'article'});
+    expect(remainingTypes, isNot(contains('welcome')));
   });
 }
