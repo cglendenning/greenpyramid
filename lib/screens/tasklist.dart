@@ -226,8 +226,25 @@ class _TaskListState extends State<TaskList> {
                               // show several tasks with the scrollbar
                               // handling any overflow, and leaves the
                               // calendar visible without scrolling.
-                              height: 220,
+                              //
+                              // D-153: trimmed further, 220 -> 180 —
+                              // found live again: even the D-147 constant
+                              // still left the calendar requiring a
+                              // scroll on typical phone screens once the
+                              // essence card and both buttons were
+                              // accounted for. Still comfortably shows
+                              // 2-3 tasks with the scrollbar taking any
+                              // overflow beyond that.
+                              height: 180,
+                              // D-153: an always-visible thumb, not just
+                              // one that appears while actively dragging
+                              // — "the card ... should display a scroll
+                              // bar, if the tasks scroll beyond the
+                              // screen." Scrollbar never draws a thumb at
+                              // all when the content already fits, so
+                              // this is a no-op for a short task list.
                               child: Scrollbar(
+                                  thumbVisibility: true,
                                   child: ListView.separated(
                                       padding: const EdgeInsets.symmetric(vertical: 4),
                                       itemCount: snapshot.data.length,
@@ -265,30 +282,44 @@ class _TaskListState extends State<TaskList> {
                           );
                         }
                       }),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () {
-                      navigateToEditTaskList();
-                    },
-                    style: _primaryButtonStyle,
-                    child: const Text('Edit Task List', style: _buttonLabelStyle),
+                  const SizedBox(height: 16),
+                  // D-153: side by side, not stacked — found live: "you
+                  // could probably take the two buttons and rather than
+                  // having them stack on top of each other vertically,
+                  // they could align on a single row horizontally that
+                  // might save some space" — frees up the vertical room
+                  // that was pushing the date picker below the fold.
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: () {
+                            navigateToEditTaskList();
+                          },
+                          style: _primaryButtonStyle,
+                          child: const Text('Edit Task List', style: _buttonLabelStyle),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      // D-123: schedule a habit's recurring time — a
+                      // separate screen since it works across every
+                      // category's habits at once, not just this one.
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const ScheduleHabitsScreen()),
+                            );
+                          },
+                          style: _secondaryButtonStyle,
+                          child: const Text('Schedule Habits', style: _buttonLabelStyle),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  // D-123: schedule a habit's recurring time — a separate
-                  // screen since it works across every category's habits
-                  // at once, not just this one.
-                  OutlinedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const ScheduleHabitsScreen()),
-                      );
-                    },
-                    style: _secondaryButtonStyle,
-                    child: const Text('Schedule Habits', style: _buttonLabelStyle),
-                  ),
-                  const SizedBox(height: 24),
+                  const SizedBox(height: 16),
                   _card(
                     child: CupertinoTheme(
                       data: const CupertinoThemeData(brightness: Brightness.dark),
