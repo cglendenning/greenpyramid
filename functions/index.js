@@ -113,13 +113,27 @@ app.post('/revenuecatWebhook', async (req, res) => {
   }
   try {
     ensureAdmin();
-    await applyRevenueCatEvent(req.body?.event, admin.firestore());
+    const event = req.body?.event;
+    const applied = await applyRevenueCatEvent(event, admin.firestore());
+    // D-175: the only visibility into which entitlement transition (or
+    // none) a given webhook call actually produced — found live, the
+    // hard way, while diagnosing a report of the generate-analysis
+    // button failing right after a subscribe: three webhook calls all
+    // returned 200 around the same time, and there was no way to tell
+    // from logs alone whether any of them had actually granted
+    // 'subscribed', or were all no-op event types.
+    console.log('revenuecatWebhook applied:', event?.type, '->', applied);
     res.json({ ok: true });
   } catch (e) {
+    // D-175: found live — this used to still respond 200 on a genuine
+    // Firestore write failure, which tells RevenueCat "handled" and it
+    // never retries — a failed entitlement update was silently invisible,
+    // discoverable only by grepping this log line, which nobody was
+    // watching. A real internal error now gets a 500 so RevenueCat's own
+    // retry logic (it retries on 5xx) gets a chance to actually apply the
+    // event later; only e.message is logged, never the event body itself.
     console.error('revenuecatWebhook error:', e.message);
-    // Still 200s: a transient Firestore error here should not make
-    // RevenueCat retry-storm an event that may partially have applied.
-    res.status(200).json({ ok: false });
+    res.status(500).json({ ok: false });
   }
 });
 
