@@ -182,8 +182,8 @@ void main() {
     expect(data?.containsKey('trialExpiresAt'), isFalse);
   });
 
-  test('D-075: only a bounded window of task_log syncs to recentActivity — '
-      'full history stays local-only', () async {
+  test('D-171: every task_log row syncs to recentActivity, not a bounded '
+      'window — a full reinstall must be able to restore all of it', () async {
     final d = await db.database;
     final rowCount = AiGuard.maxTaskLogRows + 10;
     final batch = d.batch();
@@ -207,11 +207,11 @@ void main() {
         .doc(uid)
         .collection('recentActivity')
         .get();
-    expect(synced.docs.length, AiGuard.maxTaskLogRows);
+    expect(synced.docs.length, rowCount);
   });
 
-  test('D-075: a task_log row that ages out of the bounded window is '
-      'removed remotely on the next sync, not left to accumulate', () async {
+  test('D-075: a task_log row deleted locally is removed remotely on the '
+      'next sync, not left to accumulate', () async {
     final d = await db.database;
     final id1 = await d.insert(DatabaseHelper.taskLogTable, {
       DatabaseHelper.columnTLCategory: 'Health',

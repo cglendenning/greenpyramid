@@ -19,7 +19,7 @@ void main() {
       'personal information") means the feed must actually be populated '
       'from current data, not left to whatever was generated on some '
       'earlier visit', () {
-    expect(source, contains('_service.generateNewItems()'));
+    expect(source, contains('_service.seedSampleCardsIfNeeded()'));
   });
 
   test('D-150: an empty feed shows a real empty-state message, not a '

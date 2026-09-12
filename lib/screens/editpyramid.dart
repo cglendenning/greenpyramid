@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:life_ops/services/db.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
-import 'package:life_ops/services/newsfeed_service.dart';
-import 'package:life_ops/services/notification.dart';
 import 'package:life_ops/theme/app_colors.dart';
 import 'package:life_ops/widgets/category_edit_sheet.dart';
 import 'package:life_ops/widgets/onboarding_backdrop.dart';
@@ -136,16 +134,5 @@ class _EditPyramid extends State<EditPyramid> {
     }
 
     widget.onCategoryEdited?.call();
-
-    // D-154: redefining a category's essence is exactly the moment a new
-    // essence-change newsfeed item is created — notify right here.
-    final newItems = await NewsfeedService.instance.generateNewItems();
-    for (final item in newItems) {
-      await LocalNotificationService().showNewsfeedItemNotification(
-        title: item.title,
-        body: item.body,
-        dedupeKey: item.dedupeKey,
-      );
-    }
   }
 }

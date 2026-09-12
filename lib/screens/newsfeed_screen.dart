@@ -83,7 +83,7 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
   }
 
   Future<void> _loadInitial() async {
-    await _service.generateNewItems();
+    await _service.seedSampleCardsIfNeeded();
 
     final target = widget.highlightDedupeKey;
     final targetPosition = target == null ? null : await _service.getItemPosition(target);
@@ -270,9 +270,8 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(32),
                   child: Text(
-                    "Nothing here yet. As you build streaks and redefine "
-                    "what your categories mean to you, you'll see it "
-                    'here.',
+                    "Nothing here yet. Check back soon for your daily "
+                    'analysis.',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                         color: AppColors.textSecondary, fontFamily: 'Exo2'),

@@ -53,7 +53,8 @@ void main() {
       'you tap the notification it brings you to that headline in the '
       'newsfeed."', () {
     final source = File('lib/screens/settings.dart').readAsStringSync();
-    expect(source, contains('NewsfeedService.instance.generateNewItems()'));
+    expect(source,
+        contains('NewsfeedService.instance.seedSampleCardsIfNeeded()'));
     expect(source, contains('scheduleNewsfeedTestNotification('));
   });
 

@@ -362,4 +362,37 @@ void main() {
         reason: 'this migration is a full, unconditional wipe — no row '
             'of any type survives it');
   });
+
+  test('D-170: the v20->v21 migration deletes only streak/essence rows, '
+      'leaving sample and article rows untouched — owner: "I only want '
+      '#3 and #4. Get rid of both #1 and #2," #1/#2 being streak-milestone '
+      'and essence-change cards, #3/#4 being the sample cards and the AI '
+      'article', () async {
+    final path = '${tempDir.path}/LifeOps.db';
+    final raw = await databaseFactory.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 20,
+        onCreate: (db, version) => _createV12SchemaWithEssence(db),
+      ),
+    );
+    for (final type in ['sample', 'article', 'streak', 'essence']) {
+      await raw.insert(DatabaseHelper.newsfeedItemTable, {
+        DatabaseHelper.columnNewsfeedType: type,
+        DatabaseHelper.columnNewsfeedTitle: '$type title',
+        DatabaseHelper.columnNewsfeedBody: '$type body',
+        DatabaseHelper.columnNewsfeedCreated: DateTime.now().toIso8601String(),
+        DatabaseHelper.columnNewsfeedDedupeKey: '$type-key',
+      });
+    }
+    await raw.close();
+
+    final upgraded = await db.database;
+    final rows = await upgraded.query(DatabaseHelper.newsfeedItemTable);
+    final types = rows.map((r) => r[DatabaseHelper.columnNewsfeedType]).toSet();
+
+    expect(types, {'sample', 'article'},
+        reason: 'streak and essence rows are deleted; sample and article '
+            'rows — the two card types the owner wants kept — survive');
+  });
 }

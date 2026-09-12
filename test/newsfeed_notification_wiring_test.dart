@@ -4,31 +4,22 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// D-154: "whenever a new notification is produced, the preview in the
 /// notification will be a headline and when you tap the notification, it
-/// will go directly to the newsfeed." tasklist.dart, editpyramid.dart,
-/// notification.dart, and settings.dart all own live Firebase/DB/plugin
-/// singletons the same way other screens in this class do (see
-/// profile_wiring_test.dart's own comment), so this is a structural
-/// (source-text) test — the actual generation logic is covered directly
-/// by newsfeed_service_test.dart's in-memory-sqlite tests.
+/// will go directly to the newsfeed." notification.dart and settings.dart
+/// own live Firebase/DB/plugin singletons the same way other screens in
+/// this class do (see profile_wiring_test.dart's own comment), so this is
+/// a structural (source-text) test — the actual generation logic is
+/// covered directly by newsfeed_service_test.dart's in-memory-sqlite
+/// tests.
+///
+/// D-170: tasklist.dart and editpyramid.dart no longer fire a newsfeed
+/// notification at all — owner: "I only want #3 and #4. Get rid of both
+/// #1 and #2," #1/#2 being the streak-milestone and essence-change cards
+/// those two call sites existed only to announce. Both call sites, and
+/// showNewsfeedItemNotification itself, are deleted outright; the tests
+/// that once asserted their presence are removed with them, not
+/// converted to asserting absence — there is nothing left in this area
+/// worth a regression test for.
 void main() {
-  group('D-154: checking off a task, and redefining a category\'s essence, '
-      'both fire a local notification for any genuinely new newsfeed '
-      'item — the exact two moments a streak or essence change is '
-      'actually created', () {
-    test('tasklist.dart notifies after a checkbox change', () {
-      final source = File('lib/screens/tasklist.dart').readAsStringSync();
-      expect(source, contains('NewsfeedService.instance.generateNewItems()'));
-      expect(source, contains('showNewsfeedItemNotification('));
-    });
-
-    test('editpyramid.dart notifies after a successful essence/name edit',
-        () {
-      final source = File('lib/screens/editpyramid.dart').readAsStringSync();
-      expect(source, contains('NewsfeedService.instance.generateNewItems()'));
-      expect(source, contains('showNewsfeedItemNotification('));
-    });
-  });
-
   group('D-154: tapping a newsfeed notification opens NewsfeedScreen '
       'scrolled to the specific item it was about', () {
     test('notification.dart routes a newsfeed_item structured payload to '
@@ -38,12 +29,13 @@ void main() {
       expect(source, contains('NewsfeedScreen(highlightDedupeKey: dedupeKey)'));
     });
 
-    test('showNewsfeedItemNotification carries the item\'s dedupeKey in a '
-        'structured JSON payload, not a bare route string', () {
+    test('scheduleNewsfeedTestNotification carries the item\'s dedupeKey '
+        'in a structured JSON payload, not a bare route string', () {
       final source = File('lib/services/notification.dart').readAsStringSync();
-      final start = source.indexOf('Future<void> showNewsfeedItemNotification(');
+      final start =
+          source.indexOf('Future<void> scheduleNewsfeedTestNotification(');
       expect(start, greaterThan(-1));
-      final body = source.substring(start, start + 400);
+      final body = source.substring(start, start + 2200);
       expect(body, contains("'type': 'newsfeed_item'"));
       expect(body, contains("'dedupeKey': dedupeKey"));
     });
@@ -55,7 +47,8 @@ void main() {
         'scheduleNewsfeedTestNotification, not the old generic message',
         () {
       final source = File('lib/screens/settings.dart').readAsStringSync();
-      expect(source, contains('NewsfeedService.instance.generateNewItems()'));
+      expect(source,
+          contains('NewsfeedService.instance.seedSampleCardsIfNeeded()'));
       expect(source, contains('NewsfeedService.instance.getFeed('));
       expect(source, contains('scheduleNewsfeedTestNotification('));
     });

@@ -439,10 +439,10 @@ class _TestNotificationButtonState extends State<_TestNotificationButton> {
   Future<void> _send() async {
     setState(() => _scheduling = true);
     try {
-      // generateNewItems() always leaves at least the two seeded welcome
+      // seedSampleCardsIfNeeded() always leaves the five seeded sample
       // cards behind on a table that's otherwise empty, so the feed is
       // never actually empty by the time this reads it back.
-      await NewsfeedService.instance.generateNewItems();
+      await NewsfeedService.instance.seedSampleCardsIfNeeded();
       final feed = await NewsfeedService.instance.getFeed(limit: 1, offset: 0);
       final item = feed.first;
       await widget.lns.scheduleNewsfeedTestNotification(

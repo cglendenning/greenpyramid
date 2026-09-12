@@ -688,25 +688,6 @@ class LocalNotificationService {
     }
   }
 
-  /// D-154: fired immediately whenever [NewsfeedService.generateNewItems]
-  /// produces a genuinely new item (not a duplicate, not a seeded welcome
-  /// card) — "whenever a new notification is produced, the preview in
-  /// the notification will be a headline and when you tap the
-  /// notification, it will go directly to the newsfeed." The preview
-  /// text is the item's own headline/body, generated on-device by
-  /// NewsfeedService — no AI call, no network round trip.
-  Future<void> showNewsfeedItemNotification({
-    required String title,
-    required String body,
-    required String dedupeKey,
-  }) {
-    return showImmediateNotification(
-      title: title,
-      body: body,
-      payload: jsonEncode({'type': 'newsfeed_item', 'dedupeKey': dedupeKey}),
-    );
-  }
-
   /// D-154: the Settings "Send test notification" control now behaves
   /// exactly like a real newsfeed notification — owner: "the button to
   /// send a test notification to behave the same way that it will have

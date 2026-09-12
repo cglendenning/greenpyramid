@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
-import 'ai_guard.dart';
 import 'calendar_service.dart';
 import 'db.dart';
 
@@ -14,7 +13,7 @@ import 'db.dart';
 ///                                statement, timezone, entitlement, trial window
 ///   essenceVersions/{id}        every version of every essence (D-061)
 ///   domainFindings/{id}         accumulated four-domain findings (D-048)
-///   recentActivity/{id}         bounded task_log window, ≤250 rows (D-075)
+///   recentActivity/{id}         every task_log row, full history (D-171)
 ///   tasks/{id}                  every habit/task currently defined (D-096)
 /// ```
 /// `councilSessions/` and `deviceTrial/` are also part of IV-D but are not
@@ -173,13 +172,17 @@ class SyncService {
     await batch.commit();
   }
 
-  /// IV-D `recentActivity/{id}`: only the bounded recent window syncs; full
-  /// history is local-only (D-031). Because the window is a moving 250-row
-  /// cutoff, a row that ages out locally must also be removed remotely, or
-  /// the "bounded" collection grows without bound — so this diffs against
-  /// what's already remote rather than only ever adding.
+  /// IV-D `recentActivity/{id}`: D-171 — every task_log row now syncs, not
+  /// just a bounded recent window (D-075's original 250-row cap reversed
+  /// outright, per the owner: "when I delete the app completely, all my
+  /// checked off items need to come back"). Collection name kept as-is
+  /// rather than renamed, to avoid stranding already-synced data under a
+  /// new path — it now holds full history, not just "recent" activity.
+  /// Diffs against what's already remote rather than only ever adding, so
+  /// a row deleted locally (e.g. a category rename cascade) is also
+  /// removed remotely.
   Future<void> _syncRecentActivity(DocumentReference<Map<String, dynamic>> userDoc) async {
-    final rows = await _db.queryRecentTaskLogs(AiGuard.maxTaskLogRows);
+    final rows = await _db.queryAllTaskLogs();
     final col = userDoc.collection('recentActivity');
     final localIds = rows.map((r) => r[DatabaseHelper.columnTLId].toString()).toSet();
 
@@ -260,11 +263,10 @@ class SyncService {
   /// each category's *current* essence (not the full version history —
   /// `essenceVersions` is provenance, not something the app's own
   /// behavior depends on), the vision statement, every habit/task, and
-  /// (D-169) recent check-off activity, bounded to whatever
-  /// [_syncRecentActivity] already pushed (≤`AiGuard.maxTaskLogRows`
-  /// rows, D-031/D-075's own disclosed cap on how much of this leaves
-  /// the device at all). Domain findings (D-048, advisory-only per
-  /// D-074) still do not restore — genuinely low-stakes to lose.
+  /// (D-169/D-171) every check-off ever pushed by [_syncRecentActivity] —
+  /// which, as of D-171, is all of it, not a bounded recent window.
+  /// Domain findings (D-048, advisory-only per D-074) still do not
+  /// restore — genuinely low-stakes to lose.
   ///
   /// D-169 amendment: check-off activity restore was originally left out
   /// entirely, reasoning "losing them costs nothing the app depends on
@@ -273,9 +275,20 @@ class SyncService {
   /// owner mid-session: "I uninstall the app and all of my check marks
   /// boxes are now gone when I signed back in." That reasoning was
   /// simply wrong: streaks, essence-redefinition timing, and every chart
-  /// on the Visualizations screen all depend on this exact data. The
-  /// "genuinely different, harder problem" this still doesn't attempt is
-  /// reconciling two *independent* devices' overlapping history — this
+  /// on the Visualizations screen all depend on this exact data.
+  ///
+  /// D-171 amendment: D-169's fix restored only whatever the push side's
+  /// 250-row bound (D-075) had actually uploaded, so a device with more
+  /// than 250 check-offs ever recorded still lost the older ones on a
+  /// full reinstall. Owner: "the one defect that has to be fixed though
+  /// is that when I delete the app completely, all my checked off items
+  /// need to come back." Fixed by removing the bound on the push side
+  /// ([_syncRecentActivity] now syncs every row) — this method's own read
+  /// path needed no change, since it already read every document present
+  /// in the collection, not a capped number.
+  ///
+  /// The "genuinely different, harder problem" this still doesn't attempt
+  /// is reconciling two *independent* devices' overlapping history — this
   /// fix only covers restoring onto a device with no local history at
   /// all (a fresh install or a genuine reinstall), which has nothing to
   /// reconcile against.
@@ -347,12 +360,10 @@ class SyncService {
       });
     }
 
-    // D-169: restores whatever check-off history _syncRecentActivity
-    // already pushed (the bounded, already-disclosed recentActivity
-    // window) — completing the round trip for data that already leaves
-    // the device, not a new decision about how much does. No explicit
-    // id: insertTaskLog lets SQLite assign a fresh local one, the same
-    // choice the tasks restore just above already makes.
+    // D-169/D-171: restores every check-off _syncRecentActivity has
+    // pushed — as of D-171, that's full history, not a bounded window.
+    // No explicit id: insertTaskLog lets SQLite assign a fresh local
+    // one, the same choice the tasks restore just above already makes.
     final activitySnap = await userDoc.collection('recentActivity').get();
     for (final doc in activitySnap.docs) {
       final a = doc.data();

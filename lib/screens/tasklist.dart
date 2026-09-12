@@ -8,8 +8,6 @@ import 'package:life_ops/widgets/category_edit_sheet.dart';
 import 'package:life_ops/widgets/navbar.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/screens/schedule_habits_screen.dart';
-import 'package:life_ops/services/newsfeed_service.dart';
-import 'package:life_ops/services/notification.dart';
 
 class TaskList extends StatefulWidget {
   final String category;
@@ -278,15 +276,6 @@ class _TaskListState extends State<TaskList> {
                                                   checked: value ?? false,
                                                 );
                                               });
-                                              // D-154: checking a task off
-                                              // is exactly the moment a
-                                              // streak can newly cross a
-                                              // milestone — generate and
-                                              // notify right here, rather
-                                              // than only checking when
-                                              // the newsfeed screen itself
-                                              // happens to be opened.
-                                              _notifyNewsfeed();
                                             });
                                       })),
                             ),
@@ -403,21 +392,6 @@ class _TaskListState extends State<TaskList> {
                         }
                       }),
                 ]))));
-  }
-
-  // D-154: fires a local notification for each genuinely new newsfeed
-  // item (a streak milestone just reached) — never for the seeded
-  // welcome cards or an already-recorded milestone, since
-  // NewsfeedService.generateNewItems only returns real, new ones.
-  Future<void> _notifyNewsfeed() async {
-    final newItems = await NewsfeedService.instance.generateNewItems();
-    for (final item in newItems) {
-      await LocalNotificationService().showNewsfeedItemNotification(
-        title: item.title,
-        body: item.body,
-        dedupeKey: item.dedupeKey,
-      );
-    }
   }
 
   void navigateToEditTaskList() async {

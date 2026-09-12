@@ -4,50 +4,21 @@ import 'ai_guard.dart';
 import 'council_client.dart';
 import 'db.dart';
 
-/// D-154: one genuinely new item this generation pass created — never
-/// returned for a duplicate (dedupeKey already existed) or for the
-/// seeded welcome cards, since neither is something worth firing a local
-/// notification for. Callers that care about notifying (tasklist.dart,
-/// editpyramid.dart — the two places real milestones/essence changes are
-/// actually created) use this; NewsfeedScreen's own call ignores it,
-/// since the user is already looking at the feed.
-typedef NewNewsfeedItem = ({String title, String body, String dedupeKey});
-
 /// D-168: see [NewsfeedService.generateArticleOnDemand].
 enum OnDemandArticleOutcome { generated, notEntitled, dailyCapReached, failed }
 
-/// D-165: a human-scaled, bucketed phrase for how long ago something
-/// happened — "3 days", "6 weeks", "4 months", "2 years" — never an exact
-/// day count, which would read clinical rather than like a real sentence
-/// a person would actually say. Pure and top-level so it's directly
-/// testable without a live database.
-String humanElapsed(Duration d) {
-  final days = d.inDays;
-  if (days < 1) return 'Less than a day';
-  if (days < 14) return days == 1 ? '1 day' : '$days days';
-  if (days < 60) {
-    final weeks = (days / 7).round();
-    return weeks <= 1 ? '1 week' : '$weeks weeks';
-  }
-  if (days < 365) {
-    final months = (days / 30).round();
-    return months <= 1 ? '1 month' : '$months months';
-  }
-  final years = (days / 365).round();
-  return years <= 1 ? '1 year' : '$years years';
-}
-
-/// D-150: a personal newsfeed generated entirely from the user's own data
-/// already on-device — never sent anywhere, never fetched from a server.
-/// Owner: "create a newsfeed that is generated from the users own personal
-/// information and that way it creates the stickiness ... it's news about
-/// their own universe that has some useful benefit to them ... they can
-/// scroll back as far as they want in their newsfeed and see previous
-/// items that have cropped up." Scoped for a first version to the two item
-/// types computable deterministically from data already in SQLite, with no
-/// new AI/network cost: streak milestones and essence changes. Richer,
-/// Council-authored reflections are an intentional fast-follow (D-150's
-/// spec section names it explicitly), not attempted here.
+/// D-170: the newsfeed, narrowed. Owner: "I only want #3 and #4. Get rid
+/// of both #1 and #2" — #1 and #2 being streak-milestone and essence-
+/// change cards (D-150/D-154/D-165's original free tier), #3 and #4
+/// being the five static sample cards (D-168) and the AI-written article
+/// (D-155/D-168). The stated reason wasn't a data-accuracy complaint —
+/// the owner found the jargon itself ("essence card," "streak card")
+/// opaque, and once it was explained plainly, decided they simply don't
+/// want that content in the feed at all. `_generateStreakItems`,
+/// `_generateEssenceItems`, `humanElapsed`, and the `NewNewsfeedItem`
+/// notification-return machinery that existed only to support them are
+/// deleted outright, not left dormant — nothing calls them and nothing
+/// should.
 class NewsfeedService {
   NewsfeedService({DatabaseHelper? db, CouncilClient? client})
       : _db = db ?? DatabaseHelper.instance,
@@ -116,40 +87,18 @@ class NewsfeedService {
     ),
   ];
 
-  // Fired once per category the first time its current streak reaches
-  // each of these lengths. Kept short and round — "you did something 3
-  // days in a row" already reads as a real milestone; nothing here claims
-  // otherwise by picking an oddly precise number.
-  static const List<int> streakMilestones = [3, 7, 14, 30, 60, 100, 200, 365];
-
-  /// Scans current state and inserts any newly-earned newsfeed items,
-  /// returning only the genuinely new ones (never a duplicate, never a
-  /// seeded welcome card) for a caller that wants to notify about them.
-  /// Idempotent and safe to call repeatedly — each item's dedupeKey is
-  /// unique, so an already-recorded milestone or essence version is
-  /// silently skipped, never duplicated or returned twice.
-  Future<List<NewNewsfeedItem>> generateNewItems() async {
-    final categories = await _db.queryPyramidSummary();
-    final newItems = <NewNewsfeedItem>[];
-    for (final category in categories) {
-      final id = category['id'] as int;
-      final name = category['name'] as String;
-      newItems.addAll(
-          await _generateStreakItems(categoryId: id, categoryName: name));
-    }
-    newItems.addAll(await _generateEssenceItems(categories: categories));
-
-    // D-168: seed the five sample cards the first time the newsfeed has
-    // nothing else in it yet — checks the first sample card's own
-    // existence directly (the same self-limiting pattern D-158
-    // established for the welcome cards this replaces), so it survives
-    // a targeted migration wipe on an account that already has real
-    // content, not just a genuinely empty table.
+  /// D-170: the newsfeed's only remaining "ambient" content — seeds the
+  /// five sample cards the first time the newsfeed has nothing else in
+  /// it yet. Idempotent and safe to call repeatedly (checks the first
+  /// sample card's own existence directly, the same self-limiting
+  /// pattern D-158 originally established for the welcome cards this
+  /// replaced). Streak and essence generation used to run here too —
+  /// removed outright, not merely stopped, per the owner's explicit "I
+  /// don't want essence cards AT ALL... get rid of both #1 and #2."
+  Future<void> seedSampleCardsIfNeeded() async {
     if (!await _db.newsfeedItemExists('sample-1')) {
       await _seedSampleCards();
     }
-
-    return newItems;
   }
 
   // D-168: unlike D-158's welcome cards, these are seeded at "now" with
@@ -171,157 +120,6 @@ class NewsfeedService {
         createdAt: now.subtract(Duration(seconds: _sampleCopy.length - i)),
       );
     }
-  }
-
-  // D-154: rewritten from a single flat sentence per milestone to a
-  // punchier, per-milestone headline ("more like a post on x.com" — the
-  // owner's own words) plus a short reflective body. Each entry is
-  // (headline, body) — headline stays short and declarative like a real
-  // post; body is a sentence or two of reflection, not a full essay,
-  // since the card itself (not the copy alone) is what needed to feel
-  // more substantial.
-  static final Map<int, (String, String)> _streakCopy = {
-    3: (
-      '3 days on {cat}.',
-      "Three days straight — the hardest part, the start, is already behind you."
-    ),
-    7: (
-      'One week of {cat}. Done.',
-      'Seven days in a row. A full week where you showed up for what you said mattered.'
-    ),
-    14: (
-      'Two weeks straight on {cat}.',
-      "Fourteen days. This isn't a burst of motivation anymore — it's becoming who you are."
-    ),
-    30: (
-      '30 days on {cat}.',
-      'A full month, every day. That\'s not a habit forming — that\'s a habit formed.'
-    ),
-    60: (
-      '60 days straight. {cat}.',
-      'Two months without a gap. Most people never get here.'
-    ),
-    100: (
-      '100 days on {cat}.',
-      'Triple digits. A hundred days of choosing this, one at a time.'
-    ),
-    200: (
-      '200 days straight on {cat}.',
-      'Two hundred days in. This is just what you do now.'
-    ),
-    365: (
-      'One year on {cat}.',
-      'Three hundred sixty-five days, built on a single, repeated choice.'
-    ),
-  };
-
-  Future<List<NewNewsfeedItem>> _generateStreakItems({
-    required int categoryId,
-    required String categoryName,
-  }) async {
-    final newItems = <NewNewsfeedItem>[];
-    final streak = await _db.getCurrentStreak(categoryName);
-    for (final milestone in streakMilestones) {
-      if (streak < milestone) break;
-      final copy = _streakCopy[milestone]!;
-      final title = copy.$1.replaceAll('{cat}', categoryName);
-      final body = copy.$2;
-      final dedupeKey = 'streak-$categoryId-$milestone';
-      final inserted = await _db.insertNewsfeedItem(
-        type: 'streak',
-        title: title,
-        body: body,
-        categoryId: categoryId,
-        dedupeKey: dedupeKey,
-      );
-      if (inserted) {
-        newItems.add((title: title, body: body, dedupeKey: dedupeKey));
-      }
-    }
-    return newItems;
-  }
-
-  // D-165: found live — every essence version, first or fifth, produced
-  // the exact same flat "{cat}, redefined." + "Here's what {cat} means to
-  // you now" template, regardless of what actually happened. Owner:
-  // "these cards need to read like a post that has real news based off
-  // of what actually exists in the users data" — a value's FIRST
-  // definition and a later REDEFINITION are genuinely different events,
-  // and a redefinition's own real "news" is that something changed after
-  // holding for a specific amount of time. Both facts already exist in
-  // the essence history itself — no new AI call needed to surface them,
-  // consistent with D-150's original scoping of this tier as zero-cost.
-  Future<List<NewNewsfeedItem>> _generateEssenceItems({
-    required List<Map<String, dynamic>> categories,
-  }) async {
-    final newItems = <NewNewsfeedItem>[];
-    final namesById = {
-      for (final c in categories) c['id'] as int: c['name'] as String,
-    };
-    final essences = await _db.queryAllCategoryEssences();
-    final byCategoryId = <int, List<Map<String, dynamic>>>{};
-    for (final row in essences) {
-      final categoryId = row[DatabaseHelper.columnEssenceCategoryId] as int;
-      (byCategoryId[categoryId] ??= []).add(row);
-    }
-
-    for (final rows in byCategoryId.values) {
-      // Oldest first, so index 0 is genuinely the category's first-ever
-      // essence and each later row's "previous version" is unambiguous.
-      rows.sort((a, b) => (a[DatabaseHelper.columnEssenceCreated] as String)
-          .compareTo(b[DatabaseHelper.columnEssenceCreated] as String));
-
-      for (var i = 0; i < rows.length; i++) {
-        final row = rows[i];
-        final essenceId = row[DatabaseHelper.columnEssenceId] as int;
-        final categoryId = row[DatabaseHelper.columnEssenceCategoryId] as int;
-        final text = row[DatabaseHelper.columnEssenceText] as String;
-        final categoryName = namesById[categoryId];
-        if (categoryName == null) continue; // category since renamed/removed
-
-        final String title;
-        final String body;
-        final thisCreated =
-            DateTime.parse(row[DatabaseHelper.columnEssenceCreated] as String);
-        // The essence text itself is the owner's own words and stays
-        // verbatim, never rewritten — only the framing around it changes.
-        if (i == 0) {
-          title = '$categoryName, defined.';
-          body = "You just turned $categoryName from a name into "
-              "something real. Here's what it means to you:\n\n$text";
-        } else {
-          final previousCreated = DateTime.parse(
-              rows[i - 1][DatabaseHelper.columnEssenceCreated] as String);
-          final elapsed = humanElapsed(thisCreated.difference(previousCreated));
-          title = '$categoryName, redefined.';
-          body = "$elapsed after the last time, you've changed how you "
-              "see $categoryName. Here's what it means to you "
-              "now:\n\n$text";
-        }
-
-        final dedupeKey = 'essence-$essenceId';
-        // D-169: found live — a full newsfeed regeneration (D-168's own
-        // backfill) stamped every card with the moment it was
-        // *regenerated*, not the essence's own real creation date, so a
-        // genuinely days-old essence rendered as "You just turned..."
-        // dated today. createdAt now carries the essence row's own real
-        // [columnEssenceCreated] through, so the card's date always
-        // reflects when the change actually happened, regardless of
-        // when the cache last rebuilt.
-        final inserted = await _db.insertNewsfeedItem(
-          type: 'essence',
-          title: title,
-          body: body,
-          categoryId: categoryId,
-          dedupeKey: dedupeKey,
-          createdAt: thisCreated,
-        );
-        if (inserted) {
-          newItems.add((title: title, body: body, dedupeKey: dedupeKey));
-        }
-      }
-    }
-    return newItems;
   }
 
   /// One page of the feed, newest first — [offset] pages back through

@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 20; // 7: R3 schema — position, essences,
+  static const _databaseVersion = 21; // 7: R3 schema — position, essences,
   // domain findings, account state (Part IV). 8: R6/D-062 — discards an
   // incomplete old-flow setup so the user starts the new Council setup
   // fresh instead of landing on a half-populated pyramid with no way back
@@ -870,6 +870,22 @@ class DatabaseHelper {
             // to enumerate exactly which rows are stale by which round.
             await db.delete(newsfeedItemTable);
             break;
+          case 21:
+            // D-170: owner — "I only want #3 and #4. Get rid of both #1
+            // and #2" — #1/#2 being streak-milestone and essence-change
+            // cards. NewsfeedService no longer generates either type
+            // (`_generateStreakItems`/`_generateEssenceItems` deleted
+            // outright), but v20's full wipe predates that change, so
+            // an account that opened the app between v20 and this
+            // migration landing would already have regenerated fresh
+            // streak/essence rows. Deletes both types explicitly rather
+            // than wiping the whole table again, since sample and
+            // article cards (#3/#4) are exactly what the owner wants
+            // kept.
+            await db.delete(newsfeedItemTable,
+                where: '$columnNewsfeedType IN (?, ?)',
+                whereArgs: ['streak', 'essence']);
+            break;
         }
       }
     }
@@ -1395,6 +1411,10 @@ class DatabaseHelper {
     return ret;
   }
 
+  /// D-171: every task_log row, full stop — the sync source for
+  /// `recentActivity`, so a full uninstall/reinstall can restore every
+  /// check-off ever recorded, not just a recent window (D-075's original
+  /// 250-row bound is gone; see D-171).
   Future<List<Map<String, dynamic>>> queryAllTaskLogs() async {
     late List<Map<String, dynamic>> ret;
     try {
@@ -2198,15 +2218,6 @@ class DatabaseHelper {
     return byDomain;
   }
 
-  /// D-075: the bounded recent window of task_log that syncs to Firestore —
-  /// full history stays local-only (D-031). [limit] is supplied by the
-  /// caller (`AiGuard.maxTaskLogRows`) so this layer stays free of that
-  /// dependency.
-  Future<List<Map<String, dynamic>>> queryRecentTaskLogs(int limit) async {
-    final db = await database;
-    return db.query(getTaskLogTable(),
-        orderBy: '$columnTLTaskDate DESC', limit: limit);
-  }
 
   Future<void> insertChatMessage(String sender, String content) async {
     final db = await database;
