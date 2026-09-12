@@ -38,7 +38,8 @@ void main() {
         '(primary/secondary), not default-Material ElevatedButton/'
         'TextButton with a literal ">" in the label', () {
       expect(source, contains("Text('Edit Task List', style: _buttonLabelStyle)"));
-      expect(source, contains("Text('Schedule Habits', style: _buttonLabelStyle)"));
+      expect(source, contains("Text('Schedule Habits',"));
+      expect(source, contains('textAlign: TextAlign.center, style: _buttonLabelStyle'));
       expect(source, isNot(contains('Edit Task List >')));
       expect(source, isNot(contains('Schedule Habits >')));
     });
@@ -111,7 +112,8 @@ void main() {
       expect(rowEnd, greaterThan(rowStart));
       final rowBody = source.substring(rowStart, rowEnd);
       expect(rowBody, contains("Text('Edit Task List', style: _buttonLabelStyle)"));
-      expect(rowBody, contains("Text('Schedule Habits', style: _buttonLabelStyle)"));
+      expect(rowBody, contains("Text('Schedule Habits',"));
+      expect(rowBody, contains('textAlign: TextAlign.center, style: _buttonLabelStyle'));
       expect('Expanded('.allMatches(rowBody).length, 2,
           reason: 'each button should get an equal share of the row width');
     });

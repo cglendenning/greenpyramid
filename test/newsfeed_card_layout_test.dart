@@ -130,8 +130,9 @@ void main() {
       expect(source, contains('if (!_entitled) return null;'));
     });
 
-    test('shows and enforces the remaining on-demand count for the day',
-        () {
+    test('enforces the remaining on-demand count for the day (silently, '
+        'per D-173 — no visible countdown, just a disabled button once '
+        'the cap is reached)', () {
       expect(source, contains('_onDemandRemaining'));
       expect(source, contains('generateArticleOnDemand'));
     });

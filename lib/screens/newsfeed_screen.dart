@@ -189,32 +189,35 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
+  /// D-173: rebuilt per owner feedback — no icon at all ("do not use the
+  /// little stars, indicating artificial intelligence icon... create a
+  /// rule to never use that thing ever" — a decorative "AI" glyph on a
+  /// control is exactly what the project's own icon rule already
+  /// forbids), no visible countdown ("I don't think the callout is
+  /// necessary to indicate that you only have three... that can just be
+  /// a silent gate"), and no longer a full-width bar ("maybe a button
+  /// that doesn't take up the entire width of the screen, but is a bit
+  /// smaller"). The daily cap is enforced purely by disabling the button
+  /// once reached — Flutter's own default disabled styling communicates
+  /// that silently, no explanatory text needed.
   Widget? _generateButton() {
     if (!_entitled) return null;
     final disabled = _generating || _onDemandRemaining <= 0;
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      child: SizedBox(
-        width: double.infinity,
-        child: OutlinedButton.icon(
+      child: Align(
+        alignment: Alignment.center,
+        child: OutlinedButton(
           onPressed: disabled ? null : _onGenerateTapped,
-          icon: _generating
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2, color: AppColors.brandGreen),
-                )
-              : const Icon(Icons.auto_awesome, size: 18, color: AppColors.brandGreen),
-          label: Text(
-            _onDemandRemaining <= 0
-                ? "Today's analyses used — more tomorrow"
-                : 'Generate new analysis ($_onDemandRemaining left today)',
-            style: const TextStyle(fontFamily: 'Exo2', color: AppColors.brandGreen),
-          ),
           style: OutlinedButton.styleFrom(
             side: const BorderSide(color: AppColors.brandGreen),
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          ),
+          child: Text(
+            _generating ? 'Generating…' : 'Generate new analysis',
+            style: const TextStyle(
+                fontFamily: 'Exo2', color: AppColors.brandGreen, fontSize: 14),
           ),
         ),
       ),
@@ -298,6 +301,7 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
                     key: _itemKeys[dedupeKey],
                     item: item,
                     highlighted: dedupeKey == _highlighted,
+                    onReturnFromPaywall: _loadEntitlementState,
                   );
                 },
               );
@@ -321,9 +325,14 @@ int _stableHash(String s) {
 }
 
 class _NewsfeedCard extends StatelessWidget {
-  const _NewsfeedCard({super.key, required this.item, this.highlighted = false});
+  const _NewsfeedCard(
+      {super.key, required this.item, this.highlighted = false, this.onReturnFromPaywall});
 
   final Map<String, dynamic> item;
+  // D-173: lets the subscribe link refresh the screen's entitlement state
+  // on return from the paywall — this card itself is stateless and owns
+  // no entitlement state of its own.
+  final Future<void> Function()? onReturnFromPaywall;
   final bool highlighted;
 
   @override
@@ -516,10 +525,21 @@ class _NewsfeedCard extends StatelessWidget {
           if (isSample) ...[
             const SizedBox(height: 12),
             GestureDetector(
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                builder: (_) => const PaywallScreen(
-                    reason: 'Get analysis tailored to your own trends'),
-              )),
+              onTap: () async {
+                // D-173: found live — subscribing here and landing back on
+                // this screen still showed the sample's subscribe pitch
+                // and hid the generate button, because entitlement state
+                // was only ever loaded once, in initState. Reload it on
+                // return regardless of outcome (PaywallScreen pops `true`
+                // on a completed purchase, `false` on manual dismissal —
+                // simplest and most correct either way is to just re-read
+                // the account's real current state).
+                await Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const PaywallScreen(
+                      reason: 'Get analysis tailored to your own trends'),
+                ));
+                await onReturnFromPaywall?.call();
+              },
               child: RichText(
                 text: const TextSpan(
                   style: TextStyle(fontFamily: 'Exo2', fontSize: 13, height: 1.4),

@@ -338,7 +338,8 @@ class _TaskListState extends State<TaskList> {
                             );
                           },
                           style: _secondaryButtonStyle,
-                          child: const Text('Schedule Habits', style: _buttonLabelStyle),
+                          child: const Text('Schedule Habits',
+                              textAlign: TextAlign.center, style: _buttonLabelStyle),
                         ),
                       ),
                     ],

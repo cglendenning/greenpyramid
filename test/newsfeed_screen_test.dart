@@ -41,4 +41,40 @@ void main() {
     expect(source,
         contains('_service.getFeed(limit: _pageSize, offset: _items.length)'));
   });
+
+  group('D-173: the sample card\'s subscribe link refreshes entitlement '
+      'state on return from the paywall — found live: subscribing and '
+      'landing back on this screen still showed the subscribe pitch and '
+      'hid the generate button, because entitlement state was only ever '
+      'loaded once, in initState', () {
+    test('the subscribe link awaits the paywall push, then reloads '
+        'entitlement state', () {
+      expect(source, contains('await Navigator.of(context).push(MaterialPageRoute('));
+      expect(source, contains('await onReturnFromPaywall?.call();'));
+    });
+
+    test('the screen wires its own _loadEntitlementState into each card '
+        'as that callback', () {
+      expect(source, contains('onReturnFromPaywall: _loadEntitlementState'));
+    });
+  });
+
+  group('D-173: the "Generate new analysis" control has no decorative '
+      'icon and no visible countdown', () {
+    test('never uses the auto_awesome ("AI sparkle") icon — owner: "do '
+        'not use the little stars, indicating artificial intelligence '
+        'icon... create a rule to never use that thing ever"', () {
+      expect(source, isNot(contains('auto_awesome')));
+    });
+
+    test('the button label never states how many generations remain', () {
+      expect(source, isNot(contains('left today')));
+    });
+
+    test('the cap is enforced purely by disabling the button, not by '
+        'swapping in an explanatory label', () {
+      expect(source, contains('disabled = _generating || _onDemandRemaining <= 0'));
+      expect(source, contains('onPressed: disabled ? null : _onGenerateTapped'));
+    });
+  });
 }
