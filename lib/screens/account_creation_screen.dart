@@ -63,20 +63,29 @@ class _AccountCreationScreenState extends State<AccountCreationScreen> {
   // *this* screen ("Welcome back — signing you in...") was a poor
   // substitute for an honest loading state, since the real work can take
   // more or less than the 2 seconds that text needed to be read for.
+  //
+  // D-162: on success, SigningInScreen now calls widget.onDone directly
+  // and never pops back here at all — see its own doc comment. This
+  // method only ever sees a SignInOutcome for a failure or a
+  // cancellation, both of which do need to return to this screen.
   Future<void> _handle(
     Future<User?> Function() signIn,
     String provider,
   ) async {
     setState(() => _error = null);
     final outcome = await Navigator.of(context).push<SignInOutcome>(
-      MaterialPageRoute(builder: (_) => SigningInScreen(signIn: signIn, provider: provider)),
+      MaterialPageRoute(
+        builder: (_) => SigningInScreen(
+          signIn: signIn,
+          provider: provider,
+          onDone: widget.onDone,
+        ),
+      ),
     );
     if (!mounted || outcome == null || outcome.cancelled) return;
     if (outcome.errorMessage != null) {
       setState(() => _error = outcome.errorMessage);
-      return;
     }
-    widget.onDone(switchedToExistingAccount: outcome.switchedAccount);
   }
 
   @override

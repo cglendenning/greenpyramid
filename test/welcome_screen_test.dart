@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/screens/welcome_screen.dart';
+import 'package:life_ops/theme/app_colors.dart';
 
 /// D-089: a single welcome screen precedes Mira's opening line, telling
 /// the user a short guided conversation is coming before dropping them
@@ -30,7 +31,16 @@ void main() {
         findsOneWidget);
     expect(find.widgetWithText(ElevatedButton, 'Begin'), findsOneWidget);
     expect(find.byType(ElevatedButton), findsOneWidget);
-    expect(find.widgetWithText(TextButton, 'Already have an account? Sign in'),
+    // D-161: split into two RichText spans (plain question + a
+    // brand-green, underlined "Sign in" link), so it's no longer a
+    // single plain Text findable by widgetWithText.
+    expect(
+        find.descendant(
+          of: find.byType(TextButton),
+          matching: find.byWidgetPredicate((w) =>
+              w is RichText &&
+              w.text.toPlainText() == 'Already have an account? Sign in'),
+        ),
         findsOneWidget);
   });
 
@@ -186,6 +196,53 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('NOT MEDICAL OR PROFESSIONAL ADVICE'), findsOneWidget);
+    });
+  });
+
+  group('D-161: the "Sign in" link and Terms and Conditions link are '
+      'centered, and "Sign in" itself is visually marked as tappable — '
+      'owner: "the already have an account line to be centered and I also '
+      'want the terms and conditions to be centered and also the sign in '
+      'text should not be white just like the question in front of it. '
+      'There should be some indication that this is a link."', () {
+    testWidgets('both links sit centered, not flush left', (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: WelcomeScreen()));
+      await tester.pump();
+
+      final signInAlign = tester.widget<Align>(find
+          .ancestor(
+            of: find.widgetWithText(TextButton, 'Terms and Conditions'),
+            matching: find.byType(Align),
+          )
+          .first);
+      expect(signInAlign.alignment, Alignment.center);
+
+      final signInRichText = find.byWidgetPredicate((w) =>
+          w is RichText &&
+          w.text.toPlainText() == 'Already have an account? Sign in');
+      final termsAlign = tester.widget<Align>(
+          find.ancestor(of: signInRichText, matching: find.byType(Align)).first);
+      expect(termsAlign.alignment, Alignment.center);
+    });
+
+    testWidgets('"Sign in" renders in the brand-green link color, '
+        'underlined, distinct from the plain question text before it',
+        (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: WelcomeScreen()));
+      await tester.pump();
+
+      final richText = tester.widget<RichText>(find.byWidgetPredicate((w) =>
+          w is RichText &&
+          w.text.toPlainText() == 'Already have an account? Sign in'));
+      final span = richText.text as TextSpan;
+      final questionSpan = span.children![0] as TextSpan;
+      final signInSpan = span.children![1] as TextSpan;
+
+      expect(signInSpan.text, 'Sign in');
+      expect(signInSpan.style!.color, AppColors.brandGreen);
+      expect(signInSpan.style!.decoration, TextDecoration.underline);
+      expect(questionSpan.style?.color ?? span.style?.color,
+          isNot(AppColors.brandGreen));
     });
   });
 }

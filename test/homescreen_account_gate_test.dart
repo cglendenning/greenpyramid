@@ -32,8 +32,8 @@ void main() {
           contains('WidgetsBinding.instance.addPostFrameCallback((_) => _enforceRealAccount());'));
     });
 
-    test('a plain link (the common case) just pops the gate and refreshes '
-        '— it never blocks the pyramid the user already has', () {
+    test('a plain link (the common case) pops the gate and refreshes — it '
+        'never blocks the pyramid the user already has', () {
       expect(homescreenSource, contains('Navigator.of(context).pop();'));
       expect(homescreenSource, contains('setState(() => setFutures());'));
     });
@@ -43,6 +43,35 @@ void main() {
         'pyramid *and* the identity used already belongs to a different, '
         'real account', () {
       expect(homescreenSource, contains('SyncService.instance.restoreFromCloud(uid)'));
+    });
+  });
+
+  group('D-162: onDone pops both SigningInScreen and AccountCreationScreen '
+      '— found live alongside the same-cause bug on WelcomeScreen\'s own '
+      'sign-in link. onDone now fires from within SigningInScreen (still '
+      'on top of AccountCreationScreen), so a single pop here would leave '
+      'AccountCreationScreen stuck on screen with nothing left to dismiss '
+      'it.', () {
+    test('the AccountCreationScreen onDone callback pops exactly twice, '
+        'synchronously — no await between the two pops, so no '
+        'intermediate frame can reveal AccountCreationScreen again', () {
+      final onDoneStart = homescreenSource.indexOf('onDone: ({required bool switchedToExistingAccount})');
+      expect(onDoneStart, greaterThan(-1));
+      final onDoneEnd = homescreenSource.indexOf('},', onDoneStart);
+      final onDoneBody = homescreenSource.substring(onDoneStart, onDoneEnd);
+      final popCount = RegExp('Navigator.of(context).pop();'.replaceAll('(', r'\(').replaceAll(')', r'\)'))
+          .allMatches(onDoneBody)
+          .length;
+      expect(popCount, 2);
+      // No `await ` keyword in the actual callback body (comments aside —
+      // this file's own explanation of the fix uses the word "await" in
+      // prose, which a bare `contains('await')` check would trip on).
+      final codeOnly = onDoneBody
+          .split('\n')
+          .map((line) => line.trim())
+          .where((line) => !line.startsWith('//'))
+          .join('\n');
+      expect(codeOnly, isNot(contains('await ')));
     });
   });
 }

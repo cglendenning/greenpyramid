@@ -48,12 +48,26 @@ void main() {
       expect(source, contains('canPop: false'));
     });
 
-    test('kicks off the sign-in call immediately from initState, and '
-        'pops with the outcome once it resolves — the caller reacts, '
-        'this screen doesn\'t', () {
+    test('kicks off the sign-in call immediately from initState, and on '
+        'success calls onDone directly rather than popping back to '
+        'AccountCreationScreen', () {
       expect(source, contains('_run();'));
       expect(source, contains('await widget.signIn()'));
-      expect(source, contains('Navigator.of(context).pop(SignInOutcome.success'));
+      expect(source, contains('widget.onDone(switchedToExistingAccount: switchedAccount)'));
+    });
+
+    test('D-162: found live — popping back to AccountCreationScreen on '
+        'success genuinely re-revealed it (including its own reveal '
+        'transition) for the entire duration of whatever async work the '
+        'caller\'s onDone still had left (a real Firestore round trip for '
+        'a switched account). Owner: "it quickly flips back to the '
+        'signing page and then to the main pyramid screen." Calling '
+        'onDone directly from here means this screen\'s own loading state '
+        'covers that whole remaining duration instead, and the final '
+        'navigation is a single transition straight to the real '
+        'destination.', () {
+      expect(source, isNot(contains('SignInOutcome.success')));
+      expect(source, contains('required this.onDone'));
     });
 
     test('D-139 carried over: a canceled Apple sheet is not treated as '

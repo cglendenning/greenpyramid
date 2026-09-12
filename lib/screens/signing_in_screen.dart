@@ -10,25 +10,17 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../theme/app_colors.dart';
 
-/// D-143: the actual outcome of a sign-in attempt, handed back to
-/// [AccountCreationScreen] via [Navigator.pop] once [SigningInScreen]
-/// finishes. Exactly one of [errorMessage] is set, or neither — a plain
-/// success (`errorMessage == null`) still needs [switchedAccount] to pick
-/// the right next step (D-132), and a cancellation is a silent no-op, not
-/// an error.
+/// D-143/D-162: the outcome of a sign-in attempt that failed or was
+/// cancelled, handed back to [AccountCreationScreen] via [Navigator.pop]
+/// so it can show an error or simply do nothing. A successful sign-in no
+/// longer produces one of these — see [SigningInScreen]'s own doc comment
+/// for why.
 class SignInOutcome {
-  const SignInOutcome.success({required this.switchedAccount})
-      : errorMessage = null,
-        cancelled = false;
-  const SignInOutcome.failure(this.errorMessage)
-      : switchedAccount = false,
-        cancelled = false;
+  const SignInOutcome.failure(this.errorMessage) : cancelled = false;
   const SignInOutcome.cancelled()
-      : switchedAccount = false,
-        errorMessage = null,
+      : errorMessage = null,
         cancelled = true;
 
-  final bool switchedAccount;
   final String? errorMessage;
   final bool cancelled;
 }
@@ -41,16 +33,39 @@ class SignInOutcome {
 /// drops you back to the sign in page if sign in fails." Replaces the
 /// inline green "Welcome back — signing you in..." text + a fixed
 /// 2-second `Future.delayed` that used to live directly on
-/// [AccountCreationScreen] — this screen instead covers the *actual*
-/// in-flight duration of [signIn], however long it really takes, then
-/// pops with a [SignInOutcome] for the caller to act on. `canPop: false`
-/// (same mechanism D-128/D-130 already use) — nothing coherent to go
-/// back to mid-sign-in.
+/// [AccountCreationScreen].
+///
+/// D-162: on success this screen now calls [onDone] directly instead of
+/// popping back to [AccountCreationScreen] and leaving that screen's own
+/// caller to navigate onward. Found live — owner: "when I click sign in
+/// with Apple it presents me with my account and I click sign in and the
+/// black screen comes up with the glowing pyramid logo, which is great,
+/// but then after signing succeed, it quickly flips back to the signing
+/// page and then to the main pyramid screen." Root cause: popping back to
+/// AccountCreationScreen genuinely re-revealed it — including its own
+/// visible reveal transition — for the *entire* duration of whatever
+/// async work the caller's `onDone` still had left to do (for a switched
+/// account, a real Firestore round trip via `SyncService.restoreFromCloud`),
+/// before that caller's own navigation call finally left it. Calling
+/// `onDone` from here instead means this screen's own glowing-pyramid
+/// loading state now honestly covers that entire remaining duration too,
+/// not just the initial auth handshake — matching what this screen's own
+/// doc comment already promised ("however long it really takes") — and
+/// the final navigation is a single transition straight from this screen
+/// to the real destination. On failure or cancellation, popping back to
+/// AccountCreationScreen is still correct (and desired) — the user needs
+/// to see the error or simply try again from there.
 class SigningInScreen extends StatefulWidget {
-  const SigningInScreen({super.key, required this.signIn, required this.provider});
+  const SigningInScreen({
+    super.key,
+    required this.signIn,
+    required this.provider,
+    required this.onDone,
+  });
 
   final Future<User?> Function() signIn;
   final String provider;
+  final void Function({required bool switchedToExistingAccount}) onDone;
 
   @override
   State<SigningInScreen> createState() => _SigningInScreenState();
@@ -76,7 +91,7 @@ class _SigningInScreenState extends State<SigningInScreen> {
         parameters: {'provider': widget.provider, 'switched_existing_account': switchedAccount},
       ));
       if (!mounted) return;
-      Navigator.of(context).pop(SignInOutcome.success(switchedAccount: switchedAccount));
+      widget.onDone(switchedToExistingAccount: switchedAccount);
     } catch (error) {
       if (kDebugMode) {
         print('SigningInScreen: ${widget.provider} sign-in failed: $error');

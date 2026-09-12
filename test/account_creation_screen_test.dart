@@ -41,12 +41,14 @@ void main() {
       expect(source, contains('OnboardingBackdrop('));
     });
 
-    test('D-132: calls onDone with whether AccountLinkService switched to a '
-        'different, already-existing account (credential-already-in-use) '
-        'rather than linking the current one — every caller needs to react '
-        'differently to the two outcomes', () {
-      expect(source, contains('widget.onDone(switchedToExistingAccount: outcome.switchedAccount)'));
+    test('D-132: declares onDone with whether AccountLinkService switched '
+        'to a different, already-existing account (credential-already-in-'
+        'use) rather than linking the current one — every caller needs to '
+        'react differently to the two outcomes. D-162: onDone itself is '
+        'now called from SigningInScreen on success (see that screen\'s '
+        'own tests) — this screen only threads it through.', () {
       expect(source, contains('void Function({required bool switchedToExistingAccount}) onDone'));
+      expect(source, contains('onDone: widget.onDone'));
     });
 
     test('AccountLinkService is injectable, not hardcoded to the '
@@ -86,9 +88,12 @@ void main() {
       'lives in SigningInScreen, reached via Navigator.push — this screen '
       'only reacts to the SignInOutcome that comes back', () {
     test('_handle pushes SigningInScreen and awaits a SignInOutcome, '
-        'instead of calling the sign-in function directly inline', () {
+        'instead of calling the sign-in function directly inline — the '
+        'awaited outcome now only ever represents a failure or a '
+        'cancellation (D-162)', () {
       expect(source, contains('Navigator.of(context).push<SignInOutcome>('));
-      expect(source, contains('SigningInScreen(signIn: signIn, provider: provider)'));
+      expect(source, contains('signIn: signIn,'));
+      expect(source, contains('provider: provider,'));
     });
 
     test('a cancelled outcome shows no error — matches D-139\'s original '

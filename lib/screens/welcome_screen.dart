@@ -188,13 +188,36 @@ class WelcomeScreen extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(28, 0, 28, 8),
                     child: Align(
-                      alignment: Alignment.centerLeft,
+                      alignment: Alignment.center,
                       child: TextButton(
                         style: TextButton.styleFrom(padding: EdgeInsets.zero),
                         onPressed: () => _signIn(context),
-                        child: const Text(
-                          'Already have an account? Sign in',
-                          style: TextStyle(color: AppColors.textPrimary),
+                        // D-161: found live — "Sign in" rendered the same
+                        // plain white as the question in front of it, with
+                        // nothing marking it as tappable. Split into two
+                        // spans so only "Sign in" itself carries the
+                        // brand-green, underlined link treatment the rest
+                        // of the app already uses for tappable text.
+                        child: RichText(
+                          text: const TextSpan(
+                            style: TextStyle(
+                              fontFamily: 'Raleway',
+                              fontSize: 14,
+                              color: AppColors.textPrimary,
+                            ),
+                            children: [
+                              TextSpan(text: 'Already have an account? '),
+                              TextSpan(
+                                text: 'Sign in',
+                                style: TextStyle(
+                                  color: AppColors.brandGreen,
+                                  fontWeight: FontWeight.w600,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: AppColors.brandGreen,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -205,7 +228,7 @@ class WelcomeScreen extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
                     child: Align(
-                      alignment: Alignment.centerLeft,
+                      alignment: Alignment.center,
                       child: TextButton(
                         style: TextButton.styleFrom(padding: EdgeInsets.zero),
                         onPressed: () => Navigator.of(context).push(

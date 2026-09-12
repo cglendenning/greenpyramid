@@ -200,6 +200,12 @@ class _HomeScreen extends State<HomeScreenWidget> {
       builder: (_) => AccountCreationScreen(
         onDone: ({required bool switchedToExistingAccount}) {
           accountWasSwitched = switchedToExistingAccount;
+          // D-162: onDone now fires from within SigningInScreen, still
+          // on top of AccountCreationScreen (see that screen's own doc
+          // comment) — pop both, synchronously and with no await
+          // between them, so AccountCreationScreen is never revealed
+          // again before this push's own await resolves below.
+          Navigator.of(context).pop();
           Navigator.of(context).pop();
         },
       ),
