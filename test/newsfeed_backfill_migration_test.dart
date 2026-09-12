@@ -171,11 +171,13 @@ void main() {
     expect(remainingTypes, isNot(contains('essence')));
   });
 
-  test('D-165: the v15->v16 migration deletes only type=essence rows, '
-      'leaving streak/article/welcome cards untouched — clears every '
-      'essence card generated under the old flat "{cat}, redefined." '
-      'template so they regenerate under the new first-definition/'
-      'redefinition-aware framing', () async {
+  test('D-165: the v15->v16 migration deletes only type=essence rows — '
+      'clears every essence card generated under the old flat '
+      '"{cat}, redefined." template so they regenerate under the new '
+      'first-definition/redefinition-aware framing. (This exercises the '
+      'full migration chain to the current version — v18->v19/D-168 '
+      'also removes type=welcome in the same chain, since it retires '
+      'the welcome-card concept entirely.)', () async {
     final path = '${tempDir.path}/LifeOps.db';
     final raw = await databaseFactory.openDatabase(
       path,
@@ -199,8 +201,9 @@ void main() {
     final rows = await upgraded.query(DatabaseHelper.newsfeedItemTable);
     final remainingTypes = rows.map((r) => r[DatabaseHelper.columnNewsfeedType]).toSet();
 
-    expect(remainingTypes, {'streak', 'article', 'welcome'});
+    expect(remainingTypes, {'streak', 'article'});
     expect(remainingTypes, isNot(contains('essence')));
+    expect(remainingTypes, isNot(contains('welcome')));
   });
 
   test('D-166: the v16->v17 migration collapses consecutive same-text '
@@ -289,5 +292,36 @@ void main() {
     expect(rows.length, 1,
         reason: 'the v17->v18 migration installed the trigger, so the '
             'duplicate insert above was silently skipped');
+  });
+
+  test('D-168: the v18->v19 migration deletes only type=welcome rows, '
+      'leaving essence/streak/article untouched — the two generic '
+      'welcome cards are retired entirely, replaced by the five sample '
+      'cards NewsfeedService now seeds', () async {
+    final path = '${tempDir.path}/LifeOps.db';
+    final raw = await databaseFactory.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 18,
+        onCreate: (db, version) => _createV12SchemaWithEssence(db),
+      ),
+    );
+    for (final type in ['welcome', 'essence', 'streak', 'article']) {
+      await raw.insert(DatabaseHelper.newsfeedItemTable, {
+        DatabaseHelper.columnNewsfeedType: type,
+        DatabaseHelper.columnNewsfeedTitle: '$type title',
+        DatabaseHelper.columnNewsfeedBody: '$type body',
+        DatabaseHelper.columnNewsfeedCreated: DateTime.now().toIso8601String(),
+        DatabaseHelper.columnNewsfeedDedupeKey: '$type-key',
+      });
+    }
+    await raw.close();
+
+    final upgraded = await db.database;
+    final rows = await upgraded.query(DatabaseHelper.newsfeedItemTable);
+    final remainingTypes = rows.map((r) => r[DatabaseHelper.columnNewsfeedType]).toSet();
+
+    expect(remainingTypes, {'essence', 'streak', 'article'});
+    expect(remainingTypes, isNot(contains('welcome')));
   });
 }

@@ -119,9 +119,15 @@ void main() {
     // general Council entry point the same way council_category_picker.dart
     // already gates category re-clarification — a second legitimate D-016
     // gate site, not habit tracking or the pyramid gating on entitlement.
+    // newsfeed_screen.dart added for D-168: gates visibility of the
+    // "Generate new analysis" on-demand control — the base newsfeed
+    // itself remains ungated (D-150), only this one AI-costing control
+    // checks entitlement, the same "one legitimate gate site per real AI
+    // feature" pattern the other two entries already establish.
     final gatedScreens = [
       'lib/screens/council_category_picker.dart',
       'lib/screens/homescreen.dart',
+      'lib/screens/newsfeed_screen.dart',
     ];
     final offenders = Directory('lib/screens')
         .listSync(recursive: true)

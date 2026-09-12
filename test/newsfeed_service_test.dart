@@ -177,16 +177,16 @@ void main() {
     });
 
     test('a category with no essence and no streak yet produces no real '
-        '(streak/essence) items — only the two D-154 welcome cards seeded '
+        '(streak/essence) items — only the five D-168 sample cards seeded '
         'on this genuinely-empty first pass', () async {
       await seedCategory(1, 'Craft');
       final newItems = await service.generateNewItems();
       expect(newItems, isEmpty,
-          reason: 'welcome cards are seeded directly, not returned as '
+          reason: 'sample cards are seeded directly, not returned as '
               '"new" notification-worthy items');
       final feed = await service.getFeed(limit: 50, offset: 0);
-      expect(feed.map((i) => i['type']), everyElement('welcome'));
-      expect(feed.length, 2);
+      expect(feed.map((i) => i['type']), everyElement('sample'));
+      expect(feed.length, 5);
     });
 
     test('an essence version produces a feed item keyed by its own row id '
@@ -358,7 +358,7 @@ void main() {
       expect(second, isEmpty);
     });
 
-    test('the seeded welcome cards are never returned as "new" — they are '
+    test('the seeded sample cards are never returned as "new" — they are '
         "not real content worth a push notification", () async {
       await seedCategory(1, 'Craft');
       final newItems = await service.generateNewItems();
@@ -366,52 +366,35 @@ void main() {
     });
   });
 
-  group('D-158: the two welcome cards are never adjacent to each other in '
-      'the feed — found live: "make sure that these static content cards '
-      'are separated by at least two dynamic cards because it looks '
-      'weird to have them right next to each other"', () {
-    test('with several real items, at least two of them sit between '
-        'welcome-1 and welcome-2 in the displayed feed order', () async {
+  group('D-168: the five sample cards seed once, at "now," with no '
+      'artificial backdating — replaces D-158\'s welcome-card spacing '
+      'mechanism entirely, since these carry a subscribe pitch and '
+      "should age naturally alongside real content rather than being "
+      'deliberately buried', () {
+    test('all five sample cards exist, each keyed sample-1 through '
+        'sample-5', () async {
       await seedCategory(1, 'Craft');
-      await db.insertCategoryEssence(categoryId: 1, essence: 'One.');
-      await db.insertCategoryEssence(categoryId: 1, essence: 'Two.');
-      await db.insertCategoryEssence(categoryId: 1, essence: 'Three.');
-
       await service.generateNewItems();
 
       final feed = await service.getFeed(limit: 50, offset: 0);
-      final keys = feed.map((i) => i['dedupekey'] as String).toList();
-      final pos2 = keys.indexOf('welcome-2');
-      final pos1 = keys.indexOf('welcome-1');
-      expect(pos2, greaterThanOrEqualTo(0));
-      expect(pos1, greaterThan(pos2));
-      expect(pos1 - pos2 - 1, greaterThanOrEqualTo(2),
-          reason: 'at least two other cards must sit strictly between '
-              'welcome-2 and welcome-1');
+      final keys = feed.map((i) => i['dedupekey'] as String).toSet();
+      expect(keys, containsAll(['sample-1', 'sample-2', 'sample-3', 'sample-4', 'sample-5']));
     });
 
-    test('welcome-1 is always the oldest item in the feed — the anchor '
-        'the spacing is built around', () async {
-      await seedCategory(1, 'Craft');
-      await db.insertCategoryEssence(categoryId: 1, essence: 'One.');
-
-      await service.generateNewItems();
-
-      final feed = await service.getFeed(limit: 50, offset: 0);
-      expect(feed.last['dedupekey'], 'welcome-1');
-    });
-
-    test('after a targeted wipe of only type=welcome rows (D-158\'s own '
-        "migration scenario), the cards reseed correctly on an account "
-        'that already has plenty of real content — not just on a '
-        'genuinely empty table', () async {
+    test('after a targeted wipe of only type=welcome rows (the retired '
+        "D-158/D-154 card type, deleted by D-168's own migration), the "
+        'sample cards seed correctly on an account that already has '
+        'plenty of real content — not just on a genuinely empty table',
+        () async {
       await seedCategory(1, 'Craft');
       await db.insertCategoryEssence(categoryId: 1, essence: 'One.');
       await db.insertCategoryEssence(categoryId: 1, essence: 'Two.');
+      // Simulate an account that still had old welcome rows before the
+      // D-168 migration ran.
+      await db.insertNewsfeedItem(
+          type: 'welcome', title: 'old', body: 'old', dedupeKey: 'welcome-1');
       await service.generateNewItems();
 
-      // Simulate the v14->v15 migration: delete only the welcome rows,
-      // leaving the real essence content in place.
       final d = await db.database;
       await d.delete(DatabaseHelper.newsfeedItemTable,
           where: '${DatabaseHelper.columnNewsfeedType} = ?', whereArgs: ['welcome']);
@@ -420,7 +403,8 @@ void main() {
 
       final feed = await service.getFeed(limit: 50, offset: 0);
       final keys = feed.map((i) => i['dedupekey'] as String).toSet();
-      expect(keys, containsAll(['welcome-1', 'welcome-2']));
+      expect(keys, containsAll(['sample-1', 'sample-2', 'sample-3', 'sample-4', 'sample-5']));
+      expect(keys, isNot(contains('welcome-1')));
     });
   });
 
@@ -443,7 +427,7 @@ void main() {
       }
     });
 
-    test('essence and welcome copy is emoji-free', () async {
+    test('essence and sample copy is emoji-free', () async {
       await seedCategory(1, 'Craft');
       await db.insertCategoryEssence(categoryId: 1, essence: 'Made by hand.');
       await service.generateNewItems();
@@ -571,6 +555,125 @@ void main() {
       expect(sent.first.containsKey('pct7'), isTrue);
       expect(sent.first.containsKey('pct30'), isTrue);
       expect(sent.first['streak'], 3);
+    });
+  });
+
+  group('D-168: on-demand article generation — owner: "I also want '
+      'subscribed users to be able to generate a new news item on '
+      'demand in addition to the news item that gets generated '
+      'automatically once per day"', () {
+    late _FakeCouncilClient fakeClient;
+    late NewsfeedService articleService;
+
+    setUp(() {
+      fakeClient = _FakeCouncilClient();
+      articleService = NewsfeedService(db: db, client: fakeClient);
+    });
+
+    Future<void> makeEntitled() => db.setAccountEntitlement(entitlement: 'trialing');
+
+    test('an unentitled account is refused before any AI call — same '
+        'gate as the automatic article', () async {
+      await seedCategory(1, 'Craft');
+      final outcome = await articleService.generateArticleOnDemand();
+      expect(outcome, OnDemandArticleOutcome.notEntitled);
+      expect(fakeClient.callCount, 0);
+    });
+
+    test('an entitled account can generate on demand, with its own '
+        'distinct dedupeKey — never colliding with the automatic '
+        "daily article's own key", () async {
+      await makeEntitled();
+      await seedCategory(1, 'Craft');
+
+      final outcome = await articleService.generateArticleOnDemand();
+
+      expect(outcome, OnDemandArticleOutcome.generated);
+      expect(fakeClient.callCount, 1);
+      final feed = await service.getFeed(limit: 50, offset: 0);
+      final articles = feed.where((i) => i['type'] == 'article').toList();
+      expect(articles.length, 1);
+      final today = DateTime.now().toIso8601String().substring(0, 10);
+      expect(articles.first['dedupekey'], 'article-$today-manual-1');
+    });
+
+    test('on-demand generation and the automatic daily article coexist '
+        'as two separate cards, never colliding on dedupeKey', () async {
+      await makeEntitled();
+      await seedCategory(1, 'Craft');
+
+      await articleService.generateArticleIfDue();
+      await articleService.generateArticleOnDemand();
+
+      expect(fakeClient.callCount, 2);
+      final feed = await service.getFeed(limit: 50, offset: 0);
+      expect(feed.where((i) => i['type'] == 'article').length, 2);
+    });
+
+    test('up to onDemandDailyCap generations succeed in one day, each '
+        'with its own numbered dedupeKey', () async {
+      await makeEntitled();
+      await seedCategory(1, 'Craft');
+
+      for (var i = 0; i < NewsfeedService.onDemandDailyCap; i++) {
+        final outcome = await articleService.generateArticleOnDemand();
+        expect(outcome, OnDemandArticleOutcome.generated);
+      }
+
+      expect(fakeClient.callCount, NewsfeedService.onDemandDailyCap);
+      final today = DateTime.now().toIso8601String().substring(0, 10);
+      final feed = await service.getFeed(limit: 50, offset: 0);
+      final keys = feed
+          .where((i) => i['type'] == 'article')
+          .map((i) => i['dedupekey'] as String)
+          .toSet();
+      for (var i = 1; i <= NewsfeedService.onDemandDailyCap; i++) {
+        expect(keys, contains('article-$today-manual-$i'));
+      }
+    });
+
+    test('a generation past onDemandDailyCap is refused, without ever '
+        'calling the AI', () async {
+      await makeEntitled();
+      await seedCategory(1, 'Craft');
+      for (var i = 0; i < NewsfeedService.onDemandDailyCap; i++) {
+        await articleService.generateArticleOnDemand();
+      }
+      fakeClient.callCount = 0; // reset to isolate the next call
+
+      final outcome = await articleService.generateArticleOnDemand();
+
+      expect(outcome, OnDemandArticleOutcome.dailyCapReached);
+      expect(fakeClient.callCount, 0);
+    });
+
+    test('a swallowed failure (spend cap, network) reports failed, not '
+        'generated — the same best-effort swallow the automatic article '
+        'already has', () async {
+      await makeEntitled();
+      await seedCategory(1, 'Craft');
+      fakeClient.throwOnCall = SpendLimitException(totalSpendUsd: 5, spendCapUsd: 5);
+
+      final outcome = await articleService.generateArticleOnDemand();
+
+      expect(outcome, OnDemandArticleOutcome.failed);
+    });
+
+    test('onDemandArticlesRemainingToday reflects the cap minus what has '
+        "already been generated today, and never goes below zero", () async {
+      await makeEntitled();
+      await seedCategory(1, 'Craft');
+      expect(await articleService.onDemandArticlesRemainingToday(),
+          NewsfeedService.onDemandDailyCap);
+
+      await articleService.generateArticleOnDemand();
+      expect(await articleService.onDemandArticlesRemainingToday(),
+          NewsfeedService.onDemandDailyCap - 1);
+
+      for (var i = 1; i < NewsfeedService.onDemandDailyCap; i++) {
+        await articleService.generateArticleOnDemand();
+      }
+      expect(await articleService.onDemandArticlesRemainingToday(), 0);
     });
   });
 }

@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 18; // 7: R3 schema — position, essences,
+  static const _databaseVersion = 19; // 7: R3 schema — position, essences,
   // domain findings, account state (Part IV). 8: R6/D-062 — discards an
   // incomplete old-flow setup so the user starts the new Council setup
   // fresh instead of landing on a half-populated pyramid with no way back
@@ -43,7 +43,11 @@ class DatabaseHelper {
   // install) that silently rejects any insert into category_essence
   // that would duplicate the category's own current latest text — a
   // backstop against any future write path bypassing
-  // insertCategoryEssence's own D-166 guard.
+  // insertCategoryEssence's own D-166 guard. 19: D-168 — retires the two
+  // generic "welcome" newsfeed cards entirely (replaced by five sample
+  // analysis-style cards with a subscribe pitch); deletes any existing
+  // welcome-1/welcome-2 rows so they're gone for an account that already
+  // had them.
 
   // DEMO MODE FLAG
   static final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
@@ -834,6 +838,19 @@ class DatabaseHelper {
             // current write path; this trigger means no *future* write
             // path can silently reintroduce the same defect either.
             await _createEssenceDuplicateGuardTrigger(db);
+            break;
+          case 19:
+            // D-168: the two generic "welcome" newsfeed cards are
+            // retired entirely, replaced by five sample analysis-style
+            // cards each carrying a subscribe pitch (NewsfeedService
+            // no longer generates type='welcome' at all). Deletes any
+            // existing welcome-1/welcome-2 rows so they disappear for
+            // an account that already had them; the next touch of the
+            // newsfeed seeds the five sample cards fresh in their
+            // place, the same self-limiting trigger pattern D-158
+            // established.
+            await db.delete(newsfeedItemTable,
+                where: '$columnNewsfeedType = ?', whereArgs: ['welcome']);
             break;
         }
       }
@@ -2053,6 +2070,20 @@ class DatabaseHelper {
     final rows = await db.query(newsfeedItemTable,
         where: '$columnNewsfeedDedupeKey = ?', whereArgs: [dedupeKey], limit: 1);
     return rows.isNotEmpty;
+  }
+
+  /// D-168: how many on-demand articles have already been generated
+  /// today — [prefix] is the day's own `article-<date>-manual-` stem, so
+  /// this only ever counts today's on-demand generations, never the
+  /// automatic daily one (a different dedupeKey shape entirely) or a
+  /// prior day's. Used to enforce the daily on-demand cap before doing
+  /// any stat-gathering or AI call.
+  Future<int> countNewsfeedItemsWithDedupeKeyPrefix(String prefix) async {
+    final db = await database;
+    final result = await db.rawQuery(
+        'SELECT COUNT(*) FROM $newsfeedItemTable WHERE $columnNewsfeedDedupeKey LIKE ?',
+        ['$prefix%']);
+    return Sqflite.firstIntValue(result) ?? 0;
   }
 
 

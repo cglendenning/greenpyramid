@@ -13,6 +13,9 @@ import 'db.dart';
 /// since the user is already looking at the feed.
 typedef NewNewsfeedItem = ({String title, String body, String dedupeKey});
 
+/// D-168: see [NewsfeedService.generateArticleOnDemand].
+enum OnDemandArticleOutcome { generated, notEntitled, dailyCapReached, failed }
+
 /// D-165: a human-scaled, bucketed phrase for how long ago something
 /// happened — "3 days", "6 weeks", "4 months", "2 years" — never an exact
 /// day count, which would read clinical rather than like a real sentence
@@ -55,24 +58,61 @@ class NewsfeedService {
   final DatabaseHelper _db;
   final CouncilClient _client;
 
-  // D-154: two fixed, hand-written cards seeded exactly once, the very
-  // first time the newsfeed has nothing else in it yet — "on first
-  // launch of the newsfeed, produce five of these cards." Real content
-  // (essences already set during setup, plus whatever streaks/essence
-  // edits follow) fills out the rest; these two are the only synthetic,
-  // non-personal entries the newsfeed ever contains.
-  static const _welcomeCopy = [
+  // D-168: five fixed, hand-written cards seeded exactly once, the very
+  // first time the newsfeed has nothing else in it yet — replaces
+  // D-154's two generic "welcome" cards entirely. Each shows what a
+  // real AI-written analysis card looks like (same shape as the actual
+  // entitled-only article: a trend-shaped headline, an analytical body)
+  // but built from illustrative, non-personal content, never the
+  // account's own data — the whole point is to preview the format
+  // itself, not fabricate a claim about the user's real trends. Text is
+  // deliberately written in the abstract ("your categories," "a real
+  // analysis would...") so nothing here could be mistaken for a genuine
+  // finding. The SAMPLE label, and the subscribe pitch beneath each
+  // body, are rendered by NewsfeedScreen itself (type == 'sample'), not
+  // stored here — identical on all five, so there's nothing to
+  // duplicate-store per card.
+  static const _sampleCopy = [
     (
-      'Welcome to your newsfeed.',
-      'This is where your own progress shows up over time — streaks you '
-          'build, ways you redefine what matters to you. Nothing here comes '
-          'from anywhere but your own pyramid.',
+      'Your Foundational Habits Are Carrying The Rest',
+      "In a real analysis, we'd look at which of your six categories is "
+          "quietly doing the most work. Often it's a foundational value — "
+          "the ones at the base of your pyramid — showing the highest and "
+          "steadiest completion rate, while values higher up ride on that "
+          "consistency. An analysis like this would name exactly which "
+          "category that is for you, and what it's protecting.",
     ),
     (
-      "Nothing here is generic.",
-      'Every card that shows up from now on is about your own categories, '
-          'your own habits, your own words. Keep showing up, and this feed '
-          'fills in behind you.',
+      'One Category Is Quietly Slipping',
+      "Real analysis doesn't just celebrate what's working — it flags "
+          "what's fading before it becomes a pattern you can't see from "
+          "inside it. This kind of card would name your most-missed "
+          "category over the last 30 days, and the exact week it started "
+          "slipping, so you can catch it early instead of after the fact.",
+    ),
+    (
+      'Your Longest Streak Is Now Your Identity',
+      "Once a streak crosses a certain length, it stops being effort and "
+          "starts being who you are. A real analysis would tell you "
+          "exactly which of your habits has crossed that line for you — "
+          "and how long you've actually been the kind of person who does "
+          "it, whether you've noticed or not.",
+    ),
+    (
+      'Two Values Are Moving Together',
+      "Sometimes progress in one category quietly drives progress in "
+          "another — showing up for one value making the next one easier. "
+          "A real analysis compares your categories against each other "
+          "and calls out pairs like this: which one is pulling the other "
+          "up, and where that link might break if you let it.",
+    ),
+    (
+      'This Week vs. Last Week: The Real Story',
+      "A single day doesn't tell you much. A real analysis compares "
+          "this week's completion against last week's, across every "
+          "category, and tells you plainly whether you're actually "
+          "building momentum or just staying level — the kind of honest "
+          "comparison that's hard to make for yourself in the moment.",
     ),
   ];
 
@@ -99,56 +139,38 @@ class NewsfeedService {
     }
     newItems.addAll(await _generateEssenceItems(categories: categories));
 
-    // D-154: seed the two welcome cards the first time the newsfeed has
-    // nothing else in it yet. D-158 amendment: checks the welcome cards'
-    // own existence directly, rather than D-154's original "is the whole
-    // table still empty after this pass" — that heuristic couldn't
-    // reseed them after a *targeted* wipe (D-158's own migration, which
-    // clears only stale-spaced welcome rows, leaving real content
-    // intact) since the table is never actually empty on an account with
-    // existing essence/streak history. Still self-limiting: once
-    // 'welcome-1' exists, this never fires again.
-    if (!await _db.newsfeedItemExists('welcome-1')) {
-      await _seedWelcomeCards();
+    // D-168: seed the five sample cards the first time the newsfeed has
+    // nothing else in it yet — checks the first sample card's own
+    // existence directly (the same self-limiting pattern D-158
+    // established for the welcome cards this replaces), so it survives
+    // a targeted migration wipe on an account that already has real
+    // content, not just a genuinely empty table.
+    if (!await _db.newsfeedItemExists('sample-1')) {
+      await _seedSampleCards();
     }
 
     return newItems;
   }
 
-  // D-158: found live — seeded back-to-back with near-identical
-  // timestamps, the two welcome cards landed right next to each other at
-  // the top of the feed, which "looks weird." Rather than reorder at
-  // read time, each card gets a deliberately placed [createdAt]: welcome
-  // 2 stays "now" (near the top, alongside whatever real content exists
-  // at seed time), welcome 1 is backdated far into the past — older than
-  // any real content ever could be, so it always sorts at the very
-  // bottom. Since every future real item inserts at its own
-  // DateTime.now() (always newer than welcome 1's fixed backdate), this
-  // spacing holds permanently, not just at the moment of seeding — it
-  // never needs revisiting as more content accumulates between them.
-  // With fewer than two real items to separate them, the two cards can
-  // still end up adjacent; there is no way around that without inventing
-  // fake content to fill the gap, so it's accepted rather than forced.
-  static const _welcomeCardBackdate = Duration(days: 3650);
-
-  Future<void> _seedWelcomeCards() async {
+  // D-168: unlike D-158's welcome cards, these are seeded at "now" with
+  // no artificial backdating — the owner's own choice, since these carry
+  // a real subscribe pitch and should age naturally alongside real
+  // content rather than being deliberately buried. Spaced one second
+  // apart from each other purely so they sort in a stable, deterministic
+  // order (oldest-drafted first) rather than relying on insert order
+  // alone.
+  Future<void> _seedSampleCards() async {
     final now = DateTime.now();
-    final (title2, body2) = _welcomeCopy[1];
-    await _db.insertNewsfeedItem(
-      type: 'welcome',
-      title: title2,
-      body: body2,
-      dedupeKey: 'welcome-2',
-      createdAt: now,
-    );
-    final (title1, body1) = _welcomeCopy[0];
-    await _db.insertNewsfeedItem(
-      type: 'welcome',
-      title: title1,
-      body: body1,
-      dedupeKey: 'welcome-1',
-      createdAt: now.subtract(_welcomeCardBackdate),
-    );
+    for (var i = 0; i < _sampleCopy.length; i++) {
+      final (title, body) = _sampleCopy[i];
+      await _db.insertNewsfeedItem(
+        type: 'sample',
+        title: title,
+        body: body,
+        dedupeKey: 'sample-${i + 1}',
+        createdAt: now.subtract(Duration(seconds: _sampleCopy.length - i)),
+      );
+    }
   }
 
   // D-154: rewritten from a single flat sentence per milestone to a
@@ -335,20 +357,79 @@ class NewsfeedService {
     final entitled = entitlement == 'trialing' || entitlement == 'subscribed';
     if (!entitled) return;
 
+    await _generateAndInsertArticle(dedupeKey: dedupeKey);
+  }
+
+  /// D-168: the shared generation+insert step behind both the automatic
+  /// daily article and an on-demand one — identical AI call, identical
+  /// best-effort swallow of any failure (spend cap, network, a malformed
+  /// reply), the only difference between callers is which dedupeKey they
+  /// pass and what pre-check (due-today vs entitlement-and-cap) gated
+  /// reaching this point at all. Returns whether a real article was
+  /// actually inserted.
+  Future<bool> _generateAndInsertArticle({required String dedupeKey}) async {
     try {
       final categories = await queryCategoryStats();
       await AiGuard.instance.acquire();
       final article = await _client.deriveNewsfeedArticle(categories: categories);
-      if (article.headline.isEmpty || article.body.isEmpty) return;
+      if (article.headline.isEmpty || article.body.isEmpty) return false;
       await _db.insertNewsfeedItem(
         type: 'article',
         title: article.headline,
         body: article.body,
         dedupeKey: dedupeKey,
       );
+      return true;
     } catch (e) {
       debugPrint('NewsfeedService: article generation skipped: $e');
+      return false;
     }
+  }
+
+  /// D-168: how many on-demand articles a subscriber may generate in one
+  /// calendar day, on top of (never instead of) the one automatic daily
+  /// article — owner: "I also want subscribed users to be able to
+  /// generate a new news item on demand in addition to the news item
+  /// that gets generated automatically once per day." A small fixed cap
+  /// rather than unlimited, so a single subscriber tapping repeatedly
+  /// can't run up unbounded AI spend in one sitting — still backstopped
+  /// by the account-wide spend cap (D-087) regardless.
+  static const int onDemandDailyCap = 3;
+
+  static String _onDemandKeyPrefix(String today) => 'article-$today-manual-';
+
+  /// D-168: the result of one on-demand generation attempt, specific
+  /// enough for the UI to react correctly — a locked paywall prompt for
+  /// [notEntitled], a "come back tomorrow" style message for
+  /// [dailyCapReached], vs. [failed]'s generic best-effort miss (spend
+  /// cap, network, a malformed reply — nothing actionable to tell the
+  /// user beyond "try again").
+  Future<OnDemandArticleOutcome> generateArticleOnDemand() async {
+    final account = await _db.getAccountState();
+    final entitlement = account[DatabaseHelper.columnEntitlement] as String?;
+    final entitled = entitlement == 'trialing' || entitlement == 'subscribed';
+    if (!entitled) return OnDemandArticleOutcome.notEntitled;
+
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final prefix = _onDemandKeyPrefix(today);
+    final usedToday = await _db.countNewsfeedItemsWithDedupeKeyPrefix(prefix);
+    if (usedToday >= onDemandDailyCap) {
+      return OnDemandArticleOutcome.dailyCapReached;
+    }
+
+    final dedupeKey = '$prefix${usedToday + 1}';
+    final inserted = await _generateAndInsertArticle(dedupeKey: dedupeKey);
+    return inserted ? OnDemandArticleOutcome.generated : OnDemandArticleOutcome.failed;
+  }
+
+  /// D-168: how many on-demand generations are left today — lets the UI
+  /// show/disable the "Generate new analysis" button without attempting
+  /// a generation just to find out it would be refused.
+  Future<int> onDemandArticlesRemainingToday() async {
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final usedToday = await _db
+        .countNewsfeedItemsWithDedupeKeyPrefix(_onDemandKeyPrefix(today));
+    return (onDemandDailyCap - usedToday).clamp(0, onDemandDailyCap);
   }
 
   /// D-155: 7-day and 30-day completion percentage, current streak, and

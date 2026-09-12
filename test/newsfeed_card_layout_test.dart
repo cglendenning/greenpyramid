@@ -75,6 +75,65 @@ void main() {
   test('D-164: a non-article card still shows its date at the bottom, '
       'after the body — there is no "ANALYSIS" label to place it under',
       () {
-    expect(source, contains('if (!isArticle && created != null)'));
+    expect(source, contains('if (!isArticle && !isSample && created != null)'));
+  });
+
+  group('D-168: sample cards carry a distinct SAMPLE label and a '
+      'subscribe link — owner: "some designation that these are sample '
+      'newsfeed" and "each one of the cards will have a subscribe link '
+      'and a short indication that if they subscribe then they are '
+      'going to get newsfeed items that are tailored to their actual '
+      'trends and behavior"', () {
+    test('the SAMPLE label is a distinct color from the real ANALYSIS '
+        "label — never visually confusable with genuine AI analysis of "
+        "the user's own data", () {
+      expect(source, contains("'SAMPLE'"));
+      final sampleIdx = source.indexOf("'SAMPLE'");
+      final colorIdx = source.indexOf('color:', sampleIdx);
+      final endIdx = source.indexOf(',', colorIdx);
+      expect(source.substring(colorIdx, endIdx), contains('brandPurple'));
+    });
+
+    test('the subscribe link opens PaywallScreen, naming why', () {
+      expect(source, contains('PaywallScreen('));
+      expect(source, contains("reason: 'Get analysis tailored to your own trends'"));
+    });
+
+    test('the card body itself stays non-interactive — the subscribe '
+        'link is its own distinct tappable element, matching D-154\'s '
+        '"we\'re not clicking into each news article" for every other '
+        'card type', () {
+      expect(source, contains('GestureDetector('));
+      expect(source, contains("'Subscribe'"));
+    });
+
+    test('sample cards show no date — they are illustrative, not tied '
+        'to a real event', () {
+      final textBlockStart = source.indexOf('Widget _textBlock(');
+      final textBlockEnd = source.indexOf('\n  }', textBlockStart);
+      final textBlockSource = source.substring(textBlockStart, textBlockEnd);
+      // isSample is excluded from the bottom date's own condition, and
+      // the SAMPLE label block (unlike ANALYSIS's) never renders a date
+      // of its own either.
+      final sampleLabelIdx = textBlockSource.indexOf("'SAMPLE'");
+      final nextDateIdx =
+          textBlockSource.indexOf('DateFormat', sampleLabelIdx);
+      final sampleBlockEnd = textBlockSource.indexOf('),\n          ]', sampleLabelIdx);
+      expect(nextDateIdx == -1 || nextDateIdx > sampleBlockEnd, isTrue,
+          reason: 'no DateFormat call sits inside the isSample eyebrow block');
+    });
+  });
+
+  group('D-168: the "Generate new analysis" control', () {
+    test('is hidden entirely for a non-entitled account, not merely '
+        'disabled', () {
+      expect(source, contains('if (!_entitled) return null;'));
+    });
+
+    test('shows and enforces the remaining on-demand count for the day',
+        () {
+      expect(source, contains('_onDemandRemaining'));
+      expect(source, contains('generateArticleOnDemand'));
+    });
   });
 }
