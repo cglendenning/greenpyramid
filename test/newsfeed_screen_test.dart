@@ -59,6 +59,29 @@ void main() {
     });
   });
 
+  group('D-177: a sample card\'s subscribe pitch disappears once the '
+      'account is entitled — owner: "I want that whole text block to '
+      'not appear when I am subscribed"', () {
+    test('the subscribe-pitch block is gated on both isSample and '
+        '!entitled', () {
+      expect(source, contains('if (isSample && !entitled) ...['));
+    });
+
+    test('the screen threads its own live _entitled state into each card',
+        () {
+      expect(source, contains('entitled: _entitled'));
+    });
+
+    test('the SAMPLE eyebrow label is unconditional on entitlement — the '
+        'card stays illustrative content either way, only the pitch to '
+        'subscribe is what stops making sense', () {
+      final labelIdx = source.indexOf("'SAMPLE',");
+      final gateIdx = source.lastIndexOf('if (isSample)', labelIdx);
+      expect(gateIdx, greaterThan(-1));
+      expect(source.substring(gateIdx, labelIdx), isNot(contains('!entitled')));
+    });
+  });
+
   group('D-173: the "Generate new analysis" control has no decorative '
       'icon and no visible countdown', () {
     test('never uses the auto_awesome ("AI sparkle") icon — owner: "do '

@@ -302,6 +302,7 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
                     item: item,
                     highlighted: dedupeKey == _highlighted,
                     onReturnFromPaywall: _loadEntitlementState,
+                    entitled: _entitled,
                   );
                 },
               );
@@ -326,7 +327,11 @@ int _stableHash(String s) {
 
 class _NewsfeedCard extends StatelessWidget {
   const _NewsfeedCard(
-      {super.key, required this.item, this.highlighted = false, this.onReturnFromPaywall});
+      {super.key,
+      required this.item,
+      this.highlighted = false,
+      this.onReturnFromPaywall,
+      this.entitled = false});
 
   final Map<String, dynamic> item;
   // D-173: lets the subscribe link refresh the screen's entitlement state
@@ -334,6 +339,10 @@ class _NewsfeedCard extends StatelessWidget {
   // no entitlement state of its own.
   final Future<void> Function()? onReturnFromPaywall;
   final bool highlighted;
+  // D-177: a sample card's subscribe pitch only makes sense for an
+  // unentitled account — owner: "I want that whole text block to not
+  // appear when I am subscribed."
+  final bool entitled;
 
   @override
   Widget build(BuildContext context) {
@@ -522,7 +531,11 @@ class _NewsfeedCard extends StatelessWidget {
           // element — the card body itself stays non-interactive, same
           // as every other card type ("we're not clicking into each
           // news article," D-154).
-          if (isSample) ...[
+          // D-177: hidden entirely once entitled — pitching a
+          // subscription to someone who already has one makes no sense.
+          // The SAMPLE label above stays regardless (D-168) — the card
+          // is still illustrative, non-personal content either way.
+          if (isSample && !entitled) ...[
             const SizedBox(height: 12),
             GestureDetector(
               onTap: () async {
