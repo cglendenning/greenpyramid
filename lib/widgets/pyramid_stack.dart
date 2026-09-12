@@ -28,6 +28,10 @@ class PyramidStack extends StatelessWidget {
   final double size;
   final bool playEntranceSpin;
 
+  // D-152: underlines every label — the edit screen's signal that its
+  // blocks are editable. The main (view-only) screen leaves this false.
+  final bool editable;
+
   /// Called with the tapped block's index (0-5, matching category
   /// position 1-6) and its resolved category data (`.cat`, `.pctComplete`)
   /// — the main screen navigates to that category's task list; the edit
@@ -46,6 +50,7 @@ class PyramidStack extends StatelessWidget {
     required this.size,
     this.onCategoryTap,
     this.playEntranceSpin = false,
+    this.editable = false,
   });
 
   @override
@@ -69,6 +74,7 @@ class PyramidStack extends StatelessWidget {
         return Pyramid3D(
           size: size,
           playEntranceSpin: playEntranceSpin,
+          editable: editable,
           categories: [
             for (final cat in data)
               PyramidCategoryData(label: cat.cat, color: setColor(cat.pctComplete)),

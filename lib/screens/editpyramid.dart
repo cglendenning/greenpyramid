@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:life_ops/services/db.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:life_ops/theme/app_colors.dart';
 import 'package:life_ops/widgets/category_edit_sheet.dart';
+import 'package:life_ops/widgets/onboarding_backdrop.dart';
 import 'package:life_ops/widgets/pyramid_stack.dart';
 
 /// D-151: this screen used to render six flat, static, old CustomPainters
@@ -51,27 +53,46 @@ class _EditPyramid extends State<EditPyramid> {
     double pyramidWidth = MediaQuery.of(context).size.width * 0.87;
 
     var mainTextStyle = const TextStyle(
-        fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+        fontFamily: 'Exo2',
+        color: AppColors.textPrimary);
 
-    return Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
-      SizedBox(height: pyramidWidth * 0.82 * .1),
-      Text(
-        'Green Pyramid (Edit)',
-        style: mainTextStyle,
+    // D-152: found live — a bare Column here (unlike the main screen's,
+    // which sits inside a SingleChildScrollView matching the full
+    // viewport width) sizes itself to its widest child instead of the
+    // screen's width, and nothing then centers that narrower column
+    // within the Scaffold body — so it renders flush against the left
+    // edge, not centered, visibly shifting the pyramid left of where the
+    // main screen puts it. Align(topCenter) — the same alignment
+    // _jungleScene already uses for the main screen's pyramid — centers
+    // this column regardless of its own width, matching the main screen
+    // exactly.
+    return OnboardingBackdrop(
+      child: Align(
+        alignment: Alignment.topCenter,
+        child: Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
+          SizedBox(height: pyramidWidth * 0.82 * .1),
+          Text(
+            'Green Pyramid (Edit)',
+            style: mainTextStyle,
+          ),
+          SizedBox(height: pyramidWidth * 0.82 * .2),
+          PyramidStack(
+            cat1Future: widget.cat1Future,
+            cat2Future: widget.cat2Future,
+            cat3Future: widget.cat3Future,
+            cat4Future: widget.cat4Future,
+            cat5Future: widget.cat5Future,
+            cat6Future: widget.cat6Future,
+            size: pyramidWidth,
+            editable: true,
+            onCategoryTap: (index, category) =>
+                showEditDialog(context, index + 1, category.cat),
+          ),
+        ]),
       ),
-      SizedBox(height: pyramidWidth * 0.82 * .2),
-      PyramidStack(
-        cat1Future: widget.cat1Future,
-        cat2Future: widget.cat2Future,
-        cat3Future: widget.cat3Future,
-        cat4Future: widget.cat4Future,
-        cat5Future: widget.cat5Future,
-        cat6Future: widget.cat6Future,
-        size: pyramidWidth,
-        onCategoryTap: (index, category) =>
-            showEditDialog(context, index + 1, category.cat),
-      ),
-    ]);
+    );
   }
 
   // D-113: name and description together, in one shared, styled sheet —

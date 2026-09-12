@@ -155,4 +155,76 @@ void main() {
       await tester.pumpAndSettle(const Duration(milliseconds: 200));
     });
   });
+
+  group('D-152: tap-down/lift feedback — "when either of the pyramids are '
+      'tapped, I want there to be an indication of the down tap, and then '
+      'the lift ... shared across both of the pyramids"', () {
+    // The painter class is private, but its fields are public-named, so a
+    // dynamic read of a CustomPaint's painter still reaches them —
+    // there's no other way to observe this internal-but-real state
+    // without a golden-image comparison of the actual pixels.
+    dynamic painterOf(WidgetTester tester) => tester
+        .widget<CustomPaint>(find.descendant(
+            of: find.byType(Pyramid3D), matching: find.byType(CustomPaint)))
+        .painter;
+
+    testWidgets('pressing a block highlights it immediately (opacity 1) '
+        'and lifting fades it back out (opacity 0)', (tester) async {
+      await pumpPyramid(tester, (_) {});
+
+      expect(painterOf(tester).pressedCategory, isNull);
+      expect(painterOf(tester).pressOpacity, 0);
+
+      final gesture = await tester.startGesture(
+          frontFaceTapPosition(tester, const Offset(s / 2, s / 6)));
+      await tester.pump();
+
+      expect(painterOf(tester).pressedCategory, 5, reason: 'apex block');
+      expect(painterOf(tester).pressOpacity, 1);
+
+      await gesture.up();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(painterOf(tester).pressOpacity, lessThan(1),
+          reason: 'the lift starts fading the highlight immediately');
+
+      await tester.pumpAndSettle();
+      expect(painterOf(tester).pressOpacity, 0);
+    });
+
+    testWidgets('pressing outside any block never sets a pressed category',
+        (tester) async {
+      await pumpPyramid(tester, (_) {});
+
+      final gesture = await tester
+          .startGesture(frontFaceTapPosition(tester, const Offset(30, 30)));
+      await tester.pump();
+      expect(painterOf(tester).pressedCategory, isNull);
+
+      await gesture.up();
+    });
+
+    testWidgets('a drag that turns the press into a pyramid spin still '
+        'fades the highlight back out on release, not leaving it stuck on '
+        '— the highlight is driven by the raw pointer stream (Listener), '
+        'not by whether the gesture arena ultimately resolves as a tap',
+        (tester) async {
+      await pumpPyramid(tester, (_) {});
+
+      final gesture = await tester.startGesture(
+          frontFaceTapPosition(tester, const Offset(s / 2, s / 6)));
+      await tester.pump();
+      expect(painterOf(tester).pressedCategory, 5);
+
+      // Enough horizontal movement to be claimed by the drag recognizer
+      // instead of the tap.
+      await gesture.moveBy(const Offset(40, 0));
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
+      await tester.pumpAndSettle();
+
+      expect(painterOf(tester).pressOpacity, 0);
+    });
+  });
 }

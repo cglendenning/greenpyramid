@@ -32,12 +32,18 @@ class Pyramid3D extends StatefulWidget {
   // is set.
   final bool playEntranceSpin;
 
+  // D-152: underlines every label, signaling the pyramid's blocks are
+  // editable — set only by the edit screen (PyramidStack's own
+  // `editable` param), never the main (view-only) screen.
+  final bool editable;
+
   const Pyramid3D({
     super.key,
     required this.categories,
     required this.size,
     this.onCategoryTap,
     this.playEntranceSpin = false,
+    this.editable = false,
   });
 
   @override
@@ -69,12 +75,21 @@ class _Pyramid3DState extends State<Pyramid3D> with TickerProviderStateMixin {
   AnimationController? _entranceSpin;
   static const double _entranceSpinStart = -12 * math.pi; // several full turns
 
+  // D-152: tap-down/lift feedback, shared by both pyramid screens since
+  // it lives here rather than in either one. _pressedCategory names which
+  // block to highlight; _pressController drives that highlight's opacity
+  // — snapped to 1 instantly on tap-down (an immediate "down" cue), then
+  // animated back to 0 on tap-up/tap-cancel (the "lift").
+  late final AnimationController _pressController;
+  int? _pressedCategory;
+
   @override
   void initState() {
     super.initState();
     PyramidPainting.ensureStoneLoaded().then((_) {
       if (mounted) setState(() {});
     });
+    _pressController = AnimationController(vsync: this, value: 0);
     _settle = AnimationController(vsync: this);
     _settleCurve =
         CurvedAnimation(parent: _settle, curve: Curves.easeOutCubic);
@@ -111,6 +126,7 @@ class _Pyramid3DState extends State<Pyramid3D> with TickerProviderStateMixin {
     _settleCurve.dispose();
     _settle.dispose();
     _entranceSpin?.dispose();
+    _pressController.dispose();
     super.dispose();
   }
 
@@ -145,19 +161,58 @@ class _Pyramid3DState extends State<Pyramid3D> with TickerProviderStateMixin {
     _settle.forward(from: 0);
   }
 
-  void _onTapUp(TapUpDetails details) {
-    if (widget.onCategoryTap == null) return;
+  // D-152: "when either of the pyramids are tapped, I want there to be an
+  // indication of the down tap, and then the lift" — shared here, in
+  // Pyramid3D itself, rather than in either screen, so it applies to both
+  // identically (exactly how D-151 shares everything else about the
+  // pyramid's appearance). The hit-test itself is unchanged from
+  // _onTapUp's own; factored out so tap-down can highlight the same block
+  // tap-up is about to act on.
+  int? _hitCategoryAt(Offset localPosition) {
+    if (widget.onCategoryTap == null) return null;
     // Taps only register once the spin has settled face-on to a wall.
     if (_settle.isAnimating ||
         !Pyramid3DGeometry.isSettledFaceOn(_rotation)) {
-      return;
+      return null;
     }
     final face = Pyramid3DGeometry.frontFaceIndex(_rotation);
     final texturePoint = Pyramid3DGeometry.screenToFace(
-        face, _rotation, widget.size, details.localPosition);
-    if (texturePoint == null) return;
+        face, _rotation, widget.size, localPosition);
+    if (texturePoint == null) return null;
     final category = PyramidFaceLayout.hitTest(texturePoint);
-    if (category != null && category < widget.categories.length) {
+    if (category == null || category >= widget.categories.length) return null;
+    return category;
+  }
+
+  // D-152 found live (via the test that exercises this, not guessed):
+  // GestureDetector's own onTapDown does NOT fire on physical touch-down
+  // here — this detector also owns the horizontal-drag recognizers, and
+  // with a competing recognizer in the same gesture arena, the tap
+  // recognizer only calls onTapDown once the arena actually resolves in
+  // its favor, which for a still-held press doesn't happen until release
+  // (or later). That is correct for deciding whether a *tap* happened,
+  // but wrong for "the down" — a raw Listener sees every physical
+  // PointerDownEvent immediately, arena resolution or not, which is what
+  // genuinely-instant press feedback needs. The actual tap/no-tap
+  // decision (and the resulting onCategoryTap call) still belongs to
+  // GestureDetector's onTapUp below — this only drives the highlight.
+  void _onPointerDown(PointerDownEvent event) {
+    final category = _hitCategoryAt(event.localPosition);
+    if (category == null) return;
+    setState(() => _pressedCategory = category);
+    _pressController.value = 1;
+  }
+
+  void _onPointerUpOrCancel(PointerEvent event) {
+    _pressController.animateTo(0, duration: const Duration(milliseconds: 120));
+  }
+
+  void _onTapUp(TapUpDetails details) {
+    // The press highlight's own fade-out is driven by the raw
+    // PointerUpEvent (_onPointerUpOrCancel), which always accompanies
+    // this — not repeated here.
+    final category = _hitCategoryAt(details.localPosition);
+    if (category != null) {
       widget.onCategoryTap!(category);
     }
   }
@@ -171,18 +226,18 @@ class _Pyramid3DState extends State<Pyramid3D> with TickerProviderStateMixin {
     return physicalPixels.clamp(Pyramid3DGeometry.textureSize, 2048).round();
   }
 
-  static String _keyFor(
-      List<PyramidCategoryData> categories, bool stoneReady, int resolution) {
+  static String _keyFor(List<PyramidCategoryData> categories, bool stoneReady,
+      int resolution, bool editable) {
     final cats = categories.map((c) => '${c.label}#${c.color.value}').join('|');
-    return '$cats#$stoneReady#$resolution';
+    return '$cats#$stoneReady#$resolution#$editable';
   }
 
   void _syncWallCache() {
     if (widget.size <= 0) return;
     final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
     final resolution = _resolutionFor(widget.size, devicePixelRatio);
-    final key = _keyFor(
-        widget.categories, PyramidPainting.stoneImage != null, resolution);
+    final key = _keyFor(widget.categories, PyramidPainting.stoneImage != null,
+        resolution, widget.editable);
     if (key == _wallCacheKey) return;
     _wallCacheKey = key;
 
@@ -201,7 +256,7 @@ class _Pyramid3DState extends State<Pyramid3D> with TickerProviderStateMixin {
     final canvas = Canvas(recorder);
     canvas.scale(scale);
     canvas.translate(_wallTexturePadding, _wallTexturePadding);
-    paintPyramidWallContent(canvas, categories);
+    paintPyramidWallContent(canvas, categories, editable: widget.editable);
     recorder
         .endRecording()
         .toImage(paddedResolution, paddedResolution)
@@ -219,18 +274,32 @@ class _Pyramid3DState extends State<Pyramid3D> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     _syncWallCache();
-    return GestureDetector(
+    return Listener(
       behavior: HitTestBehavior.opaque,
-      onHorizontalDragStart: _onDragStart,
-      onHorizontalDragUpdate: _onDragUpdate,
-      onHorizontalDragEnd: _onDragEnd,
-      onTapUp: _onTapUp,
-      child: CustomPaint(
-        size: Size.square(widget.size),
-        painter: _Pyramid3DPainter(
-          rotation: _rotation,
-          categories: widget.categories,
-          wallImage: _wallImage,
+      onPointerDown: _onPointerDown,
+      onPointerUp: _onPointerUpOrCancel,
+      onPointerCancel: _onPointerUpOrCancel,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragStart: _onDragStart,
+        onHorizontalDragUpdate: _onDragUpdate,
+        onHorizontalDragEnd: _onDragEnd,
+        onTapUp: _onTapUp,
+        child: AnimatedBuilder(
+          animation: _pressController,
+          builder: (context, _) {
+            return CustomPaint(
+              size: Size.square(widget.size),
+              painter: _Pyramid3DPainter(
+                rotation: _rotation,
+                categories: widget.categories,
+                wallImage: _wallImage,
+                pressedCategory: _pressedCategory,
+                pressOpacity: _pressController.value,
+                editable: widget.editable,
+              ),
+            );
+          },
         ),
       ),
     );
@@ -254,7 +323,8 @@ class _Pyramid3DState extends State<Pyramid3D> with TickerProviderStateMixin {
 // instead of one block fully painted at a time, fixes this: nothing
 // later in the same pass can still be ahead of an earlier block's glow.
 void paintPyramidWallContent(
-    Canvas canvas, List<PyramidCategoryData> categories) {
+    Canvas canvas, List<PyramidCategoryData> categories,
+    {bool editable = false}) {
   final count = categories.length < 6 ? categories.length : 6;
 
   for (int i = 0; i < count; i++) {
@@ -279,6 +349,7 @@ void paintPyramidWallContent(
       maxWidth: maxWidth,
       maxHeight: maxHeight,
       fontSize: fontSize,
+      underline: editable,
     );
   }
 }
@@ -306,8 +377,22 @@ class _Pyramid3DPainter extends CustomPainter {
   final List<PyramidCategoryData> categories;
   final ui.Image? wallImage;
 
-  _Pyramid3DPainter(
-      {required this.rotation, required this.categories, this.wallImage});
+  // D-152: which block (if any) is currently pressed, and how visible its
+  // press highlight should be right now (0 = invisible, 1 = fully shown)
+  // — animated by the state's own AnimationController, not baked into the
+  // cached wall bitmap, since it changes every frame during the lift.
+  final int? pressedCategory;
+  final double pressOpacity;
+  final bool editable;
+
+  _Pyramid3DPainter({
+    required this.rotation,
+    required this.categories,
+    this.wallImage,
+    this.pressedCategory,
+    this.pressOpacity = 0,
+    this.editable = false,
+  });
 
   static const Rect _dstRect = Rect.fromLTWH(
       -_wallTexturePadding,
@@ -331,7 +416,7 @@ class _Pyramid3DPainter extends CustomPainter {
       } else {
         // Cache not ready yet (first frame or two) — paint directly so
         // there's never a blank wall while it renders.
-        paintPyramidWallContent(canvas, categories);
+        paintPyramidWallContent(canvas, categories, editable: editable);
       }
 
       // Directional lighting: darken walls angled away from the light so
@@ -345,6 +430,19 @@ class _Pyramid3DPainter extends CustomPainter {
           Paint()..color = Colors.black.withOpacity(0.32 * shade),
         );
       }
+
+      // D-152: the pressed block's own outline, on the front face only —
+      // taps only ever register on the front face (see _hitCategoryAt),
+      // so a pressed category never belongs to a back/side face here.
+      final pressed = pressedCategory;
+      if (pressed != null &&
+          pressOpacity > 0.01 &&
+          face == Pyramid3DGeometry.frontFaceIndex(rotation)) {
+        canvas.drawPath(
+          PyramidFaceLayout.segmentPaths[pressed],
+          Paint()..color = Colors.white.withOpacity(0.35 * pressOpacity),
+        );
+      }
       canvas.restore();
     }
   }
@@ -353,6 +451,8 @@ class _Pyramid3DPainter extends CustomPainter {
   bool shouldRepaint(_Pyramid3DPainter oldDelegate) {
     if (oldDelegate.rotation != rotation) return true;
     if (oldDelegate.wallImage != wallImage) return true;
+    if (oldDelegate.pressedCategory != pressedCategory) return true;
+    if (oldDelegate.pressOpacity != pressOpacity) return true;
     if (oldDelegate.categories.length != categories.length) return true;
     for (int i = 0; i < categories.length; i++) {
       if (oldDelegate.categories[i].label != categories[i].label ||

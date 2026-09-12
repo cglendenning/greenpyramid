@@ -329,6 +329,12 @@ class PyramidPainting {
   // the box, so a label that still doesn't fit even at the floor font
   // size truncates at its own block's boundary rather than bleeding into
   // whatever is drawn next to it.
+  /// [underline] draws a thin rule beneath each line of the label — the
+  /// pyramid edit screen's signal that a block is editable (D-152: found
+  /// live, the owner recalled this from before D-151's unification:
+  /// "I think I used to have underlines ... some indication on the edit
+  /// screen that each of the categories are editable"). The main
+  /// (non-edit) screen never sets this, so its labels are unchanged.
   static void paintReadableLabel(
     Canvas canvas,
     String text,
@@ -336,6 +342,7 @@ class PyramidPainting {
     required double maxWidth,
     required double maxHeight,
     double fontSize = 15,
+    bool underline = false,
   }) {
     final paddedWidth = maxWidth * (1 - _labelPaddingFraction * 2);
     final paddedHeight = maxHeight * (1 - _labelPaddingFraction * 2);
@@ -356,6 +363,7 @@ class PyramidPainting {
 
     for (var i = 0; i < lines.length; i++) {
       final line = lines[i];
+      final lineTop = blockTop + i * lineHeight;
       final strokeSpan = TextSpan(
         text: line,
         style: baseStyle.copyWith(
@@ -369,14 +377,27 @@ class PyramidPainting {
         text: line,
         style: baseStyle.copyWith(color: Colors.white),
       );
+      double lineWidth = 0;
+      double lineLeft = anchor.dx;
       for (final span in [strokeSpan, fillSpan]) {
         final textPainter = TextPainter(
           text: span,
           textDirection: TextDirection.ltr,
         )..layout();
-        final lineTopLeft = Offset(
-            anchor.dx - textPainter.width / 2, blockTop + i * lineHeight);
+        lineWidth = textPainter.width;
+        lineLeft = anchor.dx - lineWidth / 2;
+        final lineTopLeft = Offset(lineLeft, lineTop);
         textPainter.paint(canvas, lineTopLeft);
+      }
+      if (underline) {
+        final underlineY = lineTop + lineHeight * 0.92;
+        canvas.drawLine(
+          Offset(lineLeft, underlineY),
+          Offset(lineLeft + lineWidth, underlineY),
+          Paint()
+            ..color = Colors.white.withOpacity(0.85)
+            ..strokeWidth = 1.6,
+        );
       }
     }
     canvas.restore();
