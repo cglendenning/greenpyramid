@@ -290,6 +290,12 @@ class SyncService {
       });
       final essence = c['activeEssence'] as String?;
       if (essence != null && essence.isNotEmpty) {
+        // D-166: insertCategoryEssence is itself a no-op when [essence]
+        // matches the category's current latest version — this call used
+        // to run unconditionally on every restore, manufacturing a
+        // brand-new "version" identical to the existing one purely as a
+        // side effect of syncing. Guarded downstream, not here, so every
+        // caller benefits uniformly.
         await _db.insertCategoryEssence(
             categoryId: id, essence: essence, sourceSessionId: 'restored');
       }

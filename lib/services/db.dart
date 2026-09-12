@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 16; // 7: R3 schema — position, essences,
+  static const _databaseVersion = 17; // 7: R3 schema — position, essences,
   // domain findings, account state (Part IV). 8: R6/D-062 — discards an
   // incomplete old-flow setup so the user starts the new Council setup
   // fresh instead of landing on a half-populated pyramid with no way back
@@ -33,7 +33,12 @@ class DatabaseHelper {
   // D-165 — a fourth, narrower one-time wipe: only type='essence' rows,
   // discarding every essence card generated under the old flat
   // "{cat}, redefined." template so they all regenerate under the new
-  // first-definition/redefinition-aware framing.
+  // first-definition/redefinition-aware framing. 17: D-166 — collapses
+  // consecutive same-text essence rows per category (phantom versions
+  // manufactured by every past call to restoreFromCloud, before
+  // insertCategoryEssence itself was guarded against no-op inserts) and
+  // clears type='essence' newsfeed rows a second time so they
+  // regenerate from the corrected history.
 
   // DEMO MODE FLAG
   static final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
@@ -307,6 +312,40 @@ class DatabaseHelper {
         'UNIQUE($columnNewsfeedDedupeKey))');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_newsfeed_created ON '
         '$newsfeedItemTable ($columnNewsfeedCreated DESC)');
+  }
+
+  /// D-166: the v16->v17 migration's own cleanup — deletes every essence
+  /// row whose text is identical to the immediately-preceding row (by
+  /// [columnEssenceCreated]) for the same category, collapsing a
+  /// "restored"-tagged run of phantom duplicate versions down to just
+  /// its first occurrence. A genuine text change is never touched — only
+  /// consecutive, byte-identical repeats. Static and pure-relative-to-`db`
+  /// so it's directly testable against a raw database, matching this
+  /// file's established migration-testing convention.
+  static Future<void> _collapseDuplicateEssenceVersions(Database db) async {
+    final rows = await db.query(categoryEssenceTable,
+        orderBy: '$columnEssenceCategoryId ASC, $columnEssenceCreated ASC');
+    final byCategory = <int, List<Map<String, dynamic>>>{};
+    for (final row in rows) {
+      final categoryId = row[columnEssenceCategoryId] as int;
+      (byCategory[categoryId] ??= []).add(row);
+    }
+    final idsToDelete = <int>[];
+    for (final categoryRows in byCategory.values) {
+      String? previousText;
+      for (final row in categoryRows) {
+        final text = row[columnEssenceText] as String;
+        if (text == previousText) {
+          idsToDelete.add(row[columnEssenceId] as int);
+        } else {
+          previousText = text;
+        }
+      }
+    }
+    if (idsToDelete.isEmpty) return;
+    final placeholders = List.filled(idsToDelete.length, '?').join(',');
+    await db.delete(categoryEssenceTable,
+        where: '$columnEssenceId IN ($placeholders)', whereArgs: idsToDelete);
   }
 
   /// D-062: a user whose old-flow setup was incomplete when this build
@@ -712,6 +751,31 @@ class DatabaseHelper {
             // table — lets every existing essence version regenerate
             // under the new framing the next time anything touches the
             // newsfeed, leaving streak/article/welcome cards untouched.
+            await db.delete(newsfeedItemTable,
+                where: '$columnNewsfeedType = ?', whereArgs: ['essence']);
+            break;
+          case 17:
+            // D-166: found live, on the owner's own account — a category
+            // showed 7 essence "versions" in a row, all identical text,
+            // none of them an actual redefinition. Root cause:
+            // SyncService.restoreFromCloud called insertCategoryEssence
+            // unconditionally on every restore, manufacturing a
+            // brand-new version identical to the existing one purely as
+            // a side effect of syncing (this session's many OTA
+            // reinstalls each triggered a restore via D-137). Fixed at
+            // the source: insertCategoryEssence (this same change) is
+            // now a no-op when the new text matches the category's
+            // current latest version, so this can't recur. This
+            // one-time cleanup collapses every existing run of
+            // consecutive same-text essence rows per category down to
+            // just the first occurrence, keeping every row that
+            // represents a genuine change (Firestore's own
+            // essenceVersions collection is provenance only — nothing
+            // at runtime reads it back — so it's left as-is, not
+            // retroactively cleaned). type='essence' newsfeed rows are
+            // cleared again so they regenerate from the now-corrected
+            // history.
+            await _collapseDuplicateEssenceVersions(db);
             await db.delete(newsfeedItemTable,
                 where: '$columnNewsfeedType = ?', whereArgs: ['essence']);
             break;
@@ -1958,12 +2022,27 @@ class DatabaseHelper {
   }
 
   /// D-028/D-061: appends a new essence version for a category (essences are
-  /// versioned, never overwritten — D-061).
-  Future<void> insertCategoryEssence({
+  /// versioned, never overwritten — D-061). D-166: a no-op — returns
+  /// `false`, inserts nothing — when [essence] is identical to the
+  /// category's current latest version. Found live: `SyncService
+  /// .restoreFromCloud` called this unconditionally on every restore,
+  /// manufacturing a brand-new "version" with the exact same text as
+  /// before purely as a side effect of syncing — seven or more phantom
+  /// "redefinitions" per category on one real account, none of them an
+  /// actual change the user made. Guarding here, in the shared insert
+  /// path, protects every caller uniformly (not just restoreFromCloud) —
+  /// a version-history table recording the same value twice in a row is
+  /// never meaningful, regardless of which caller triggered it. Returns
+  /// `true` iff a new row was actually inserted, so a caller (the
+  /// newsfeed's own notification path, for one) can tell whether a real
+  /// change happened.
+  Future<bool> insertCategoryEssence({
     required int categoryId,
     required String essence,
     String? sourceSessionId,
   }) async {
+    final current = await getLatestEssenceForCategory(categoryId);
+    if (current == essence) return false;
     final db = await database;
     await db.insert(categoryEssenceTable, {
       columnEssenceCategoryId: categoryId,
@@ -1971,6 +2050,7 @@ class DatabaseHelper {
       columnEssenceCreated: DateTime.now().toIso8601String(),
       columnEssenceSourceSession: sourceSessionId,
     });
+    return true;
   }
 
   /// D-048: records one domain finding surfaced during a category

@@ -70,6 +70,69 @@ void main() {
     });
   });
 
+  group('D-166: insertCategoryEssence is a no-op when the text is '
+      'identical to the category\'s current latest version — found live, '
+      "on the owner's own account: SyncService.restoreFromCloud called "
+      "this unconditionally on every restore, manufacturing a brand-new "
+      '"version" identical to the existing one purely as a side effect '
+      'of syncing (7+ phantom rows per category, all tagged '
+      "sourceSessionId: 'restored')", () {
+    test('inserting the same text twice in a row creates only one row, '
+        'and returns false for the no-op call', () async {
+      await db.insertCategory(
+          {DatabaseHelper.columnCategoryId: 1, DatabaseHelper.columnCat: 'Health'});
+      final first =
+          await db.insertCategoryEssence(categoryId: 1, essence: 'Stay strong.');
+      final second =
+          await db.insertCategoryEssence(categoryId: 1, essence: 'Stay strong.');
+
+      expect(first, isTrue);
+      expect(second, isFalse);
+      final versions = (await db.queryAllCategoryEssences())
+          .where((r) => r[DatabaseHelper.columnEssenceCategoryId] == 1);
+      expect(versions.length, 1);
+    });
+
+    test('a genuinely different text still inserts a new version and '
+        'returns true', () async {
+      await db.insertCategory(
+          {DatabaseHelper.columnCategoryId: 1, DatabaseHelper.columnCat: 'Health'});
+      await db.insertCategoryEssence(categoryId: 1, essence: 'Stay strong.');
+      final inserted =
+          await db.insertCategoryEssence(categoryId: 1, essence: 'Stay healthy.');
+
+      expect(inserted, isTrue);
+      final versions = (await db.queryAllCategoryEssences())
+          .where((r) => r[DatabaseHelper.columnEssenceCategoryId] == 1);
+      expect(versions.length, 2);
+    });
+
+    test('a category\'s very first essence always inserts — nothing to '
+        'compare against yet', () async {
+      await db.insertCategory(
+          {DatabaseHelper.columnCategoryId: 1, DatabaseHelper.columnCat: 'Health'});
+      final inserted =
+          await db.insertCategoryEssence(categoryId: 1, essence: 'First ever.');
+      expect(inserted, isTrue);
+    });
+
+    test('the same text can recur later for a category, as long as it '
+        "isn't back-to-back with itself — real reverting to an earlier "
+        'wording is a genuine event, not a duplicate', () async {
+      await db.insertCategory(
+          {DatabaseHelper.columnCategoryId: 1, DatabaseHelper.columnCat: 'Health'});
+      await db.insertCategoryEssence(categoryId: 1, essence: 'A.');
+      await db.insertCategoryEssence(categoryId: 1, essence: 'B.');
+      final revertedBack =
+          await db.insertCategoryEssence(categoryId: 1, essence: 'A.');
+
+      expect(revertedBack, isTrue);
+      final versions = (await db.queryAllCategoryEssences())
+          .where((r) => r[DatabaseHelper.columnEssenceCategoryId] == 1);
+      expect(versions.length, 3);
+    });
+  });
+
   group('D-127: clearing a category description actually saves the clear', () {
     test('D-127: insertCategoryEssence with an empty string persists an '
         'empty latest essence, not null — the DB layer already supports '
