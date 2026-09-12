@@ -14,6 +14,7 @@ import 'package:life_ops/widgets/pyramid.dart';
 import 'package:life_ops/screens/settings.dart';
 import 'package:life_ops/screens/welcome_screen.dart';
 import 'package:life_ops/screens/general_council_screen.dart';
+import 'package:life_ops/screens/newsfeed_screen.dart';
 import 'package:life_ops/screens/paywall_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:life_ops/screens/feedback_screen.dart';
@@ -431,6 +432,9 @@ class CustomAppBarState extends State<CustomAppBar> {
           case 'council':
             navigateToCouncil(context);
             break;
+          case 'newsfeed':
+            navigateToNewsfeed(context);
+            break;
           case 'faq':
             if (currentScreen != 'faq') {
               navigateToFAQ(context);
@@ -464,6 +468,10 @@ class CustomAppBarState extends State<CustomAppBar> {
           const PopupMenuItem<String>(
             value: 'council',
             child: Text('Talk to the Council of Advisors'),
+          ),
+          const PopupMenuItem<String>(
+            value: 'newsfeed',
+            child: Text('Your Newsfeed'),
           ),
           const PopupMenuItem<String>(
             value: 'faq',
@@ -649,6 +657,18 @@ class CustomAppBarState extends State<CustomAppBar> {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(context,
             MaterialPageRoute(builder: (context) => const GeneralCouncilScreen()))
+        .then((value) {});
+    utils.Utils().changeSystemColor(Brightness.light);
+    setState(() {});
+  }
+
+  // D-150: unlike the Council (entitlement-gated, D-091), the newsfeed is
+  // generated entirely from data already local to the device — no AI
+  // call, no server round trip — so it carries no paywall.
+  void navigateToNewsfeed(BuildContext context) async {
+    utils.Utils().changeSystemColor(Brightness.dark);
+    await Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const NewsfeedScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});

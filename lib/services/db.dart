@@ -8,14 +8,15 @@ import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 11; // 7: R3 schema — position, essences,
+  static const _databaseVersion = 12; // 7: R3 schema — position, essences,
   // domain findings, account state (Part IV). 8: R6/D-062 — discards an
   // incomplete old-flow setup so the user starts the new Council setup
   // fresh instead of landing on a half-populated pyramid with no way back
   // into the (now-deleted) wizard. 9: D-123 — a habit's optional recurring
   // scheduled time and its native calendar event id. 10: D-124 — a
   // tasklog row's optional voice-transcribed miss reason. 11: D-123 — a
-  // habit's own scheduled-event duration, in minutes.
+  // habit's own scheduled-event duration, in minutes. 12: D-150 — the
+  // newsfeed_item table (personal, on-device newsfeed).
 
   // DEMO MODE FLAG
   static final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
@@ -97,6 +98,20 @@ class DatabaseHelper {
   static const columnEssenceText = 'essence';
   static const columnEssenceCreated = 'created';
   static const columnEssenceSourceSession = 'source_session_id';
+
+  // D-150: the personal newsfeed — items generated entirely on-device from
+  // the user's own existing data (streak milestones, essence changes),
+  // never fetched from a server. dedupeKey is unique so re-running the
+  // generator is always safe to call repeatedly (e.g. every newsfeed-screen
+  // open) without ever inserting the same milestone twice.
+  static const newsfeedItemTable = 'newsfeed_item';
+  static const columnNewsfeedId = 'id';
+  static const columnNewsfeedType = 'type';
+  static const columnNewsfeedTitle = 'title';
+  static const columnNewsfeedBody = 'body';
+  static const columnNewsfeedCategoryId = 'categoryid';
+  static const columnNewsfeedCreated = 'created';
+  static const columnNewsfeedDedupeKey = 'dedupekey';
 
   // Accumulating four-domain findings (D-048).
   static const domainFindingTable = 'domain_finding';
@@ -258,6 +273,23 @@ class DatabaseHelper {
         '$columnEntitlementSyncedAt TEXT)');
     await db.execute(
         'INSERT OR IGNORE INTO $accountStateTable ($columnAccountId) VALUES (1)');
+  }
+
+  /// D-150: the newsfeed_item table, written idempotently (MIG-4) so it's
+  /// shared by _onCreate (fresh install) and the v12 _onUpgrade case
+  /// (existing install) — same pattern applyV7Schema already established.
+  static Future<void> applyV12Schema(Database db) async {
+    await db.execute('CREATE TABLE IF NOT EXISTS $newsfeedItemTable ('
+        '$columnNewsfeedId INTEGER PRIMARY KEY AUTOINCREMENT, '
+        '$columnNewsfeedType TEXT NOT NULL, '
+        '$columnNewsfeedTitle TEXT NOT NULL, '
+        '$columnNewsfeedBody TEXT NOT NULL, '
+        '$columnNewsfeedCategoryId INTEGER, '
+        '$columnNewsfeedCreated TEXT NOT NULL, '
+        '$columnNewsfeedDedupeKey TEXT NOT NULL, '
+        'UNIQUE($columnNewsfeedDedupeKey))');
+    await db.execute('CREATE INDEX IF NOT EXISTS idx_newsfeed_created ON '
+        '$newsfeedItemTable ($columnNewsfeedCreated DESC)');
   }
 
   /// D-062: a user whose old-flow setup was incomplete when this build
@@ -496,6 +528,8 @@ class DatabaseHelper {
 
     // R3 / Part IV schema, shared with the v7 migration.
     await applyV7Schema(db);
+    // D-150: the newsfeed table, shared with the v12 migration.
+    await applyV12Schema(db);
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -593,6 +627,12 @@ class DatabaseHelper {
             // a fresh install already gets from v11's CREATE TABLE.
             await db.execute(
                 'ALTER TABLE $taskTable ADD COLUMN $columnScheduledDurationMinutes INTEGER');
+            break;
+          case 12:
+            // D-150: the newsfeed_item table — a brand-new table, so
+            // idempotent CREATE TABLE IF NOT EXISTS is enough (no ALTER
+            // TABLE backfill needed, unlike the column additions above).
+            await applyV12Schema(db);
             break;
         }
       }
@@ -1722,6 +1762,71 @@ class DatabaseHelper {
       });
     }
     return summary;
+  }
+
+  /// D-150: the longest run of consecutive days, ending on the most recent
+  /// day with any tasklog activity for this category, where at least one
+  /// of that day's tasks was checked. Same "group by date, walk sorted
+  /// dates" approach visualizations.dart's _loadStreaksData already uses
+  /// for its longest-ever streak — this instead only cares about the
+  /// *current, still-active* run, which is what a "you're on a streak"
+  /// newsfeed item needs (an ended streak isn't news).
+  Future<int> getCurrentStreak(String categoryName) async {
+    final db = await database;
+    final rows = await db.query(getTaskLogTable(),
+        where: '$columnTLCategory = ?', whereArgs: [categoryName]);
+    final Map<String, bool> dailyCompletion = {};
+    for (final row in rows) {
+      final date = row[columnTLTaskDate] as String;
+      dailyCompletion[date] =
+          (dailyCompletion[date] ?? false) || row[columnTLChecked] == 'true';
+    }
+    final sortedDates = dailyCompletion.keys.toList()..sort();
+    int streak = 0;
+    for (final date in sortedDates.reversed) {
+      if (dailyCompletion[date] != true) break;
+      streak++;
+    }
+    return streak;
+  }
+
+  /// D-150: writes one newsfeed item, silently skipped (INSERT OR IGNORE)
+  /// if [dedupeKey] was already used — the mechanism that makes calling
+  /// the generator repeatedly (every time the newsfeed screen opens) safe.
+  Future<void> insertNewsfeedItem({
+    required String type,
+    required String title,
+    required String body,
+    int? categoryId,
+    required String dedupeKey,
+  }) async {
+    final db = await database;
+    await db.insert(
+      newsfeedItemTable,
+      {
+        columnNewsfeedType: type,
+        columnNewsfeedTitle: title,
+        columnNewsfeedBody: body,
+        columnNewsfeedCategoryId: categoryId,
+        columnNewsfeedCreated: DateTime.now().toIso8601String(),
+        columnNewsfeedDedupeKey: dedupeKey,
+      },
+      conflictAlgorithm: ConflictAlgorithm.ignore,
+    );
+  }
+
+  /// D-150: one page of the newsfeed, newest first.
+  Future<List<Map<String, dynamic>>> queryNewsfeedItems({
+    required int limit,
+    required int offset,
+  }) async {
+    final db = await database;
+    return db.query(
+      newsfeedItemTable,
+      orderBy: '$columnNewsfeedCreated DESC, $columnNewsfeedId DESC',
+      limit: limit,
+      offset: offset,
+    );
   }
 
   /// D-028/D-061: appends a new essence version for a category (essences are
