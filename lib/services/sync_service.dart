@@ -259,12 +259,26 @@ class SyncService {
   /// Deliberately partial, and disclosed as such: restores categories,
   /// each category's *current* essence (not the full version history —
   /// `essenceVersions` is provenance, not something the app's own
-  /// behavior depends on), the vision statement, and every habit/task.
-  /// Domain findings (D-048, advisory-only per D-074) and recent check-off
-  /// activity do not restore — losing them costs nothing the app depends
-  /// on to function, and reconciling check-off history against whatever a
-  /// user did on a now-gone device is a genuinely different, harder
-  /// problem this does not attempt to solve.
+  /// behavior depends on), the vision statement, every habit/task, and
+  /// (D-169) recent check-off activity, bounded to whatever
+  /// [_syncRecentActivity] already pushed (≤`AiGuard.maxTaskLogRows`
+  /// rows, D-031/D-075's own disclosed cap on how much of this leaves
+  /// the device at all). Domain findings (D-048, advisory-only per
+  /// D-074) still do not restore — genuinely low-stakes to lose.
+  ///
+  /// D-169 amendment: check-off activity restore was originally left out
+  /// entirely, reasoning "losing them costs nothing the app depends on
+  /// to function." Found live, the hard way — a real reinstall-and-
+  /// sign-back-in left every completed checkbox gone, discovered by the
+  /// owner mid-session: "I uninstall the app and all of my check marks
+  /// boxes are now gone when I signed back in." That reasoning was
+  /// simply wrong: streaks, essence-redefinition timing, and every chart
+  /// on the Visualizations screen all depend on this exact data. The
+  /// "genuinely different, harder problem" this still doesn't attempt is
+  /// reconciling two *independent* devices' overlapping history — this
+  /// fix only covers restoring onto a device with no local history at
+  /// all (a fresh install or a genuine reinstall), which has nothing to
+  /// reconcile against.
   Future<bool> restoreFromCloud(String uid) async {
     final userDoc = _firestore.collection('users').doc(uid);
     final profileSnap = await userDoc.collection('profile').doc('main').get();
@@ -330,6 +344,23 @@ class SyncService {
         // signal a future screen needs to (re)create the native event
         // fresh, on this device.
         DatabaseHelper.columnScheduledTime: t['scheduledtime'],
+      });
+    }
+
+    // D-169: restores whatever check-off history _syncRecentActivity
+    // already pushed (the bounded, already-disclosed recentActivity
+    // window) — completing the round trip for data that already leaves
+    // the device, not a new decision about how much does. No explicit
+    // id: insertTaskLog lets SQLite assign a fresh local one, the same
+    // choice the tasks restore just above already makes.
+    final activitySnap = await userDoc.collection('recentActivity').get();
+    for (final doc in activitySnap.docs) {
+      final a = doc.data();
+      await _db.insertTaskLog({
+        DatabaseHelper.columnTLCategory: a['category'],
+        DatabaseHelper.columnTLTaskDescription: a['taskdescription'],
+        DatabaseHelper.columnTLChecked: a['checked'],
+        DatabaseHelper.columnTLTaskDate: a['taskdate'],
       });
     }
 

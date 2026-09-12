@@ -488,6 +488,48 @@ void main() {
       expect(tasks.single[DatabaseHelper.columnTaskDescription], 'Walk 20 minutes');
     });
 
+    test('D-169: restoreFromCloud brings back check-off activity too — '
+        'regression test for owner feedback: "I uninstall the app and '
+        'all of my check marks boxes are now gone when I signed back '
+        'in." Streaks, essence-redefinition timing, and every '
+        'Visualizations chart all depend on this data, so losing it on '
+        'a genuine reinstall is a real loss, not a harmless one.',
+        () async {
+      final firestore = FakeFirebaseFirestore();
+      final push = SyncService(firestore: firestore, db: db);
+
+      await db.insertCategory({
+        DatabaseHelper.columnCategoryId: 1,
+        DatabaseHelper.columnCat: 'Health',
+        DatabaseHelper.columnPosition: 1,
+      });
+      await db.insertTaskLog({
+        DatabaseHelper.columnTLCategory: 'Health',
+        DatabaseHelper.columnTLTaskDescription: 'Walk 20 minutes',
+        DatabaseHelper.columnTLChecked: 'true',
+        DatabaseHelper.columnTLTaskDate: '2026-09-10',
+      });
+      await push.syncAll(uid, setupComplete: true);
+
+      // "Reinstall": a brand-new local database, same Firestore account.
+      final freshDir = await Directory.systemTemp.createTemp('gp_sync_restore_activity_test');
+      addTearDown(() {
+        if (freshDir.existsSync()) freshDir.deleteSync(recursive: true);
+      });
+      PathProviderPlatform.instance = _TempPathProvider(freshDir.path);
+
+      final pull = SyncService(firestore: firestore, db: db);
+      final restored = await pull.restoreFromCloud(uid);
+      expect(restored, isTrue);
+
+      final logs = await (await db.database).query(DatabaseHelper.taskLogTable);
+      expect(logs, hasLength(1));
+      expect(logs.single[DatabaseHelper.columnTLCategory], 'Health');
+      expect(logs.single[DatabaseHelper.columnTLTaskDescription], 'Walk 20 minutes');
+      expect(logs.single[DatabaseHelper.columnTLChecked], 'true');
+      expect(logs.single[DatabaseHelper.columnTLTaskDate], '2026-09-10');
+    });
+
     test('D-096: a cloud profile whose categories are still the Empty% '
         'placeholder seed is treated as no real data — restoreFromCloud '
         'returns false rather than restoring placeholders', () async {

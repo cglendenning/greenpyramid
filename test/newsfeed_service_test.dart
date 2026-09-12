@@ -266,6 +266,31 @@ void main() {
       expect(redefinition['body'], contains('Less than a day after the last time'));
     });
 
+    test('D-169: the generated card\'s own date is the essence\'s real '
+        'creation date, not the moment the card happened to be '
+        '(re)generated — found live: a full newsfeed regeneration '
+        '(D-168\'s own backfill) stamped every card with today\'s date, '
+        'so a genuinely days-old essence read as "You just turned..." '
+        'dated today. Owner: "Look at the screenshot I just posted and '
+        'you can see that the data is still wrong."', () async {
+      await seedCategory(1, 'Craft');
+      final d = await db.database;
+      const oldDate = '2026-09-09T12:00:00.000';
+      await d.insert(DatabaseHelper.categoryEssenceTable, {
+        DatabaseHelper.columnEssenceCategoryId: 1,
+        DatabaseHelper.columnEssenceText: 'Made by hand.',
+        DatabaseHelper.columnEssenceCreated: oldDate,
+      });
+
+      await service.generateNewItems();
+
+      final feed = await service.getFeed(limit: 50, offset: 0);
+      final essenceItem = feed.firstWhere((i) => i['type'] == 'essence');
+      expect(essenceItem['created'], oldDate,
+          reason: 'the card must carry the essence\'s own real creation '
+              'date, never DateTime.now() at generation time');
+    });
+
     test('two different categories\' essence histories are tracked '
         'independently — a first essence in category B is still framed '
         'as a definition even though category A already has a '

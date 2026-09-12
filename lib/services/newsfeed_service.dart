@@ -281,6 +281,8 @@ class NewsfeedService {
 
         final String title;
         final String body;
+        final thisCreated =
+            DateTime.parse(row[DatabaseHelper.columnEssenceCreated] as String);
         // The essence text itself is the owner's own words and stays
         // verbatim, never rewritten — only the framing around it changes.
         if (i == 0) {
@@ -290,8 +292,6 @@ class NewsfeedService {
         } else {
           final previousCreated = DateTime.parse(
               rows[i - 1][DatabaseHelper.columnEssenceCreated] as String);
-          final thisCreated =
-              DateTime.parse(row[DatabaseHelper.columnEssenceCreated] as String);
           final elapsed = humanElapsed(thisCreated.difference(previousCreated));
           title = '$categoryName, redefined.';
           body = "$elapsed after the last time, you've changed how you "
@@ -300,12 +300,21 @@ class NewsfeedService {
         }
 
         final dedupeKey = 'essence-$essenceId';
+        // D-169: found live — a full newsfeed regeneration (D-168's own
+        // backfill) stamped every card with the moment it was
+        // *regenerated*, not the essence's own real creation date, so a
+        // genuinely days-old essence rendered as "You just turned..."
+        // dated today. createdAt now carries the essence row's own real
+        // [columnEssenceCreated] through, so the card's date always
+        // reflects when the change actually happened, regardless of
+        // when the cache last rebuilt.
         final inserted = await _db.insertNewsfeedItem(
           type: 'essence',
           title: title,
           body: body,
           categoryId: categoryId,
           dedupeKey: dedupeKey,
+          createdAt: thisCreated,
         );
         if (inserted) {
           newItems.add((title: title, body: body, dedupeKey: dedupeKey));
