@@ -227,6 +227,12 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
   Future<void> _loadAll() async {
     setState(() => _loading = true);
     final rows = await _dbHelper.queryAllTasks();
+    var habits = rows.map((m) => HabitScheduleRow.fromMap(m, _utils)).toList();
+    // D-163: the local scheduledtime/scheduledeventid columns are only a
+    // cache of the last write this app made — reconcile against the
+    // calendar's actual current state every time this screen loads,
+    // rather than trusting that cache as ground truth.
+    habits = await _reconcileWithCalendar(habits);
     // Fetched once and reused across all 7 days — also the fix for a
     // defect found live: without it, a read-only Holidays calendar's
     // all-day Rosh Hashanah entry "collided" with every hour of the day
@@ -238,10 +244,43 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
             writableIds: writableIds)));
     if (!mounted) return;
     setState(() {
-      _habits = rows.map((m) => HabitScheduleRow.fromMap(m, _utils)).toList();
+      _habits = habits;
       _existingEventsByDay = events;
       _loading = false;
     });
+  }
+
+  /// D-163: found live — owner: "if I remove an item from the native
+  /// calendar after adding it there through Green Pyramid, that removal
+  /// is not reflected within Green Pyramid the next time that the
+  /// schedule is opened. So for the week that is being displayed, Green
+  /// Pyramid needs to read the native calendar and not just rely on what
+  /// it previously placed onto the calendar." For every habit that
+  /// thinks it has a scheduled event, confirms the event still actually
+  /// exists; a habit whose event was deleted directly in the native
+  /// calendar app has its local schedule (time, event id, duration)
+  /// cleared and its reminders cancelled, the same cleanup
+  /// `_confirmUnschedule` already does when the user removes it from
+  /// inside this screen — it just falls back into the unscheduled tray
+  /// instead of staying stuck showing a time that no longer exists.
+  Future<List<HabitScheduleRow>> _reconcileWithCalendar(
+      List<HabitScheduleRow> habits) async {
+    final reconciled = <HabitScheduleRow>[];
+    for (final habit in habits) {
+      final eventId = habit.scheduledEventId;
+      if (eventId == null || await _calendarService.eventExists(eventId)) {
+        reconciled.add(habit);
+        continue;
+      }
+      await _dbHelper.update({
+        DatabaseHelper.columnId: habit.id,
+        DatabaseHelper.columnScheduledTime: null,
+        DatabaseHelper.columnScheduledCalendarEventId: null,
+      });
+      await _localNotificationService.cancelHabitReminders(habit.id);
+      reconciled.add(habit.unscheduled());
+    }
+    return reconciled;
   }
 
   List<HabitScheduleRow> get _unscheduled =>
@@ -1010,6 +1049,29 @@ class HabitScheduleRow {
           m[DatabaseHelper.columnScheduledDurationMinutes] as int?,
     );
   }
+
+  /// D-163: a copy with no scheduled time or event — used when
+  /// reconciling against the native calendar finds this habit's own
+  /// event has been deleted outside the app. Mirrors exactly what
+  /// `_confirmUnschedule`'s own database update clears: the duration is
+  /// deliberately left as-is (not reset to the default) in both places,
+  /// so re-scheduling later starts from the same custom duration the
+  /// habit had before.
+  HabitScheduleRow unscheduled() => HabitScheduleRow(
+        id: id,
+        category: category,
+        description: description,
+        sunday: sunday,
+        monday: monday,
+        tuesday: tuesday,
+        wednesday: wednesday,
+        thursday: thursday,
+        friday: friday,
+        saturday: saturday,
+        scheduledTime: null,
+        scheduledEventId: null,
+        scheduledDurationMinutes: scheduledDurationMinutes,
+      );
 
   bool activeOn(DateTime day) {
     switch (day.weekday) {

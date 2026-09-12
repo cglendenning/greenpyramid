@@ -249,6 +249,85 @@ void main() {
     });
   });
 
+  group('D-163: HabitScheduleRow.unscheduled — the in-memory shape used '
+      'when a habit\'s scheduled event was deleted directly in the native '
+      'calendar', () {
+    test('clears the scheduled time and event id, but keeps the day '
+        'flags, description, and duration untouched — mirrors exactly '
+        'what _confirmUnschedule\'s own database update clears, so '
+        're-scheduling later starts from the same custom duration', () {
+      final habit = HabitScheduleRow(
+        id: 7,
+        category: 'Health',
+        description: 'Walk 20 minutes',
+        sunday: false,
+        monday: true,
+        tuesday: false,
+        wednesday: true,
+        thursday: false,
+        friday: false,
+        saturday: false,
+        scheduledTime: '07:00',
+        scheduledEventId: 'some-event-id',
+        scheduledDurationMinutes: 45,
+      );
+
+      final result = habit.unscheduled();
+
+      expect(result.scheduledTime, isNull);
+      expect(result.scheduledEventId, isNull);
+      expect(result.scheduledDurationMinutes, 45);
+      expect(result.monday, isTrue);
+      expect(result.wednesday, isTrue);
+      expect(result.description, 'Walk 20 minutes');
+      expect(result.id, 7);
+    });
+  });
+
+  group('D-163: _loadAll reconciles against the native calendar\'s actual '
+      'current state, rather than trusting the local scheduledtime/'
+      'scheduledeventid columns as ground truth', () {
+    final source =
+        File('lib/screens/schedule_habits_screen.dart').readAsStringSync();
+
+    test('_loadAll calls _reconcileWithCalendar before displaying '
+        'anything — found live: deleting a habit\'s event directly in '
+        'the native calendar app left it stuck showing as scheduled '
+        'indefinitely', () {
+      final loadAllStart = source.indexOf('Future<void> _loadAll()');
+      expect(loadAllStart, greaterThan(-1));
+      final loadAllEnd = source.indexOf('\n  List<HabitScheduleRow> get _unscheduled', loadAllStart);
+      final loadAllBody = source.substring(loadAllStart, loadAllEnd);
+      expect(loadAllBody, contains('_reconcileWithCalendar(habits)'));
+      // Reconciled before it's ever assigned to the displayed _habits.
+      expect(loadAllBody.indexOf('_reconcileWithCalendar'),
+          lessThan(loadAllBody.indexOf('_habits = habits')));
+    });
+
+    test('_reconcileWithCalendar checks CalendarService.eventExists for '
+        'every habit with a scheduled event, and clears both the time '
+        'and event id — plus cancels reminders — for one whose event no '
+        'longer exists', () {
+      final reconcileStart = source.indexOf('Future<List<HabitScheduleRow>> _reconcileWithCalendar');
+      expect(reconcileStart, greaterThan(-1));
+      final reconcileEnd = source.indexOf('\n  String _fmtTime', reconcileStart);
+      final reconcileBody = source.substring(reconcileStart, reconcileEnd);
+      expect(reconcileBody, contains('_calendarService.eventExists(eventId)'));
+      expect(reconcileBody, contains('DatabaseHelper.columnScheduledTime: null'));
+      expect(reconcileBody, contains('DatabaseHelper.columnScheduledCalendarEventId: null'));
+      expect(reconcileBody, contains('_localNotificationService.cancelHabitReminders(habit.id)'));
+      expect(reconcileBody, contains('habit.unscheduled()'));
+    });
+
+    test('a habit with no scheduled event id is left alone — nothing to '
+        'reconcile', () {
+      final reconcileStart = source.indexOf('Future<List<HabitScheduleRow>> _reconcileWithCalendar');
+      final reconcileEnd = source.indexOf('\n  String _fmtTime', reconcileStart);
+      final reconcileBody = source.substring(reconcileStart, reconcileEnd);
+      expect(reconcileBody, contains('eventId == null'));
+    });
+  });
+
   group('D-128: the iOS/Android edge-swipe-back gesture is disabled on this '
       'always-landscape screen', () {
     test('build() wraps its content in PopScope(canPop: false) — found '

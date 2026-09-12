@@ -307,6 +307,27 @@ class CalendarService {
     }
   }
 
+  /// D-163: whether a habit's own scheduled native event still exists —
+  /// found live: deleting the event directly from the native calendar app
+  /// (not through Green Pyramid) left it stuck showing the habit as
+  /// scheduled forever, since nothing ever re-checked the calendar's own
+  /// current state after the event was first created. `getEvent` returns
+  /// null once the event (or its whole series) has been deleted; a
+  /// missing permission or any platform failure is treated the same as
+  /// "can't confirm it's gone," never "assume it's gone" — this must not
+  /// silently unschedule a real habit just because calendar access was
+  /// briefly unavailable. Never throws.
+  Future<bool> eventExists(String eventId) async {
+    if (!await hasPermission()) return true;
+    try {
+      final event = await _calendar.getEvent(eventId);
+      return event != null;
+    } catch (e, st) {
+      debugPrint('CalendarService.eventExists failed: $e\n$st');
+      return true;
+    }
+  }
+
   /// D-123: the first non-read-only calendar, preferring the device's
   /// primary — matching Kansei's own selection order (excluding calendars
   /// like iOS Holidays or a subscribed feed, which the plugin reports as

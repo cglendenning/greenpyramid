@@ -70,6 +70,16 @@ void main() {
           await CalendarService.instance.deleteHabitEvent('some-event-id');
       expect(result, isFalse);
     });
+
+    test('D-163: eventExists resolves to true (never throws) when '
+        'permission can\'t even be determined — "can\'t confirm it\'s '
+        'gone" must never be treated the same as "confirmed gone," or a '
+        'real habit could be silently unscheduled just because calendar '
+        'access was briefly unavailable', () async {
+      final result =
+          await CalendarService.instance.eventExists('some-event-id');
+      expect(result, isTrue);
+    });
   });
 
   group('D-123: daysOfWeekFrom — pure mapping from the task table\'s own '
