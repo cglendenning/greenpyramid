@@ -110,11 +110,30 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
     ]);
   }
 
+  // D-176: on iOS, the home indicator (the bottom "little white bar") sits
+  // directly over this screen's bottom row of habit-tap targets in
+  // landscape, and a tap that lands on it is captured by the OS as the
+  // start of the swipe-up-to-home gesture instead of reaching this
+  // screen's own tap handling — owner: "it's very easy to accidentally
+  // grab the little white bar, which... slides to another app... I would
+  // ideally like to disable that behavior while in landscape to not even
+  // present that little white bar." `immersiveSticky` auto-hides the
+  // indicator and hands a swipe from that edge to the app instead of the
+  // system, rather than immediately completing a home/app-switch gesture
+  // — this is the whole fix; iOS has no way to remove the gesture area
+  // itself, only to change what happens when it's touched. Restored to
+  // the app's normal `edgeToEdge` mode on dispose — every other screen is
+  // portrait and expects the indicator visible as usual.
+  void _hideHomeIndicator() {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  }
+
   @override
   void initState() {
     super.initState();
     analytics.logEvent(name: 'schedule_habits');
     _lockLandscape();
+    _hideHomeIndicator();
     final now = DateTime.now();
     _weekStart = DateTime(now.year, now.month, now.day);
     _nowTimer = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -122,6 +141,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
     });
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       _lockLandscape();
+      _hideHomeIndicator();
       _showDragHintOnce();
       await _init();
     });
@@ -131,6 +151,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _lockLandscape();
+    _hideHomeIndicator();
   }
 
   @override
@@ -138,6 +159,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
     _autoScrollTimer?.cancel();
     _nowTimer?.cancel();
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     _scrollCtrl.dispose();
     super.dispose();
   }

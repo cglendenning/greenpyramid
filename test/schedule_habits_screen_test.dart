@@ -350,4 +350,34 @@ void main() {
       expect(popIdx, greaterThan(leadingIdx));
     });
   });
+
+  group('D-176: the iOS home indicator is hidden while this screen is open '
+      '— found live: a tap on a habit near the bottom edge was frequently '
+      'grabbed by the OS as a swipe-to-home gesture instead of reaching '
+      'this screen', () {
+    final source = File('lib/screens/schedule_habits_screen.dart').readAsStringSync();
+
+    test('immersiveSticky is enabled every time landscape is (re-)locked', () {
+      expect(source, contains('SystemUiMode.immersiveSticky'));
+      final lockIdx = source.indexOf('void _lockLandscape()');
+      final hideIdx = source.indexOf('void _hideHomeIndicator()');
+      expect(lockIdx, greaterThan(-1));
+      expect(hideIdx, greaterThan(-1));
+      // Every call site that re-locks landscape (initState, the
+      // post-frame callback, didChangeDependencies) also re-hides the
+      // indicator — a rotation/resume could otherwise silently restore
+      // the system default and let the bug back in.
+      final callSites = RegExp(r'_lockLandscape\(\);').allMatches(source).length;
+      final hideSites = RegExp(r'_hideHomeIndicator\(\);').allMatches(source).length;
+      expect(hideSites, callSites);
+    });
+
+    test('the normal edgeToEdge mode is restored on dispose, not left '
+        'immersive for every other (portrait) screen in the app', () {
+      final disposeStart = source.indexOf('void dispose()');
+      final disposeEnd = source.indexOf('\n  }', disposeStart);
+      final disposeBody = source.substring(disposeStart, disposeEnd);
+      expect(disposeBody, contains('SystemUiMode.edgeToEdge'));
+    });
+  });
 }
