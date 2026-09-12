@@ -133,6 +133,52 @@ void main() {
     });
   });
 
+  group('D-167: a database-level trigger backstops the same invariant, '
+      'so even a raw insert that bypasses insertCategoryEssence entirely '
+      "cannot create a consecutive duplicate — owner: \"ensure that "
+      'there are guard rails in place to prevent this data condition '
+      'from ever occurring again"', () {
+    test('a raw db.insert with text identical to the current latest '
+        'version is silently skipped by the trigger, not just by the '
+        'Dart-level guard', () async {
+      await db.insertCategory(
+          {DatabaseHelper.columnCategoryId: 1, DatabaseHelper.columnCat: 'Health'});
+      await db.insertCategoryEssence(categoryId: 1, essence: 'Stay strong.');
+
+      final rawDb = await db.database;
+      await rawDb.insert(DatabaseHelper.categoryEssenceTable, {
+        DatabaseHelper.columnEssenceCategoryId: 1,
+        DatabaseHelper.columnEssenceText: 'Stay strong.',
+        DatabaseHelper.columnEssenceCreated: DateTime.now().toIso8601String(),
+      });
+
+      final versions = (await db.queryAllCategoryEssences())
+          .where((r) => r[DatabaseHelper.columnEssenceCategoryId] == 1);
+      expect(versions.length, 1,
+          reason: 'the trigger fires on ANY insert into this table, not '
+              'just ones that went through insertCategoryEssence');
+    });
+
+    test('a raw db.insert with genuinely different text still succeeds '
+        '— the trigger only blocks an exact repeat of the current '
+        'latest version', () async {
+      await db.insertCategory(
+          {DatabaseHelper.columnCategoryId: 1, DatabaseHelper.columnCat: 'Health'});
+      await db.insertCategoryEssence(categoryId: 1, essence: 'Stay strong.');
+
+      final rawDb = await db.database;
+      await rawDb.insert(DatabaseHelper.categoryEssenceTable, {
+        DatabaseHelper.columnEssenceCategoryId: 1,
+        DatabaseHelper.columnEssenceText: 'Stay healthy.',
+        DatabaseHelper.columnEssenceCreated: DateTime.now().toIso8601String(),
+      });
+
+      final versions = (await db.queryAllCategoryEssences())
+          .where((r) => r[DatabaseHelper.columnEssenceCategoryId] == 1);
+      expect(versions.length, 2);
+    });
+  });
+
   group('D-127: clearing a category description actually saves the clear', () {
     test('D-127: insertCategoryEssence with an empty string persists an '
         'empty latest essence, not null — the DB layer already supports '

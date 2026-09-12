@@ -255,4 +255,39 @@ void main() {
         reason: 'type=essence newsfeed rows are cleared again so they '
             'regenerate from the corrected history');
   });
+
+  test('D-167: the v17->v18 migration installs the duplicate-guard '
+      'trigger on an existing database — an account already upgraded to '
+      'v17 (and therefore already missing the trigger, since it was only '
+      "created in applyV7Schema for a fresh install) gets it retroactively",
+      () async {
+    final path = '${tempDir.path}/LifeOps.db';
+    final raw = await databaseFactory.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 17,
+        onCreate: (db, version) => _createV12SchemaWithEssence(db),
+      ),
+    );
+    await raw.insert('category_essence', {
+      'categoryid': 1,
+      'essence': 'Stay strong.',
+      'created': DateTime.now().toIso8601String(),
+    });
+    await raw.close();
+
+    final upgraded = await db.database;
+    // The trigger now exists and blocks a same-text insert, even though
+    // this database was created before D-167 shipped.
+    await upgraded.insert('category_essence', {
+      'categoryid': 1,
+      'essence': 'Stay strong.',
+      'created': DateTime.now().toIso8601String(),
+    });
+    final rows =
+        await upgraded.query('category_essence', where: 'categoryid = ?', whereArgs: [1]);
+    expect(rows.length, 1,
+        reason: 'the v17->v18 migration installed the trigger, so the '
+            'duplicate insert above was silently skipped');
+  });
 }

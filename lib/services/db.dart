@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 17; // 7: R3 schema — position, essences,
+  static const _databaseVersion = 18; // 7: R3 schema — position, essences,
   // domain findings, account state (Part IV). 8: R6/D-062 — discards an
   // incomplete old-flow setup so the user starts the new Council setup
   // fresh instead of landing on a half-populated pyramid with no way back
@@ -38,7 +38,12 @@ class DatabaseHelper {
   // manufactured by every past call to restoreFromCloud, before
   // insertCategoryEssence itself was guarded against no-op inserts) and
   // clears type='essence' newsfeed rows a second time so they
-  // regenerate from the corrected history.
+  // regenerate from the corrected history. 18: D-167 — a database-level
+  // trigger (also created directly in applyV7Schema for a fresh
+  // install) that silently rejects any insert into category_essence
+  // that would duplicate the category's own current latest text — a
+  // backstop against any future write path bypassing
+  // insertCategoryEssence's own D-166 guard.
 
   // DEMO MODE FLAG
   static final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
@@ -273,6 +278,11 @@ class DatabaseHelper {
         '$columnEssenceSourceSession TEXT)');
     await db.execute('CREATE INDEX IF NOT EXISTS idx_essence_cat_created ON '
         '$categoryEssenceTable ($columnEssenceCategoryId, $columnEssenceCreated DESC)');
+    // D-167: a fresh install gets the duplicate-guard trigger from day
+    // one — existing installs get it via the dedicated v17->v18
+    // migration step below, since applyV7Schema only ever runs once, at
+    // _onCreate or the original v6->v7 upgrade.
+    await _createEssenceDuplicateGuardTrigger(db);
 
     await db.execute('CREATE TABLE IF NOT EXISTS $domainFindingTable ('
         '$columnFindingId INTEGER PRIMARY KEY AUTOINCREMENT, '
@@ -346,6 +356,39 @@ class DatabaseHelper {
     final placeholders = List.filled(idsToDelete.length, '?').join(',');
     await db.delete(categoryEssenceTable,
         where: '$columnEssenceId IN ($placeholders)', whereArgs: idsToDelete);
+  }
+
+  /// D-167: a database-level backstop for the same invariant D-166's
+  /// application-level guard enforces — belt and suspenders, at the
+  /// owner's own explicit request after the phantom-duplicate defect
+  /// ("ensure that there are guard rails in place to prevent this data
+  /// condition from ever occurring again"). insertCategoryEssence is
+  /// today the *only* code path that writes to [categoryEssenceTable]
+  /// (confirmed directly against the source), so this trigger is not
+  /// closing a currently-reachable gap — it exists so that no future
+  /// code path (a new service method, a migration, a direct query) can
+  /// silently reintroduce this exact data condition by writing to the
+  /// table without going through the guarded helper. `RAISE(IGNORE)`
+  /// inside a `BEFORE INSERT` trigger silently skips just that one insert
+  /// (no exception raised, no partial transaction to clean up) — the same
+  /// "no-op, not an error" contract `insertCategoryEssence`'s own
+  /// `ConflictAlgorithm.ignore`-style guard already has, so a future
+  /// caller that bypasses the Dart helper still gets safe, silent
+  /// behavior rather than a crash.
+  static Future<void> _createEssenceDuplicateGuardTrigger(Database db) async {
+    await db.execute('''
+      CREATE TRIGGER IF NOT EXISTS trg_no_duplicate_essence
+      BEFORE INSERT ON $categoryEssenceTable
+      WHEN NEW.$columnEssenceText = (
+        SELECT $columnEssenceText FROM $categoryEssenceTable
+        WHERE $columnEssenceCategoryId = NEW.$columnEssenceCategoryId
+        ORDER BY $columnEssenceCreated DESC, $columnEssenceId DESC
+        LIMIT 1
+      )
+      BEGIN
+        SELECT RAISE(IGNORE);
+      END;
+    ''');
   }
 
   /// D-062: a user whose old-flow setup was incomplete when this build
@@ -769,15 +812,28 @@ class DatabaseHelper {
             // one-time cleanup collapses every existing run of
             // consecutive same-text essence rows per category down to
             // just the first occurrence, keeping every row that
-            // represents a genuine change (Firestore's own
-            // essenceVersions collection is provenance only — nothing
-            // at runtime reads it back — so it's left as-is, not
-            // retroactively cleaned). type='essence' newsfeed rows are
-            // cleared again so they regenerate from the now-corrected
-            // history.
+            // represents a genuine change. type='essence' newsfeed rows
+            // are cleared again so they regenerate from the now-
+            // corrected history. (Firestore's own essenceVersions
+            // collection isn't touched by this on-device migration —
+            // nothing at runtime reads it back — but the owner directly
+            // pointed out that leaving it full of the same phantom
+            // duplicates still *looks* broken when inspected. Cleaned
+            // separately, once, via a one-time admin script against the
+            // one real account on this project — not something every
+            // device's migration needs to repeat.)
             await _collapseDuplicateEssenceVersions(db);
             await db.delete(newsfeedItemTable,
                 where: '$columnNewsfeedType = ?', whereArgs: ['essence']);
+            break;
+          case 18:
+            // D-167: a database-level backstop for the same invariant —
+            // owner: "ensure that there are guard rails in place to
+            // prevent this data condition from ever occurring again."
+            // insertCategoryEssence (D-166) already guards the only
+            // current write path; this trigger means no *future* write
+            // path can silently reintroduce the same defect either.
+            await _createEssenceDuplicateGuardTrigger(db);
             break;
         }
       }
