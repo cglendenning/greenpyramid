@@ -20,7 +20,7 @@ import { getCouncilModel, getNotificationModel } from './lib/model_config.js';
 import { guardAndCountSetupCall, SetupCallLimitError } from './lib/setup_guard.js';
 import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, CATEGORIES_TOOL, habitsTool } from './lib/setup_derivation.js';
 import { buildProgressAnalysisPrompt } from './lib/progress_analysis.js';
-import { buildNewsfeedAnalysisPrompt } from './lib/newsfeed_analysis.js';
+import { buildNewsfeedAnalysisPrompt, parseArticleReply } from './lib/newsfeed_analysis.js';
 import { buildDeriveDomainFindingsPrompt, buildDeriveGeneralDomainFindingsPrompt, DOMAIN_FINDING_TOOL, GENERAL_DOMAIN_FINDING_TOOL } from './lib/domain_finding_derivation.js';
 import { isEligibleForTailoredNotification } from './lib/notification_schedule.js';
 import { shouldSendBatchCheckin, todaysScheduledHabits, localDateParts } from './lib/batch_checkin_schedule.js';
@@ -579,19 +579,7 @@ app.post('/deriveNewsfeedArticle', requireFirebaseAuth, async (req, res) => {
       .catch((e) => console.error('recordCost error:', e.message));
     const raw = extractReplyText(msg.content);
     if (!raw) return res.status(502).json({ error: 'empty_reply' });
-    let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      // The model didn't return clean JSON — fall back to the whole reply
-      // as the body with a generic headline, rather than failing the
-      // request outright over a formatting slip.
-      parsed = { headline: 'Your Pyramid, Analyzed', body: raw };
-    }
-    res.json({
-      headline: String(parsed.headline || '').trim(),
-      body: String(parsed.body || '').trim(),
-    });
+    res.json(parseArticleReply(raw));
   } catch (e) {
     console.error('deriveNewsfeedArticle error:', e.message);
     res.status(502).json({ error: e.message });

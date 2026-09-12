@@ -48,3 +48,31 @@ export function buildNewsfeedAnalysisPrompt({ categories = [] }) {
 
   return { system, user };
 }
+
+// D-157: Claude sometimes wraps its JSON reply in a markdown code fence
+// despite being told not to — found live, the very first real article a
+// subscribed account generated came back as ```json ... ``` and fell
+// through to the generic "Your Pyramid, Analyzed" fallback with the raw
+// fenced JSON dumped into the body. The same lesson D-092 already
+// learned for Mira's pacing reassurance applies here too: never rely on
+// a soft prompt instruction alone when a deterministic fix is possible.
+// Strips a single leading/trailing ``` or ```json fence, if present,
+// before parsing — the prompt's own "no markdown and no code fences"
+// instruction stays as a first line of defense, this is the backstop.
+export function parseArticleReply(raw) {
+  const trimmed = (raw || '').trim();
+  const fenced = trimmed.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/i);
+  const jsonText = fenced ? fenced[1].trim() : trimmed;
+  try {
+    const parsed = JSON.parse(jsonText);
+    return {
+      headline: String(parsed.headline || '').trim(),
+      body: String(parsed.body || '').trim(),
+    };
+  } catch {
+    // Still not parseable JSON even after stripping a fence — fall back
+    // to the whole (unfenced-if-we-could) reply as the body, rather than
+    // failing the request outright over a formatting slip.
+    return { headline: 'Your Pyramid, Analyzed', body: jsonText };
+  }
+}

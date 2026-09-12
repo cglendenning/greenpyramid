@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 13; // 7: R3 schema — position, essences,
+  static const _databaseVersion = 14; // 7: R3 schema — position, essences,
   // domain findings, account state (Part IV). 8: R6/D-062 — discards an
   // incomplete old-flow setup so the user starts the new Council setup
   // fresh instead of landing on a half-populated pyramid with no way back
@@ -21,8 +21,11 @@ class DatabaseHelper {
   // iterations of D-150/D-154/D-155's copy and item types before they
   // reached their current shape; generateNewItems() repopulates it fresh
   // from current data (and current logic) the next time anything touches
-  // the newsfeed. Never needed again after this — a real device only
-  // ever crosses this version boundary once.
+  // the newsfeed. 14: D-157 — a second, narrower one-time wipe: only
+  // type='article' rows, discarding the one real article generated
+  // before the backend's markdown-code-fence parsing bug was fixed
+  // server-side, so the daily dedupeKey is free again immediately
+  // rather than only tomorrow.
 
   // DEMO MODE FLAG
   static final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
@@ -657,6 +660,22 @@ class DatabaseHelper {
             // migration only ever runs once, the single time a real
             // device crosses the v12->v13 boundary, never again after.
             await db.delete(newsfeedItemTable);
+            break;
+          case 14:
+            // D-157: found live — the very first real article a
+            // subscribed account generated came back wrapped in a
+            // ```json code fence, which the backend's JSON.parse choked
+            // on, falling back to the generic "Your Pyramid, Analyzed"
+            // headline with the raw fenced text dumped into the body.
+            // Fixed server-side (parseArticleReply now strips a fence
+            // before parsing), but that one broken row already consumed
+            // today's daily dedupeKey ('article-<date>'), so it would
+            // otherwise sit there until tomorrow. Deleting only
+            // type='article' rows (not the whole table, unlike D-156 —
+            // the essence/streak/welcome cards D-156 just regenerated
+            // are fine and untouched) frees the slot immediately.
+            await db.delete(newsfeedItemTable,
+                where: '$columnNewsfeedType = ?', whereArgs: ['article']);
             break;
         }
       }

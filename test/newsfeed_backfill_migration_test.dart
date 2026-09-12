@@ -82,4 +82,40 @@ void main() {
     final rows = await (await db.database).query(DatabaseHelper.newsfeedItemTable);
     expect(rows, isEmpty);
   });
+
+  test('D-157: the v13->v14 migration deletes only type=article rows, '
+      "leaving essence/streak/welcome cards D-156 just regenerated "
+      'untouched — found live: a real article generated before the '
+      "backend's markdown-code-fence parsing bug was fixed server-side "
+      "consumed that day's dedupeKey, so only that row needs clearing to "
+      'free the slot immediately rather than waiting until tomorrow',
+      () async {
+    // Same schema as v12 (v13's own migration was a DELETE, not a
+    // schema change), with one row of each type already in it.
+    final path = '${tempDir.path}/LifeOps.db';
+    final raw = await databaseFactory.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 13,
+        onCreate: (db, version) => DatabaseHelper.applyV12Schema(db),
+      ),
+    );
+    for (final type in ['article', 'essence', 'streak', 'welcome']) {
+      await raw.insert(DatabaseHelper.newsfeedItemTable, {
+        DatabaseHelper.columnNewsfeedType: type,
+        DatabaseHelper.columnNewsfeedTitle: '$type title',
+        DatabaseHelper.columnNewsfeedBody: '$type body',
+        DatabaseHelper.columnNewsfeedCreated: DateTime.now().toIso8601String(),
+        DatabaseHelper.columnNewsfeedDedupeKey: '$type-key',
+      });
+    }
+    await raw.close();
+
+    final upgraded = await db.database;
+    final rows = await upgraded.query(DatabaseHelper.newsfeedItemTable);
+    final remainingTypes = rows.map((r) => r[DatabaseHelper.columnNewsfeedType]).toSet();
+
+    expect(remainingTypes, {'essence', 'streak', 'welcome'});
+    expect(remainingTypes, isNot(contains('article')));
+  });
 }

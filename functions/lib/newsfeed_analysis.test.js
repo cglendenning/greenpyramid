@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildNewsfeedAnalysisPrompt } from './newsfeed_analysis.js';
+import { buildNewsfeedAnalysisPrompt, parseArticleReply } from './newsfeed_analysis.js';
 
 /// D-155: the newsfeed's AI-written "news article" — owner: "I want you to
 /// produce something through AI that maps to the headline and make it like
@@ -76,4 +76,48 @@ test('injection characters in a category name or essence cannot break '
   });
   assert.doesNotMatch(user, /Craft"/);
   assert.doesNotMatch(user, /Made"/);
+});
+
+/// D-157: found live — the very first real article a subscribed account
+/// generated came back wrapped in a ```json code fence despite the
+/// prompt's own "no markdown and no code fences" instruction, and fell
+/// through to the generic fallback headline with the raw fenced text
+/// dumped into the body.
+test('D-157: plain JSON (no fence) parses normally', () => {
+  const result = parseArticleReply('{"headline": "H", "body": "B"}');
+  assert.deepEqual(result, { headline: 'H', body: 'B' });
+});
+
+test('D-157: a ```json ... ``` fence is stripped before parsing — the '
+  + 'exact failure mode found live', () => {
+  const raw = '```json\n{"headline": "Money Category Maintains Perfect Streak", "body": "Money is the only category..."}\n```';
+  const result = parseArticleReply(raw);
+  assert.equal(result.headline, 'Money Category Maintains Perfect Streak');
+  assert.match(result.body, /^Money is the only category/);
+});
+
+test('D-157: a bare ``` fence with no "json" language tag is also '
+  + 'stripped', () => {
+  const raw = '```\n{"headline": "H", "body": "B"}\n```';
+  const result = parseArticleReply(raw);
+  assert.deepEqual(result, { headline: 'H', body: 'B' });
+});
+
+test('D-157: leading/trailing whitespace around a fence does not defeat '
+  + 'stripping', () => {
+  const raw = '  \n```json\n{"headline": "H", "body": "B"}\n```\n  ';
+  const result = parseArticleReply(raw);
+  assert.deepEqual(result, { headline: 'H', body: 'B' });
+});
+
+test('D-157: genuinely malformed JSON (not just fenced) still falls back '
+  + 'to a generic headline rather than throwing', () => {
+  const result = parseArticleReply('not json at all');
+  assert.equal(result.headline, 'Your Pyramid, Analyzed');
+  assert.equal(result.body, 'not json at all');
+});
+
+test('D-157: an empty reply falls back gracefully too', () => {
+  const result = parseArticleReply('');
+  assert.equal(result.headline, 'Your Pyramid, Analyzed');
 });
