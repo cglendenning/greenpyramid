@@ -1,3 +1,5 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:intl/intl.dart';
@@ -93,7 +95,28 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) setState(() => _highlighted = null);
       });
+    } else {
+      // D-155: the AI-written daily article is generated in the
+      // background, never blocking the instant, on-device feed above —
+      // it can take a few seconds. Skipped entirely when the screen was
+      // opened to focus on one specific (older) item via a notification
+      // tap, so a brand-new article never shifts things around mid-view.
+      unawaited(_generateArticleInBackground());
     }
+  }
+
+  Future<void> _generateArticleInBackground() async {
+    await _service.generateArticleIfDue();
+    if (!mounted) return;
+    final latest = await _service.getFeed(limit: 1, offset: 0);
+    if (latest.isEmpty) return;
+    final newest = latest.first;
+    final key = newest['dedupekey'] as String;
+    if (_items.any((i) => i['dedupekey'] == key)) return;
+    setState(() {
+      _items.insert(0, newest);
+      _itemKeys[key] = GlobalKey();
+    });
   }
 
   void _onScroll() {
@@ -199,6 +222,7 @@ class _NewsfeedCard extends StatelessWidget {
     final body = item['body'] as String? ?? '';
     final created = DateTime.tryParse(item['created'] as String? ?? '');
     final dedupeKey = item['dedupekey'] as String? ?? title;
+    final isArticle = item['type'] == 'article';
     final hash = _stableHash(dedupeKey);
     final layout = _CardLayout.values[hash % _CardLayout.values.length];
     final image = kStockImages[hash % kStockImages.length];
@@ -222,12 +246,12 @@ class _NewsfeedCard extends StatelessWidget {
             : null,
       ),
       clipBehavior: Clip.antiAlias,
-      child: _buildLayout(layout, image, title, body, created),
+      child: _buildLayout(layout, image, title, body, created, isArticle),
     );
   }
 
   Widget _buildLayout(_CardLayout layout, String image, String title,
-      String body, DateTime? created) {
+      String body, DateTime? created, bool isArticle) {
     switch (layout) {
       case _CardLayout.imageTop:
         return Column(
@@ -236,7 +260,7 @@ class _NewsfeedCard extends StatelessWidget {
             Expanded(flex: 4, child: Image.asset(image, fit: BoxFit.cover)),
             Expanded(
               flex: 6,
-              child: _textBlock(title, body, created,
+              child: _textBlock(title, body, created, isArticle,
                   padding: const EdgeInsets.all(18)),
             ),
           ],
@@ -248,7 +272,7 @@ class _NewsfeedCard extends StatelessWidget {
             Expanded(flex: 4, child: Image.asset(image, fit: BoxFit.cover)),
             Expanded(
               flex: 6,
-              child: _textBlock(title, body, created,
+              child: _textBlock(title, body, created, isArticle,
                   padding: const EdgeInsets.all(18)),
             ),
           ],
@@ -259,7 +283,7 @@ class _NewsfeedCard extends StatelessWidget {
           children: [
             Expanded(
               flex: 6,
-              child: _textBlock(title, body, created,
+              child: _textBlock(title, body, created, isArticle,
                   padding: const EdgeInsets.all(18)),
             ),
             Expanded(flex: 4, child: Image.asset(image, fit: BoxFit.cover)),
@@ -286,7 +310,7 @@ class _NewsfeedCard extends StatelessWidget {
             ),
             Align(
               alignment: Alignment.bottomLeft,
-              child: _textBlock(title, body, created,
+              child: _textBlock(title, body, created, isArticle,
                   padding: const EdgeInsets.fromLTRB(18, 18, 18, 18)),
             ),
           ],
@@ -294,7 +318,7 @@ class _NewsfeedCard extends StatelessWidget {
     }
   }
 
-  Widget _textBlock(String title, String body, DateTime? created,
+  Widget _textBlock(String title, String body, DateTime? created, bool isArticle,
       {required EdgeInsetsGeometry padding}) {
     return SingleChildScrollView(
       padding: padding,
@@ -302,6 +326,23 @@ class _NewsfeedCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
+          // D-155: "make it like an analysis shaped as a news article" —
+          // a small section label, the way a real news article carries
+          // one, is also the one honest signal to the reader that this
+          // particular card was AI-written analysis, not a plain
+          // recorded fact like a streak or an essence change.
+          if (isArticle) ...[
+            const Text(
+              'ANALYSIS',
+              style: TextStyle(
+                  color: AppColors.brandGreen,
+                  fontFamily: 'Exo2',
+                  fontWeight: FontWeight.bold,
+                  fontSize: 11,
+                  letterSpacing: 1.2),
+            ),
+            const SizedBox(height: 6),
+          ],
           Text(
             title,
             style: const TextStyle(

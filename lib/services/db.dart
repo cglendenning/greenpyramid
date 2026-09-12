@@ -1836,6 +1836,19 @@ class DatabaseHelper {
     );
   }
 
+  /// D-155: a cheap existence check by dedupeKey, used before doing any
+  /// of the (comparatively expensive) per-category stat-gathering or the
+  /// AI call itself for the newsfeed's daily article — so a day that
+  /// already has its article never re-does that work just to have
+  /// insertNewsfeedItem's own dedup silently discard the result at the
+  /// very end.
+  Future<bool> newsfeedItemExists(String dedupeKey) async {
+    final db = await database;
+    final rows = await db.query(newsfeedItemTable,
+        where: '$columnNewsfeedDedupeKey = ?', whereArgs: [dedupeKey], limit: 1);
+    return rows.isNotEmpty;
+  }
+
   /// D-154: how many rows are in the newsfeed at all — used to detect a
   /// genuinely first-ever launch (the table is still empty right before
   /// this generation pass) so the seeded welcome cards are inserted

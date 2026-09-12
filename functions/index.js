@@ -20,6 +20,7 @@ import { getCouncilModel, getNotificationModel } from './lib/model_config.js';
 import { guardAndCountSetupCall, SetupCallLimitError } from './lib/setup_guard.js';
 import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, CATEGORIES_TOOL, habitsTool } from './lib/setup_derivation.js';
 import { buildProgressAnalysisPrompt } from './lib/progress_analysis.js';
+import { buildNewsfeedAnalysisPrompt } from './lib/newsfeed_analysis.js';
 import { buildDeriveDomainFindingsPrompt, buildDeriveGeneralDomainFindingsPrompt, DOMAIN_FINDING_TOOL, GENERAL_DOMAIN_FINDING_TOOL } from './lib/domain_finding_derivation.js';
 import { isEligibleForTailoredNotification } from './lib/notification_schedule.js';
 import { shouldSendBatchCheckin, todaysScheduledHabits, localDateParts } from './lib/batch_checkin_schedule.js';
@@ -551,6 +552,48 @@ app.post('/deriveProgressAnalysis', requireFirebaseAuth, async (req, res) => {
     res.json({ analysis });
   } catch (e) {
     console.error('deriveProgressAnalysis error:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// D-155: the newsfeed's AI-written analysis article — gated by entitlement
+// and the spend cap exactly like every other non-setup AI surface
+// (guardCouncilCall's isSetup: false branch). Never called more than once
+// a day per NewsfeedService's own dedupeKey, but that throttling lives
+// client-side; this endpoint itself is stateless like the others.
+app.post('/deriveNewsfeedArticle', requireFirebaseAuth, async (req, res) => {
+  const { categories } = req.body || {};
+  if (!(await guardCouncilCall(req, res, { isSetup: false }))) return;
+
+  const { system, user } = buildNewsfeedAnalysisPrompt({ categories });
+  const model = await getCouncilModel();
+  try {
+    const msg = await claude().messages.create({
+      model,
+      max_tokens: 400,
+      thinking: { type: 'disabled' },
+      system: [{ type: 'text', text: system }],
+      messages: [{ role: 'user', content: user }],
+    });
+    recordCost(req.uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
+      .catch((e) => console.error('recordCost error:', e.message));
+    const raw = extractReplyText(msg.content);
+    if (!raw) return res.status(502).json({ error: 'empty_reply' });
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      // The model didn't return clean JSON — fall back to the whole reply
+      // as the body with a generic headline, rather than failing the
+      // request outright over a formatting slip.
+      parsed = { headline: 'Your Pyramid, Analyzed', body: raw };
+    }
+    res.json({
+      headline: String(parsed.headline || '').trim(),
+      body: String(parsed.body || '').trim(),
+    });
+  } catch (e) {
+    console.error('deriveNewsfeedArticle error:', e.message);
     res.status(502).json({ error: e.message });
   }
 });

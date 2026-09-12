@@ -95,4 +95,36 @@ void main() {
       expect(source, contains('Scrollable.ensureVisible('));
     });
   });
+
+  group('D-155: the AI-written daily article generates in the background '
+      'without blocking the instant, on-device feed, and only when the '
+      'screen was not opened to focus on a specific notified item', () {
+    test('generateArticleIfDue is only called when there is no '
+        'highlightDedupeKey to focus on', () {
+      final source =
+          File('lib/screens/newsfeed_screen.dart').readAsStringSync();
+      expect(source, contains('_generateArticleInBackground()'));
+      expect(source, contains('generateArticleIfDue()'));
+      final elseStart = source.indexOf('} else {', source.indexOf('if (target != null'));
+      expect(elseStart, greaterThan(-1));
+      expect(source.substring(elseStart, elseStart + 500),
+          contains('_generateArticleInBackground'));
+    });
+
+    test('a freshly-generated article is prepended to the already-loaded '
+        'feed, not requiring a full reload', () {
+      final source =
+          File('lib/screens/newsfeed_screen.dart').readAsStringSync();
+      expect(source, contains('_items.insert(0, newest)'));
+    });
+
+    test('article-type cards carry an "ANALYSIS" label, the one honest '
+        'signal that a card was AI-written rather than a plain recorded '
+        'fact', () {
+      final source =
+          File('lib/screens/newsfeed_screen.dart').readAsStringSync();
+      expect(source, contains("item['type'] == 'article'"));
+      expect(source, contains("'ANALYSIS'"));
+    });
+  });
 }

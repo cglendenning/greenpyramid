@@ -1,3 +1,7 @@
+import 'package:flutter/foundation.dart' show debugPrint;
+
+import 'ai_guard.dart';
+import 'council_client.dart';
 import 'db.dart';
 
 /// D-154: one genuinely new item this generation pass created — never
@@ -21,11 +25,14 @@ typedef NewNewsfeedItem = ({String title, String body, String dedupeKey});
 /// Council-authored reflections are an intentional fast-follow (D-150's
 /// spec section names it explicitly), not attempted here.
 class NewsfeedService {
-  NewsfeedService({DatabaseHelper? db}) : _db = db ?? DatabaseHelper.instance;
+  NewsfeedService({DatabaseHelper? db, CouncilClient? client})
+      : _db = db ?? DatabaseHelper.instance,
+        _client = client ?? CouncilClient.instance;
 
   static final NewsfeedService instance = NewsfeedService();
 
   final DatabaseHelper _db;
+  final CouncilClient _client;
 
   // D-154: two fixed, hand-written cards seeded exactly once, the very
   // first time the newsfeed has nothing else in it yet — "on first
@@ -211,4 +218,66 @@ class NewsfeedService {
   /// feed to load before it can scroll straight to that item.
   Future<int?> getItemPosition(String dedupeKey) =>
       _db.getNewsfeedItemPosition(dedupeKey);
+
+  /// D-155: a Claude-written "news article" analyzing consistency trends
+  /// across the whole pyramid — owner: "I want you to produce something
+  /// through AI that maps to the headline and make it like an analysis
+  /// shaped as a news article ... if there is a trend that has emerged
+  /// where one particular domain is very consistent than maybe the
+  /// headline is something like increased consistency drives growth."
+  /// At most one per calendar day (the owner's own chosen cadence), and
+  /// only for an entitled account (matching the Council/Profile-analysis
+  /// precedent — this is a genuine, non-free AI call). Both the daily
+  /// cap and the entitlement check happen *before* gathering stats or
+  /// calling the AI, so a day that already has its article, or an
+  /// unentitled account, never does that work just to have it discarded.
+  /// Best-effort: any failure (budget, spend cap, network) is swallowed
+  /// — this is a background enhancement, never something the user should
+  /// see an error about, the same "advisory, never required" discipline
+  /// D-048's domain-finding capture already established.
+  Future<void> generateArticleIfDue() async {
+    final today = DateTime.now().toIso8601String().substring(0, 10);
+    final dedupeKey = 'article-$today';
+    if (await _db.newsfeedItemExists(dedupeKey)) return;
+
+    final account = await _db.getAccountState();
+    final entitlement = account[DatabaseHelper.columnEntitlement] as String?;
+    final entitled = entitlement == 'trialing' || entitlement == 'subscribed';
+    if (!entitled) return;
+
+    try {
+      final categories = await queryCategoryStats();
+      await AiGuard.instance.acquire();
+      final article = await _client.deriveNewsfeedArticle(categories: categories);
+      if (article.headline.isEmpty || article.body.isEmpty) return;
+      await _db.insertNewsfeedItem(
+        type: 'article',
+        title: article.headline,
+        body: article.body,
+        dedupeKey: dedupeKey,
+      );
+    } catch (e) {
+      debugPrint('NewsfeedService: article generation skipped: $e');
+    }
+  }
+
+  /// D-155: 7-day and 30-day completion percentage, current streak, and
+  /// essence per category — the exact data the news-article prompt
+  /// compares to find a trend. Exposed (not private) so it's directly
+  /// testable without needing a live AI call.
+  Future<List<Map<String, dynamic>>> queryCategoryStats() async {
+    final summary = await _db.queryPyramidSummary();
+    final stats = <Map<String, dynamic>>[];
+    for (final category in summary) {
+      final name = category['name'] as String;
+      stats.add({
+        'name': name,
+        'pct7': await _db.getCompletionPercentage(name, 6),
+        'pct30': await _db.getCompletionPercentage(name, 29),
+        'streak': await _db.getCurrentStreak(name),
+        'essence': category['essence'],
+      });
+    }
+    return stats;
+  }
 }

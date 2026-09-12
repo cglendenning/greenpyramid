@@ -368,4 +368,19 @@ class CouncilClient {
     });
     return (data['analysis'] as String? ?? '').trim();
   }
+
+  /// D-155: the newsfeed's AI-written "news article" — a headline and
+  /// body analyzing consistency trends across the whole pyramid, never
+  /// free, gated by D-016/D-087 like every other non-setup AI surface.
+  Future<({String headline, String body})> deriveNewsfeedArticle({
+    required List<Map<String, dynamic>> categories,
+  }) async {
+    final data = await _post('deriveNewsfeedArticle', {
+      'categories': categories,
+    });
+    return (
+      headline: (data['headline'] as String? ?? '').trim(),
+      body: (data['body'] as String? ?? '').trim(),
+    );
+  }
 }
