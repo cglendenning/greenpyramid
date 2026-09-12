@@ -22,6 +22,7 @@ import 'package:life_ops/screens/editpyramid.dart';
 import 'package:life_ops/services/utils.dart' as utils;
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/screens/faq.dart';
+import 'package:life_ops/screens/philosophy_screen.dart';
 import 'package:life_ops/screens/profile.dart';
 import 'package:life_ops/screens/visualizations.dart';
 import 'package:life_ops/theme/app_colors.dart';
@@ -440,6 +441,9 @@ class CustomAppBarState extends State<CustomAppBar> {
           case 'newsfeed':
             navigateToNewsfeed(context);
             break;
+          case 'philosophy':
+            navigateToPhilosophy(context);
+            break;
           case 'faq':
             if (currentScreen != 'faq') {
               navigateToFAQ(context);
@@ -477,6 +481,10 @@ class CustomAppBarState extends State<CustomAppBar> {
           const PopupMenuItem<String>(
             value: 'newsfeed',
             child: Text('Your Newsfeed'),
+          ),
+          const PopupMenuItem<String>(
+            value: 'philosophy',
+            child: Text('Philosophy'),
           ),
           const PopupMenuItem<String>(
             value: 'faq',
@@ -674,6 +682,17 @@ class CustomAppBarState extends State<CustomAppBar> {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(context,
             MaterialPageRoute(builder: (context) => const NewsfeedScreen()))
+        .then((value) {});
+    utils.Utils().changeSystemColor(Brightness.light);
+    setState(() {});
+  }
+
+  // D-159: purely static content, unlike every other item in this menu —
+  // no entitlement gate, no network call, nothing account-specific.
+  void navigateToPhilosophy(BuildContext context) async {
+    utils.Utils().changeSystemColor(Brightness.dark);
+    await Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const PhilosophyScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
