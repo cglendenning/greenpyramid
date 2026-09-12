@@ -21,6 +21,7 @@ import '../widgets/council_transcript.dart';
 import '../widgets/onboarding_backdrop.dart';
 import '../widgets/setup_progress_indicator.dart';
 import 'account_creation_screen.dart';
+import 'first_name_screen.dart';
 import 'setup_completion_screen.dart';
 import 'push_permission_screen.dart';
 import 'trial_disclosure_screen.dart';
@@ -815,6 +816,28 @@ class _SetupScreenState extends State<SetupScreen> {
           ..remove(c.name));
       }
     }
+  }
+
+  /// D-178: gates "Build my pyramid" on having a first name on file —
+  /// collected once, right before the pyramid is built, never re-asked
+  /// on a resumed setup session that already has one. Deliberately does
+  /// NOT pop FirstNameScreen before calling [_confirmHabitsAndClose]:
+  /// that method's own final `pushReplacement` then replaces
+  /// FirstNameScreen directly with [SetupCompletionScreen], the same
+  /// flash-avoidance D-162 already established elsewhere in this exact
+  /// screen chain (pop-then-push-again visibly re-shows the popped-to
+  /// screen for however long the intervening work takes).
+  Future<void> _onBuildMyPyramidTapped() async {
+    final account = await DatabaseHelper.instance.getAccountState();
+    final firstName = account[DatabaseHelper.columnFirstName] as String?;
+    if (firstName != null && firstName.isNotEmpty) {
+      await _confirmHabitsAndClose();
+      return;
+    }
+    if (!mounted) return;
+    await Navigator.of(context).push(MaterialPageRoute(
+      builder: (context) => FirstNameScreen(onDone: _confirmHabitsAndClose),
+    ));
   }
 
   Future<void> _confirmHabitsAndClose() async {
@@ -1669,7 +1692,7 @@ class _SetupScreenState extends State<SetupScreen> {
           ElevatedButton(
             onPressed: (_busy || _habitCategoriesLoading.isNotEmpty)
                 ? null
-                : _confirmHabitsAndClose,
+                : _onBuildMyPyramidTapped,
             child: const Text('Build my pyramid'),
           ),
         ],

@@ -43,6 +43,20 @@ class LocalPyramidResetService {
     await db.delete(DatabaseHelper.visionStatementTable);
     await db.delete(DatabaseHelper.commentaryCountdownTable);
     await db.delete(DatabaseHelper.accountStateTable);
+    // D-179: found live — deleting this row without ever re-inserting it
+    // left account_state permanently empty, so the very next
+    // getAccountState() call anywhere in the app (first reached, in
+    // practice, by requestTrialAfterSetup's own entitlement read at the
+    // end of setup) threw "Bad state: No element" on rows.first,
+    // surfacing as "Something went wrong finishing setup" on the habits
+    // screen — reproduced live: sign out, tap "Begin" (not "Sign in"),
+    // run through the whole setup conversation, tap "Build my pyramid."
+    // applyV7Schema's own INSERT OR IGNORE establishes this same
+    // single-row invariant for a fresh install; this restores it after a
+    // wipe the identical way.
+    await db.insert(DatabaseHelper.accountStateTable,
+        {DatabaseHelper.columnAccountId: 1},
+        conflictAlgorithm: ConflictAlgorithm.ignore);
     await db.delete(DatabaseHelper.categoryTable);
     await _dbHelper.populateCategory();
   }

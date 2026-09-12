@@ -15,10 +15,12 @@ class _TempPathProvider extends PathProviderPlatform
   Future<String?> getApplicationDocumentsPath() async => dir;
 }
 
-/// A real v12-v16 device always has category_essence too — it's been
-/// part of the schema since v7, long before newsfeed_item existed.
-/// D-166's own migration (case 17) queries it, so every raw-opened test
-/// database below needs it present, the same as a real device would.
+/// A real v12-v16 device always has category_essence and account_state
+/// too — both have been part of the schema since v7, long before
+/// newsfeed_item existed. D-166's own migration (case 17) queries
+/// category_essence, and D-179's migration (case 22) alters
+/// account_state, so every raw-opened test database below needs both
+/// present, the same as a real device would.
 Future<void> _createV12SchemaWithEssence(Database db) async {
   await DatabaseHelper.applyV12Schema(db);
   await db.execute('CREATE TABLE IF NOT EXISTS category_essence ('
@@ -27,6 +29,14 @@ Future<void> _createV12SchemaWithEssence(Database db) async {
       'essence TEXT NOT NULL, '
       'created TEXT NOT NULL, '
       'source_session_id TEXT)');
+  await db.execute('CREATE TABLE IF NOT EXISTS account_state ('
+      'id INTEGER PRIMARY KEY CHECK (id = 1), '
+      'uid TEXT, '
+      "entitlement TEXT NOT NULL DEFAULT 'pre_trial', "
+      'trial_started_at TEXT, '
+      'trial_expires_at TEXT, '
+      'timezone TEXT, '
+      'entitlement_synced_at TEXT)');
 }
 
 /// D-156: found live on the owner's own device — newsfeed_item rows

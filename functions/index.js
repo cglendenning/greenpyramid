@@ -546,10 +546,10 @@ app.post('/deriveVisionStatement', requireFirebaseAuth, async (req, res) => {
 // surface, never gated by anything but D-016's standard entitlement
 // check (never free, since it isn't setup).
 app.post('/deriveProgressAnalysis', requireFirebaseAuth, async (req, res) => {
-  const { taskLogs } = req.body || {};
+  const { taskLogs, firstName } = req.body || {};
   if (!(await guardCouncilCall(req, res, { isSetup: false }))) return;
 
-  const { system, user } = buildProgressAnalysisPrompt({ taskLogs });
+  const { system, user } = buildProgressAnalysisPrompt({ taskLogs, firstName });
   const model = await getCouncilModel();
   try {
     const msg = await claude().messages.create({
@@ -576,10 +576,10 @@ app.post('/deriveProgressAnalysis', requireFirebaseAuth, async (req, res) => {
 // a day per NewsfeedService's own dedupeKey, but that throttling lives
 // client-side; this endpoint itself is stateless like the others.
 app.post('/deriveNewsfeedArticle', requireFirebaseAuth, async (req, res) => {
-  const { categories } = req.body || {};
+  const { categories, firstName } = req.body || {};
   if (!(await guardCouncilCall(req, res, { isSetup: false }))) return;
 
-  const { system, user } = buildNewsfeedAnalysisPrompt({ categories });
+  const { system, user } = buildNewsfeedAnalysisPrompt({ categories, firstName });
   const model = await getCouncilModel();
   try {
     const msg = await claude().messages.create({

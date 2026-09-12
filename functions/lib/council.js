@@ -56,15 +56,22 @@ export function biasInstruction(trait, sliderValue) {
 // the per-turn user message (category context + trailing chat history) for
 // one advisor turn. Exported so index.js's route handler stays a thin
 // HTTP/Anthropic-SDK wrapper around logic that's directly testable here.
+// D-178: [firstName] — present for category re-clarification (post-setup,
+// an account already has one), absent for setup-time essence-deepening
+// (this same function's other caller, before the pyramid — and the
+// first-name screen — exist yet). The system prompt below degrades
+// gracefully either way, same pattern as every other D-178 prompt.
 export function buildAdvisorTurnPrompt({
   advisorKey,
   sliderValue = 0.5,
   categoryContext = {},
   conversationHistory = [],
+  firstName = null,
 }) {
   const advisor = ADVISORS[advisorKey];
   if (!advisor) return null;
 
+  const name = firstName ? sanitize(firstName, 40) : null;
   const categoryName = sanitize(categoryContext.categoryName, 60);
   const categoryTier = Number(categoryContext.categoryTier) || null;
   const priorEssence = categoryContext.priorEssence
@@ -91,7 +98,10 @@ export function buildAdvisorTurnPrompt({
     `If this is the first time you're speaking in this chat, a brief self-introduction is fine — but it ` +
     `must never come at the expense of responding to what was just said. Weave who you are into a real ` +
     `response to their actual last message; never let introducing yourself become an excuse to ignore it.\n` +
-    `If they share their name, acknowledge it once naturally — do not repeat their name in every reply.\n` +
+    (name
+      ? `Their name is ${name} — address them by name once naturally when it fits, the way someone who ` +
+        `actually knows them would; do not repeat their name in every reply.\n`
+      : `If they share their name, acknowledge it once naturally — do not repeat their name in every reply.\n`) +
     `Otherwise address your fellow advisors, referring to the person in the third person.\n` +
     `Never wrap your response in quotation marks.`;
 
@@ -132,16 +142,20 @@ export function buildAdvisorTurnPrompt({
 // conversation that isn't about any one category. This is its own prompt:
 // the person has already defined their values (the pyramid exists); the
 // advisors' job is living them out, not discovering them.
+// D-178: [firstName] — always available here in practice, since this
+// path only ever runs post-setup, after the first-name screen.
 export function buildGeneralCouncilTurnPrompt({
   advisorKey,
   sliderValue = 0.5,
   pyramidContext = [],
   conversationHistory = [],
   nudgeConvergence = false,
+  firstName = null,
 }) {
   const advisor = ADVISORS[advisorKey];
   if (!advisor) return null;
 
+  const name = firstName ? sanitize(firstName, 40) : null;
   const otherAdvisors = Object.entries(ADVISORS)
     .filter(([k]) => k !== advisorKey)
     .map(([, v]) => `- ${v.name} (${v.title}): ${v.trait}`)
@@ -168,6 +182,10 @@ export function buildGeneralCouncilTurnPrompt({
     `If this is the first time you're speaking in this chat, a brief self-introduction is fine — but it ` +
     `must never come at the expense of responding to what was just said. Weave who you are into a real ` +
     `response to their actual last message; never let introducing yourself become an excuse to ignore it.\n` +
+    (name
+      ? `Their name is ${name} — address them by name once naturally when it fits, the way someone who ` +
+        `actually knows them would; do not repeat their name in every reply.\n`
+      : '') +
     `Otherwise address your fellow advisors, referring to the person in the third person.\n` +
     // D-100: found live — a direct question about the Council itself got
     // sidestepped in favor of continuing the diagnostic thread. A relevance-

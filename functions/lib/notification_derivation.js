@@ -18,20 +18,24 @@ export const NOTIFICATION_TOOL = {
 
 // D-037 (amended for R9 to add domainFindings/calendarContext — D-048's own
 // text always said findings feed notification generation, but D-037's
-// enumerated context never listed them until now): exactly this context,
-// nothing else. [categories] is [{name, tier, essence}] (essence null for
-// cat4-cat6 without one, D-010). [recentActivity] is the bounded task_log
-// window already synced (D-075). [domainFindings] is [{domain, note}].
+// enumerated context never listed them until now; amended again for
+// D-178 to add firstName): exactly this context, nothing else.
+// [categories] is [{name, tier, essence}] (essence null for cat4-cat6
+// without one, D-010). [recentActivity] is the bounded task_log window
+// already synced (D-075). [domainFindings] is [{domain, note}].
 // [calendarContext] is a short pre-summarized string, present only when the
 // user granted calendar access (D-025 step 7) — absent entirely otherwise,
-// never a placeholder.
+// never a placeholder. [firstName] lets a notification address the reader
+// by name instead of writing only in the abstract second person.
 export function buildNotificationPrompt({
   categories = [],
   visionStatement,
   recentActivity = [],
   domainFindings = [],
   calendarContext,
+  firstName,
 }) {
+  const name = firstName ? sanitize(firstName, 40) : null;
   const categoryLines = categories.map((c) => {
     const name = sanitize(c.name, 60);
     const essence = c.essence ? sanitize(c.essence, 400) : null;
@@ -52,7 +56,11 @@ export function buildNotificationPrompt({
     'a streak, or a deadline that is not real. Notice one true, specific ' +
     'thing — a pattern, a miss worth naming gently, or a completion worth ' +
     'acknowledging — never a generic reminder. Call send_notification with ' +
-    'a short title and a one-sentence body. No emojis.';
+    'a short title and a one-sentence body. No emojis.' +
+    (name
+      ? ` The reader's name is ${name} — use it in the title or body when it reads naturally (e.g. ` +
+        `"Nice work, ${name}"), not forced into every notification.`
+      : '');
 
   const findingLines = domainFindings.slice(0, 50).map((f) =>
     `- ${sanitize(f.domain, 20)}: ${sanitize(f.note, 200)}`).join('\n');

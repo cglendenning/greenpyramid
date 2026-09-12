@@ -117,12 +117,20 @@ class SyncService {
     // (EntitlementService pulls it down), not a source pushed back up; pushing
     // it would let a stale client cache clobber a real subscribed/lapsed
     // transition on the next launch.
+    // D-178: first name/email/phone are single account-level fields, the
+    // same kind of value timezone already is — synced the same way. The
+    // profile photo is deliberately excluded: it stays local-only
+    // (owner's own choice — cloud photo storage would mean adding
+    // Firebase Storage, a new integration not approved yet).
     await userDoc.collection('profile').doc('main').set(
         {
           'categories': categories,
           if (vision != null) 'visionStatement': vision,
           'timezone': account[DatabaseHelper.columnAccountTimezone],
           'calendarContext': calendarContext ?? FieldValue.delete(),
+          'firstName': account[DatabaseHelper.columnFirstName] ?? FieldValue.delete(),
+          'email': account[DatabaseHelper.columnEmail] ?? FieldValue.delete(),
+          'phone': account[DatabaseHelper.columnPhone] ?? FieldValue.delete(),
         },
         SetOptions(merge: true));
   }
@@ -331,6 +339,22 @@ class SyncService {
     final vision = profile?['visionStatement'] as String?;
     if (vision != null && vision.isNotEmpty) {
       await _db.insertVisionStatement(vision);
+    }
+
+    // D-178: first name/email/phone restore the same way timezone already
+    // did — the profile photo is deliberately not restored here, since it
+    // was never uploaded in the first place (local-only by design).
+    final firstName = profile?['firstName'] as String?;
+    if (firstName != null && firstName.isNotEmpty) {
+      await _db.setFirstName(firstName);
+    }
+    final email = profile?['email'] as String?;
+    if (email != null && email.isNotEmpty) {
+      await _db.setEmail(email);
+    }
+    final phone = profile?['phone'] as String?;
+    if (phone != null && phone.isNotEmpty) {
+      await _db.setPhone(phone);
     }
 
     final tasksSnap = await userDoc.collection('tasks').get();

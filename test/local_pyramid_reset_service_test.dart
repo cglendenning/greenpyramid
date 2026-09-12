@@ -97,4 +97,23 @@ void main() {
         reason: 'the real category table (not the demo one) must hold '
             'the six re-seeded placeholders');
   });
+
+  test(
+      'D-179: wipeLocalPyramid leaves account_state with its single row '
+      'intact — found live: deleting it without re-inserting left the '
+      'very next getAccountState() call anywhere in the app throwing '
+      '"Bad state: No element," surfacing as "Something went wrong '
+      'finishing setup" the first time anything touched entitlement '
+      'state after a sign-out-then-Begin run', () async {
+    await db.setAccountUid('some-old-uid');
+
+    await resetService.wipeLocalPyramid();
+
+    final account = await db.getAccountState();
+    expect(account[DatabaseHelper.columnAccountId], 1);
+    // The stale uid from the account being signed out of must not
+    // survive the wipe either — a fresh setup run must not silently
+    // write to whichever account happened to leave this row behind.
+    expect(account[DatabaseHelper.columnAccountUid], isNull);
+  });
 }

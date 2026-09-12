@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 21; // 7: R3 schema — position, essences,
+  static const _databaseVersion = 22; // 7: R3 schema — position, essences,
   // domain findings, account state (Part IV). 8: R6/D-062 — discards an
   // incomplete old-flow setup so the user starts the new Council setup
   // fresh instead of landing on a half-populated pyramid with no way back
@@ -174,6 +174,14 @@ class DatabaseHelper {
   static const columnTrialExpiresAt = 'trial_expires_at';
   static const columnAccountTimezone = 'timezone';
   static const columnEntitlementSyncedAt = 'entitlement_synced_at';
+  // D-178: single account-level personal-info fields, editable from the
+  // Profile screen. columnProfilePhotoPath is a local file path only
+  // (D-178: photo storage stays on-device for now, not cloud-backed) —
+  // never synced to Firestore, unlike the other three.
+  static const columnFirstName = 'first_name';
+  static const columnEmail = 'email';
+  static const columnPhone = 'phone';
+  static const columnProfilePhotoPath = 'profile_photo_path';
 
   static const columnCategoryId = 'categoryid';
   static const columnCat = 'cat';
@@ -310,7 +318,11 @@ class DatabaseHelper {
         '$columnTrialStartedAt TEXT, '
         '$columnTrialExpiresAt TEXT, '
         '$columnAccountTimezone TEXT, '
-        '$columnEntitlementSyncedAt TEXT)');
+        '$columnEntitlementSyncedAt TEXT, '
+        '$columnFirstName TEXT, '
+        '$columnEmail TEXT, '
+        '$columnPhone TEXT, '
+        '$columnProfilePhotoPath TEXT)');
     await db.execute(
         'INSERT OR IGNORE INTO $accountStateTable ($columnAccountId) VALUES (1)');
   }
@@ -885,6 +897,19 @@ class DatabaseHelper {
             await db.delete(newsfeedItemTable,
                 where: '$columnNewsfeedType IN (?, ?)',
                 whereArgs: ['streak', 'essence']);
+            break;
+          case 22:
+            // D-178: single account-level personal-info fields, collected
+            // during setup (first name) or edited later from the Profile
+            // screen (email, phone, a local profile photo path).
+            await db.execute(
+                'ALTER TABLE $accountStateTable ADD COLUMN $columnFirstName TEXT');
+            await db.execute(
+                'ALTER TABLE $accountStateTable ADD COLUMN $columnEmail TEXT');
+            await db.execute(
+                'ALTER TABLE $accountStateTable ADD COLUMN $columnPhone TEXT');
+            await db.execute('ALTER TABLE $accountStateTable ADD COLUMN '
+                '$columnProfilePhotoPath TEXT');
             break;
         }
       }
@@ -1924,6 +1949,41 @@ class DatabaseHelper {
   Future<void> setAccountTimezone(String timezone) async {
     final db = await database;
     await db.update(accountStateTable, {columnAccountTimezone: timezone},
+        where: '$columnAccountId = ?', whereArgs: [1]);
+  }
+
+  /// D-178: collected once during setup (a plain text-entry screen right
+  /// before the pyramid is built), editable afterward from the Profile
+  /// screen. Used throughout the app — AI prompts included — instead of
+  /// generic "you"/"this person" phrasing.
+  Future<void> setFirstName(String firstName) async {
+    final db = await database;
+    await db.update(accountStateTable, {columnFirstName: firstName},
+        where: '$columnAccountId = ?', whereArgs: [1]);
+  }
+
+  /// D-178: pure personal-reference fields from the Profile screen — no
+  /// functional behavior (not used for verification, recovery, or
+  /// notifications), so a blank string clears a field rather than being
+  /// rejected.
+  Future<void> setEmail(String email) async {
+    final db = await database;
+    await db.update(accountStateTable, {columnEmail: email},
+        where: '$columnAccountId = ?', whereArgs: [1]);
+  }
+
+  Future<void> setPhone(String phone) async {
+    final db = await database;
+    await db.update(accountStateTable, {columnPhone: phone},
+        where: '$columnAccountId = ?', whereArgs: [1]);
+  }
+
+  /// D-178: local file path only — the photo itself stays on-device, not
+  /// synced to Firestore (owner's own choice: cloud photo storage would
+  /// mean adding Firebase Storage, a new integration not approved yet).
+  Future<void> setProfilePhotoPath(String? path) async {
+    final db = await database;
+    await db.update(accountStateTable, {columnProfilePhotoPath: path},
         where: '$columnAccountId = ?', whereArgs: [1]);
   }
 
