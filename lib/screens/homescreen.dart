@@ -280,6 +280,11 @@ class _HomeScreen extends State<HomeScreenWidget> {
                 _cat4Future,
                 _cat5Future,
                 _cat6Future,
+                onCategoryEdited: () {
+                  setState(() {
+                    setFutures();
+                  });
+                },
               ),
               const Settings(),
               const VisualizationsScreen(), // NEW: Visualizations screen

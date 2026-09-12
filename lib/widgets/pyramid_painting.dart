@@ -3,10 +3,13 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-// Shared canvas-painting helpers for the home-screen pyramid's six
-// CustomPainter segments (DrawCat1..DrawCat6 in pyramid.dart), so the
-// glow/panel/label technique lives in one place instead of being
-// copy-pasted six times.
+// Shared canvas-painting helpers for the pyramid's six wall segments
+// (Pyramid3D, pyramid_3d.dart), so the glow/panel/label technique lives in
+// one place instead of being copy-pasted six times. D-151: the flat 2D
+// DrawCat1..DrawCat6 CustomPainters this comment used to describe were the
+// pyramid edit screen's own separate, legacy rendering pipeline — deleted
+// once EditPyramid was migrated onto the same Pyramid3D/PyramidStack the
+// main screen already used.
 class PyramidPainting {
   PyramidPainting._();
 
@@ -196,41 +199,6 @@ class PyramidPainting {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.4;
     canvas.drawPath(path, edgeCrisp);
-  }
-
-  /// The single-call convenience for painting one segment fully in
-  /// isolation (glow, then body, then edge) — correct on its own, but do
-  /// NOT use this to paint multiple segments that share a canvas and may
-  /// touch or overlap (like the pyramid's own six blocks): call
-  /// [paintSegmentGlow] for every segment first, then [paintSegmentBody]
-  /// for every segment, then [paintSegmentEdge] for every segment, or a
-  /// later segment's opaque body will paint over an earlier segment's
-  /// glow bleeding into its territory (see [paintSegmentGlow]'s own
-  /// comment for the defect this was found from).
-  static void paintGlowingSegment(
-    Canvas canvas,
-    Path path,
-    Color baseColor, {
-    double pulse = 0.5,
-  }) {
-    paintSegmentGlow(canvas, path, baseColor, pulse: pulse);
-    paintSegmentBody(canvas, path, baseColor);
-    paintSegmentEdge(canvas, path, baseColor, pulse: pulse);
-  }
-
-  // Flat fill with a plain outline, no glow — used for the muted/toggled
-  // (tap feedback) state where the segment should look "switched off".
-  static void paintMutedSegment(
-      Canvas canvas, Path path, LinearGradient gradient, Color outlineColor) {
-    final fillPaint = Paint()..style = PaintingStyle.fill;
-    fillPaint.shader = gradient.createShader(path.getBounds());
-    canvas.drawPath(path, fillPaint);
-
-    final outlinePaint = Paint()
-      ..color = outlineColor
-      ..strokeWidth = 5
-      ..style = PaintingStyle.stroke;
-    canvas.drawPath(path, outlinePaint);
   }
 
   static TextStyle _labelStyle(double fontSize) => TextStyle(

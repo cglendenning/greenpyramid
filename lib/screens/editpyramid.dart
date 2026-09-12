@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:life_ops/services/db.dart';
-import 'package:life_ops/services/dbtools.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/widgets/category_edit_sheet.dart';
-import 'package:life_ops/widgets/pyramid.dart' as pyr;
+import 'package:life_ops/widgets/pyramid_stack.dart';
 
-// Normal blocks render the main-screen stone+glow look in the brand
-// green; a pressed block flips to the muted state via a white gradient.
-const LinearGradient _kGreenLG =
-    LinearGradient(colors: [Color(0xFF66CC5D), Color(0xFF66CC5D)]);
-const LinearGradient _kWhiteLG =
-    LinearGradient(colors: [Colors.white, Colors.white]);
-
+/// D-151: this screen used to render six flat, static, old CustomPainters
+/// (`DrawCat1`..`DrawCat6`) — a separate rendering pipeline nobody
+/// migrated when the main pyramid screen (`lib/widgets/pyramid.dart`) was
+/// rebuilt on the real 3D `Pyramid3D` widget, so this screen looked
+/// categorically different from, and worse than, the main one. Owner:
+/// "get rid of the old bullshit code that is in the edit screen and ...
+/// utilize the exact same code as the main screen so that whenever the
+/// code changes in the main screen, they will also change in the edit
+/// screen." This screen now renders the exact same [PyramidStack] the
+/// main screen does — same 3D pyramid, same drag/spin, same
+/// completion-percentage-driven block colors (`setColor`, D-019) — the
+/// only difference is what a tap does: the main screen navigates to a
+/// category's task list; this screen opens the rename/essence-edit sheet.
 class EditPyramid extends StatefulWidget {
   final Future cat1Future;
   final Future cat2Future;
@@ -20,279 +25,52 @@ class EditPyramid extends StatefulWidget {
   final Future cat5Future;
   final Future cat6Future;
 
+  // D-151: after a rename/essence edit, the underlying category futures
+  // must actually be refreshed for the new name to appear — both here and
+  // on the main pyramid screen, since both now render from the exact same
+  // futures. Mirrors Pyramid's own onReturnFromTaskList refresh pattern.
+  final VoidCallback? onCategoryEdited;
+
   const EditPyramid(this.cat1Future, this.cat2Future, this.cat3Future,
-      this.cat4Future, this.cat5Future, this.cat6Future);
+      this.cat4Future, this.cat5Future, this.cat6Future,
+      {super.key, this.onCategoryEdited});
 
   @override
-  State<EditPyramid> createState() => _EditPyramid(
-      cat1Future, cat2Future, cat3Future, cat4Future, cat5Future, cat6Future);
+  State<EditPyramid> createState() => _EditPyramid();
 }
 
 class _EditPyramid extends State<EditPyramid> {
-  final Future cat1Future;
-  final Future cat2Future;
-  final Future cat3Future;
-  final Future cat4Future;
-  final Future cat5Future;
-  final Future cat6Future;
-
-  _EditPyramid(this.cat1Future, this.cat2Future, this.cat3Future,
-      this.cat4Future, this.cat5Future, this.cat6Future);
-
-  @override
-  void initState() {
-    super.initState();
-  }
-
-  final DBTools dbtools = DBTools();
   final dbHelper = DatabaseHelper.instance;
-  bool _cat1ColorToggled = false;
-  bool _cat2ColorToggled = false;
-  bool _cat3ColorToggled = false;
-  bool _cat4ColorToggled = false;
-  bool _cat5ColorToggled = false;
-  bool _cat6ColorToggled = false;
-
-  pyr.DrawCat1 _drawCat1 = pyr.DrawCat1(_kGreenLG, 'default', 0);
-
-  pyr.DrawCat2 _drawCat2 = pyr.DrawCat2(_kGreenLG, 'default', 0);
-
-  pyr.DrawCat3 _drawCat3 = pyr.DrawCat3(_kGreenLG, 'default', 0);
-
-  pyr.DrawCat4 _drawCat4 = pyr.DrawCat4(_kGreenLG, 'default', 0);
-
-  pyr.DrawCat5 _drawCat5 = pyr.DrawCat5(_kGreenLG, 'default', 0);
-
-  pyr.DrawCat6 _drawCat6 = pyr.DrawCat6(_kGreenLG, 'default', 0);
-
-  bool _cat1Edited = false;
-  bool _cat2Edited = false;
-  bool _cat3Edited = false;
-  bool _cat4Edited = false;
-  bool _cat5Edited = false;
-  bool _cat6Edited = false;
-
 
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
 
   @override
   Widget build(BuildContext context) {
     analytics.logEvent(name: 'editpyramid');
-    final lg1 = _cat1ColorToggled ? _kWhiteLG : _kGreenLG;
-    final lg2 = _cat2ColorToggled ? _kWhiteLG : _kGreenLG;
-    final lg3 = _cat3ColorToggled ? _kWhiteLG : _kGreenLG;
-    final lg4 = _cat4ColorToggled ? _kWhiteLG : _kGreenLG;
-    final lg5 = _cat5ColorToggled ? _kWhiteLG : _kGreenLG;
-    final lg6 = _cat6ColorToggled ? _kWhiteLG : _kGreenLG;
 
     double pyramidWidth = MediaQuery.of(context).size.width * 0.87;
-    double pyramidHeight = MediaQuery.of(context).size.width * 0.82;
-    SizedBox smallSpacer = SizedBox(height: pyramidHeight * .1);
-    SizedBox bigSpacer = SizedBox(height: pyramidHeight * .2);
 
     var mainTextStyle = const TextStyle(
         fontSize: 24, fontWeight: FontWeight.bold, fontFamily: 'Exo2');
 
     return Column(crossAxisAlignment: CrossAxisAlignment.center, children: [
-      smallSpacer,
+      SizedBox(height: pyramidWidth * 0.82 * .1),
       Text(
         'Green Pyramid (Edit)',
         style: mainTextStyle,
       ),
-      bigSpacer,
-      Stack(children: <Widget>[
-        FutureBuilder(
-            future: cat1Future,
-            builder: (BuildContext context, AsyncSnapshot snapshot) {
-              Widget display;
-              if (!snapshot.hasData) {
-                display = CustomPaint(
-                    size: Size(pyramidWidth, pyramidHeight),
-                    painter: pyr.DrawCat1(lg1, 'Cat1...', 0));
-              } else {
-                if (!_cat1Edited) {
-                  _drawCat1 = pyr.DrawCat1(lg1, snapshot.data.cat, 0);
-                }
-                display = GestureDetector(
-                    onTapDown: (details) {
-                      setState(() {
-                        _cat1ColorToggled = !_cat1ColorToggled;
-                      });
-                    },
-                    onTapUp: (details) {
-                      showEditDialog(context, 1, snapshot.data.cat);
-                      setState(() {
-                        _cat1ColorToggled = !_cat1ColorToggled;
-                      });
-                    },
-                    child: CustomPaint(
-                        size: Size(pyramidWidth, pyramidHeight),
-                        painter: _drawCat1));
-                // pyr.DrawCat1(lg1, snapshot.data.cat, 0)));
-              }
-              return display;
-            }),
-        FutureBuilder(
-            future: cat2Future,
-            builder: (BuildContext context, AsyncSnapshot snapshot) {
-              Widget display;
-              if (!snapshot.hasData) {
-                display = CustomPaint(
-                    size: Size(pyramidWidth, pyramidHeight),
-                    painter: pyr.DrawCat2(lg2, 'Cat2...', 0));
-              } else {
-                if (!_cat2Edited) {
-                  _drawCat2 = pyr.DrawCat2(lg2, snapshot.data.cat, 0);
-                }
-                display = GestureDetector(
-                    onTapDown: (details) {
-                      setState(() {
-                        _cat2ColorToggled = !_cat2ColorToggled;
-                      });
-                    },
-                    onTapUp: (details) {
-                      showEditDialog(context, 2, snapshot.data.cat);
-                      setState(() {
-                        _cat2ColorToggled = !_cat2ColorToggled;
-                      });
-                    },
-                    child: CustomPaint(
-                        size: Size(pyramidWidth, pyramidHeight),
-                        painter: _drawCat2));
-                // pyr.DrawCat2(lg2, snapshot.data.cat, 0)));
-              }
-              return display;
-            }),
-        FutureBuilder(
-            future: cat3Future,
-            builder: (BuildContext context, AsyncSnapshot snapshot) {
-              Widget display;
-              if (!snapshot.hasData) {
-                display = CustomPaint(
-                    size: Size(pyramidWidth, pyramidHeight),
-                    painter: pyr.DrawCat3(lg3, 'Cat3...', 0));
-              } else {
-                if (!_cat3Edited) {
-                  _drawCat3 = pyr.DrawCat3(lg3, snapshot.data.cat, 0);
-                }
-                display = GestureDetector(
-                    onTapDown: (details) {
-                      setState(() {
-                        _cat3ColorToggled = !_cat3ColorToggled;
-                      });
-                    },
-                    onTapUp: (details) {
-                      showEditDialog(context, 3, snapshot.data.cat);
-                      setState(() {
-                        _cat3ColorToggled = !_cat3ColorToggled;
-                      });
-                    },
-                    child: CustomPaint(
-                        size: Size(pyramidWidth, pyramidHeight),
-                        painter: _drawCat3));
-                // pyr.DrawCat3(lg3, snapshot.data.cat, 0)));
-              }
-              return display;
-            }),
-        FutureBuilder(
-            future: cat4Future,
-            builder: (BuildContext context, AsyncSnapshot snapshot) {
-              Widget display;
-              if (!snapshot.hasData) {
-                display = CustomPaint(
-                    size: Size(pyramidWidth, pyramidHeight),
-                    painter: pyr.DrawCat4(lg4, 'Cat4...', 0));
-              } else {
-                if (!_cat4Edited) {
-                  _drawCat4 = pyr.DrawCat4(lg4, snapshot.data.cat, 0);
-                }
-                display = GestureDetector(
-                    onTapDown: (details) {
-                      setState(() {
-                        _cat4ColorToggled = !_cat4ColorToggled;
-                      });
-                    },
-                    onTapUp: (details) {
-                      showEditDialog(context, 4, snapshot.data.cat);
-                      setState(() {
-                        _cat4ColorToggled = !_cat4ColorToggled;
-                      });
-                    },
-                    child: CustomPaint(
-                        size: Size(pyramidWidth, pyramidHeight),
-                        painter: _drawCat4));
-                // pyr.DrawCat4(lg4, snapshot.data.cat, 0)));
-              }
-              return display;
-            }),
-        FutureBuilder(
-            future: cat5Future,
-            builder: (BuildContext context, AsyncSnapshot snapshot) {
-              Widget display;
-              if (!snapshot.hasData) {
-                display = CustomPaint(
-                    size: Size(pyramidWidth, pyramidHeight),
-                    painter: pyr.DrawCat5(lg5, 'Cat5...', 0));
-              } else {
-                if (!_cat5Edited) {
-                  _drawCat5 = pyr.DrawCat5(lg5, snapshot.data.cat, 0);
-                }
-                display = GestureDetector(
-                    onTapDown: (details) {
-                      setState(() {
-                        _cat5ColorToggled = !_cat5ColorToggled;
-                      });
-                    },
-                    onTapUp: (details) {
-                      showEditDialog(context, 5, snapshot.data.cat);
-                      setState(() {
-                        _cat5ColorToggled = !_cat5ColorToggled;
-                      });
-                    },
-                    child: CustomPaint(
-                        size: Size(pyramidWidth, pyramidHeight),
-                        painter: _drawCat5));
-                // pyr.DrawCat5(lg5, snapshot.data.cat, 0)));
-              }
-              return display;
-            }),
-        FutureBuilder(
-            future: cat6Future,
-            builder: (BuildContext context, AsyncSnapshot snapshot) {
-              Widget display;
-              if (!snapshot.hasData) {
-                display = CustomPaint(
-                    size: Size(pyramidWidth, pyramidHeight),
-                    painter: pyr.DrawCat6(lg6, 'Cat6...', 0));
-              } else {
-                if (!_cat6Edited) {
-                  _drawCat6 = pyr.DrawCat6(lg6, snapshot.data.cat, 0);
-                }
-                display = GestureDetector(
-                    onTapDown: (details) {
-                      setState(() {
-                        _cat6ColorToggled = !_cat6ColorToggled;
-                      });
-                    },
-                    onTapUp: (details) {
-                      showEditDialog(context, 6, snapshot.data.cat);
-                      setState(() {
-                        _cat6ColorToggled = !_cat6ColorToggled;
-                      });
-                    },
-                    child: CustomPaint(
-                        size: Size(pyramidWidth, pyramidHeight),
-                        painter: _drawCat6));
-                // pyr.DrawCat6(lg6, snapshot.data.cat, 0)));
-              }
-              return display;
-            }),
-      ]),
-      // D-113: this warning described the pre-fix behavior — renaming
-      // used to wipe every task and log row for the old name first. It
-      // no longer does (renameCategoryCascading moves them to the new
-      // name instead), so the warning was removed rather than left to
-      // describe destructive behavior that's no longer true.
+      SizedBox(height: pyramidWidth * 0.82 * .2),
+      PyramidStack(
+        cat1Future: widget.cat1Future,
+        cat2Future: widget.cat2Future,
+        cat3Future: widget.cat3Future,
+        cat4Future: widget.cat4Future,
+        cat5Future: widget.cat5Future,
+        cat6Future: widget.cat6Future,
+        size: pyramidWidth,
+        onCategoryTap: (index, category) =>
+            showEditDialog(context, index + 1, category.cat),
+      ),
     ]);
   }
 
@@ -334,56 +112,6 @@ class _EditPyramid extends State<EditPyramid> {
       );
     }
 
-    setState(() {
-      switch (categoryid) {
-        case 1:
-          _cat1Edited = true;
-          _drawCat1 = pyr.DrawCat1(_kGreenLG, result.name, 0);
-        case 2:
-          _cat2Edited = true;
-          _drawCat2 = pyr.DrawCat2(_kGreenLG, result.name, 0);
-        case 3:
-          _cat3Edited = true;
-          _drawCat3 = pyr.DrawCat3(_kGreenLG, result.name, 0);
-        case 4:
-          _cat4Edited = true;
-          _drawCat4 = pyr.DrawCat4(_kGreenLG, result.name, 0);
-        case 5:
-          _cat5Edited = true;
-          _drawCat5 = pyr.DrawCat5(_kGreenLG, result.name, 0);
-        case 6:
-          _cat6Edited = true;
-          _drawCat6 = pyr.DrawCat6(_kGreenLG, result.name, 0);
-        default:
-      }
-    });
-  }
-
-  Future<List<Cat>> getCategories() async {
-    final List<Map<String, dynamic>> maps = await dbHelper.queryCategories();
-
-    // Convert the List<Map<String, dynamic> into a List<Task>.
-    return List.generate(maps.length, (i) {
-      return Cat(categoryid: maps[i]['categoryid'], cat: maps[i]['cat']);
-    });
-  }
-
-  Future<Cat> getCategory(int categoryid) async {
-    final List<Map<String, dynamic>> maps =
-        await dbHelper.queryCategory(categoryid);
-
-    return Cat(categoryid: maps[0]['categoryid'], cat: maps[0]['cat']);
-  }
-}
-
-class Cat {
-  int categoryid = 0;
-  String cat = '';
-
-  Cat({required this.categoryid, required this.cat});
-
-  Cat.fromMap(dynamic obj) {
-    categoryid = obj["categoryid"];
-    cat = obj["cat"];
+    widget.onCategoryEdited?.call();
   }
 }
