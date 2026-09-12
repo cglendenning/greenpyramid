@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 19; // 7: R3 schema — position, essences,
+  static const _databaseVersion = 20; // 7: R3 schema — position, essences,
   // domain findings, account state (Part IV). 8: R6/D-062 — discards an
   // incomplete old-flow setup so the user starts the new Council setup
   // fresh instead of landing on a half-populated pyramid with no way back
@@ -47,7 +47,11 @@ class DatabaseHelper {
   // generic "welcome" newsfeed cards entirely (replaced by five sample
   // analysis-style cards with a subscribe pitch); deletes any existing
   // welcome-1/welcome-2 rows so they're gone for an account that already
-  // had them.
+  // had them. 20: D-168 (backfill) — an unconditional full wipe of
+  // newsfeed_item, so every card on an existing account regenerates
+  // fresh under everything the newsfeed accumulated across D-154
+  // through D-168, not just whichever single round each prior narrow
+  // migration targeted.
 
   // DEMO MODE FLAG
   static final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
@@ -851,6 +855,20 @@ class DatabaseHelper {
             // established.
             await db.delete(newsfeedItemTable,
                 where: '$columnNewsfeedType = ?', whereArgs: ['welcome']);
+            break;
+          case 20:
+            // D-168 (backfill): owner — "I also need you to clean up my
+            // database because I still have cards in there that were
+            // generated before this change." D-156/D-157/D-158/D-165's
+            // own migrations each narrowly wiped one card type at the
+            // moment its own copy/logic changed; by this point the
+            // newsfeed had accumulated several rounds of changes
+            // (D-154 through D-168) since the account's own cards were
+            // first generated. An unconditional full wipe — the same
+            // "regenerate everything fresh" approach D-156 already
+            // established — is simpler and more thorough than trying
+            // to enumerate exactly which rows are stale by which round.
+            await db.delete(newsfeedItemTable);
             break;
         }
       }

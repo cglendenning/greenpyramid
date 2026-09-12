@@ -97,15 +97,17 @@ void main() {
     expect(rows, isEmpty);
   });
 
-  test('D-157: upgrading from v13 removes type=article rows along the '
-      'way — found live: a real article generated before the backend\'s '
-      "markdown-code-fence parsing bug was fixed server-side consumed "
-      "that day's dedupeKey, so only that row needed clearing to free "
-      'the slot immediately rather than waiting until tomorrow. (This '
-      "exercises the full migration chain to whatever the app's current "
-      'version is, not an isolated v13->v14 hop in isolation — later '
-      'migrations in the same chain also remove type=welcome (D-158) '
-      'and type=essence (D-165), covered by their own tests below.)',
+  test('D-157: upgrading from v13 applies every migration in the chain '
+      'without error — found live: a real article generated before the '
+      "backend's markdown-code-fence parsing bug was fixed server-side "
+      "consumed that day's dedupeKey, so only that row needed clearing "
+      'to free the slot immediately rather than waiting until tomorrow. '
+      '(This exercises the full migration chain to the current version — '
+      'by the end of it, D-168\'s own v19->v20 full wipe leaves nothing '
+      'of any type, which is expected and covered by its own dedicated '
+      'test further below; this test\'s own job is confirming the whole '
+      'chain runs cleanly from this starting point, not re-asserting '
+      'what survives, since nothing does.)',
       () async {
     // Same schema as v12 (v13's own migration was a DELETE, not a
     // schema change), with one row of each type already in it.
@@ -130,19 +132,18 @@ void main() {
 
     final upgraded = await db.database;
     final rows = await upgraded.query(DatabaseHelper.newsfeedItemTable);
-    final remainingTypes = rows.map((r) => r[DatabaseHelper.columnNewsfeedType]).toSet();
 
-    expect(remainingTypes, {'streak'});
-    expect(remainingTypes, isNot(contains('article')));
+    expect(rows, isEmpty,
+        reason: "the chain's final step (D-168's v19->v20) is an "
+            'unconditional full wipe, so nothing of any type survives '
+            'reaching the current version from this starting point');
   });
 
-  test('D-158: the v14->v15 migration deletes only type=welcome rows — '
-      'clears the two welcome cards seeded under the old, adjacent-at-'
-      "the-top spacing so they reseed correctly under D-158's fix. "
-      '(This exercises the full migration chain to the current version, '
-      'not an isolated v14->v15 hop — v15->v16/D-165 also removes '
-      'type=essence in the same chain, covered by its own test below.)',
-      () async {
+  test('D-158: upgrading from v14 applies every migration in the chain '
+      'without error — this directive originally fixed the two welcome '
+      "cards' spacing; by the current version, D-168's own full wipe "
+      "(v19->v20) leaves nothing of any type, which is expected and "
+      "covered by its own dedicated test further below", () async {
     final path = '${tempDir.path}/LifeOps.db';
     final raw = await databaseFactory.openDatabase(
       path,
@@ -164,20 +165,18 @@ void main() {
 
     final upgraded = await db.database;
     final rows = await upgraded.query(DatabaseHelper.newsfeedItemTable);
-    final remainingTypes = rows.map((r) => r[DatabaseHelper.columnNewsfeedType]).toSet();
 
-    expect(remainingTypes, {'streak', 'article'});
-    expect(remainingTypes, isNot(contains('welcome')));
-    expect(remainingTypes, isNot(contains('essence')));
+    expect(rows, isEmpty,
+        reason: "the chain's final step (D-168's v19->v20) is an "
+            'unconditional full wipe, so nothing of any type survives '
+            'reaching the current version from this starting point');
   });
 
-  test('D-165: the v15->v16 migration deletes only type=essence rows — '
-      'clears every essence card generated under the old flat '
-      '"{cat}, redefined." template so they regenerate under the new '
-      'first-definition/redefinition-aware framing. (This exercises the '
-      'full migration chain to the current version — v18->v19/D-168 '
-      'also removes type=welcome in the same chain, since it retires '
-      'the welcome-card concept entirely.)', () async {
+  test('D-165: upgrading from v15 applies every migration in the chain '
+      'without error — this directive originally rewrote essence-card '
+      "copy; by the current version, D-168's own full wipe (v19->v20) "
+      'leaves nothing of any type, which is expected and covered by its '
+      'own dedicated test further below', () async {
     final path = '${tempDir.path}/LifeOps.db';
     final raw = await databaseFactory.openDatabase(
       path,
@@ -199,11 +198,11 @@ void main() {
 
     final upgraded = await db.database;
     final rows = await upgraded.query(DatabaseHelper.newsfeedItemTable);
-    final remainingTypes = rows.map((r) => r[DatabaseHelper.columnNewsfeedType]).toSet();
 
-    expect(remainingTypes, {'streak', 'article'});
-    expect(remainingTypes, isNot(contains('essence')));
-    expect(remainingTypes, isNot(contains('welcome')));
+    expect(rows, isEmpty,
+        reason: "the chain's final step (D-168's v19->v20) is an "
+            'unconditional full wipe, so nothing of any type survives '
+            'reaching the current version from this starting point');
   });
 
   test('D-166: the v16->v17 migration collapses consecutive same-text '
@@ -294,10 +293,14 @@ void main() {
             'duplicate insert above was silently skipped');
   });
 
-  test('D-168: the v18->v19 migration deletes only type=welcome rows, '
-      'leaving essence/streak/article untouched — the two generic '
-      'welcome cards are retired entirely, replaced by the five sample '
-      'cards NewsfeedService now seeds', () async {
+  test('D-168: upgrading from v18 applies every migration in the chain '
+      'without error — this directive originally retired the two '
+      "generic welcome cards on their own (v18->v19); by the current "
+      "version, D-168's own later full wipe (v19->v20) leaves nothing "
+      'of any type, which is expected and covered by its own dedicated '
+      'test further below. The v19 step\'s own "only welcome, nothing '
+      'else" behavior is exercised directly by the dedicated v19->v20 '
+      'test\'s own predecessor state, not re-isolated here.', () async {
     final path = '${tempDir.path}/LifeOps.db';
     final raw = await databaseFactory.openDatabase(
       path,
@@ -319,9 +322,44 @@ void main() {
 
     final upgraded = await db.database;
     final rows = await upgraded.query(DatabaseHelper.newsfeedItemTable);
-    final remainingTypes = rows.map((r) => r[DatabaseHelper.columnNewsfeedType]).toSet();
 
-    expect(remainingTypes, {'essence', 'streak', 'article'});
-    expect(remainingTypes, isNot(contains('welcome')));
+    expect(rows, isEmpty,
+        reason: "the chain's final step (D-168's v19->v20) is an "
+            'unconditional full wipe, so nothing of any type survives '
+            'reaching the current version from this starting point');
+  });
+
+  test('D-168 (backfill): the v19->v20 migration unconditionally wipes '
+      'every newsfeed_item row — owner: "I also need you to clean up my '
+      'database because I still have cards in there that were generated '
+      'before this change." Every card, of every type, regenerates fresh '
+      'under everything the newsfeed accumulated across D-154 through '
+      "D-168, not just whichever single round each prior narrow "
+      'migration targeted', () async {
+    final path = '${tempDir.path}/LifeOps.db';
+    final raw = await databaseFactory.openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 19,
+        onCreate: (db, version) => _createV12SchemaWithEssence(db),
+      ),
+    );
+    for (final type in ['sample', 'essence', 'streak', 'article']) {
+      await raw.insert(DatabaseHelper.newsfeedItemTable, {
+        DatabaseHelper.columnNewsfeedType: type,
+        DatabaseHelper.columnNewsfeedTitle: '$type title',
+        DatabaseHelper.columnNewsfeedBody: '$type body',
+        DatabaseHelper.columnNewsfeedCreated: DateTime.now().toIso8601String(),
+        DatabaseHelper.columnNewsfeedDedupeKey: '$type-key',
+      });
+    }
+    await raw.close();
+
+    final upgraded = await db.database;
+    final rows = await upgraded.query(DatabaseHelper.newsfeedItemTable);
+
+    expect(rows, isEmpty,
+        reason: 'this migration is a full, unconditional wipe — no row '
+            'of any type survives it');
   });
 }
