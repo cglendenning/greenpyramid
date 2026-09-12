@@ -202,7 +202,7 @@ void main() {
       expect(essenceItems.length, 1);
       expect(essenceItems.first['body'], contains('Made by hand.'),
           reason: 'the essence text itself must survive verbatim inside '
-              "D-154's new lead-in copy");
+              "D-165's own framing copy");
     });
 
     test('a later, distinct essence version for the same category produces '
@@ -217,6 +217,101 @@ void main() {
       final feed = await service.getFeed(limit: 50, offset: 0);
       final essenceItems = feed.where((i) => i['type'] == 'essence').toList();
       expect(essenceItems.length, 2);
+    });
+  });
+
+  group('D-165: essence copy reacts to what actually happened — a first '
+      'definition and a later redefinition are different events, not the '
+      'same flat template — owner: "these cards need to read like a post '
+      'that has real news based off of what actually exists in the users '
+      'data"', () {
+    test('a category\'s very first essence is framed as a definition, not '
+        'a redefinition — no "redefined" wording, no elapsed-time phrase',
+        () async {
+      await seedCategory(1, 'Craft');
+      await db.insertCategoryEssence(categoryId: 1, essence: 'Made by hand.');
+
+      await service.generateNewItems();
+
+      final feed = await service.getFeed(limit: 50, offset: 0);
+      final essenceItem =
+          feed.firstWhere((i) => i['type'] == 'essence');
+      expect(essenceItem['title'], 'Craft, defined.');
+      expect(essenceItem['title'], isNot(contains('redefined')));
+      expect(essenceItem['body'], contains('Made by hand.'));
+      expect(essenceItem['body'],
+          contains('turned Craft from a name into something real'));
+    });
+
+    test('a second essence for the same category is framed as a genuine '
+        'redefinition, naming how long the previous version held before '
+        'this one replaced it', () async {
+      await seedCategory(1, 'Craft');
+      await db.insertCategoryEssence(categoryId: 1, essence: 'Made by hand.');
+      await db.insertCategoryEssence(categoryId: 1, essence: 'Made with care.');
+
+      await service.generateNewItems();
+
+      final feed = await service.getFeed(limit: 50, offset: 0);
+      final essenceItems =
+          feed.where((i) => i['type'] == 'essence').toList();
+      final redefinition = essenceItems
+          .firstWhere((i) => (i['body'] as String).contains('Made with care.'));
+      expect(redefinition['title'], 'Craft, redefined.');
+      expect(redefinition['body'], contains('after the last time'));
+      expect(redefinition['body'], contains("you've changed how you see Craft"));
+      // Both essence rows were created in the same test run, effectively
+      // back-to-back — the elapsed-time bucket for that is "Less than a
+      // day," not a fabricated placeholder.
+      expect(redefinition['body'], contains('Less than a day after the last time'));
+    });
+
+    test('two different categories\' essence histories are tracked '
+        'independently — a first essence in category B is still framed '
+        'as a definition even though category A already has a '
+        'redefinition on record', () async {
+      await seedCategory(1, 'Craft');
+      await seedCategory(2, 'Health');
+      await db.insertCategoryEssence(categoryId: 1, essence: 'Made by hand.');
+      await db.insertCategoryEssence(categoryId: 1, essence: 'Made with care.');
+      await db.insertCategoryEssence(categoryId: 2, essence: 'Strength first.');
+
+      await service.generateNewItems();
+
+      final feed = await service.getFeed(limit: 50, offset: 0);
+      final healthItem = feed.firstWhere(
+          (i) => i['type'] == 'essence' && (i['body'] as String).contains('Strength first.'));
+      expect(healthItem['title'], 'Health, defined.');
+    });
+  });
+
+  group('D-165: humanElapsed — a human-scaled, bucketed phrase for how '
+      'long ago something happened, never a clinical exact day count', () {
+    test('under a day reads as "Less than a day"', () {
+      expect(humanElapsed(const Duration(hours: 5)), 'Less than a day');
+    });
+
+    test('a single day is singular', () {
+      expect(humanElapsed(const Duration(days: 1)), '1 day');
+    });
+
+    test('a handful of days stays in days, plural', () {
+      expect(humanElapsed(const Duration(days: 5)), '5 days');
+    });
+
+    test('two weeks and up buckets into weeks', () {
+      expect(humanElapsed(const Duration(days: 14)), '2 weeks');
+      expect(humanElapsed(const Duration(days: 21)), '3 weeks');
+    });
+
+    test('two months and up buckets into months', () {
+      expect(humanElapsed(const Duration(days: 60)), '2 months');
+      expect(humanElapsed(const Duration(days: 90)), '3 months');
+    });
+
+    test('a year and up buckets into years, singular at exactly one', () {
+      expect(humanElapsed(const Duration(days: 365)), '1 year');
+      expect(humanElapsed(const Duration(days: 730)), '2 years');
     });
   });
 

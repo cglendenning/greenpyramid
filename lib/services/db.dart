@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 15; // 7: R3 schema — position, essences,
+  static const _databaseVersion = 16; // 7: R3 schema — position, essences,
   // domain findings, account state (Part IV). 8: R6/D-062 — discards an
   // incomplete old-flow setup so the user starts the new Council setup
   // fresh instead of landing on a half-populated pyramid with no way back
@@ -29,7 +29,11 @@ class DatabaseHelper {
   // wipe: only type='welcome' rows, discarding the two welcome cards
   // seeded (by D-156's own wipe, on the previous build) with the old,
   // adjacent-at-the-top timestamps, so they reseed with D-158's spacing
-  // fix in effect the next time anything touches the newsfeed.
+  // fix in effect the next time anything touches the newsfeed. 16:
+  // D-165 — a fourth, narrower one-time wipe: only type='essence' rows,
+  // discarding every essence card generated under the old flat
+  // "{cat}, redefined." template so they all regenerate under the new
+  // first-definition/redefinition-aware framing.
 
   // DEMO MODE FLAG
   static final ValueNotifier<bool> demoModeNotifier = ValueNotifier(false);
@@ -693,6 +697,23 @@ class DatabaseHelper {
             // every real essence/streak/article card untouched.
             await db.delete(newsfeedItemTable,
                 where: '$columnNewsfeedType = ?', whereArgs: ['welcome']);
+            break;
+          case 16:
+            // D-165: found live — every essence-redefinition card, no
+            // matter how many times a category's essence had actually
+            // been redefined, rendered the exact same flat template
+            // ("{cat}, redefined." + "Here's what {cat} means to you
+            // now:"), with no distinction between a category's first
+            // definition and a later change, and no acknowledgment of
+            // what changed or when. _generateEssenceItems now frames a
+            // first definition and a redefinition as genuinely different
+            // events (the latter naming how long the previous version
+            // held). Deleting only type='essence' rows — not the whole
+            // table — lets every existing essence version regenerate
+            // under the new framing the next time anything touches the
+            // newsfeed, leaving streak/article/welcome cards untouched.
+            await db.delete(newsfeedItemTable,
+                where: '$columnNewsfeedType = ?', whereArgs: ['essence']);
             break;
         }
       }

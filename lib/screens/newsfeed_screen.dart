@@ -341,6 +341,21 @@ class _NewsfeedCard extends StatelessWidget {
                   fontSize: 11,
                   letterSpacing: 1.2),
             ),
+            // D-164: owner — "place the date just underneath the
+            // 'analysis' keyword" — a byline-style date reads naturally
+            // right under a section label, the way a real article
+            // dateline sits under its section, rather than trailing at
+            // the very bottom of the card underneath the body text.
+            if (created != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                DateFormat('MMM d, yyyy').format(created),
+                style: TextStyle(
+                    color: AppColors.textSecondary.withValues(alpha: 0.6),
+                    fontSize: 11,
+                    fontFamily: 'Exo2'),
+              ),
+            ],
             const SizedBox(height: 6),
           ],
           Text(
@@ -361,7 +376,7 @@ class _NewsfeedCard extends StatelessWidget {
                 fontSize: 15,
                 height: 1.5),
           ),
-          if (created != null) ...[
+          if (!isArticle && created != null) ...[
             const SizedBox(height: 12),
             Text(
               DateFormat('MMM d, yyyy').format(created),

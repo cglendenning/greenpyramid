@@ -13,6 +13,27 @@ import 'db.dart';
 /// since the user is already looking at the feed.
 typedef NewNewsfeedItem = ({String title, String body, String dedupeKey});
 
+/// D-165: a human-scaled, bucketed phrase for how long ago something
+/// happened — "3 days", "6 weeks", "4 months", "2 years" — never an exact
+/// day count, which would read clinical rather than like a real sentence
+/// a person would actually say. Pure and top-level so it's directly
+/// testable without a live database.
+String humanElapsed(Duration d) {
+  final days = d.inDays;
+  if (days < 1) return 'Less than a day';
+  if (days < 14) return days == 1 ? '1 day' : '$days days';
+  if (days < 60) {
+    final weeks = (days / 7).round();
+    return weeks <= 1 ? '1 week' : '$weeks weeks';
+  }
+  if (days < 365) {
+    final months = (days / 30).round();
+    return months <= 1 ? '1 month' : '$months months';
+  }
+  final years = (days / 365).round();
+  return years <= 1 ? '1 year' : '$years years';
+}
+
 /// D-150: a personal newsfeed generated entirely from the user's own data
 /// already on-device — never sent anywhere, never fetched from a server.
 /// Owner: "create a newsfeed that is generated from the users own personal
@@ -198,6 +219,16 @@ class NewsfeedService {
     return newItems;
   }
 
+  // D-165: found live — every essence version, first or fifth, produced
+  // the exact same flat "{cat}, redefined." + "Here's what {cat} means to
+  // you now" template, regardless of what actually happened. Owner:
+  // "these cards need to read like a post that has real news based off
+  // of what actually exists in the users data" — a value's FIRST
+  // definition and a later REDEFINITION are genuinely different events,
+  // and a redefinition's own real "news" is that something changed after
+  // holding for a specific amount of time. Both facts already exist in
+  // the essence history itself — no new AI call needed to surface them,
+  // consistent with D-150's original scoping of this tier as zero-cost.
   Future<List<NewNewsfeedItem>> _generateEssenceItems({
     required List<Map<String, dynamic>> categories,
   }) async {
@@ -206,26 +237,57 @@ class NewsfeedService {
       for (final c in categories) c['id'] as int: c['name'] as String,
     };
     final essences = await _db.queryAllCategoryEssences();
+    final byCategoryId = <int, List<Map<String, dynamic>>>{};
     for (final row in essences) {
-      final essenceId = row[DatabaseHelper.columnEssenceId] as int;
       final categoryId = row[DatabaseHelper.columnEssenceCategoryId] as int;
-      final text = row[DatabaseHelper.columnEssenceText] as String;
-      final categoryName = namesById[categoryId];
-      if (categoryName == null) continue; // category since renamed/removed
-      final title = '$categoryName, redefined.';
-      // The lead-in is new copy; the essence text itself is the owner's
-      // own words and stays verbatim, never rewritten.
-      final body = "Here's what $categoryName means to you now:\n\n$text";
-      final dedupeKey = 'essence-$essenceId';
-      final inserted = await _db.insertNewsfeedItem(
-        type: 'essence',
-        title: title,
-        body: body,
-        categoryId: categoryId,
-        dedupeKey: dedupeKey,
-      );
-      if (inserted) {
-        newItems.add((title: title, body: body, dedupeKey: dedupeKey));
+      (byCategoryId[categoryId] ??= []).add(row);
+    }
+
+    for (final rows in byCategoryId.values) {
+      // Oldest first, so index 0 is genuinely the category's first-ever
+      // essence and each later row's "previous version" is unambiguous.
+      rows.sort((a, b) => (a[DatabaseHelper.columnEssenceCreated] as String)
+          .compareTo(b[DatabaseHelper.columnEssenceCreated] as String));
+
+      for (var i = 0; i < rows.length; i++) {
+        final row = rows[i];
+        final essenceId = row[DatabaseHelper.columnEssenceId] as int;
+        final categoryId = row[DatabaseHelper.columnEssenceCategoryId] as int;
+        final text = row[DatabaseHelper.columnEssenceText] as String;
+        final categoryName = namesById[categoryId];
+        if (categoryName == null) continue; // category since renamed/removed
+
+        final String title;
+        final String body;
+        // The essence text itself is the owner's own words and stays
+        // verbatim, never rewritten — only the framing around it changes.
+        if (i == 0) {
+          title = '$categoryName, defined.';
+          body = "You just turned $categoryName from a name into "
+              "something real. Here's what it means to you:\n\n$text";
+        } else {
+          final previousCreated = DateTime.parse(
+              rows[i - 1][DatabaseHelper.columnEssenceCreated] as String);
+          final thisCreated =
+              DateTime.parse(row[DatabaseHelper.columnEssenceCreated] as String);
+          final elapsed = humanElapsed(thisCreated.difference(previousCreated));
+          title = '$categoryName, redefined.';
+          body = "$elapsed after the last time, you've changed how you "
+              "see $categoryName. Here's what it means to you "
+              "now:\n\n$text";
+        }
+
+        final dedupeKey = 'essence-$essenceId';
+        final inserted = await _db.insertNewsfeedItem(
+          type: 'essence',
+          title: title,
+          body: body,
+          categoryId: categoryId,
+          dedupeKey: dedupeKey,
+        );
+        if (inserted) {
+          newItems.add((title: title, body: body, dedupeKey: dedupeKey));
+        }
       }
     }
     return newItems;

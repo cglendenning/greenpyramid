@@ -57,4 +57,24 @@ void main() {
       "never changes its own layout/image between rebuilds", () {
     expect(_stableHash('essence-42'), _stableHash('essence-42'));
   });
+
+  test('D-164: on an article card, the date sits directly under the '
+      '"ANALYSIS" label — not trailing at the bottom of the card, '
+      "underneath the body text, the way every other card's date does",
+      () {
+    final analysisIdx = source.indexOf("'ANALYSIS'");
+    expect(analysisIdx, greaterThan(-1));
+    final dateIdx = source.indexOf("DateFormat('MMM d, yyyy')", analysisIdx);
+    final titleIdx = source.indexOf('title,\n', analysisIdx);
+    expect(dateIdx, greaterThan(-1));
+    expect(dateIdx, lessThan(titleIdx),
+        reason: 'the date under ANALYSIS must render before the title, '
+            'not after the body');
+  });
+
+  test('D-164: a non-article card still shows its date at the bottom, '
+      'after the body — there is no "ANALYSIS" label to place it under',
+      () {
+    expect(source, contains('if (!isArticle && created != null)'));
+  });
 }
