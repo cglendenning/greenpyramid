@@ -7,6 +7,7 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:life_ops/main.dart';
 import 'package:life_ops/screens/batch_checkin_screen.dart';
+import 'package:life_ops/screens/newsfeed_screen.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'dart:math';
 import 'dart:io';
@@ -665,16 +666,103 @@ class LocalNotificationService {
   void _handleStructuredPayload(String payload) {
     try {
       final data = jsonDecode(payload) as Map<String, dynamic>;
-      if (data['type'] != 'batch_checkin') return;
-      final habitsJson = data['habits'] as String?;
-      if (habitsJson == null) return;
-      final habits =
-          (jsonDecode(habitsJson) as List).cast<Map<String, dynamic>>();
-      navigatorKey.currentState?.push(MaterialPageRoute(
-          builder: (_) => BatchCheckinScreen(habits: habits)));
+      switch (data['type']) {
+        case 'batch_checkin':
+          final habitsJson = data['habits'] as String?;
+          if (habitsJson == null) return;
+          final habits =
+              (jsonDecode(habitsJson) as List).cast<Map<String, dynamic>>();
+          navigatorKey.currentState?.push(MaterialPageRoute(
+              builder: (_) => BatchCheckinScreen(habits: habits)));
+        case 'newsfeed_item':
+          // D-154: "when you tap the notification, it will go directly
+          // to the newsfeed" — and, specifically, scrolled to and
+          // highlighting the exact item the notification was about.
+          final dedupeKey = data['dedupeKey'] as String?;
+          if (dedupeKey == null) return;
+          navigatorKey.currentState?.push(MaterialPageRoute(
+              builder: (_) => NewsfeedScreen(highlightDedupeKey: dedupeKey)));
+      }
     } catch (e, st) {
       debugPrint('Failed to handle structured notification payload: $e\n$st');
     }
+  }
+
+  /// D-154: fired immediately whenever [NewsfeedService.generateNewItems]
+  /// produces a genuinely new item (not a duplicate, not a seeded welcome
+  /// card) — "whenever a new notification is produced, the preview in
+  /// the notification will be a headline and when you tap the
+  /// notification, it will go directly to the newsfeed." The preview
+  /// text is the item's own headline/body, generated on-device by
+  /// NewsfeedService — no AI call, no network round trip.
+  Future<void> showNewsfeedItemNotification({
+    required String title,
+    required String body,
+    required String dedupeKey,
+  }) {
+    return showImmediateNotification(
+      title: title,
+      body: body,
+      payload: jsonEncode({'type': 'newsfeed_item', 'dedupeKey': dedupeKey}),
+    );
+  }
+
+  /// D-154: the Settings "Send test notification" control now behaves
+  /// exactly like a real newsfeed notification — owner: "the button to
+  /// send a test notification to behave the same way that it will have
+  /// a headline of one of the news items and when you tap the
+  /// notification it brings you to that headline in the newsfeed."
+  /// Reuses [testNotificationId] so the existing pending/cancel tracking
+  /// in Settings keeps working unchanged.
+  Future<void> scheduleNewsfeedTestNotification({
+    required String title,
+    required String body,
+    required String dedupeKey,
+  }) async {
+    await _localNotificationService.cancel(testNotificationId);
+    final scheduledTime =
+        tz.TZDateTime.now(tz.local).add(const Duration(minutes: 1));
+    const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
+      sound: 'doublebeep.aiff',
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+    const AndroidNotificationDetails androidNotificationDetails =
+        AndroidNotificationDetails(
+      'green_pyramid_channel',
+      'Green Pyramid Notifications',
+      channelDescription: 'Notifications for Green Pyramid app',
+      importance: Importance.max,
+      priority: Priority.max,
+      sound: RawResourceAndroidNotificationSound('doublebeep'),
+      playSound: true,
+      enableVibration: true,
+      enableLights: true,
+      showWhen: true,
+      autoCancel: false,
+      ongoing: false,
+      channelShowBadge: true,
+      icon: '@mipmap/launcher_icon',
+      largeIcon: DrawableResourceAndroidBitmap('@mipmap/launcher_icon'),
+      category: AndroidNotificationCategory.reminder,
+      visibility: NotificationVisibility.public,
+      timeoutAfter: 30000,
+    );
+    const NotificationDetails details = NotificationDetails(
+      android: androidNotificationDetails,
+      iOS: iosDetails,
+    );
+    await _localNotificationService.zonedSchedule(
+      testNotificationId,
+      title,
+      body,
+      scheduledTime,
+      details,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      payload: jsonEncode({'type': 'newsfeed_item', 'dedupeKey': dedupeKey}),
+      matchDateTimeComponents: null,
+    );
   }
 
   // Simple iOS notification test

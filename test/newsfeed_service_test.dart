@@ -143,15 +143,20 @@ void main() {
       final streakItems = feed.where((i) => i['type'] == 'streak').toList();
       expect(streakItems.length, 1,
           reason: 'only the 3-day milestone is reached, and only once');
-      expect(streakItems.first['title'], contains('3-day streak'));
+      expect(streakItems.first['title'], contains('3 days on Craft'));
     });
 
-    test('a category with no essence and no streak yet produces no items',
-        () async {
+    test('a category with no essence and no streak yet produces no real '
+        '(streak/essence) items — only the two D-154 welcome cards seeded '
+        'on this genuinely-empty first pass', () async {
       await seedCategory(1, 'Craft');
-      await service.generateNewItems();
+      final newItems = await service.generateNewItems();
+      expect(newItems, isEmpty,
+          reason: 'welcome cards are seeded directly, not returned as '
+              '"new" notification-worthy items');
       final feed = await service.getFeed(limit: 50, offset: 0);
-      expect(feed, isEmpty);
+      expect(feed.map((i) => i['type']), everyElement('welcome'));
+      expect(feed.length, 2);
     });
 
     test('an essence version produces a feed item keyed by its own row id '
@@ -165,7 +170,9 @@ void main() {
       final feed = await service.getFeed(limit: 50, offset: 0);
       final essenceItems = feed.where((i) => i['type'] == 'essence').toList();
       expect(essenceItems.length, 1);
-      expect(essenceItems.first['body'], 'Made by hand.');
+      expect(essenceItems.first['body'], contains('Made by hand.'),
+          reason: 'the essence text itself must survive verbatim inside '
+              "D-154's new lead-in copy");
     });
 
     test('a later, distinct essence version for the same category produces '
@@ -196,6 +203,95 @@ void main() {
       expect(secondPage.length, 2);
       expect(firstPage.map((i) => i['dedupekey']),
           isNot(containsAll(secondPage.map((i) => i['dedupekey']))));
+    });
+  });
+
+  group('D-154: generateNewItems returns only genuinely new items, for a '
+      'caller that wants to fire a local notification about them', () {
+    test('a newly-reached streak milestone is returned, with its own '
+        'title/body/dedupeKey', () async {
+      await seedCategory(1, 'Craft');
+      for (var day = 1; day <= 3; day++) {
+        await logDay('Craft', '2026-09-0$day', checked: true);
+      }
+      final newItems = await service.generateNewItems();
+      final streakItems =
+          newItems.where((i) => i.dedupeKey.startsWith('streak-')).toList();
+      expect(streakItems.length, 1);
+      expect(streakItems.first.title, contains('3 days on Craft'));
+      expect(streakItems.first.dedupeKey, 'streak-1-3');
+    });
+
+    test('a repeat scan with nothing new returns an empty list, not the '
+        'same items again', () async {
+      await seedCategory(1, 'Craft');
+      for (var day = 1; day <= 3; day++) {
+        await logDay('Craft', '2026-09-0$day', checked: true);
+      }
+      await service.generateNewItems();
+      final second = await service.generateNewItems();
+      expect(second, isEmpty);
+    });
+
+    test('the seeded welcome cards are never returned as "new" — they are '
+        "not real content worth a push notification", () async {
+      await seedCategory(1, 'Craft');
+      final newItems = await service.generateNewItems();
+      expect(newItems, isEmpty);
+    });
+  });
+
+  group('D-154: no emoji anywhere in generated copy — found live: "do not '
+      'use emojis" in the copy used for each new item', () {
+    bool containsEmoji(String s) =>
+        s.runes.any((r) => r >= 0x1F300 && r <= 0x1FAFF);
+
+    test('every streak-milestone title/body is emoji-free', () async {
+      await seedCategory(1, 'Craft');
+      for (var day = 1; day <= 365; day++) {
+        final date = DateTime(2026, 1, 1).add(Duration(days: day));
+        await logDay(
+            'Craft', date.toIso8601String().substring(0, 10), checked: true);
+      }
+      final newItems = await service.generateNewItems();
+      for (final item in newItems) {
+        expect(containsEmoji(item.title), isFalse, reason: item.title);
+        expect(containsEmoji(item.body), isFalse, reason: item.body);
+      }
+    });
+
+    test('essence and welcome copy is emoji-free', () async {
+      await seedCategory(1, 'Craft');
+      await db.insertCategoryEssence(categoryId: 1, essence: 'Made by hand.');
+      await service.generateNewItems();
+      final feed = await service.getFeed(limit: 50, offset: 0);
+      for (final item in feed) {
+        expect(containsEmoji(item['title'] as String), isFalse);
+        expect(containsEmoji(item['body'] as String), isFalse);
+      }
+    });
+  });
+
+  group('D-154: getItemPosition — how far back a specific item sits in '
+      "the feed's own order, so a notification tap can load exactly that "
+      'far without paging through unrelated history first', () {
+    test('the newest item is at position 0; each older one increments',
+        () async {
+      await db.insertNewsfeedItem(
+          type: 'streak', title: 't0', body: 'b', dedupeKey: 'k0');
+      await db.insertNewsfeedItem(
+          type: 'streak', title: 't1', body: 'b', dedupeKey: 'k1');
+      await db.insertNewsfeedItem(
+          type: 'streak', title: 't2', body: 'b', dedupeKey: 'k2');
+
+      expect(await service.getItemPosition('k2'), 0);
+      expect(await service.getItemPosition('k1'), 1);
+      expect(await service.getItemPosition('k0'), 2);
+    });
+
+    test('a dedupeKey that does not exist returns null, not a crash',
+        () async {
+      expect(await service.getItemPosition('nonexistent'), isNull);
     });
   });
 }

@@ -1793,7 +1793,13 @@ class DatabaseHelper {
   /// D-150: writes one newsfeed item, silently skipped (INSERT OR IGNORE)
   /// if [dedupeKey] was already used — the mechanism that makes calling
   /// the generator repeatedly (every time the newsfeed screen opens) safe.
-  Future<void> insertNewsfeedItem({
+  /// D-154: now returns whether the row was actually inserted (`true`) or
+  /// silently ignored as a duplicate (`false`) — sqflite's `insert()`
+  /// returns `0` on an ignored conflict (confirmed against the real
+  /// sqflite package, not assumed), which is what a caller needs to know
+  /// whether this is a genuinely *new* item worth firing a local
+  /// notification for.
+  Future<bool> insertNewsfeedItem({
     required String type,
     required String title,
     required String body,
@@ -1801,7 +1807,7 @@ class DatabaseHelper {
     required String dedupeKey,
   }) async {
     final db = await database;
-    await db.insert(
+    final id = await db.insert(
       newsfeedItemTable,
       {
         columnNewsfeedType: type,
@@ -1813,6 +1819,7 @@ class DatabaseHelper {
       },
       conflictAlgorithm: ConflictAlgorithm.ignore,
     );
+    return id != 0;
   }
 
   /// D-150: one page of the newsfeed, newest first.
@@ -1827,6 +1834,38 @@ class DatabaseHelper {
       limit: limit,
       offset: offset,
     );
+  }
+
+  /// D-154: how many rows are in the newsfeed at all — used to detect a
+  /// genuinely first-ever launch (the table is still empty right before
+  /// this generation pass) so the seeded welcome cards are inserted
+  /// exactly once, not re-checked against every individual dedupeKey.
+  Future<int> countNewsfeedItems() async {
+    final db = await database;
+    final result =
+        await db.rawQuery('SELECT COUNT(*) AS c FROM $newsfeedItemTable');
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  /// D-154: the 0-based rank of the item identified by [dedupeKey] within
+  /// the same newest-first ordering [queryNewsfeedItems] pages through —
+  /// how a notification tap can jump the newsfeed screen straight to a
+  /// specific item (load pages up to and including this rank, then
+  /// scroll to it) without paging through the entire history first.
+  /// Returns null if no such item exists (e.g., its dedupeKey is stale).
+  Future<int?> getNewsfeedItemPosition(String dedupeKey) async {
+    final db = await database;
+    final rows = await db.query(newsfeedItemTable,
+        where: '$columnNewsfeedDedupeKey = ?', whereArgs: [dedupeKey], limit: 1);
+    if (rows.isEmpty) return null;
+    final target = rows.first;
+    final targetCreated = target[columnNewsfeedCreated] as String;
+    final targetId = target[columnNewsfeedId] as int;
+    final result = await db.rawQuery(
+        'SELECT COUNT(*) AS c FROM $newsfeedItemTable WHERE '
+        '$columnNewsfeedCreated > ? OR ($columnNewsfeedCreated = ? AND $columnNewsfeedId > ?)',
+        [targetCreated, targetCreated, targetId]);
+    return Sqflite.firstIntValue(result) ?? 0;
   }
 
   /// D-028/D-061: appends a new essence version for a category (essences are

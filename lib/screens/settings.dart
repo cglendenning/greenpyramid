@@ -13,6 +13,7 @@ import 'package:life_ops/services/account_link_service.dart';
 import 'package:life_ops/services/calendar_service.dart';
 import 'package:life_ops/services/entitlement_gate.dart';
 import 'package:life_ops/services/entitlement_service.dart';
+import 'package:life_ops/services/newsfeed_service.dart';
 import 'package:life_ops/services/notification.dart';
 import 'package:life_ops/services/subscription_panel_logic.dart';
 import 'package:life_ops/services/subscription_service.dart';
@@ -409,7 +410,12 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
 }
 
 /// D-115: schedules a single local test notification, mirroring Kansei's
-/// identical settings-screen control.
+/// identical settings-screen control. D-154: now uses a real newsfeed
+/// item's own headline/body as the preview, and tapping it deep-links
+/// straight to that item in the newsfeed — "the button to send a test
+/// notification [should] behave the same way that it will have a
+/// headline of one of the news items and when you tap the notification
+/// it brings you to that headline in the newsfeed."
 class _TestNotificationButton extends StatefulWidget {
   const _TestNotificationButton({required this.lns});
   final LocalNotificationService lns;
@@ -433,7 +439,17 @@ class _TestNotificationButtonState extends State<_TestNotificationButton> {
   Future<void> _send() async {
     setState(() => _scheduling = true);
     try {
-      await widget.lns.scheduleTestNotification();
+      // generateNewItems() always leaves at least the two seeded welcome
+      // cards behind on a table that's otherwise empty, so the feed is
+      // never actually empty by the time this reads it back.
+      await NewsfeedService.instance.generateNewItems();
+      final feed = await NewsfeedService.instance.getFeed(limit: 1, offset: 0);
+      final item = feed.first;
+      await widget.lns.scheduleNewsfeedTestNotification(
+        title: item['title'] as String,
+        body: item['body'] as String,
+        dedupeKey: item['dedupekey'] as String,
+      );
       if (mounted) setState(() => _pending = true);
     } finally {
       if (mounted) setState(() => _scheduling = false);
@@ -447,8 +463,8 @@ class _TestNotificationButtonState extends State<_TestNotificationButton> {
       children: [
         Text(
           _pending
-              ? 'A test notification is scheduled — it will fire in about a minute. Come back after it fires to send another.'
-              : 'Schedule a notification 1 minute from now to confirm delivery is working.',
+              ? 'A test notification is scheduled — it will fire in about a minute, using one of your own newsfeed headlines. Come back after it fires to send another.'
+              : 'Schedule a notification 1 minute from now, using one of your own newsfeed headlines, to confirm delivery is working.',
           style: const TextStyle(
               color: AppColors.textSecondary, fontSize: 13, height: 1.4),
         ),

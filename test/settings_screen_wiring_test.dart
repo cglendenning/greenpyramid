@@ -42,8 +42,19 @@ void main() {
 
   test('D-115: a test notification can be sent from settings', () {
     final source = File('lib/screens/settings.dart').readAsStringSync();
-    expect(source, contains('scheduleTestNotification()'));
     expect(source, contains('isTestNotificationPending()'));
+  });
+
+  test(
+      'D-154: the settings test notification now uses a real newsfeed '
+      "item's own headline/body, not a generic message — owner: \"the "
+      'button to send a test notification [should] behave the same way '
+      "that it will have a headline of one of the news items and when "
+      'you tap the notification it brings you to that headline in the '
+      'newsfeed."', () {
+    final source = File('lib/screens/settings.dart').readAsStringSync();
+    expect(source, contains('NewsfeedService.instance.generateNewItems()'));
+    expect(source, contains('scheduleNewsfeedTestNotification('));
   });
 
   test(
