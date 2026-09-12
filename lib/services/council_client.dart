@@ -198,6 +198,10 @@ class CouncilClient {
   /// proposed — "not quite right" adjusts what's there, never discards it.
   /// D-095: [pyramidContext], general-chat-only (D-091), grounds the
   /// advisors in the user's actual pyramid instead of a placeholder.
+  /// D-178: [firstName] is only ever real for a category-reclarification
+  /// or general-chat turn (both post-setup, once a name is on file) —
+  /// setup-time essence-deepening calls this same method with none, and
+  /// the backend prompts degrade gracefully either way.
   Future<AdvisorTurnResult> boardAdvisorTurn({
     required String advisorKey,
     required Map<String, dynamic> categoryContext,
@@ -208,6 +212,7 @@ class CouncilClient {
     String? sessionId,
     List<Map<String, String>>? existingCategories,
     List<Map<String, String?>>? pyramidContext,
+    String? firstName,
   }) async {
     final data = await _post('boardAdvisorTurn', {
       'advisorKey': advisorKey,
@@ -219,6 +224,7 @@ class CouncilClient {
       if (sessionId != null) 'sessionId': sessionId,
       if (existingCategories != null) 'existingCategories': existingCategories,
       if (pyramidContext != null) 'pyramidContext': pyramidContext,
+      if (firstName != null && firstName.isNotEmpty) 'firstName': firstName,
     });
     final usage = data['usage'] as Map<String, dynamic>? ?? const {};
     return AdvisorTurnResult(
@@ -362,9 +368,11 @@ class CouncilClient {
   /// gated by D-016 like every other non-setup AI surface.
   Future<String> deriveProgressAnalysis({
     required List<Map<String, String>> taskLogs,
+    String? firstName,
   }) async {
     final data = await _post('deriveProgressAnalysis', {
       'taskLogs': taskLogs,
+      if (firstName != null && firstName.isNotEmpty) 'firstName': firstName,
     });
     return (data['analysis'] as String? ?? '').trim();
   }
@@ -374,9 +382,11 @@ class CouncilClient {
   /// free, gated by D-016/D-087 like every other non-setup AI surface.
   Future<({String headline, String body})> deriveNewsfeedArticle({
     required List<Map<String, dynamic>> categories,
+    String? firstName,
   }) async {
     final data = await _post('deriveNewsfeedArticle', {
       'categories': categories,
+      if (firstName != null && firstName.isNotEmpty) 'firstName': firstName,
     });
     return (
       headline: (data['headline'] as String? ?? '').trim(),

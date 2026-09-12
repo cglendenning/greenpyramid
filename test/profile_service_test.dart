@@ -26,6 +26,7 @@ class _FakeCouncilClient extends CouncilClient {
   String visionResult = 'I am becoming someone who follows through.';
 
   List<Map<String, String>>? lastProgressTaskLogs;
+  String? lastProgressFirstName;
   String progressResult = 'You showed up for Health four times this week.';
 
   Object? throwOnVision;
@@ -49,9 +50,11 @@ class _FakeCouncilClient extends CouncilClient {
   @override
   Future<String> deriveProgressAnalysis({
     required List<Map<String, String>> taskLogs,
+    String? firstName,
   }) async {
     if (throwOnProgress != null) throw throwOnProgress!;
     lastProgressTaskLogs = taskLogs;
+    lastProgressFirstName = firstName;
     return progressResult;
   }
 }
@@ -151,6 +154,17 @@ void main() {
     expect(row['category'], 'Health');
     expect(row['taskDescription'], 'Walk 20 minutes');
     expect(row['checked'], 'true');
+  });
+
+  test('D-178: generateProgressAnalysis passes the account\'s first name '
+      'through when one is on file', () async {
+    await db.setFirstName('Craig');
+    final client = _FakeCouncilClient();
+    final svc = ProfileService(db: db, client: client);
+
+    await svc.generateProgressAnalysis();
+
+    expect(client.lastProgressFirstName, 'Craig');
   });
 
   test(

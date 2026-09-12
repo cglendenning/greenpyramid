@@ -147,6 +147,46 @@ void main() {
     expect(data?['timezone'], 'America/Los_Angeles');
   });
 
+  test('D-178: first name/email/phone sync into profile/main and restore '
+      'back down onto a fresh local database — the profile photo is '
+      'deliberately excluded, since it stays local-only', () async {
+    await db.insertCategory({
+      DatabaseHelper.columnCategoryId: 1,
+      DatabaseHelper.columnCat: 'Health',
+      DatabaseHelper.columnPosition: 1,
+    });
+    await db.setFirstName('Craig');
+    await db.setEmail('craig@example.com');
+    await db.setPhone('555-0100');
+    await db.setProfilePhotoPath('/local/only/photo.jpg');
+    final firestore = FakeFirebaseFirestore();
+    final push = SyncService(firestore: firestore, db: db);
+    await push.syncAll(uid, setupComplete: true);
+
+    final data = (await profileDoc(firestore)).data();
+    expect(data?['firstName'], 'Craig');
+    expect(data?['email'], 'craig@example.com');
+    expect(data?['phone'], '555-0100');
+    expect(data?.containsKey('profilePhotoPath'), isFalse);
+
+    // "Reinstall": a brand-new local database, same Firestore account.
+    final freshDir =
+        await Directory.systemTemp.createTemp('gp_sync_restore_profile_test');
+    addTearDown(() {
+      if (freshDir.existsSync()) freshDir.deleteSync(recursive: true);
+    });
+    PathProviderPlatform.instance = _TempPathProvider(freshDir.path);
+    final pull = SyncService(firestore: firestore, db: db);
+    final restored = await pull.restoreFromCloud(uid);
+    expect(restored, isTrue);
+
+    final restoredAccount = await db.getAccountState();
+    expect(restoredAccount[DatabaseHelper.columnFirstName], 'Craig');
+    expect(restoredAccount[DatabaseHelper.columnEmail], 'craig@example.com');
+    expect(restoredAccount[DatabaseHelper.columnPhone], '555-0100');
+    expect(restoredAccount[DatabaseHelper.columnProfilePhotoPath], isNull);
+  });
+
   test('D-025 step 7: calendar context syncs into profile/main only when '
       'CalendarService has a summary; absent (deleted) otherwise, never a '
       'placeholder', () async {

@@ -644,6 +644,9 @@ async function sendTailoredNotification(uid, profileData) {
     recentActivity,
     domainFindings,
     calendarContext,
+    // D-178: already present on profileData — synced by the client's
+    // SyncService the same way every other profile/main field is.
+    firstName: profileData.firstName,
   });
 
   const model = await getNotificationModel();

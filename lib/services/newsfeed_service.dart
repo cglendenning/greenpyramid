@@ -178,7 +178,10 @@ class NewsfeedService {
     try {
       final categories = await queryCategoryStats();
       await AiGuard.instance.acquire();
-      final article = await _client.deriveNewsfeedArticle(categories: categories);
+      final account = await _db.getAccountState();
+      final firstName = account[DatabaseHelper.columnFirstName] as String?;
+      final article = await _client.deriveNewsfeedArticle(
+          categories: categories, firstName: firstName);
       if (article.headline.isEmpty || article.body.isEmpty) return false;
       await _db.insertNewsfeedItem(
         type: 'article',

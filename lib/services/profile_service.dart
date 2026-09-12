@@ -71,6 +71,8 @@ class ProfileService {
             })
         .toList();
     await AiGuard.instance.acquire();
-    return _client.deriveProgressAnalysis(taskLogs: taskLogs);
+    final account = await _db.getAccountState();
+    final firstName = account[DatabaseHelper.columnFirstName] as String?;
+    return _client.deriveProgressAnalysis(taskLogs: taskLogs, firstName: firstName);
   }
 }

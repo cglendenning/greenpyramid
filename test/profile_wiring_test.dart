@@ -76,4 +76,51 @@ void main() {
     expect(source, contains('_handleEntitlementRefusal'));
     expect(source, contains('pullFromServer'));
   });
+
+  group('D-178: the profile screen collects/edits personal info and uses '
+      'the app\'s standard rotating background', () {
+    final source = File('lib/screens/profile.dart').readAsStringSync();
+
+    test('the background is CrossfadingStockImages — the same rotating '
+        '20-photo treatment every other onboarding-family screen uses, '
+        'replacing this screen\'s own former private 4-image rotation',
+        () {
+      expect(source, contains('CrossfadingStockImages()'));
+      expect(source, isNot(contains('backdropImages')));
+    });
+
+    test('first name, email, and phone are all editable and saved '
+        'locally on change', () {
+      expect(source, contains('controller: _nameController'));
+      expect(source, contains('_saveFirstName'));
+      expect(source, contains('controller: _emailController'));
+      expect(source, contains('_saveEmail'));
+      expect(source, contains('controller: _phoneController'));
+      expect(source, contains('_savePhone'));
+      expect(source, contains('_db.setFirstName'));
+      expect(source, contains('_db.setEmail'));
+      expect(source, contains('_db.setPhone'));
+    });
+
+    test('a photo can be added, changed, and removed, stored as a local '
+        'file path only — never uploaded, matching the owner\'s own '
+        'choice to keep photo storage on-device for now', () {
+      expect(source, contains('_pickPhoto'));
+      expect(source, contains('_removePhoto'));
+      expect(source, contains('_db.setProfilePhotoPath'));
+      expect(source, isNot(contains('firebase_storage')));
+      expect(source, isNot(contains('FirebaseStorage')));
+    });
+
+    test('editing first name/email/phone triggers a background sync; '
+        'the photo picker/remover do not', () {
+      final nameStart = source.indexOf('Future<void> _saveFirstName');
+      final nameEnd = source.indexOf('\n  }', nameStart);
+      expect(source.substring(nameStart, nameEnd), contains('_syncInBackground()'));
+
+      final photoStart = source.indexOf('Future<void> _pickPhoto');
+      final photoEnd = source.indexOf('\n  }', photoStart);
+      expect(source.substring(photoStart, photoEnd), isNot(contains('_syncInBackground')));
+    });
+  });
 }

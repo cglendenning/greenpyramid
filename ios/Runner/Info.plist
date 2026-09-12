@@ -226,7 +226,7 @@
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <true/>
     <key>NSPhotoLibraryUsageDescription</key>
-    <string>Ability to attach screenshots for feedback.</string>
+    <string>Ability to attach screenshots for feedback, and to add a photo to your profile.</string>
     <key>NSCalendarsUsageDescription</key>
     <string>Green Pyramid can read your calendar, only if you turn this on, so the Council's notifications can be aware of what your day looks like, and can write an event when you schedule a habit's time.</string>
     <key>NSCalendarsFullAccessUsageDescription</key>

@@ -152,6 +152,13 @@ class CouncilService {
     // never charged against D-087's dollar cap. Derived from the session
     // itself so callers can't get this wrong.
     final isSetup = session.type == BoardSessionType.setup;
+    // D-178: real for post-setup category re-clarification and the
+    // general Council chat; still absent during setup-time essence-
+    // deepening (this same method's other use), since the first-name
+    // screen hasn't run yet at that point — the backend prompt degrades
+    // gracefully either way.
+    final account = await _localDb.getAccountState();
+    final firstName = account[DatabaseHelper.columnFirstName] as String?;
     final result = await _client.boardAdvisorTurn(
       advisorKey: advisorKey,
       sliderValue: sliderValue,
@@ -176,6 +183,7 @@ class CouncilService {
                     : AiGuard.sanitizeField(c['essence'] as String, maxChars: 300),
               })
           .toList(),
+      firstName: firstName,
     );
 
     final msg = BoardMessage(

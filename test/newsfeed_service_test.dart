@@ -25,6 +25,7 @@ class _TempPathProvider extends PathProviderPlatform
 class _FakeCouncilClient implements CouncilClient {
   int callCount = 0;
   List<Map<String, dynamic>>? lastCategories;
+  String? lastFirstName;
   Object? throwOnCall;
   ({String headline, String body}) response =
       (headline: 'Increased Consistency Drives Growth', body: 'Body text.');
@@ -32,9 +33,11 @@ class _FakeCouncilClient implements CouncilClient {
   @override
   Future<({String body, String headline})> deriveNewsfeedArticle({
     required List<Map<String, dynamic>> categories,
+    String? firstName,
   }) async {
     callCount++;
     lastCategories = categories;
+    lastFirstName = firstName;
     final toThrow = throwOnCall;
     if (toThrow != null) throw toThrow;
     return response;
@@ -380,6 +383,17 @@ void main() {
       expect(sent.first.containsKey('pct7'), isTrue);
       expect(sent.first.containsKey('pct30'), isTrue);
       expect(sent.first['streak'], 3);
+    });
+
+    test('D-178: passes the account\'s first name through to the article '
+        'request when one is on file, and null when there is none', () async {
+      await makeEntitled();
+      await seedCategory(1, 'Craft');
+      await db.setFirstName('Craig');
+
+      await articleService.generateArticleIfDue();
+
+      expect(fakeClient.lastFirstName, 'Craig');
     });
   });
 

@@ -30,6 +30,7 @@ class _FakeCouncilClient extends CouncilClient {
   List<Map<String, String>>? lastExistingCategories;
   List<Map<String, String?>>? lastPyramidContext;
   bool? lastSoloSetup;
+  String? lastFirstName;
 
   List<DomainFinding> domainFindingsResponse = const [];
   String? lastDomainFindingsCategoryName;
@@ -47,12 +48,14 @@ class _FakeCouncilClient extends CouncilClient {
     String? sessionId,
     List<Map<String, String>>? existingCategories,
     List<Map<String, String?>>? pyramidContext,
+    String? firstName,
   }) async {
     lastCategoryContext = categoryContext;
     lastConversationHistory = conversationHistory;
     lastExistingCategories = existingCategories;
     lastPyramidContext = pyramidContext;
     lastSoloSetup = soloSetup;
+    lastFirstName = firstName;
     return response;
   }
 
@@ -188,6 +191,20 @@ void main() {
       expect(active?.messages.length, 1);
       expect(active?.totalInputTokens, 10);
       expect(active?.totalOutputTokens, 5);
+    });
+
+    test('D-178: runAdvisorTurn passes the account\'s first name through '
+        'when one is on file', () async {
+      await DatabaseHelper.instance.setFirstName('Craig');
+      final client = _FakeCouncilClient();
+      final svc = buildService(client: client);
+      final session = await svc.createSession(
+          type: BoardSessionType.category, categoryId: 1);
+
+      await svc.runAdvisorTurn(
+          session: session, advisorKey: 'mira', categoryName: 'Health');
+
+      expect(client.lastFirstName, 'Craig');
     });
 
     test('D-108: with no override, conversationHistory is derived from '

@@ -91,6 +91,7 @@ dependencies:
   # service" approval gate. Matches Kansei's own version
   # (goal-executor/pubspec.yaml).
   speech_to_text: ^7.4.0
+  image_picker: ^1.2.3
 
 dev_dependencies:
   flutter_test:
