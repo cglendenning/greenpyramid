@@ -72,7 +72,7 @@ void main() {
       'location of the buttons moved"', () {
     test('the task-list card uses a fixed SizedBox height, not a '
         'ConstrainedBox(maxHeight:) that lets it shrink to content', () {
-      expect(source, contains('height: MediaQuery.of(context).size.height / 3'));
+      expect(source, contains('height: 220'));
       expect(source, isNot(contains('BoxConstraints(')));
       expect(source, isNot(contains('maxHeight:')));
     });
@@ -81,6 +81,17 @@ void main() {
         'parent already bounds it, and shrinkWrap would size it to '
         'content again, reintroducing the exact bug this fixes', () {
       expect(source, isNot(contains('shrinkWrap: true')));
+    });
+  });
+
+  group('D-147: the fixed task-list height is a small constant, not a '
+      'fraction of screen height — found live: "the recent modification '
+      'to ensure that the buttons stay in the same location, pushed the '
+      'calendar off the screen below"', () {
+    test('the task-list card no longer sizes itself off the screen '
+        "height, which pushed the calendar (below the buttons, further "
+        'down the column) past the bottom of the screen', () {
+      expect(source, isNot(contains('MediaQuery.of(context).size.height / 3')));
     });
   });
 }

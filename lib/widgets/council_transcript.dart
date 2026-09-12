@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 
 import '../models/board_session.dart';
 import '../theme/app_colors.dart';
@@ -48,32 +49,39 @@ class CouncilTranscript extends StatelessWidget {
         final m = messages[index];
         final isUser = m.advisorKey == 'user';
         final advisor = isUser ? null : AdvisorConfig.forKey(m.advisorKey);
-        final bubble = Container(
-          margin: const EdgeInsets.symmetric(vertical: 6),
-          padding: const EdgeInsets.all(12),
-          constraints: BoxConstraints(
-              maxWidth: MediaQuery.of(context).size.width * 0.66),
-          decoration: BoxDecoration(
-            color: (isUser ? AppColors.surfaceHigh : advisor!.bubbleColor)
-                .withValues(alpha: 0.92),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (!isUser)
-                Text(advisor!.name,
-                    style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold)),
-              Text(m.text, style: const TextStyle(color: AppColors.textPrimary)),
-              if (isUser && onAcceptEssence != null)
-                TextButton(
-                  onPressed: () => onAcceptEssence!(m.text),
-                  child: const Text('Use as my essence'),
-                ),
-            ],
+        final bubble = GestureDetector(
+          // D-148 (from the same owner report as the auto-scroll fix):
+          // "the ability to long press one of the responses from the
+          // council and copy it" — the same affordance goal-executor's
+          // board_advisors_screen already has.
+          onLongPress: () => _copyToClipboard(context, m.text),
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 6),
+            padding: const EdgeInsets.all(12),
+            constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.66),
+            decoration: BoxDecoration(
+              color: (isUser ? AppColors.surfaceHigh : advisor!.bubbleColor)
+                  .withValues(alpha: 0.92),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (!isUser)
+                  Text(advisor!.name,
+                      style: const TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold)),
+                Text(m.text, style: const TextStyle(color: AppColors.textPrimary)),
+                if (isUser && onAcceptEssence != null)
+                  TextButton(
+                    onPressed: () => onAcceptEssence!(m.text),
+                    child: const Text('Use as my essence'),
+                  ),
+              ],
+            ),
           ),
         );
         if (isUser) {
@@ -99,4 +107,11 @@ class CouncilTranscript extends StatelessWidget {
       },
     );
   }
+}
+
+void _copyToClipboard(BuildContext context, String text) {
+  Clipboard.setData(ClipboardData(text: text));
+  ScaffoldMessenger.of(context).showSnackBar(
+    const SnackBar(content: Text('Copied'), duration: Duration(seconds: 1)),
+  );
 }

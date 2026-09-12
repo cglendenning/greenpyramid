@@ -216,7 +216,17 @@ class _TaskListState extends State<TaskList> {
                               // place regardless of task count; a category
                               // with too few tasks to fill it just leaves
                               // empty space in the card instead.
-                              height: MediaQuery.of(context).size.height / 3,
+                              //
+                              // D-147: that fixed height was one third of
+                              // the *screen* — found live, this pushed the
+                              // calendar (which sits below the buttons,
+                              // further down this same column) off the
+                              // bottom of the screen entirely on every
+                              // category. A small constant is enough to
+                              // show several tasks with the scrollbar
+                              // handling any overflow, and leaves the
+                              // calendar visible without scrolling.
+                              height: 220,
                               child: Scrollbar(
                                   child: ListView.separated(
                                       padding: const EdgeInsets.symmetric(vertical: 4),

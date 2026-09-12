@@ -87,4 +87,32 @@ void main() {
     expect(turnBody, contains('pyramidContext: pyramid'));
     expect(turnBody, isNot(contains('categoryId')));
   });
+
+  group('D-148: the transcript scrolls to the latest message automatically '
+      '— found live: "the screen does not scroll automatically down to the '
+      'bottom to show the latest response so the response is sitting there '
+      'below the visible screen"', () {
+    final source =
+        File('lib/screens/general_council_screen.dart').readAsStringSync();
+
+    test('a ScrollController is created, disposed, and passed to '
+        'CouncilTranscript', () {
+      expect(source, contains('final _scrollController = ScrollController();'));
+      expect(source, contains('_scrollController.dispose();'));
+      expect(source, contains('scrollController: _scrollController,'));
+    });
+
+    test('_scrollToBottom animates to maxScrollExtent after a frame, and is '
+        'called whenever the session (messages or typing indicator) changes',
+        () {
+      expect(source, contains('void _scrollToBottom()'));
+      expect(source, contains('addPostFrameCallback'));
+      expect(source, contains('_scrollController.position.maxScrollExtent'));
+      // Called after the initial session load and after every advisor turn
+      // refresh, not just once — otherwise later replies would still be
+      // missed.
+      expect(
+          '_scrollToBottom();'.allMatches(source).length, greaterThanOrEqualTo(2));
+    });
+  });
 }

@@ -32,6 +32,7 @@ class GeneralCouncilScreen extends StatefulWidget {
 class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
   final _council = CouncilService.instance;
   final _textController = TextEditingController();
+  final _scrollController = ScrollController();
   BoardSession? _session;
   bool _busy = false;
   String? _error;
@@ -52,7 +53,25 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
   @override
   void dispose() {
     _textController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  // D-148: found live — "the screen does not scroll automatically down to
+  // the bottom to show the latest response so the response is sitting
+  // there below the visible screen." Scheduled a frame after every state
+  // change that can add a message or the typing indicator, since the new
+  // content's height (and therefore the scroll extent to reach it) isn't
+  // known until that frame has laid out.
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   Future<void> _load() async {
@@ -71,6 +90,7 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
       var session = await _council.getActiveSession(type: BoardSessionType.general);
       session ??= await _council.createSession(type: BoardSessionType.general);
       setState(() => _session = session);
+      _scrollToBottom();
 
       if (session.resumeAction == BoardResumeAction.retryOpeningRound) {
         await _runAdvisorTurn(session.rotationOrder.first);
@@ -97,7 +117,10 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
       );
       final refreshed =
           await _council.getActiveSession(type: BoardSessionType.general);
-      if (mounted) setState(() => _session = refreshed ?? session);
+      if (mounted) {
+        setState(() => _session = refreshed ?? session);
+        _scrollToBottom();
+      }
 
       // D-100: once per completed round (all four advisors have spoken),
       // not every message — same checkpoint discipline D-048 already uses
@@ -163,6 +186,7 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
                   ? const Center(child: CircularProgressIndicator())
                   : CouncilTranscript(
                       messages: session.messages,
+                      scrollController: _scrollController,
                       // D-101: the real next speaker (session.nextAdvisorKey
                       // is meaningful here, unlike setup's solo-Mira turns —
                       // this is a genuine four-advisor rotation) while

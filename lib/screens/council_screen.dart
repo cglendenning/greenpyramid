@@ -43,6 +43,7 @@ class CouncilScreen extends StatefulWidget {
 class _CouncilScreenState extends State<CouncilScreen> {
   final _council = CouncilService.instance;
   final _textController = TextEditingController();
+  final _scrollController = ScrollController();
   BoardSession? _session;
   String? _priorEssence;
   bool _busy = false;
@@ -57,7 +58,25 @@ class _CouncilScreenState extends State<CouncilScreen> {
   @override
   void dispose() {
     _textController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  // D-148: found live — "the screen does not scroll automatically down to
+  // the bottom to show the latest response so the response is sitting
+  // there below the visible screen." Scheduled a frame after every state
+  // change that can add a message or the typing indicator, since the new
+  // content's height (and therefore the scroll extent to reach it) isn't
+  // known until that frame has laid out.
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!_scrollController.hasClients) return;
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOut,
+      );
+    });
   }
 
   Future<void> _load() async {
@@ -72,6 +91,7 @@ class _CouncilScreenState extends State<CouncilScreen> {
           type: BoardSessionType.category, categoryId: widget.categoryId);
 
       setState(() => _session = session);
+      _scrollToBottom();
 
       if (session.resumeAction == BoardResumeAction.retryOpeningRound) {
         await _runAdvisorTurn(session.rotationOrder.first);
@@ -96,7 +116,10 @@ class _CouncilScreenState extends State<CouncilScreen> {
       );
       final refreshed = await _council.getActiveSession(
           type: BoardSessionType.category, categoryId: widget.categoryId);
-      if (mounted) setState(() => _session = refreshed ?? session);
+      if (mounted) {
+        setState(() => _session = refreshed ?? session);
+        _scrollToBottom();
+      }
     } on AiBudgetException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } on SpendLimitException catch (e) {
@@ -191,6 +214,7 @@ class _CouncilScreenState extends State<CouncilScreen> {
                   ? const Center(child: CircularProgressIndicator())
                   : CouncilTranscript(
                       messages: session.messages,
+                      scrollController: _scrollController,
                       onAcceptEssence: _acceptAsEssence,
                       // D-101: session.nextAdvisorKey is the real next
                       // speaker for this category-scoped rotation.

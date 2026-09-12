@@ -9,6 +9,7 @@ import '../theme/app_colors.dart';
 import '../widgets/onboarding_backdrop.dart';
 import 'account_creation_screen.dart';
 import 'setup_screen.dart';
+import 'terms_screen.dart';
 
 /// D-089: a single screen, shown once per entry into setup, that tells the
 /// user what is about to happen before Mira's opening line (D-042) puts
@@ -64,27 +65,36 @@ import 'setup_screen.dart';
 /// values that truly matter." One is chosen at random each time the
 /// screen is shown, rather than a single fixed line, so it stays fresh
 /// across repeat sign-ins.
+///
+/// D-146: the original 20 leaned heavily on "your data wasn't lost"
+/// reassurance ("Nothing here was lost while you were away.", "still
+/// here", "right where you left it") — owner: "I do not like this
+/// phrase ... make any phrases that are like this more inspirational and
+/// not so much about the concerns of losing data ... phrases that have
+/// an emotional impact and will resonate with users in an inspiring
+/// way." Every entry was rewritten around values-aligned living instead
+/// of data permanence.
 const List<String> welcomeBackTaglines = [
-  'Your pyramid is exactly where you left it.',
-  "What matters to you hasn't gone anywhere.",
-  "Come back to the life you're building.",
-  'The values you chose are still here, waiting.',
-  'Pick up where you left off — nothing was lost.',
-  'A life built on what matters is worth returning to.',
-  'Some things are worth signing back in for.',
-  'The foundation you laid is still standing.',
-  'Return to the life you started shaping.',
-  'What you value deserves to keep growing.',
-  "You already began. Let's keep building.",
-  'Your life, aligned — right where you left it.',
-  'Living with intention starts with showing up again.',
-  "The thread is still there. Pick it back up.",
-  'Your values were never going anywhere.',
   'Come home to what matters most.',
-  'What you started still matters.',
-  'Everything you value is right where you left it.',
-  'Nothing here was lost while you were away.',
-  "The life you're shaping is still waiting.",
+  'Live like what matters actually matters.',
+  'Small steps, aimed at what you value most.',
+  'This is what showing up for yourself looks like.',
+  "Build a life you don't need to escape from.",
+  'Your values are a compass, not a checklist.',
+  'Every day is a chance to live more like yourself.',
+  'What you repeat, you become.',
+  'Choose what matters. Then choose it again tomorrow.',
+  'A meaningful life is built one honest choice at a time.',
+  'The life you want is built in ordinary days.',
+  "Alignment isn't a destination — it's a daily choice.",
+  'Let today be shaped by what you actually care about.',
+  "Discipline is just love for the life you're building.",
+  'Real change looks like showing up, quietly, every day.',
+  "You're not behind. You're exactly where growth happens.",
+  'The person you are becoming is paying attention.',
+  "Purpose isn't found. It's practiced.",
+  'What you value deserves your attention today.',
+  'This is your life. Build it on purpose.',
 ];
 
 class WelcomeScreen extends StatelessWidget {
@@ -176,7 +186,7 @@ class WelcomeScreen extends StatelessWidget {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
+                    padding: const EdgeInsets.fromLTRB(28, 0, 28, 8),
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: TextButton(
@@ -185,6 +195,27 @@ class WelcomeScreen extends StatelessWidget {
                         child: const Text(
                           'Already have an account? Sign in',
                           style: TextStyle(color: AppColors.textPrimary),
+                        ),
+                      ),
+                    ),
+                  ),
+                  // D-149: "ensure that you have a terms and conditions
+                  // link that indicates that this is not medical advice"
+                  // — accessible from this, the first screen.
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(28, 0, 28, 28),
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                        onPressed: () => Navigator.of(context).push(
+                          MaterialPageRoute(builder: (_) => const TermsScreen()),
+                        ),
+                        child: Text(
+                          'Terms and Conditions',
+                          style: TextStyle(
+                              color: AppColors.textPrimary.withValues(alpha: 0.6),
+                              fontSize: 13),
                         ),
                       ),
                     ),

@@ -138,4 +138,54 @@ void main() {
       expect(source, contains('welcomeBackTaglines[Random().nextInt(welcomeBackTaglines.length)]'));
     });
   });
+
+  group('D-146: no tagline frames itself around data/values not being '
+      'lost — found live, the owner disliked one specific entry ("Nothing '
+      'here was lost while you were away.") and asked for the whole list '
+      'to be audited: "do a better job at making any phrases that are '
+      'like this more inspirational and not so much about the concerns '
+      'of losing data ... phrases that have an emotional impact and will '
+      'resonate with users in an inspiring way."', () {
+    test('the flagged phrase and every phrase sharing its "still here / '
+        'nothing lost / right where you left it" reassurance framing are '
+        'gone', () {
+      const forbiddenPatterns = [
+        'lost',
+        'gone anywhere',
+        'never going anywhere',
+        'still here',
+        'still standing',
+        'still waiting',
+        'right where you left',
+        'where you left it',
+        'nothing was lost',
+      ];
+      for (final tagline in welcomeBackTaglines) {
+        final lower = tagline.toLowerCase();
+        for (final pattern in forbiddenPatterns) {
+          expect(lower, isNot(contains(pattern)),
+              reason: '"$tagline" still carries the data-permanence '
+                  'reassurance framing the owner asked to be removed '
+                  '(matched "$pattern")');
+        }
+      }
+    });
+  });
+
+  group('D-149: a "Terms and Conditions" link is reachable from the first '
+      'screen — owner: "ensure that you have a terms and conditions link '
+      'that indicates that this is not medical advice ... accessible from '
+      'a link from the first screen."', () {
+    testWidgets('tapping the link opens TermsScreen', (tester) async {
+      await tester.pumpWidget(const MaterialApp(home: WelcomeScreen()));
+      await tester.pump();
+
+      expect(find.widgetWithText(TextButton, 'Terms and Conditions'),
+          findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, 'Terms and Conditions'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('NOT MEDICAL OR PROFESSIONAL ADVICE'), findsOneWidget);
+    });
+  });
 }
