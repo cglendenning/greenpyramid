@@ -96,7 +96,12 @@ fi
 
 # macOS getaddrinfo is unreliable for new trycloudflare.com subdomains when a
 # VPN/MagicDNS is active. Resolve via dig and pass --resolve to curl so we
-# bypass the system resolver. Retry — DNS propagates a few seconds late.
+# bypass the system resolver. Retry against the system resolver first (DNS
+# propagates a few seconds late), then fall back to a public resolver
+# (1.1.1.1) for the same duration — confirmed live, twice, that the system
+# resolver can fail indefinitely on a brand-new subdomain while 1.1.1.1
+# already has it, so falling back beats waiting longer on a resolver that
+# was never going to answer.
 TUNNEL_HOST=$(echo "$TUNNEL_URL" | sed 's|https://||')
 TUNNEL_IP=""
 for i in $(seq 30); do
@@ -106,14 +111,26 @@ for i in $(seq 30); do
 done
 
 if [ -z "$TUNNEL_IP" ]; then
-  echo "ERROR: could not resolve $TUNNEL_HOST via dig after 30 s" >&2
+  for i in $(seq 30); do
+    TUNNEL_IP=$(dig +short "$TUNNEL_HOST" @1.1.1.1 2>/dev/null | grep -E '^[0-9]+\.' | head -1 || true)
+    [ -n "$TUNNEL_IP" ] && break
+    sleep 1
+  done
+fi
+
+if [ -z "$TUNNEL_IP" ]; then
+  echo "ERROR: could not resolve $TUNNEL_HOST via dig (system resolver or 1.1.1.1) after ~60 s" >&2
   exit 1
 fi
 
-# Confirm the artifact is reachable before printing the link.
+# Confirm the artifact is reachable before printing the link. A HEAD
+# request, not a GET — `-o /dev/null` still downloads and discards the
+# full body, and the IPA is ~80MB, so a GET here under a short --max-time
+# was confirmed live to fail this check on a slow connection even though
+# the file was being served correctly, just slower than the timeout.
 HTTP_CODE="000"
 for i in $(seq 30); do
-  HTTP_CODE=$(curl -s --max-time 10 \
+  HTTP_CODE=$(curl -sI --max-time 10 \
     --resolve "${TUNNEL_HOST}:443:${TUNNEL_IP}" \
     "${TUNNEL_URL}/${ARTIFACT_NAME_ENC}" \
     -o /dev/null -w "%{http_code}" 2>/dev/null)
