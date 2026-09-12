@@ -8,20 +8,30 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import 'auth_service.dart';
+import 'sync_service.dart';
 
 /// D-130: thin wrapper around the two native sign-in SDKs, kept separate
 /// from [AuthService] because AuthService is deliberately UI/SDK-agnostic
 /// (see its own doc comment) — this is the only place that talks to
 /// `sign_in_with_apple` and `google_sign_in` directly.
 class AccountLinkService {
-  AccountLinkService({FirebaseAuth? auth, AuthService? authService})
+  AccountLinkService({FirebaseAuth? auth, AuthService? authService, SyncService? sync})
       : _auth = auth ?? FirebaseAuth.instance,
-        _authService = authService ?? AuthService.instance;
+        _authService = authService ?? AuthService.instance,
+        _syncOverride = sync;
 
   static final AccountLinkService instance = AccountLinkService();
 
   final FirebaseAuth _auth;
   final AuthService _authService;
+  final SyncService? _syncOverride;
+
+  // Resolved lazily, not in the constructor: SyncService.instance touches
+  // FirebaseFirestore.instance immediately, which throws in a unit test
+  // with no Firebase app initialized — fine as long as nothing forces
+  // that resolution before signOut() actually needs it (and there, only
+  // inside the try/catch that already tolerates the failure).
+  SyncService get _sync => _syncOverride ?? SyncService.instance;
 
   /// Links the current anonymous account to a real Apple ID in place —
   /// same uid, nothing lost (AuthService.linkWithCredential, D-033). Uses
@@ -106,6 +116,24 @@ class AccountLinkService {
   /// fails, Firebase sign-out (what actually matters — Firestore access
   /// checks the Firebase session, not Google's) still proceeds.
   Future<void> signOut() async {
+    // D-172: flush any pending local changes before the identity switches.
+    // syncAll() is otherwise only ever triggered by app launch, a Council
+    // conversation, or setup completion (never by an ordinary check-off
+    // or essence edit, D-031) — so a change made since the last of those
+    // is still purely local at the moment sign-out is tapped, and once
+    // the auth session switches, a write later reaching Firestore under
+    // the old uid would be rejected outright (security rules check the
+    // *current* token, not whichever uid the client captured earlier).
+    // Best-effort: a failure here must never block sign-out itself.
+    final uid = _auth.currentUser?.uid;
+    if (uid != null) {
+      try {
+        await _sync.syncAll(uid, setupComplete: true);
+      } catch (e, st) {
+        debugPrint('AccountLinkService: pre-sign-out sync failed, '
+            'proceeding with sign-out regardless: $e\n$st');
+      }
+    }
     try {
       await GoogleSignIn.instance.signOut();
     } catch (e, st) {

@@ -1,5 +1,9 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
+import 'package:life_ops/services/auth_service.dart';
 import 'package:life_ops/services/db.dart';
+import 'package:life_ops/services/sync_service.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:life_ops/theme/app_colors.dart';
 import 'package:life_ops/widgets/category_edit_sheet.dart';
@@ -134,5 +138,14 @@ class _EditPyramid extends State<EditPyramid> {
     }
 
     widget.onCategoryEdited?.call();
+
+    // D-172: same gap as tasklist.dart's check-off handler — a rename or
+    // essence edit was purely a local write with no sync trigger of its
+    // own, so it could sit unsynced until the next app launch, Council
+    // conversation, or setup completion (whichever came first).
+    final uid = AuthService.instance.currentUid;
+    if (uid != null) {
+      unawaited(SyncService.instance.syncAll(uid, setupComplete: true));
+    }
   }
 }

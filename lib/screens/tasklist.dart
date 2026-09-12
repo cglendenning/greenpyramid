@@ -1,5 +1,9 @@
+import 'dart:async' show unawaited;
+
 import 'package:flutter/material.dart';
+import 'package:life_ops/services/auth_service.dart';
 import 'package:life_ops/services/db.dart';
+import 'package:life_ops/services/sync_service.dart';
 import 'package:life_ops/screens/edittasklist.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
@@ -276,6 +280,26 @@ class _TaskListState extends State<TaskList> {
                                                   checked: value ?? false,
                                                 );
                                               });
+                                              // D-172: found live — a check-off was
+                                              // purely a local SQLite write with no
+                                              // sync trigger of its own; the only
+                                              // syncAll() call sites in the whole app
+                                              // are app launch, a Council
+                                              // conversation, and setup completion,
+                                              // so a check-off made without any of
+                                              // those happening again first (e.g.
+                                              // check off, then immediately sign
+                                              // out) never left the device at all.
+                                              // Owner's exact repro: checked off
+                                              // CrossFit, signed out, deleted and
+                                              // reinstalled the app, signed back in
+                                              // — the checkbox had reverted.
+                                              final uid =
+                                                  AuthService.instance.currentUid;
+                                              if (uid != null) {
+                                                unawaited(SyncService.instance
+                                                    .syncAll(uid, setupComplete: true));
+                                              }
                                             });
                                       })),
                             ),

@@ -1,9 +1,24 @@
+import 'dart:io';
+
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/services/account_link_service.dart';
 import 'package:life_ops/services/auth_service.dart';
+import 'package:life_ops/services/db.dart';
+import 'package:life_ops/services/sync_service.dart';
 import 'package:mock_exceptions/mock_exceptions.dart';
+import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
+
+class _TempPathProvider extends PathProviderPlatform with MockPlatformInterfaceMixin {
+  _TempPathProvider(this.dir);
+  final String dir;
+  @override
+  Future<String?> getApplicationDocumentsPath() async => dir;
+}
 
 /// D-130: AccountLinkService.linkWithCredentialOrSwitch is the one piece
 /// of D-130 testable without a live device (the actual Apple/Google SDK
@@ -109,6 +124,57 @@ void main() {
     await linkService.signOut();
 
     expect(auth.currentUser, isNull);
+  });
+
+  group('D-172: signOut flushes pending local changes before switching identity', () {
+    final db = DatabaseHelper.instance;
+    late Directory tempDir;
+
+    setUpAll(() {
+      TestWidgetsFlutterBinding.ensureInitialized();
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+    });
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('gp_account_link_sync_test');
+      PathProviderPlatform.instance = _TempPathProvider(tempDir.path);
+    });
+    tearDown(() async {
+      if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+    });
+
+    test(
+        'a task_log row written locally but never synced (no app launch, '
+        'Council conversation, or setup completion happened first) is '
+        'pushed to Firestore by signOut() itself, before the identity '
+        'switches — the owner\'s exact repro: check off a habit, sign '
+        'out, delete and reinstall the app, sign back in, and find the '
+        'checkbox reverted', () async {
+      await db.insertTaskLog({
+        DatabaseHelper.columnTLCategory: 'Health',
+        DatabaseHelper.columnTLTaskDescription: 'CrossFit',
+        DatabaseHelper.columnTLChecked: 'true',
+        DatabaseHelper.columnTLTaskDate: '2026-09-12',
+      });
+
+      final firestore = FakeFirebaseFirestore();
+      final sync = SyncService(firestore: firestore, db: db);
+      final user = MockUser(uid: 'signout-flush-uid', isAnonymous: false);
+      final auth = MockFirebaseAuth(signedIn: true, mockUser: user);
+      final authService = AuthService(auth: auth);
+      final linkService =
+          AccountLinkService(auth: auth, authService: authService, sync: sync);
+
+      await linkService.signOut();
+
+      final synced = await firestore
+          .collection('users')
+          .doc('signout-flush-uid')
+          .collection('recentActivity')
+          .get();
+      expect(synced.docs.length, 1);
+      expect(synced.docs.first.data()['taskdescription'], 'CrossFit');
+    });
   });
 
   test(
