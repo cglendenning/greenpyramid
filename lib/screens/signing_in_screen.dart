@@ -113,8 +113,21 @@ class _SigningInScreenState extends State<SigningInScreen> {
         name: 'account_creation_failed',
         parameters: {'provider': widget.provider, 'error_code': errorCode},
       ));
-      Navigator.of(context).pop(SignInOutcome.failure(
-          "Couldn't sign in — check your connection and try again. ($errorCode)"));
+      // D-180: found live — a raw internal exception type name
+      // ("PlatformException") leaked straight into this user-facing
+      // message, meaningless to anyone reading it. The full errorCode
+      // (including the bare runtimeType fallback) still reaches
+      // analytics above for real diagnosis; only a genuinely legible
+      // code — Firebase's or Apple's own named error strings — is shown
+      // here at all.
+      final userFacingCode = switch (error) {
+        FirebaseAuthException e => e.code,
+        SignInWithAppleAuthorizationException e => 'apple.${e.code.name}',
+        _ => null,
+      };
+      Navigator.of(context).pop(SignInOutcome.failure(userFacingCode != null
+          ? "Couldn't sign in — check your connection and try again. ($userFacingCode)"
+          : "Couldn't sign in — check your connection and try again."));
     }
   }
 

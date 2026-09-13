@@ -33,6 +33,21 @@ class AccountLinkService {
   // inside the try/catch that already tolerates the failure).
   SyncService get _sync => _syncOverride ?? SyncService.instance;
 
+  // D-180: found live — "Continue with Google" threw a raw
+  // PlatformException on iOS. google_sign_in 7.x's own doc comment on
+  // GoogleSignIn.instance is explicit: "initialize must be called on
+  // this instance exactly once, and its future allowed to complete,
+  // before any other methods on the object are called" — calling
+  // authenticate()/signOut() without it first is "undefined behavior."
+  // Nothing in this app ever called it. Memoized so the real call fires
+  // only once no matter how many times sign-in is attempted; no
+  // clientId/serverClientId passed — each platform finds its own via its
+  // native config file (iOS: the new GIDClientID key in Info.plist;
+  // Android: google-services.json), so this stays platform-agnostic.
+  Future<void>? _googleSignInInit;
+  Future<void> _ensureGoogleSignInInitialized() =>
+      _googleSignInInit ??= GoogleSignIn.instance.initialize();
+
   /// Links the current anonymous account to a real Apple ID in place —
   /// same uid, nothing lost (AuthService.linkWithCredential, D-033). Uses
   /// a hashed nonce (Apple's recommended flow) so the identity token
@@ -67,6 +82,7 @@ class AccountLinkService {
   /// first.
   Future<User?> signInWithGoogle() async {
     await _authService.signInSilently();
+    await _ensureGoogleSignInInitialized();
     final googleUser = await GoogleSignIn.instance.authenticate();
     final idToken = googleUser.authentication.idToken;
     final credential = GoogleAuthProvider.credential(idToken: idToken);
@@ -135,6 +151,7 @@ class AccountLinkService {
       }
     }
     try {
+      await _ensureGoogleSignInInitialized();
       await GoogleSignIn.instance.signOut();
     } catch (e, st) {
       debugPrint('AccountLinkService: Google sign-out failed (non-fatal): $e\n$st');

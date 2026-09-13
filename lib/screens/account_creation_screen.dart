@@ -118,7 +118,20 @@ class _AccountCreationScreenState extends State<AccountCreationScreen> {
                 if (_error != null)
                   Padding(
                     padding: const EdgeInsets.fromLTRB(28, 0, 28, 16),
-                    child: Text(_error!, style: const TextStyle(color: Colors.redAccent)),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.redAccent.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.redAccent.withValues(alpha: 0.35)),
+                      ),
+                      child: Text(_error!,
+                          style: const TextStyle(
+                              fontFamily: 'Raleway',
+                              color: Colors.redAccent,
+                              fontSize: 14,
+                              height: 1.3)),
+                    ),
                   ),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(28, 0, 28, 12),

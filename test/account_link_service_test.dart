@@ -194,6 +194,28 @@ void main() {
       throwsA(isA<FirebaseAuthException>().having((e) => e.code, 'code', 'network-request-failed')),
     );
   });
+
+  // D-180: structural, matching this file's own established convention for
+  // the live Apple/Google SDK calls that can't run in a unit test (see the
+  // file-level doc comment) — GoogleSignIn.instance.initialize() has no
+  // injectable seam of its own to mock against.
+  test('D-180: found live — "Continue with Google" threw a raw '
+      'PlatformException on iOS because GoogleSignIn.instance.initialize() '
+      'was never called; google_sign_in 7.x\'s own doc comment requires it '
+      'exactly once before any other method on that instance', () {
+    final source = File('lib/services/account_link_service.dart').readAsStringSync();
+    expect(source, contains('Future<void>? _googleSignInInit;'));
+    expect(source,
+        contains('_googleSignInInit ??= GoogleSignIn.instance.initialize()'));
+    final signInStart = source.indexOf('Future<User?> signInWithGoogle()');
+    final signInEnd = source.indexOf('\n  }', signInStart);
+    expect(source.substring(signInStart, signInEnd),
+        contains('await _ensureGoogleSignInInitialized();'));
+    final signOutStart = source.indexOf('Future<void> signOut()');
+    final signOutEnd = source.indexOf('\n  }', signOutStart);
+    expect(source.substring(signOutStart, signOutEnd),
+        contains('await _ensureGoogleSignInInitialized();'));
+  });
 }
 
 class _FakeAnonymousUser implements User {

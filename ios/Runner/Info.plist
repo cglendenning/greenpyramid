@@ -16,6 +16,17 @@
         </array>
       </dict>
     </array>
+    <!-- D-180: found live — "Continue with Google" threw a raw
+         PlatformException on iOS. google_sign_in 7.x requires either an
+         explicit GoogleSignIn.instance.initialize() call (added in
+         account_link_service.dart) or this key so the native iOS SDK can
+         find its own client ID without one being passed from Dart —
+         copied verbatim from GoogleService-Info.plist's CLIENT_ID, per
+         the google_sign_in_ios package's own README. Not an Android
+         limitation: Android reads its own client ID from
+         google-services.json automatically and needs no equivalent key. -->
+    <key>GIDClientID</key>
+    <string>240516747661-pr6nr2s3it3vlna51mm0vc5kaisjindg.apps.googleusercontent.com</string>
     <key>GADApplicationIdentifier</key>
     <string>ca-app-pub-4402198490627677~1066120376</string>
     <key>SKAdNetworkItems</key>

@@ -76,11 +76,21 @@ void main() {
       expect(source, contains('SignInOutcome.cancelled()'));
     });
 
-    test('D-139 carried over: the real error code is logged via '
-        'analytics and surfaced in the popped outcome\'s message', () {
+    test('D-139 carried over: the real error code is always logged via '
+        'analytics, regardless of whether it\'s shown to the user', () {
       expect(source, contains("name: 'account_creation_failed'"));
       expect(source, contains("'error_code': errorCode"));
-      expect(source, contains(r'($errorCode)"'));
+    });
+
+    test('D-180: found live — a raw internal exception type name '
+        '("PlatformException") used to leak straight into the user-facing '
+        'message; only a genuinely legible named error code (Firebase\'s '
+        'or Apple\'s own) is shown, and the bare-runtimeType fallback '
+        'never reaches the user at all', () {
+      expect(source, contains(r'($userFacingCode)"'));
+      expect(source, contains('_ => null,'));
+      expect(source,
+          contains('"Couldn\'t sign in — check your connection and try again."'));
     });
   });
 }

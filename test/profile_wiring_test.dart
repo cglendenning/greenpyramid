@@ -89,17 +89,27 @@ void main() {
       expect(source, isNot(contains('backdropImages')));
     });
 
-    test('first name, email, and phone are all editable and saved '
-        'locally on change', () {
+    test('first name, email, and phone are all editable, but nothing '
+        'persists outside the shared _saveProfileInfo save action', () {
       expect(source, contains('controller: _nameController'));
-      expect(source, contains('_saveFirstName'));
       expect(source, contains('controller: _emailController'));
-      expect(source, contains('_saveEmail'));
       expect(source, contains('controller: _phoneController'));
-      expect(source, contains('_savePhone'));
-      expect(source, contains('_db.setFirstName'));
-      expect(source, contains('_db.setEmail'));
-      expect(source, contains('_db.setPhone'));
+      expect(source, isNot(contains('Future<void> _saveFirstName')));
+      expect(source, isNot(contains('Future<void> _saveEmail')));
+      expect(source, isNot(contains('Future<void> _savePhone')));
+      final saveStart = source.indexOf('Future<void> _saveProfileInfo');
+      final saveEnd = source.indexOf('\n  }', saveStart);
+      final saveBody = source.substring(saveStart, saveEnd);
+      expect(saveBody, contains('_db.setFirstName'));
+      expect(saveBody, contains('_db.setEmail'));
+      expect(saveBody, contains('_db.setPhone'));
+    });
+
+    test('D-181: the phone field auto-formats as (XXX) XXX-XXXX — owner: '
+        '"auto format the phone number into area code and then '
+        'hyphenated digits"', () {
+      expect(source, contains('_PhoneNumberFormatter'));
+      expect(source, contains('inputFormatters: [_PhoneNumberFormatter()]'));
     });
 
     test('a photo can be added, changed, and removed, stored as a local '
@@ -112,15 +122,31 @@ void main() {
       expect(source, isNot(contains('FirebaseStorage')));
     });
 
-    test('editing first name/email/phone triggers a background sync; '
-        'the photo picker/remover do not', () {
-      final nameStart = source.indexOf('Future<void> _saveFirstName');
-      final nameEnd = source.indexOf('\n  }', nameStart);
-      expect(source.substring(nameStart, nameEnd), contains('_syncInBackground()'));
+    test('D-181: nothing is written to the database — not the text '
+        'fields, not the photo — until Save is explicitly tapped; '
+        'picking/removing a photo before that only changes pending, '
+        'in-memory state', () {
+      final pickStart = source.indexOf('Future<void> _pickPhoto');
+      final pickEnd = source.indexOf('\n  }', pickStart);
+      expect(source.substring(pickStart, pickEnd), isNot(contains('_db.set')));
 
-      final photoStart = source.indexOf('Future<void> _pickPhoto');
-      final photoEnd = source.indexOf('\n  }', photoStart);
-      expect(source.substring(photoStart, photoEnd), isNot(contains('_syncInBackground')));
+      final removeStart = source.indexOf('void _removePhoto');
+      final removeEnd = source.indexOf('\n  }', removeStart);
+      expect(source.substring(removeStart, removeEnd), isNot(contains('_db.set')));
+
+      final saveStart = source.indexOf('Future<void> _saveProfileInfo');
+      final saveEnd = source.indexOf('\n  }', saveStart);
+      expect(source.substring(saveStart, saveEnd), contains('_syncInBackground()'));
+    });
+
+    test('D-181: an explicit Save button exists, and the screen states '
+        'plainly which fields sync to the account versus stay local — '
+        'only the photo is local-only; name/email/phone do sync', () {
+      expect(source, contains("const Text('Save')"));
+      expect(source, contains('onPressed: _savingProfileInfo ? null : _saveProfileInfo'));
+      expect(source, contains('are saved to your'));
+      expect(source, contains('restored on a new device'));
+      expect(source, contains('stays on this device only'));
     });
   });
 }
