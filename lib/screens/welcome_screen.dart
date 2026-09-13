@@ -38,7 +38,7 @@ import 'terms_screen.dart';
 /// it to return to). Nothing has been created or committed at this point
 /// in either case, so backing out here is always safe.
 ///
-/// D-136 (supersedes D-132/D-133/D-135's flag-based approach): this
+/// D-136 (supersedes D-132/D-133/D-136's flag-based approach): this
 /// screen is now a pure function of nothing at all — it looks and behaves
 /// identically every single time, whether reached by a genuine fresh
 /// install or by signing out. No persisted flag, no "resetup mode," no

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 /// D-069/D-083: the coach persona and the three time-of-day AI commentary
-/// screens are retired now that their real replacement (D-036's
+/// screens are retired now that their real replacement (D-189's
 /// server-generated notifications) exists. Structural — confirms both the
 /// files and every reference to them are gone.
 void main() {

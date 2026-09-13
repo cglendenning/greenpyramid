@@ -20,8 +20,8 @@ class _TempPathProvider extends PathProviderPlatform with MockPlatformInterfaceM
   Future<String?> getApplicationDocumentsPath() async => dir;
 }
 
-/// D-130: AccountLinkService.linkWithCredentialOrSwitch is the one piece
-/// of D-130 testable without a live device (the actual Apple/Google SDK
+/// D-188: AccountLinkService.linkWithCredentialOrSwitch is the one piece
+/// of D-188 testable without a live device (the actual Apple/Google SDK
 /// calls in signInWithApple/signInWithGoogle can't run in a unit test).
 /// Tested against firebase_auth_mocks, not a live project — same pattern
 /// as account_reset_service_test.dart and auth_service_test.dart.
@@ -35,7 +35,7 @@ class _TempPathProvider extends PathProviderPlatform with MockPlatformInterfaceM
 void main() {
   // D-002-AC-03: local check-off remains available through linking failure.
   test(
-      'D-130: linking succeeds normally — same uid preserved, no account '
+      'D-188: linking succeeds normally — same uid preserved, no account '
       'switch', () async {
     // firebase_auth_mocks 0.15.2's MockUser.linkWithCredential hardcodes
     // isAnonymous: false into an internal assertion that requires it match
@@ -55,9 +55,9 @@ void main() {
   });
 
   test(
-      'D-130: credential-already-in-use signs into the existing account '
+      'D-188: credential-already-in-use signs into the existing account '
       'instead of throwing past the caller — the "welcome back" path, same '
-      'treatment D-096 gives a reinstall', () async {
+      'treatment D-187 gives a reinstall', () async {
     final anonUser = MockUser(uid: 'anon-uid-already-in-use', isAnonymous: true);
     final authForLinking = MockFirebaseAuth(signedIn: true, mockUser: anonUser);
     whenCalling(Invocation.method(#linkWithCredential, null))
@@ -127,7 +127,7 @@ void main() {
     expect(auth.currentUser, isNull);
   });
 
-  group('D-172: signOut flushes pending local changes before switching identity', () {
+  group('D-187: signOut flushes pending local changes before switching identity', () {
     final db = DatabaseHelper.instance;
     late Directory tempDir;
 
@@ -179,7 +179,7 @@ void main() {
   });
 
   test(
-      'D-130: a FirebaseAuthException other than credential-already-in-use '
+      'D-188: a FirebaseAuthException other than credential-already-in-use '
       'is rethrown, not swallowed', () async {
     final anonUser = MockUser(uid: 'anon-uid-other-error', isAnonymous: true);
     final auth = MockFirebaseAuth(signedIn: true, mockUser: anonUser);

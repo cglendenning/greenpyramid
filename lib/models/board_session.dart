@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// D-082: every Council session is typed. `setup` covers the whole pyramid
+/// D-188: every Council session is typed. `setup` covers the whole pyramid
 /// and exists at most once per account, ever; every session after setup is
-/// `category`-typed and scoped to exactly one category (D-028). D-091 adds
+/// `category`-typed and scoped to exactly one category (D-185). D-091 adds
 /// `general` — a free-form conversation with the whole Council, not tied to
 /// any one category, reachable any time from the home screen.
 enum BoardSessionType {
@@ -57,7 +57,7 @@ enum BoardResumeAction {
   resumeMidRound,
 }
 
-/// D-082/D-028: a Council session, ported from Kansei's `BoardSession`
+/// D-188/D-185: a Council session, ported from Kansei's `BoardSession`
 /// (II-K). `goalId` becomes `categoryId` (null for a `setup` session, which
 /// is scoped to the whole pyramid rather than one category); a `type` field
 /// resolves II-K mismatch 3. Rotation, resume, and history behavior are

@@ -280,7 +280,7 @@ class _TaskListState extends State<TaskList> {
                                                   checked: value ?? false,
                                                 );
                                               });
-                                              // D-172: found live — a check-off was
+                                              // D-187: found live — a check-off was
                                               // purely a local SQLite write with no
                                               // sync trigger of its own; the only
                                               // syncAll() call sites in the whole app

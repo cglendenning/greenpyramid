@@ -30,7 +30,7 @@ class SpendLimitException implements Exception {
       ' \$${spendCapUsd.toStringAsFixed(2)})';
 }
 
-/// D-072: thrown once a setup session hits its 40-model-call bound. Setup
+/// D-188: thrown once a setup session hits its 40-model-call bound. Setup
 /// is meant to close gracefully on approach, not hit this — reaching it is
 /// the backstop, not the expected path.
 class SetupCallLimitException implements Exception {
@@ -96,7 +96,7 @@ class DomainFinding {
 /// Pyramid's own Cloud Function (not Kansei's), authenticated with both a
 /// Firebase App Check token (proves the genuine app binary — same as
 /// [AiProxy]) and a Firebase ID token (proves which account, so D-087's
-/// spend cap and D-072's setup call count charge the right one). D-041's
+/// spend cap and D-188's setup call count charge the right one). D-185's
 /// model identifier lives entirely on the backend; this client never names
 /// a model.
 class CouncilClient {
@@ -189,10 +189,10 @@ class CouncilClient {
   }
 
   /// [advisorKey] is one of mira/kenji/noa/eli. [categoryContext] carries
-  /// the category's name, tier, and any prior essence (D-028) — the
+  /// the category's name, tier, and any prior essence (D-185) — the
   /// category-scoped replacement for Kansei's goal context. [sliderValue]
   /// defaults to 0.5 and has no UI control yet (D-073). [isSetup]/
-  /// [sessionId] route this turn against D-072's free call-count bound
+  /// [sessionId] route this turn against D-188's free call-count bound
   /// instead of D-087's spend cap (D-017) — billing only.
   ///
   /// D-097: [soloSetup] is a separate signal from [isSetup] — it alone
@@ -387,7 +387,7 @@ class CouncilClient {
     return (data['analysis'] as String? ?? '').trim();
   }
 
-  /// D-155: the newsfeed's AI-written "news article" — a headline and
+  /// D-150: the newsfeed's AI-written "news article" — a headline and
   /// body analyzing consistency trends across the whole pyramid, never
   /// free, gated by D-016/D-087 like every other non-setup AI surface.
   Future<({String headline, String body})> deriveNewsfeedArticle({

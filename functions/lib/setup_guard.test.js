@@ -25,38 +25,38 @@ class FakeFirestore {
 
 const path = (uid, sid) => `users/${uid}/councilSessions/${sid}`;
 
-test('D-072: no-ops without a uid, sessionId, or store', async () => {
+test('D-188: no-ops without a uid, sessionId, or store', async () => {
   assert.equal(await guardAndCountSetupCall(null, 's1', new FakeFirestore()), 0);
   assert.equal(await guardAndCountSetupCall('u1', null, new FakeFirestore()), 0);
   assert.equal(await guardAndCountSetupCall('u1', 's1', null), 0);
 });
 
-test('D-072: the first call counts to 1', async () => {
+test('D-188: the first call counts to 1', async () => {
   const store = new FakeFirestore();
   const count = await guardAndCountSetupCall('u1', 's1', store);
   assert.equal(count, 1);
   assert.equal(store.data[path('u1', 's1')].modelCallCount, 1);
 });
 
-test('D-072: calls accumulate across invocations for the same session', async () => {
+test('D-188: calls accumulate across invocations for the same session', async () => {
   const store = new FakeFirestore();
   for (let i = 0; i < 5; i++) await guardAndCountSetupCall('u1', 's1', store);
   assert.equal(store.data[path('u1', 's1')].modelCallCount, 5);
 });
 
-test('D-072: the 40th call is allowed through — it is the one that must '
+test('D-188: the 40th call is allowed through — it is the one that must '
   + 'close the session gracefully', async () => {
   const store = new FakeFirestore({ [path('u1', 's1')]: { modelCallCount: SETUP_CALL_LIMIT - 1 } });
   const count = await guardAndCountSetupCall('u1', 's1', store);
   assert.equal(count, SETUP_CALL_LIMIT);
 });
 
-test('D-072: the 41st call is refused', async () => {
+test('D-188: the 41st call is refused', async () => {
   const store = new FakeFirestore({ [path('u1', 's1')]: { modelCallCount: SETUP_CALL_LIMIT } });
   await assert.rejects(() => guardAndCountSetupCall('u1', 's1', store), SetupCallLimitError);
 });
 
-test('D-072: two different sessions for the same account count '
+test('D-188: two different sessions for the same account count '
   + 'independently', async () => {
   const store = new FakeFirestore({ [path('u1', 's1')]: { modelCallCount: SETUP_CALL_LIMIT } });
   const count = await guardAndCountSetupCall('u1', 's2', store);

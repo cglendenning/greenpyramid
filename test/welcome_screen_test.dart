@@ -10,7 +10,7 @@ import 'package:life_ops/theme/app_colors.dart';
 /// into it — added after the owner found the previous behavior (straight
 /// into a chat bubble with zero framing) jarring on a real first run.
 ///
-/// D-136 (supersedes D-132/D-133/D-135): this screen no longer checks
+/// D-136 (supersedes D-132/D-133/D-136): this screen no longer checks
 /// auth state, a flag, or local data at all — it is now a pure, static
 /// screen with exactly one appearance, reached only while genuinely
 /// signed out (a fresh install or right after sign-out are, structurally,

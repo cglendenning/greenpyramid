@@ -8,3 +8,7 @@ The authoritative build contract lives in `~/greenpyramid-spec`. Keep its produc
 4. When requirements change, update their authored sources in the same task. From the private repository run `python3 spec_tools.py generate`, `python3 spec_tools.py validate --app-root ../greenpyramid`, and `python3 -m unittest discover -s tests`.
 
 The private `README.md` explains contract authority, runtime guards and evidence. Never reuse or renumber directive/acceptance IDs. Never commit secrets or print `lib/services/secrets.dart`.
+
+## Git workflow
+
+Work directly on `main` by default. Short-lived feature branches are allowed when they make the work safer or easier to review, but merge completed features into `main` promptly and do not maintain long-standing branches. Never use Git worktrees.

@@ -34,7 +34,7 @@ void main() {
   test(
       'D-032: _load() awaits sign-in before touching the Council session — '
       'regression test for a defect found live: "Could not open this '
-      'conversation" on a fresh launch (a reinstall, or D-098\'s wipe). '
+      'conversation" on a fresh launch (a reinstall, or D-188\'s wipe). '
       'main.dart fires anonymous sign-in unawaited so it never gates the '
       'first frame — SetupScreen was already fixed for this exact race; '
       'GeneralCouncilScreen was added afterward and never got it.', () {

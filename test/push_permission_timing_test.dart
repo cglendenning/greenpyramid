@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-038/D-065: push permission is requested exactly once, right after
+/// D-189/D-065: push permission is requested exactly once, right after
 /// setup's completion moment settles — never on first launch. Structural,
 /// since the actual OS permission dialog can't be exercised in a test.
 void main() {
-  test('D-038: main.dart\'s launch-time notification initialize call does '
+  test('D-189: main.dart\'s launch-time notification initialize call does '
       'not request permission', () {
     final source = File('lib/main.dart').readAsStringSync();
     expect(source, contains('LocalNotificationService().intialize()'));
@@ -53,7 +53,7 @@ void main() {
         reason: 'push permission must be requested after the completion moment');
   });
 
-  test('D-038/D-065: found live — DarwinInitializationSettings must request '
+  test('D-189/D-065: found live — DarwinInitializationSettings must request '
       'nothing at intialize() time, or iOS shows the OS dialog at app '
       'launch regardless of what requestPermissions() textually calls, '
       'since flutter_local_notifications requests permission from '
@@ -68,7 +68,7 @@ void main() {
     expect(block, contains('requestSoundPermission: false'));
   });
 
-  test('D-038/D-065: the iOS branch of requestPermissions actually calls '
+  test('D-189/D-065: the iOS branch of requestPermissions actually calls '
       'the plugin\'s permission API — found live, it previously only '
       'printed a debug line and relied on initialize() to have already '
       'asked, which is exactly the bug the previous test guards against',

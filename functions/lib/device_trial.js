@@ -1,4 +1,4 @@
-// D-021/D-057/D-058/D-059/D-071: grants the one free trial a device (or,
+// D-021/D-057/D-188/D-059/D-071: grants the one free trial a device (or,
 // for the D-034 migration cohort, an account) is owed, exactly once, and
 // never lets that grant touch an already-subscribed account.
 import admin from 'firebase-admin';
@@ -6,7 +6,7 @@ import { queryTwoBits, updateTwoBits } from './device_check.js';
 
 export const TRIAL_DAYS = 3; // D-057
 export const MIGRATION_TRIAL_DAYS = 30; // D-071
-// D-060/D-064: the Android hash is retained 24 months from last write, then
+// D-060/D-187: the Android hash is retained 24 months from last write, then
 // purged — long enough to defeat trial farming, bounded enough to be
 // defensible under GDPR data-minimisation. After 24 months the device can
 // claim a trial again; that expiry is the deliberate trade the spec's own
@@ -96,7 +96,7 @@ async function grantIosTrial(uid, deviceCheckToken, { _store, _now, deviceCheckC
 }
 
 // The single entry point for both platforms, called once at setup
-// completion (D-058). An account that is already subscribed OR already
+// completion (D-188). An account that is already subscribed OR already
 // trialing is returned untouched: trial bookkeeping is meaningless once a
 // subscription exists, and re-running the device-check logic for an
 // already-trialing account (e.g. a retried request after a lost response)

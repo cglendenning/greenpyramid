@@ -10,9 +10,9 @@ import admin from 'firebase-admin';
 // that's what lets a specific account's cap be raised without a code change.
 export const DEFAULT_SPEND_CAP_USD = 5.0;
 
-// D-041: published per-token rates (USD), used to compute real cost from
+// D-185: published per-token rates (USD), used to compute real cost from
 // actual usage — never estimated. All three tiers are priced here since
-// D-041's model is now switchable at runtime (config/council) — a rate
+// D-185's model is now switchable at runtime (config/council) — a rate
 // missing for whichever model is actually selected would silently record
 // zero cost for every call.
 export const MODEL_RATES = {

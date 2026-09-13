@@ -11,39 +11,39 @@ test('D-023: exactly three daily slots, matching the existing 9am/12pm/8pm '
   ]);
 });
 
-test('D-039: a UTC user at exactly 09:00 is in the morning window', () => {
+test('D-189: a UTC user at exactly 09:00 is in the morning window', () => {
   const now = new Date('2026-06-15T09:00:00Z');
   assert.ok(isNotificationWindow('UTC', now));
 });
 
-test('D-039: a UTC user at 09:10 is still in the window (within the job '
+test('D-189: a UTC user at 09:10 is still in the window (within the job '
   + 'interval)', () => {
   const now = new Date('2026-06-15T09:10:00Z');
   assert.ok(isNotificationWindow('UTC', now));
 });
 
-test('D-039: a UTC user at 09:20 has missed the window', () => {
+test('D-189: a UTC user at 09:20 has missed the window', () => {
   const now = new Date('2026-06-15T09:20:00Z');
   assert.ok(!isNotificationWindow('UTC', now));
 });
 
-test('D-039: a half-hour-offset timezone (India, UTC+5:30) still matches '
+test('D-189: a half-hour-offset timezone (India, UTC+5:30) still matches '
   + 'its local 9am', () => {
   // 09:00 IST == 03:30 UTC.
   const now = new Date('2026-06-15T03:30:00Z');
   assert.ok(isNotificationWindow('Asia/Kolkata', now));
 });
 
-test('D-039: an unset timezone never matches', () => {
+test('D-189: an unset timezone never matches', () => {
   assert.ok(!isNotificationWindow(undefined, new Date()));
 });
 
-test('D-039: an invalid timezone string never matches, rather than '
+test('D-189: an invalid timezone string never matches, rather than '
   + 'guessing a default', () => {
   assert.ok(!isNotificationWindow('Not/ATimezone', new Date()));
 });
 
-test('D-036: a lapsed account is never eligible, even inside its notification '
+test('D-189: a lapsed account is never eligible, even inside its notification '
   + 'window', () => {
   const now = new Date('2026-06-15T09:00:00Z');
   const eligible = isEligibleForTailoredNotification(

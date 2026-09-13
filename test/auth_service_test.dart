@@ -5,7 +5,7 @@ import 'package:life_ops/services/auth_service.dart';
 import 'package:mock_exceptions/mock_exceptions.dart';
 
 /// R4: silent account creation (D-032) and in-place credential linking
-/// (D-033), tested against firebase_auth_mocks rather than a live project.
+/// (D-188), tested against firebase_auth_mocks rather than a live project.
 void main() {
   group('D-032: anonymous authentication on first launch', () {
     test('D-032: signInSilently creates an anonymous account and returns a uid',
@@ -40,8 +40,8 @@ void main() {
     });
   });
 
-  group('D-033: a real credential is requested only when it buys something', () {
-    test('D-033: linkWithCredential refuses to run without a signed-in '
+  group('D-188: a real credential is requested only when it buys something', () {
+    test('D-188: linkWithCredential refuses to run without a signed-in '
         'anonymous user', () async {
       final auth = AuthService(auth: MockFirebaseAuth());
       await expectLater(
@@ -51,12 +51,12 @@ void main() {
       );
     });
 
-    test('D-033: linking preserves the existing uid — no new account is '
+    test('D-188: linking preserves the existing uid — no new account is '
         'created', () async {
       // firebase_auth_mocks 0.15.2's MockUser.linkWithCredential hardcodes
       // isAnonymous: false into an internal assertion that requires it match
       // the user's actual isAnonymous — so it always throws for an anonymous
-      // MockUser, the exact case D-033 needs to exercise. A minimal
+      // MockUser, the exact case D-188 needs to exercise. A minimal
       // hand-rolled fake sidesteps that library defect.
       final user = _FakeAnonymousUser('preserved-uid');
       final auth = AuthService(auth: _FakeAuthWithCurrentUser(user));

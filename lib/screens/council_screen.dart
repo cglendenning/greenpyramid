@@ -15,9 +15,9 @@ import '../services/resonance_service.dart';
 import '../services/sync_service.dart';
 import '../theme/app_colors.dart';
 
-/// D-028: a Council session scoped to one category. R5 ships the mechanism
+/// D-185: a Council session scoped to one category. R5 ships the mechanism
 /// — rotation, resume, an essence accepted once it meets P-12's quality bar
-/// (scored by ResonanceService, D-026) — not the richer Council-driven
+/// (scored by ResonanceService, D-188) — not the richer Council-driven
 /// convergence D-051/D-055 define for setup; that lands in R6, built on
 /// this same [CouncilService].
 ///
@@ -170,7 +170,7 @@ class _CouncilScreenState extends State<CouncilScreen> {
     );
     await _council.endSession(session.sessionId);
 
-    // D-048: advisory, never required (D-074) — a failure here must never
+    // D-048: advisory, never required (D-188) — a failure here must never
     // block closing the session, whose essence is already committed above.
     unawaited(_council.recordDomainFindings(
       session: session,
@@ -180,7 +180,7 @@ class _CouncilScreenState extends State<CouncilScreen> {
       essence: sanitizedEssence,
     ));
 
-    // Push the new essence version to Firestore (D-075) same as any other
+    // Push the new essence version to Firestore (D-187) same as any other
     // profile change; the account bootstrap in main.dart already ensures a
     // signed-in uid exists by the time this screen is reachable.
     final uid = AuthService.instance.currentUid;

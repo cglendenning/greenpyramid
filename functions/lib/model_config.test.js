@@ -11,21 +11,21 @@ class FakeFirestore {
   collection(name) { return { doc: (id) => new FakeDoc(this, `${name}/${id}`) }; }
 }
 
-test('D-041: with no config/council document, falls back to the cheapest '
+test('D-185: with no config/council document, falls back to the cheapest '
   + 'tier', async () => {
   _resetModelCacheForTest();
   const model = await getCouncilModel(new FakeFirestore(), Date.now());
   assert.equal(model, FALLBACK_MODEL);
 });
 
-test('D-041: a configured model is read from config/council', async () => {
+test('D-185: a configured model is read from config/council', async () => {
   _resetModelCacheForTest();
   const store = new FakeFirestore({ 'config/council': { model: 'claude-sonnet-5' } });
   const model = await getCouncilModel(store, Date.now());
   assert.equal(model, 'claude-sonnet-5');
 });
 
-test('D-041: the result is cached — a second call within the TTL does not '
+test('D-185: the result is cached — a second call within the TTL does not '
   + 're-read Firestore', async () => {
   _resetModelCacheForTest();
   let reads = 0;
@@ -39,7 +39,7 @@ test('D-041: the result is cached — a second call within the TTL does not '
   assert.equal(reads, 1);
 });
 
-test('D-041: the cache expires after CACHE_TTL_MS and re-reads', async () => {
+test('D-185: the cache expires after CACHE_TTL_MS and re-reads', async () => {
   _resetModelCacheForTest();
   const store = new FakeFirestore({ 'config/council': { model: 'claude-opus-5' } });
   const now = Date.now();
@@ -50,7 +50,7 @@ test('D-041: the cache expires after CACHE_TTL_MS and re-reads', async () => {
   assert.equal(model, 'claude-haiku-4-5');
 });
 
-test('D-041: an unreachable Firestore falls back rather than throwing',
+test('D-185: an unreachable Firestore falls back rather than throwing',
   async () => {
     _resetModelCacheForTest();
     const model = await getCouncilModel(null, Date.now());

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:life_ops/theme/app_colors.dart';
 
-/// Shown when the local database cannot be opened or migrated (D-086).
+/// Shown when the local database cannot be opened or migrated (D-187).
 ///
 /// Migration is best-effort. When it fails, the user is told plainly what
 /// happened and what to do — never a crash, never a silent wipe, and never a

@@ -3,7 +3,7 @@ import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/services/account_reset_service.dart';
 
-/// D-098: whenever local storage shows no real pyramid but an anonymous
+/// D-188: whenever local storage shows no real pyramid but an anonymous
 /// account already has prior server-side data, that combination can only
 /// follow a genuine app deletion and reinstall (there is no OS-level
 /// "app was deleted" signal — this is the closest available proxy, and it

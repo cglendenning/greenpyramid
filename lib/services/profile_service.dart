@@ -48,7 +48,7 @@ class ProfileService {
   }
 
   /// A short Claude-written reflection on the last 30 days of habit
-  /// check-offs. Bounded to [AiGuard.maxTaskLogRows], the same cap D-075's
+  /// check-offs. Bounded to [AiGuard.maxTaskLogRows], the same cap D-187's
   /// Firestore sync already uses for task_log — the most recent rows, not
   /// an arbitrary or unbounded slice.
   Future<String> generateProgressAnalysis() async {

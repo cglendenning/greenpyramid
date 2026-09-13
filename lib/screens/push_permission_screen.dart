@@ -21,7 +21,7 @@ class PushPermissionScreen extends StatelessWidget {
       await LocalNotificationService().requestPermissions();
       await PushMessagingService.instance.syncNotificationState();
     } catch (_) {
-      // D-038: a failure here degrades nothing — proceed regardless.
+      // D-189: a failure here degrades nothing — proceed regardless.
     }
     onDone();
   }

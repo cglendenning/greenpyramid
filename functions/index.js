@@ -167,7 +167,7 @@ app.post('/v1/chat/completions', async (req, res) => {
   }
 });
 
-// ── The Council of Advisors (D-027/D-028/D-040/D-050) ──────────────────────
+// ── The Council of Advisors (D-027/D-185/D-040/D-050) ──────────────────────
 // Prompt-building logic lives in lib/council.js so it's testable without
 // spinning up Express or Firebase Admin (node --test lib/*.test.js).
 
@@ -177,7 +177,7 @@ function claude() {
   return anthropicClient;
 }
 
-// D-017/D-072: setup is free — bounded by a 40-model-call count per
+// D-017/D-188: setup is free — bounded by a 40-model-call count per
 // session, never by the D-087 dollar cap. Every other Council use (D-016)
 // is gated by spend instead. Shared by every setup-conversation route
 // (turns and the two derivation endpoints below) so the bound is uniform
@@ -223,7 +223,7 @@ async function guardCouncilCall(req, res, { isSetup, sessionId }) {
   }
 }
 
-// D-058/D-059/D-071: called once, right at setup completion (or, for the
+// D-188/D-059/D-071: called once, right at setup completion (or, for the
 // D-034 migration cohort, once at first launch of this build). Device-bound
 // for new users; account-bound and device-check-free for the migration
 // grant, per D-059's explicit carve-out.
@@ -301,7 +301,7 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, (req, res, next) => req.body?
   if (!built) return res.status(400).json({ error: 'Invalid advisorKey' });
   const { advisor, systemText, userMessage } = built;
 
-  // D-087/D-072: refused before the model is ever called — the guard
+  // D-087/D-188: refused before the model is ever called — the guard
   // protects against cost/overuse, not against a request that already
   // spent money.
   if (!(await guardCouncilCall(req, res, { isSetup, sessionId }))) return;
@@ -317,14 +317,14 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, (req, res, next) => req.body?
       // reply — a live one/two-sentence chat line gets nothing from
       // reasoning that's worth either cost.
       thinking: { type: 'disabled' },
-      // D-041: this block is the stable prefix — constant per advisor while
+      // D-185: this block is the stable prefix — constant per advisor while
       // the intensity slider stays at its default (D-073) — so it carries
       // the cache breakpoint. Nothing user-derived is in this block.
       system: [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: userMessage }],
     });
     // D-017: setup is free — its cost is never recorded against the D-087
-    // dollar ledger, only counted against D-072's call limit (already done
+    // dollar ledger, only counted against D-188's call limit (already done
     // above, before the model call).
     if (!isSetup) {
       recordCost(req.uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
@@ -358,7 +358,7 @@ async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conver
       model,
       max_tokens: 150,
       thinking: { type: 'disabled' },
-      // D-041: stable prefix, same cache treatment as the group-chat path.
+      // D-185: stable prefix, same cache treatment as the group-chat path.
       system: [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: userMessage }],
       tools: [SETUP_TURN_TOOL],
@@ -409,7 +409,7 @@ async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conver
       reply = applyPacingReassurance(reply, { turnsSoFar, readyToBuild });
     }
     // D-017: setup is free — never charged against D-087's dollar ledger,
-    // only counted against D-072's call limit (already done above).
+    // only counted against D-188's call limit (already done above).
     res.json({
       reply,
       readyToBuild,
@@ -422,7 +422,7 @@ async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conver
 }
 
 // ── Setup derivation (D-051/D-052/D-055) ────────────────────────────────────
-// All three are setup-only: always free (D-017), always bounded by D-072's
+// All three are setup-only: always free (D-017), always bounded by D-188's
 // call count, never by D-087's spend cap.
 
 app.post('/deriveCategories', requireFirebaseAuth, setupIdempotency(() => admin.firestore()), async (req, res) => {
@@ -485,7 +485,7 @@ app.post('/deriveHabits', requireFirebaseAuth, setupIdempotency(() => admin.fire
 
 // D-048: derives domain findings from one category's conversation, at the
 // moment its essence is accepted. Unlike the three setup-only derivations
-// above, this runs from both setup (free, D-072-bounded) and D-061's paid
+// above, this runs from both setup (free, D-188-bounded) and D-061's paid
 // re-clarification — so, like boardAdvisorTurn, it takes a dynamic isSetup
 // and goes through the full guardCouncilCall gate rather than being
 // hardcoded free.
@@ -588,7 +588,7 @@ app.post('/deriveProgressAnalysis', requireFirebaseAuth, async (req, res) => {
   }
 });
 
-// D-155: the newsfeed's AI-written analysis article — gated by entitlement
+// D-150: the newsfeed's AI-written analysis article — gated by entitlement
 // and the spend cap exactly like every other non-setup AI surface
 // (guardCouncilCall's isSetup: false branch). Never called more than once
 // a day per NewsfeedService's own dedupeKey, but that throttling lives
@@ -628,7 +628,7 @@ export const api = onRequest(
   app,
 );
 
-// ── Notifications (D-036/D-037/D-039) ───────────────────────────────────────
+// ── Notifications (D-189/D-037/D-189) ───────────────────────────────────────
 //
 // D-037: exactly this context, read from profile/main — the array already
 // synced by the client (SyncService), never a separate model call to
@@ -647,11 +647,11 @@ async function sendTailoredNotification(uid, profileData) {
 
   // D-048/D-037 (amended): findings live in their own subcollection (IV-D),
   // synced in full — unbounded, unlike recentActivity's 250-row cap, since
-  // findings are sparse by nature (D-074).
+  // findings are sparse by nature (D-188).
   const findingsSnap = await db
       .collection('users').doc(uid).collection('domainFindings').get();
   const domainFindings = findingsSnap.docs.map((d) => d.data());
-  // D-025 step 7: present only when the user granted calendar access —
+  // D-185 step 7: present only when the user granted calendar access —
   // absent entirely otherwise (buildNotificationPrompt already omits the
   // section when this is undefined).
   const calendarContext = profileData.calendarContext;
@@ -684,7 +684,7 @@ async function sendTailoredNotification(uid, profileData) {
   recordCost(uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
       .catch((e) => console.error('recordCost error:', e.message));
 
-  // D-038: cached so the client's local fallback has the most recent
+  // D-189: cached so the client's local fallback has the most recent
   // server-generated content if push was never granted or delivery fails.
   await db.collection('users').doc(uid).collection('profile').doc('main').set({
     lastNotificationTitle: title,
@@ -711,14 +711,14 @@ async function sendTailoredNotification(uid, profileData) {
       data: { type: 'tailored' },
     });
   } catch (e) {
-    // D-038: a delivery failure is logged and surfaced, never swallowed —
+    // D-189: a delivery failure is logged and surfaced, never swallowed —
     // lastNotificationTitle/Body above is what lets the client recover.
     console.error(`notificationJob: FCM send failed for ${uid}:`, e.message);
   }
 }
 
-// D-036: runs every 15 minutes (D-039's timezone-bucketing granularity,
-// notification_schedule.js); D-036's exclusion of lapsed accounts is
+// D-189: runs every 15 minutes (D-189's timezone-bucketing granularity,
+// notification_schedule.js); D-189's exclusion of lapsed accounts is
 // enforced in isEligibleForTailoredNotification, which also implements
 // R7's "every account is entitled until R8" carve-out. A full
 // collectionGroup scan every 15 minutes is the simplest correct
@@ -753,13 +753,13 @@ export const notificationJob = onSchedule(
 );
 
 // D-124: once per account per day, after the *latest* scheduled habit
-// (D-123) of that day has passed in the account's own local time (D-039),
+// (D-123) of that day has passed in the account's own local time (D-189),
 // sends a single push naming every one of that day's scheduled, active
 // habits — replacing Kansei's per-session "Did you do it?" with one
 // batched push, per the owner's explicit choice that Green Pyramid's
 // higher daily habit volume makes a per-habit notification the wrong
 // design here. batch_checkin_schedule.js's shouldSendBatchCheckin decides
-// the "when" (data-dependent, unlike D-036's fixed clock slots) and its
+// the "when" (data-dependent, unlike D-189's fixed clock slots) and its
 // own "already sent today" field is the once-per-day guard.
 //
 // Unlike notificationJob, this calls no model and costs nothing to run —

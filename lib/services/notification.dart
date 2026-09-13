@@ -32,7 +32,7 @@ class HabitReminderSlot {
 
 /// D-124 Phase 3: a habit-reminder notification id is derived from the
 /// habit's own row id and the specific weekday it reminds for — stable
-/// and collision-free (distinct from the small, hand-picked ids D-038's
+/// and collision-free (distinct from the small, hand-picked ids D-189's
 /// three daily fallbacks and D-115's test notification already use: 100,
 /// 101, 102, 999999) so a reminder can be found and cancelled later
 /// without re-deriving it from a hash.
@@ -211,7 +211,7 @@ class LocalNotificationService {
   static const int testNotificationId = 999999;
 
   /// D-115: schedules a single local test notification 1 minute from
-  /// now, on the same delivery channel D-038's fallback notifications
+  /// now, on the same delivery channel D-189's fallback notifications
   /// use — lets the user confirm OS-level notification permission and
   /// delivery actually work, mirroring Kansei's identical settings-screen
   /// feature. Replaces the previous version's five-notification burst
@@ -283,7 +283,7 @@ class LocalNotificationService {
     const AndroidInitializationSettings androidInitializationSettings =
         AndroidInitializationSettings('@drawable/ic_launcher');
 
-    // D-038/D-065: these must stay false. The plugin's initialize() call
+    // D-189/D-065: these must stay false. The plugin's initialize() call
     // itself requests permission immediately when they're true — on iOS
     // that means the OS dialog fires at app launch, not from D-065's
     // screen. Permission is requested explicitly later via
@@ -324,7 +324,7 @@ class LocalNotificationService {
   }
 
   /// D-065: called once, immediately after D-046's completion moment
-  /// settles. D-038: denial degrades nothing and this is never re-asked on
+  /// settles. D-189: denial degrades nothing and this is never re-asked on
   /// a schedule — callers should not invoke this more than once per
   /// install.
   ///
@@ -506,7 +506,7 @@ class LocalNotificationService {
     }
     if (!idFound) {
       // Generate dynamic message based on notification ID
-      // D-038: an explicit body (cached server content, or the D-063
+      // D-189: an explicit body (cached server content, or the D-063
       // static pool) overrides the built-in generic message pool.
       String dynamicBody = body ?? _generateNotificationMessage(id);
       // Create iOS details with the question as the body
@@ -570,7 +570,7 @@ class LocalNotificationService {
     return scheduledDate;
   }
 
-  /// D-038: lets a caller refresh or clear a previously-scheduled fallback
+  /// D-189: lets a caller refresh or clear a previously-scheduled fallback
   /// notification (cancel before reschedule, since [scheduleDailyNotification]
   /// no-ops when the id is already pending).
   Future<void> cancelDailyNotification(int id) =>
@@ -653,7 +653,7 @@ class LocalNotificationService {
     }
   }
 
-  /// D-036: a push arriving while the app is in the foreground is not
+  /// D-189: a push arriving while the app is in the foreground is not
   /// auto-displayed by the OS on most platforms — this shows it
   /// immediately via the same local-notification channel.
   Future<void> showImmediateNotification({
@@ -713,7 +713,7 @@ class LocalNotificationService {
           navigatorKey.currentState?.push(MaterialPageRoute(
               builder: (_) => BatchCheckinScreen(habits: habits)));
         case 'newsfeed_item':
-          // D-154: "when you tap the notification, it will go directly
+          // D-150: "when you tap the notification, it will go directly
           // to the newsfeed" — and, specifically, scrolled to and
           // highlighting the exact item the notification was about.
           final dedupeKey = data['dedupeKey'] as String?;
@@ -726,7 +726,7 @@ class LocalNotificationService {
     }
   }
 
-  /// D-154: the Settings "Send test notification" control now behaves
+  /// D-150: the Settings "Send test notification" control now behaves
   /// exactly like a real newsfeed notification — owner: "the button to
   /// send a test notification to behave the same way that it will have
   /// a headline of one of the news items and when you tap the

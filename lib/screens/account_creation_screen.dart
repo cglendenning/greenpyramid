@@ -7,7 +7,7 @@ import '../theme/app_colors.dart';
 import '../widgets/onboarding_backdrop.dart';
 import 'signing_in_screen.dart';
 
-/// D-130 (supersedes D-033/Q-28): a real account is now required here,
+/// D-188 (supersedes D-188/Q-28): a real account is now required here,
 /// right before [SetupCompletionScreen] — the one moment goal-executor
 /// itself gates on sign-in, mirrored deliberately rather than reused
 /// verbatim (goal-executor's own screen also offers email/password; this

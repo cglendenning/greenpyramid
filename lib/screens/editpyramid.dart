@@ -139,7 +139,7 @@ class _EditPyramid extends State<EditPyramid> {
 
     widget.onCategoryEdited?.call();
 
-    // D-172: same gap as tasklist.dart's check-off handler — a rename or
+    // D-187: same gap as tasklist.dart's check-off handler — a rename or
     // essence edit was purely a local write with no sync trigger of its
     // own, so it could sit unsynced until the next app launch, Council
     // conversation, or setup completion (whichever came first).

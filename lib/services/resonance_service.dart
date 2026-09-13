@@ -1,4 +1,4 @@
-/// D-026: ported as-is, AI-free, from Kansei's `ResonanceService`
+/// D-188: ported as-is, AI-free, from Kansei's `ResonanceService`
 /// (`goal-executor/lib/services/resonance_service.dart`). Used to judge
 /// whether a captured essence has actually landed (P-12) before accepting
 /// it, rather than accepting the first thing the user types.
@@ -10,7 +10,7 @@
 class ResonanceService {
   static const int minStatementLength = 40;
 
-  // Deliberately no AI classification call here (P-2/D-026 cost-control
+  // Deliberately no AI classification call here (P-2/D-188 cost-control
   // default) — a length + first-person-conviction heuristic is enough to
   // judge whether an essence has landed.
   static const _convictionMarkers = [

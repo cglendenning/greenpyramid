@@ -75,7 +75,7 @@ class _FakeCouncilClient extends CouncilClient {
   }
 }
 
-/// R5: Council session orchestration (D-028, D-082), tested against a fake
+/// R5: Council session orchestration (D-185, D-188), tested against a fake
 /// Firestore and Auth — no live Firebase project, no live backend call.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -117,14 +117,14 @@ void main() {
     AiGuard.instance.resetForTest();
   });
 
-  group('D-082: exactly one setup session may exist per account', () {
-    test('D-082: hasEverCreatedSetupSession is false before any session',
+  group('D-188: exactly one setup session may exist per account', () {
+    test('D-188: hasEverCreatedSetupSession is false before any session',
         () async {
       final svc = buildService();
       expect(await svc.hasEverCreatedSetupSession(), isFalse);
     });
 
-    test('D-082: hasEverCreatedSetupSession is true once one is created',
+    test('D-188: hasEverCreatedSetupSession is true once one is created',
         () async {
       final svc = buildService();
       await svc.createSession(type: BoardSessionType.setup);
@@ -132,8 +132,8 @@ void main() {
     });
   });
 
-  group('D-028: category sessions are scoped and rotation is randomized', () {
-    test('D-028: createSession for a category carries that categoryId',
+  group('D-185: category sessions are scoped and rotation is randomized', () {
+    test('D-185: createSession for a category carries that categoryId',
         () async {
       final svc = buildService();
       final s = await svc.createSession(
@@ -164,7 +164,7 @@ void main() {
     });
   });
 
-  group('D-028: an advisor turn is persisted and category context reaches '
+  group('D-185: an advisor turn is persisted and category context reaches '
       'the client', () {
     test('runAdvisorTurn appends the reply and passes sanitized category '
         'context', () async {
@@ -396,7 +396,7 @@ void main() {
     });
   });
 
-  group('D-028: ending a session removes it from the active set', () {
+  group('D-185: ending a session removes it from the active set', () {
     test('endSession marks isComplete and it drops out of getActiveSession',
         () async {
       final svc = buildService();
@@ -535,7 +535,7 @@ void main() {
     });
 
     test('a backend failure is swallowed — advisory, never blocks the '
-        'caller (D-074)', () async {
+        'caller (D-188)', () async {
       final client = _FakeCouncilClient()..domainFindingsShouldThrow = true;
       final svc = buildService(client: client);
 

@@ -210,7 +210,7 @@ class _SettingsState extends State<Settings> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  // D-049: the domain map — a destination visited
+                  // D-185: the domain map — a destination visited
                   // deliberately, gated as a paid capability (D-016).
                   Align(
                     alignment: Alignment.centerLeft,
@@ -235,7 +235,7 @@ class _SettingsState extends State<Settings> {
             const SizedBox(height: 28),
 
             _sectionLabel('CALENDAR'),
-            // D-025 step 7: opt-in only, requested here — never on launch.
+            // D-185 step 7: opt-in only, requested here — never on launch.
             _card(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -410,7 +410,7 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
 }
 
 /// D-115: schedules a single local test notification, mirroring Kansei's
-/// identical settings-screen control. D-154: now uses a real newsfeed
+/// identical settings-screen control. D-150: now uses a real newsfeed
 /// item's own headline/body as the preview, and tapping it deep-links
 /// straight to that item in the newsfeed — "the button to send a test
 /// notification [should] behave the same way that it will have a
@@ -572,7 +572,7 @@ class _TestNotificationButtonState extends State<_TestNotificationButton>
   }
 }
 
-/// D-025 step 7: reflects and toggles calendar read access. Turning it on
+/// D-185 step 7: reflects and toggles calendar read access. Turning it on
 /// prompts the OS permission dialog; turning it off only stops the app from
 /// reading the calendar going forward — revoking the OS grant itself
 /// happens in system settings, same as every other permission in this app.

@@ -1,5 +1,5 @@
 // D-124: the batched end-of-day check-in's server-side timing logic.
-// Distinct from D-036/notification_schedule.js's fixed three-times-daily
+// Distinct from D-189/notification_schedule.js's fixed three-times-daily
 // cadence — here the "when" is per-account, per-day, and data-dependent
 // (the latest scheduled_time among today's active scheduled habits), not
 // a fixed clock slot, so it can't reuse isNotificationWindow's narrow
@@ -16,7 +16,7 @@ function isTruthyFlag(v) {
   return v != null && v !== '0' && v !== 'false' && v !== '';
 }
 
-// D-039: "today" and "now" both read in the account's own local
+// D-189: "today" and "now" both read in the account's own local
 // timezone — a fixed-cadence UTC job must never decide a Tokyo account's
 // day, or its day-of-week, using another timezone's clock. Throws on an
 // invalid IANA timezone string, which callers treat as "never matches"

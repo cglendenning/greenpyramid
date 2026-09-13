@@ -81,7 +81,7 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
       // fixed for — main.dart's account bootstrap is fire-and-forget so
       // it never gates the first frame, so a screen that touches
       // Firestore before sign-in resolves can lose that race on a fresh
-      // launch (a fresh install/reinstall, or D-098's wipe, both leave no
+      // launch (a fresh install/reinstall, or D-188's wipe, both leave no
       // cached session). GeneralCouncilScreen was added after that fix
       // and never got it. signInSilently() is a no-op once already
       // signed in, so awaiting it here is always cheap.
@@ -126,7 +126,7 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
       // not every message — same checkpoint discipline D-048 already uses
       // elsewhere (once per essence acceptance), applied to the moment
       // that actually exists in a conversation with no such acceptance
-      // event of its own. Advisory, never required (D-074); never blocks
+      // event of its own. Advisory, never required (D-188); never blocks
       // the chat.
       final pyramid = _pyramidContext;
       if (pyramid != null && (refreshed ?? session).isRoundComplete) {

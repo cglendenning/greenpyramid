@@ -12,7 +12,7 @@ import 'package:http/http.dart' as http;
 
 import 'db.dart';
 
-/// D-057/D-058/D-059/D-071: requests and caches the server-authoritative
+/// D-057/D-188/D-059/D-071: requests and caches the server-authoritative
 /// trial/subscription state. `functions/lib/device_trial.js` and
 /// `functions/lib/entitlement.js` are the actual source of truth — this
 /// class only asks for a grant and mirrors the answer into the local
@@ -36,7 +36,7 @@ class EntitlementService {
   // in a unit test with no Firebase app initialized, and many existing
   // tests construct this service without ever needing auth at all (e.g.
   // pullFromServer's own tests) — same lazy-getter fix already applied
-  // to AccountLinkService's SyncService dependency (D-172) for the
+  // to AccountLinkService's SyncService dependency (D-187) for the
   // identical reason.
   FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
 
@@ -91,7 +91,7 @@ class EntitlementService {
   /// changes to `app-store` or `ad-hoc` for real distribution.**
   static const bool _isDeviceCheckDevelopmentEnvironment = true;
 
-  /// D-058: called once, right at setup completion — the clock starts at
+  /// D-188: called once, right at setup completion — the clock starts at
   /// the pyramid reveal, not at install. Never throws past this point, only
   /// logs: a network hiccup here must not block the completion screen, and
   /// the account simply stays pre_trial until the next opportunity.

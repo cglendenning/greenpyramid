@@ -1,4 +1,4 @@
-// D-072: the free setup conversation is bounded at 40 model calls,
+// D-188: the free setup conversation is bounded at 40 model calls,
 // enforced server-side — the client cannot be trusted to stop itself.
 // Separate from D-087's spend cap: setup is free (D-017), so it is never
 // charged against an account's dollar cap; it is bounded by call count
@@ -24,7 +24,7 @@ function db() {
 }
 
 // Atomically checks-and-increments a setup session's call counter. The
-// 40th call is allowed through — it's the one D-072 requires to close the
+// 40th call is allowed through — it's the one D-188 requires to close the
 // session gracefully (derive categories, capture what exists, deliver the
 // closing synthesis) rather than truncate mid-conversation; the 41st is
 // refused. No-ops (never counts, never refuses) when uid/sessionId/store

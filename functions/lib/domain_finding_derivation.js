@@ -31,7 +31,7 @@ export const DOMAIN_FINDING_TOOL = {
   },
 };
 
-// D-074: a session that surfaces no impediment is valid — the prompt is
+// D-188: a session that surfaces no impediment is valid — the prompt is
 // explicit that an empty array is a normal, expected answer, never a
 // failure to find something.
 export function buildDeriveDomainFindingsPrompt({ categoryName, essence, transcript = [] }) {

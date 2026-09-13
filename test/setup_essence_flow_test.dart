@@ -185,7 +185,7 @@ void main() {
       'before leaving setup — regression test for a defect found live: '
       '"I click begin it just flashes the chat screen and drops me right '
       'back into the main screen" — a silent pop with zero explanation, '
-      'not the D-082 enforcement itself, which is correct', () {
+      'not the D-188 enforcement itself, which is correct', () {
     final start = source.indexOf('on SetupAlreadyCompleteException');
     expect(start, greaterThan(-1));
     final end = source.indexOf('} catch (e, st) {', start);

@@ -10,7 +10,7 @@ import 'ai_guard.dart';
 import 'council_client.dart';
 import 'db.dart';
 
-/// D-028/D-082: orchestrates Council sessions, ported from Kansei's
+/// D-185/D-188: orchestrates Council sessions, ported from Kansei's
 /// `BoardService`. Sessions live flat under `users/{uid}/councilSessions`
 /// (IV-D) rather than nested per-goal — this is what resolves II-K
 /// mismatches 1 and 3 (persistence and scope) for Green Pyramid.
@@ -45,7 +45,7 @@ class CouncilService {
   CollectionReference<Map<String, dynamic>> get _sessionsCol =>
       _db.collection('users').doc(_uid).collection('councilSessions');
 
-  /// D-082: exactly one `setup` session may exist per account, ever. Callers
+  /// D-188: exactly one `setup` session may exist per account, ever. Callers
   /// check this before offering setup — a second attempt is a `category`
   /// session or is refused, never a second `setup` session.
   Future<bool> hasEverCreatedSetupSession() async {
@@ -120,7 +120,7 @@ class CouncilService {
 
   /// Calls the backend for one advisor turn, persists the message, and
   /// returns it. [categoryName], [categoryTier], and [priorEssence] are the
-  /// category-scoped context D-028 requires; sanitized the same way any
+  /// category-scoped context D-185 requires; sanitized the same way any
   /// user-derived text reaches a prompt (D-006).
   ///
   /// D-095: [pyramidContext], non-null, is the general Council chat's
@@ -148,7 +148,7 @@ class CouncilService {
     await AiGuard.instance.acquire();
 
     final sliderValue = session.sliderSettings[advisorKey] ?? 0.5;
-    // D-017/D-072: a setup-typed session is free, bounded by call count —
+    // D-017/D-188: a setup-typed session is free, bounded by call count —
     // never charged against D-087's dollar cap. Derived from the session
     // itself so callers can't get this wrong.
     final isSetup = session.type == BoardSessionType.setup;
@@ -198,7 +198,7 @@ class CouncilService {
   }
 
   /// D-048/D-100: derives and commits domain findings for a Council
-  /// conversation. Advisory, never required (D-074) — never throws past
+  /// conversation. Advisory, never required (D-188) — never throws past
   /// this point. Extracted here after this exact derive-then-insert
   /// sequence had been copy-pasted twice already (`SetupService` and
   /// `CouncilScreen`, both now delegate here) — a third copy for the

@@ -10,8 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 /// schedule_habits_screen_test.dart already uses for its D-128 group.
 ///
 /// Catches the exact gap Craig hit live: setup already completed before
-/// D-130 existed, so nothing had ever prompted him to link a real
-/// credential — D-130 only fires *during* setup, never for an account
+/// D-188 existed, so nothing had ever prompted him to link a real
+/// credential — D-188 only fires *during* setup, never for an account
 /// that predates it.
 void main() {
   // D-002-AC-02: completed accounts remain in tracking without forced setup.

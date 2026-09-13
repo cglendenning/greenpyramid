@@ -67,7 +67,7 @@ dependencies:
   uuid: ^4.6.0
   firebase_auth: ^6.6.1
   sign_in_with_apple: ^8.1.0
-  # D-130: account creation before the pyramid reveal (Apple + Google
+  # D-188: account creation before the pyramid reveal (Apple + Google
   # one-tap only). Same version goal-executor uses.
   google_sign_in: ^7.2.0
   # D-070: RevenueCat, ported from Kansei. Pinned to the same major version
@@ -80,7 +80,7 @@ dependencies:
   # it ever leaves the device.
   android_id: ^0.5.2+1
   crypto: ^3.0.0
-  # D-025 step 7: calendar context feeding P-8. D-123 (2026-09-09) added
+  # D-185 step 7: calendar context feeding P-8. D-123 (2026-09-09) added
   # real writes for scheduled habits — full access was already requested
   # for reading, so no permission-level change was needed.
   device_calendar_plus: ^0.8.0
@@ -103,7 +103,7 @@ dev_dependencies:
   sqflite_common_ffi: ^2.3.0
   fake_cloud_firestore: ^4.2.0
   firebase_auth_mocks: ^0.15.2
-  # D-130: firebase_auth_mocks' own exception-stubbing mechanism
+  # D-188: firebase_auth_mocks' own exception-stubbing mechanism
   # (whenCalling/maybeThrowException) — already a transitive dependency,
   # declared directly since account_link_service_test.dart imports it.
   mock_exceptions: ^0.8.2

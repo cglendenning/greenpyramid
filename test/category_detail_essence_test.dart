@@ -70,7 +70,7 @@ void main() {
     });
   });
 
-  group('D-166: insertCategoryEssence is a no-op when the text is '
+  group('D-150: insertCategoryEssence is a no-op when the text is '
       'identical to the category\'s current latest version — found live, '
       "on the owner's own account: SyncService.restoreFromCloud called "
       "this unconditionally on every restore, manufacturing a brand-new "
@@ -133,7 +133,7 @@ void main() {
     });
   });
 
-  group('D-167: a database-level trigger backstops the same invariant, '
+  group('D-150: a database-level trigger backstops the same invariant, '
       'so even a raw insert that bypasses insertCategoryEssence entirely '
       "cannot create a consecutive duplicate — owner: \"ensure that "
       'there are guard rails in place to prevent this data condition '

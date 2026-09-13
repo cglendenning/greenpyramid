@@ -7,7 +7,7 @@ test('D-048: exactly the four domains, matching P-6\'s internal names', () => {
   assert.deepEqual(DOMAIN_FINDING_TOOL.input_schema.properties.findings.items.properties.domain.enum, DOMAINS);
 });
 
-test('D-074: the prompt explicitly tells the model an empty findings array '
+test('D-188: the prompt explicitly tells the model an empty findings array '
     + 'is a normal, valid answer — never to invent an impediment', () => {
   const { system } = buildDeriveDomainFindingsPrompt({ categoryName: 'Health', essence: null, transcript: [] });
   assert.match(system, /empty array/);
@@ -82,7 +82,7 @@ test('D-100: with no pyramidContext, the prompt says so plainly rather '
 });
 
 test('D-100: an empty findings array is explicitly a valid answer for the '
-    + 'general prompt too — same D-074 discipline as the category-scoped '
+    + 'general prompt too — same D-188 discipline as the category-scoped '
     + 'prompt', () => {
   const { system } = buildDeriveGeneralDomainFindingsPrompt({ pyramidContext: [], transcript: [] });
   assert.match(system, /empty array/);

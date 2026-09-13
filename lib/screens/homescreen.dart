@@ -91,7 +91,7 @@ class HomeScreen extends StatelessWidget {
           builder: (_) => const HomeScreenWidget(),
         );
       // D-083: morning/afternoon/evening are deleted, replaced by
-      // D-036's server-generated notifications. These three cases stay
+      // D-189's server-generated notifications. These three cases stay
       // only so a stale local notification already scheduled on a
       // device before the upgrade lands on the pyramid rather than an
       // error route.
@@ -187,8 +187,8 @@ class _HomeScreen extends State<HomeScreenWidget> {
     super.dispose();
   }
 
-  // D-132: catches an existing user whose account predates D-130 — Craig's
-  // own situation: setup already completed before D-130 existed, so
+  // D-132: catches an existing user whose account predates D-188 — Craig's
+  // own situation: setup already completed before D-188 existed, so
   // nothing ever prompted him to link a real credential. D-032's own
   // convention (every Firestore-touching screen awaits signInSilently()
   // first, since main.dart's bootstrap is fire-and-forget and not
@@ -316,8 +316,8 @@ class _HomeScreen extends State<HomeScreenWidget> {
       service.onNotificationClick.stream.listen(onNotificationListener);
 
   /// D-083 amendment / Phase 6 fix (2026-09-10): every tap-routing path
-  /// that isn't the new D-124 batch check-in — D-038's local fallback,
-  /// D-023's lapsed static pool, and now D-036's real tailored push (once
+  /// that isn't the new D-124 batch check-in — D-189's local fallback,
+  /// D-023's lapsed static pool, and now D-189's real tailored push (once
   /// it carries a `type: 'tailored'` data payload, wired in main.dart) —
   /// funnels through this one listener via [payload]. It used to call
   /// `navigatorKey.currentState?.pushNamed(payload)` for every payload,
@@ -577,7 +577,7 @@ class CustomAppBarState extends State<CustomAppBar> {
   // anything WelcomeScreen handles, so it never goes near that screen.
   // Confirms explicitly (this erases real, synced data) before wiping
   // local storage and going straight into setup. setup_screen.dart's own
-  // existing anonymous-check at completion already skips the D-130
+  // existing anonymous-check at completion already skips the D-188
   // account-creation screen for a non-anonymous user, so nothing else
   // is needed to honor "they will not be presented with the screen to
   // create an account because they're already signed in."

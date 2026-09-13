@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
-/// D-030/D-032/D-033: identity, held separately from data sync
+/// D-030/D-032/D-188: identity, held separately from data sync
 /// ([SyncService]) so habit check-off (D-031) never depends on this
 /// succeeding.
 ///
@@ -40,7 +40,7 @@ class AuthService {
     }
   }
 
-  /// D-033: upgrade the anonymous account in place via Firebase account
+  /// D-188: upgrade the anonymous account in place via Firebase account
   /// linking. Preserves the existing uid and every document under it — no
   /// data is created, copied, or lost. Throws on failure; callers (the
   /// subscribe flow, the add-a-device flow) decide how to surface that,

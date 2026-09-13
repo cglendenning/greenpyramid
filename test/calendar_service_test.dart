@@ -2,7 +2,7 @@ import 'package:device_calendar_plus/device_calendar_plus.dart' as dc;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/services/calendar_service.dart';
 
-/// D-025 step 7: no live calendar plugin is registered in this test
+/// D-185 step 7: no live calendar plugin is registered in this test
 /// environment (no platform channel), so hasPermission/requestPermission
 /// hit the plugin's MissingPluginException path — this is exactly the
 /// defensive contract under test: a platform failure must never throw past

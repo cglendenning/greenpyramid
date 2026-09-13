@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-154: "whenever a new notification is produced, the preview in the
+/// D-150: "whenever a new notification is produced, the preview in the
 /// notification will be a headline and when you tap the notification, it
 /// will go directly to the newsfeed." notification.dart and settings.dart
 /// own live Firebase/DB/plugin singletons the same way other screens in
@@ -20,7 +20,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// converted to asserting absence — there is nothing left in this area
 /// worth a regression test for.
 void main() {
-  group('D-154: tapping a newsfeed notification opens NewsfeedScreen '
+  group('D-150: tapping a newsfeed notification opens NewsfeedScreen '
       'scrolled to the specific item it was about', () {
     test('notification.dart routes a newsfeed_item structured payload to '
         "NewsfeedScreen's highlightDedupeKey", () {
@@ -41,7 +41,7 @@ void main() {
     });
   });
 
-  group('D-154: the Settings test-notification control behaves exactly '
+  group('D-150: the Settings test-notification control behaves exactly '
       'like a real newsfeed notification', () {
     test('picks a real newsfeed item and schedules it via '
         'scheduleNewsfeedTestNotification, not the old generic message',
@@ -64,7 +64,7 @@ void main() {
     });
   });
 
-  group('D-154: NewsfeedScreen accepts a highlightDedupeKey and loads '
+  group('D-150: NewsfeedScreen accepts a highlightDedupeKey and loads '
       'exactly far enough into the feed to include that item', () {
     test('the constructor takes an optional highlightDedupeKey', () {
       final source =
@@ -89,7 +89,7 @@ void main() {
     });
   });
 
-  group('D-155: the AI-written daily article generates in the background '
+  group('D-150: the AI-written daily article generates in the background '
       'without blocking the instant, on-device feed, and only when the '
       'screen was not opened to focus on a specific notified item', () {
     test('generateArticleIfDue is only called when there is no '

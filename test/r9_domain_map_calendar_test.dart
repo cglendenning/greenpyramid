@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-048/D-049/D-068/D-025 step 7: structural checks for R9's domain map
+/// D-048/D-185/D-068/D-185 step 7: structural checks for R9's domain map
 /// and calendar context, matching this repo's convention for screens gated
 /// behind a live account (council_entry_point_test.dart) — the screens
 /// themselves need Firebase/a real calendar to exercise meaningfully.
@@ -15,13 +15,13 @@ void main() {
     expect(source, contains("'Body', 'Mind', 'People', 'Place'"));
   });
 
-  test('D-049: a new user with no findings sees a real empty state, not an '
+  test('D-185: a new user with no findings sees a real empty state, not an '
       'empty framework', () {
     final source = File('lib/screens/domain_map_screen.dart').readAsStringSync();
     expect(source, contains('Nothing here yet'));
   });
 
-  test('D-049: domain state is derived from accumulated findings, never '
+  test('D-185: domain state is derived from accumulated findings, never '
       'asked of the user directly — no TextField or questionnaire input '
       'exists on this screen', () {
     final source = File('lib/screens/domain_map_screen.dart').readAsStringSync();
@@ -29,7 +29,7 @@ void main() {
     expect(source, contains('queryDomainFindingsByDomain'));
   });
 
-  test('D-049/D-016: the domain map is a paid capability — Settings gates '
+  test('D-185/D-016: the domain map is a paid capability — Settings gates '
       'it through the same entitlement check as the Council', () {
     final source = File('lib/screens/settings.dart').readAsStringSync();
     final domainMapIdx = source.indexOf("'Your domain map'");
@@ -38,7 +38,7 @@ void main() {
     expect(ensureEntitledIdx, greaterThan(-1));
   });
 
-  test('D-025 step 7: calendar access is opt-in, wired into Settings, '
+  test('D-185 step 7: calendar access is opt-in, wired into Settings, '
       'never requested from main.dart', () {
     final settings = File('lib/screens/settings.dart').readAsStringSync();
     expect(settings, contains('CalendarAccessSwitch'));
@@ -46,7 +46,7 @@ void main() {
     expect(main, isNot(contains('requestPermission()')));
   });
 
-  test('D-025 step 7: iOS and Android both declare the calendar usage '
+  test('D-185 step 7: iOS and Android both declare the calendar usage '
       'strings the plugin requires', () {
     final plist = File('ios/Runner/Info.plist').readAsStringSync();
     expect(plist, contains('NSCalendarsUsageDescription'));

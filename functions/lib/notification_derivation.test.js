@@ -86,7 +86,7 @@ test('D-178: injection characters in a first name cannot break out of '
   assert.doesNotMatch(system, /Craig"/);
 });
 
-test('D-036: NOTIFICATION_TOOL requires a title and a body', () => {
+test('D-189: NOTIFICATION_TOOL requires a title and a body', () => {
   assert.deepEqual(Object.keys(NOTIFICATION_TOOL.input_schema.properties).sort(),
     ['body', 'title']);
 });

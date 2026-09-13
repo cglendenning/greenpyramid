@@ -4,10 +4,10 @@ import '../services/db.dart';
 import '../theme/app_colors.dart';
 import '../widgets/radarchart.dart';
 
-/// D-049/D-068: the four domains as a user-facing map — a destination the
+/// D-185/D-068: the four domains as a user-facing map — a destination the
 /// user visits deliberately, never interposed in the daily path. Domain
 /// state is derived entirely from accumulated findings (D-048), never
-/// asked of the user directly (D-049's own acceptance criterion).
+/// asked of the user directly (D-185's own acceptance criterion).
 ///
 /// Disclosed simplification: no scoring formula is specified in the spec
 /// for how findings become an axis value. This uses a simple, defensible

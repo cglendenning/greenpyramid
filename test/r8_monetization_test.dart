@@ -48,7 +48,7 @@ void main() {
   });
 
   test(
-      'D-058/D-014: setup completion requests the device-bound trial and '
+      'D-188/D-014: setup completion requests the device-bound trial and '
       'shows the one-time disclosure before push permission, in that order',
       () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
@@ -141,7 +141,7 @@ void main() {
     // general Council entry point the same way council_category_picker.dart
     // already gates category re-clarification — a second legitimate D-016
     // gate site, not habit tracking or the pyramid gating on entitlement.
-    // newsfeed_screen.dart added for D-168: gates visibility of the
+    // newsfeed_screen.dart added for D-150: gates visibility of the
     // "Generate new analysis" on-demand control — the base newsfeed
     // itself remains ungated (D-150), only this one AI-costing control
     // checks entitlement, the same "one legitimate gate site per real AI
@@ -166,7 +166,7 @@ void main() {
 
   test(
       'D-017: setup\'s free AI exchange is bounded by call count '
-      '(D-072), never by the D-087 spend cap — the two are mutually '
+      '(D-188), never by the D-087 spend cap — the two are mutually '
       'exclusive branches', () {
     final source = File('functions/index.js').readAsStringSync();
     final guardIdx = source.indexOf('async function guardCouncilCall');

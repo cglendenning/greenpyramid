@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-130: structural regression tests, not a full widget pump — this
+/// D-188: structural regression tests, not a full widget pump — this
 /// screen calls FirebaseAnalytics.instance in initState the same way
 /// every other analytics-logging screen in this codebase does
 /// (faq.dart, homescreen.dart, ...), none of which are pumped in a
@@ -12,7 +12,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final source = File('lib/screens/account_creation_screen.dart').readAsStringSync();
 
-  group('D-130: mandatory account creation before the pyramid reveal', () {
+  group('D-188: mandatory account creation before the pyramid reveal', () {
     test('wraps its content in PopScope(canPop: false) — no back gesture, '
         'consistent with D-128\'s mechanism: nothing to go back to once '
         'habits are committed and the Council session has ended', () {
@@ -58,7 +58,7 @@ void main() {
     });
   });
 
-  group('D-130: setup_screen.dart wires AccountCreationScreen before '
+  group('D-188: setup_screen.dart wires AccountCreationScreen before '
       'SetupCompletionScreen', () {
     final setupSource = File('lib/screens/setup_screen.dart').readAsStringSync();
 

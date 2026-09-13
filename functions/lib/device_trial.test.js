@@ -51,7 +51,7 @@ test('D-059: a fresh Android device is granted a 3-day trial and marked '
   assert.equal(expiresAt.getTime() - now.getTime(), TRIAL_DAYS * 24 * 60 * 60 * 1000);
 });
 
-test('D-060/D-064: the device trial marker carries a 24-month ttlAt so '
+test('D-060/D-187: the device trial marker carries a 24-month ttlAt so '
     + 'Firestore purges it — retained, not kept forever', () => {
   const store = new FakeFirestore();
   return grantTrialIfEligible(
@@ -59,7 +59,7 @@ test('D-060/D-064: the device trial marker carries a 24-month ttlAt so '
   ).then(() => {
     const ttlAt = store.data[trialPath('hash1')].ttlAt.toDate();
     assert.equal(ttlAt.getTime() - now.getTime(), DEVICE_TRIAL_RETENTION_DAYS * 24 * 60 * 60 * 1000);
-    assert.equal(DEVICE_TRIAL_RETENTION_DAYS, 730, 'D-064 specifies 24 months');
+    assert.equal(DEVICE_TRIAL_RETENTION_DAYS, 730, 'D-187 specifies 24 months');
   });
 });
 

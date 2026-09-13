@@ -4,14 +4,14 @@ import 'ai_guard.dart';
 import 'council_client.dart';
 import 'db.dart';
 
-/// D-168: see [NewsfeedService.generateArticleOnDemand].
+/// D-150: see [NewsfeedService.generateArticleOnDemand].
 enum OnDemandArticleOutcome { generated, notEntitled, dailyCapReached, failed }
 
 /// D-170: the newsfeed, narrowed. Owner: "I only want #3 and #4. Get rid
 /// of both #1 and #2" — #1 and #2 being streak-milestone and essence-
-/// change cards (D-150/D-154/D-165's original free tier), #3 and #4
-/// being the five static sample cards (D-168) and the AI-written article
-/// (D-155/D-168). The stated reason wasn't a data-accuracy complaint —
+/// change cards (D-150/D-150/D-150's original free tier), #3 and #4
+/// being the five static sample cards (D-150) and the AI-written article
+/// (D-150/D-150). The stated reason wasn't a data-accuracy complaint —
 /// the owner found the jargon itself ("essence card," "streak card")
 /// opaque, and once it was explained plainly, decided they simply don't
 /// want that content in the feed at all. `_generateStreakItems`,
@@ -29,9 +29,9 @@ class NewsfeedService {
   final DatabaseHelper _db;
   final CouncilClient _client;
 
-  // D-168: five fixed, hand-written cards seeded exactly once, the very
+  // D-150: five fixed, hand-written cards seeded exactly once, the very
   // first time the newsfeed has nothing else in it yet — replaces
-  // D-154's two generic "welcome" cards entirely. Each shows what a
+  // D-150's two generic "welcome" cards entirely. Each shows what a
   // real AI-written analysis card looks like (same shape as the actual
   // entitled-only article: a trend-shaped headline, an analytical body)
   // but built from illustrative, non-personal content, never the
@@ -91,7 +91,7 @@ class NewsfeedService {
   /// five sample cards the first time the newsfeed has nothing else in
   /// it yet. Idempotent and safe to call repeatedly (checks the first
   /// sample card's own existence directly, the same self-limiting
-  /// pattern D-158 originally established for the welcome cards this
+  /// pattern D-150 originally established for the welcome cards this
   /// replaced). Streak and essence generation used to run here too —
   /// removed outright, not merely stopped, per the owner's explicit "I
   /// don't want essence cards AT ALL... get rid of both #1 and #2."
@@ -101,7 +101,7 @@ class NewsfeedService {
     }
   }
 
-  // D-168: unlike D-158's welcome cards, these are seeded at "now" with
+  // D-150: unlike D-150's welcome cards, these are seeded at "now" with
   // no artificial backdating — the owner's own choice, since these carry
   // a real subscribe pitch and should age naturally alongside real
   // content rather than being deliberately buried. Spaced one second
@@ -132,13 +132,13 @@ class NewsfeedService {
     return _db.queryNewsfeedItems(limit: limit, offset: offset);
   }
 
-  /// D-154: how far back a specific item sits in the feed's own
+  /// D-150: how far back a specific item sits in the feed's own
   /// newest-first order — how a notification tap knows how much of the
   /// feed to load before it can scroll straight to that item.
   Future<int?> getItemPosition(String dedupeKey) =>
       _db.getNewsfeedItemPosition(dedupeKey);
 
-  /// D-155: a Claude-written "news article" analyzing consistency trends
+  /// D-150: a Claude-written "news article" analyzing consistency trends
   /// across the whole pyramid — owner: "I want you to produce something
   /// through AI that maps to the headline and make it like an analysis
   /// shaped as a news article ... if there is a trend that has emerged
@@ -167,7 +167,7 @@ class NewsfeedService {
     await _generateAndInsertArticle(dedupeKey: dedupeKey);
   }
 
-  /// D-168: the shared generation+insert step behind both the automatic
+  /// D-150: the shared generation+insert step behind both the automatic
   /// daily article and an on-demand one — identical AI call, identical
   /// best-effort swallow of any failure (spend cap, network, a malformed
   /// reply), the only difference between callers is which dedupeKey they
@@ -196,7 +196,7 @@ class NewsfeedService {
     }
   }
 
-  /// D-168: how many on-demand articles a subscriber may generate in one
+  /// D-150: how many on-demand articles a subscriber may generate in one
   /// calendar day, on top of (never instead of) the one automatic daily
   /// article — owner: "I also want subscribed users to be able to
   /// generate a new news item on demand in addition to the news item
@@ -208,7 +208,7 @@ class NewsfeedService {
 
   static String _onDemandKeyPrefix(String today) => 'article-$today-manual-';
 
-  /// D-168: the result of one on-demand generation attempt, specific
+  /// D-150: the result of one on-demand generation attempt, specific
   /// enough for the UI to react correctly — a locked paywall prompt for
   /// [notEntitled], a "come back tomorrow" style message for
   /// [dailyCapReached], vs. [failed]'s generic best-effort miss (spend
@@ -232,7 +232,7 @@ class NewsfeedService {
     return inserted ? OnDemandArticleOutcome.generated : OnDemandArticleOutcome.failed;
   }
 
-  /// D-168: how many on-demand generations are left today — lets the UI
+  /// D-150: how many on-demand generations are left today — lets the UI
   /// show/disable the "Generate new analysis" button without attempting
   /// a generation just to find out it would be refused.
   Future<int> onDemandArticlesRemainingToday() async {
@@ -242,7 +242,7 @@ class NewsfeedService {
     return (onDemandDailyCap - usedToday).clamp(0, onDemandDailyCap);
   }
 
-  /// D-155: 7-day and 30-day completion percentage, current streak, and
+  /// D-150: 7-day and 30-day completion percentage, current streak, and
   /// essence per category — the exact data the news-article prompt
   /// compares to find a trend. Exposed (not private) so it's directly
   /// testable without needing a live AI call.

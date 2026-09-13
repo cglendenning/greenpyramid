@@ -37,11 +37,11 @@ test('D-073: an out-of-range or missing sliderValue falls back to the 0.5 defaul
   assert.equal(biasInstruction('caring', NaN), biasInstruction('caring', 0.5));
 });
 
-test('D-028: buildAdvisorTurnPrompt returns null for an unknown advisorKey', () => {
+test('D-185: buildAdvisorTurnPrompt returns null for an unknown advisorKey', () => {
   assert.equal(buildAdvisorTurnPrompt({ advisorKey: 'nobody' }), null);
 });
 
-test('D-028: the category context (name, tier, prior essence) reaches the '
+test('D-185: the category context (name, tier, prior essence) reaches the '
   + 'user message, not the system prompt', () => {
   const { systemText, userMessage } = buildAdvisorTurnPrompt({
     advisorKey: 'mira',
@@ -53,7 +53,7 @@ test('D-028: the category context (name, tier, prior essence) reaches the '
   assert.doesNotMatch(systemText, /Health/);
 });
 
-test('D-041: the system prompt is identical across calls when sliderValue '
+test('D-185: the system prompt is identical across calls when sliderValue '
   + 'stays at its default — the cacheable stable prefix', () => {
   const first = buildAdvisorTurnPrompt({
     advisorKey: 'kenji',
@@ -105,7 +105,7 @@ test('D-108: with real conversationHistory, the fresh-start framing does '
 
 test('D-108: the fresh-start framing lives in the user message, never the '
   + 'system prompt — the system prompt stays identical regardless of '
-  + 'conversationHistory, preserving D-041\'s caching', () => {
+  + 'conversationHistory, preserving D-185\'s caching', () => {
   const withHistory = buildAdvisorTurnPrompt({
     advisorKey: 'eli',
     categoryContext: { categoryName: 'Health' },
@@ -399,7 +399,7 @@ test('D-095: buildGeneralCouncilTurnPrompt returns null for an unknown '
 
 test('D-095: the pyramid reaches the user message, not the system prompt '
   + '— same cache discipline buildAdvisorTurnPrompt already follows for '
-  + 'categoryContext (D-041)', () => {
+  + 'categoryContext (D-185)', () => {
   const { systemText, userMessage } = buildGeneralCouncilTurnPrompt({
     advisorKey: 'noa',
     pyramidContext: [{ name: 'Health', tier: 'foundational', essence: 'my body carries me' }],
@@ -489,7 +489,7 @@ test('D-100: the general Council prompt instructs confident, unhedged '
 
 test('D-100: nudgeConvergence adds a convergence line to the user message, '
   + 'never the system prompt — a system-prompt change there would defeat '
-  + "D-041's caching every time the gate flips", () => {
+  + "D-185's caching every time the gate flips", () => {
   const withNudge = buildGeneralCouncilTurnPrompt({ advisorKey: 'noa', nudgeConvergence: true });
   const withoutNudge = buildGeneralCouncilTurnPrompt({ advisorKey: 'noa', nudgeConvergence: false });
   assert.match(withNudge.userMessage, /gone on a while/i);
@@ -523,7 +523,7 @@ test('D-125: the general Council prompt carries the same first-turn '
   assert.match(systemText, /must never come at the expense of responding/i);
 });
 
-test('D-028: conversation history is capped to the most recent 30 turns', () => {
+test('D-185: conversation history is capped to the most recent 30 turns', () => {
   const history = Array.from({ length: 40 }, (_, i) => ({ advisor: 'user', text: `turn ${i}` }));
   const { userMessage } = buildAdvisorTurnPrompt({
     advisorKey: 'eli',

@@ -8,14 +8,14 @@ import 'notification.dart';
 
 enum NotificationFallbackAction {
   /// Push is authorized and a token is registered — rely on it; cancel any
-  /// local fallback so the account is never double-notified (D-038).
+  /// local fallback so the account is never double-notified (D-189).
   relyOnPush,
 
   /// D-023: the account is lapsed — static pool, local, tap opens the
   /// paywall. Independent of push authorization.
   lapsedStatic,
 
-  /// D-038: push denied, unavailable, or the token failed to register —
+  /// D-189: push denied, unavailable, or the token failed to register —
   /// schedule local notifications from the most recent server-generated
   /// content, or a static line if none exists yet.
   localFallback,
@@ -36,7 +36,7 @@ NotificationFallbackAction decideNotificationFallback({
   return NotificationFallbackAction.localFallback;
 }
 
-/// D-036/D-038: registers the FCM token for server-generated tailored
+/// D-189/D-189: registers the FCM token for server-generated tailored
 /// notifications, and keeps a local fallback in sync for whenever push
 /// isn't available — permission denied, token registration failed, or the
 /// account is lapsed (D-023's static pool instead). Called once after

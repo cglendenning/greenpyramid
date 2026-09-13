@@ -181,13 +181,13 @@ void main() {
     });
   });
 
-  group('D-086: migration is best-effort, failure is surfaced', () {
-    test('D-086: a healthy open leaves no recorded failure', () async {
+  group('D-187: migration is best-effort, failure is surfaced', () {
+    test('D-187: a healthy open leaves no recorded failure', () async {
       await db.database;
       expect(DatabaseHelper.openFailure, isNull);
     });
 
-    test('D-086: the recovery screen tells the user what to do', () {
+    test('D-187: the recovery screen tells the user what to do', () {
       final src =
           File('lib/screens/database_recovery_screen.dart').readAsStringSync();
       // It must say what happened, what to do, and must not promise recovery.
@@ -197,7 +197,7 @@ void main() {
           reason: 'state the situation, do not apologise');
     });
 
-    test('D-086: startup routes to recovery instead of crashing', () {
+    test('D-187: startup routes to recovery instead of crashing', () {
       final main = File('lib/main.dart').readAsStringSync();
       expect(main.contains('DatabaseRecoveryScreen'), isTrue);
       expect(main.contains('catch'), isTrue,

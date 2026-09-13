@@ -169,7 +169,7 @@ void main() {
 
   test(
       'D-114: generateProgressAnalysis bounds task_log data to '
-      'AiGuard.maxTaskLogRows — D-075\'s same cap on how much task_log '
+      'AiGuard.maxTaskLogRows — D-187\'s same cap on how much task_log '
       'data any AI surface may see, kept to the most recent rows', () async {
     final now = DateTime.now();
     for (var i = 0; i < AiGuard.maxTaskLogRows + 10; i++) {

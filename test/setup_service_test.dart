@@ -103,7 +103,7 @@ class _ThrowingCouncilClient extends _FakeCouncilClient {
 }
 
 /// R6: SetupService orchestrates the single continuous setup conversation
-/// (D-043/D-082) — tested against a real temp SQLite database and a fake
+/// (D-043/D-188) — tested against a real temp SQLite database and a fake
 /// Council backend, no live Firebase project.
 void main() {
   final db = DatabaseHelper.instance;
@@ -147,8 +147,8 @@ void main() {
     );
   }
 
-  group('D-082: exactly one setup session, resumed not duplicated', () {
-    test('D-082: startOrResumeSetup creates the setup session on first call',
+  group('D-188: exactly one setup session, resumed not duplicated', () {
+    test('D-188: startOrResumeSetup creates the setup session on first call',
         () async {
       final svc = buildService();
       final session = await svc.startOrResumeSetup();
@@ -156,8 +156,8 @@ void main() {
     });
 
     test(
-        'D-082/D-098: a second call resumes the same session — regression '
-        'test for a defect found live in D-098\'s own first implementation: '
+        'D-188/D-188: a second call resumes the same session — regression '
+        'test for a defect found live in D-188\'s own first implementation: '
         'the reinstall-wipe check ran on every call while local had no '
         'real pyramid, which is also true for the entire rest of a '
         'genuinely ongoing setup conversation (before categories are '
@@ -171,7 +171,7 @@ void main() {
     });
 
     test(
-        'D-082: startOrResumeSetup refuses a second session once this '
+        'D-188: startOrResumeSetup refuses a second session once this '
         'device already has a real local pyramid and the account already '
         'completed one — regression test for owner feedback: repeated '
         'reinstalls accumulated four Firestore setup sessions because only '
@@ -218,8 +218,8 @@ void main() {
     });
 
     test(
-        'D-096: a non-anonymous (linked) account still restores on '
-        'reinstall — D-098\'s wipe is a safe no-op for it, by '
+        'D-187: a non-anonymous (linked) account still restores on '
+        'reinstall — D-188\'s wipe is a safe no-op for it, by '
         'AccountResetService\'s own internal check', () async {
       final auth = MockFirebaseAuth(
           signedIn: true, mockUser: MockUser(uid: 'u-linked', isAnonymous: false));
@@ -278,7 +278,7 @@ void main() {
     });
 
     test(
-        'D-096: a device with no real local pyramid, and no real cloud '
+        'D-187: a device with no real local pyramid, and no real cloud '
         'data either (a genuinely new account), starts a fresh setup '
         'session as normal — restore finds nothing and gets out of the '
         'way', () async {
@@ -385,7 +385,7 @@ void main() {
     });
   });
 
-  group('D-009/D-028: essence commitment', () {
+  group('D-009/D-185: essence commitment', () {
     test('commitEssence writes a versioned essence for the category',
         () async {
       final svc = buildService();
@@ -421,7 +421,7 @@ void main() {
           containsAll(['biological', 'relational']));
     });
 
-    test('D-074: a session with no impediment named commits nothing — '
+    test('D-188: a session with no impediment named commits nothing — '
         'valid, not an error', () async {
       final svc = buildService();
       final session = await svc.startOrResumeSetup();

@@ -56,7 +56,7 @@ bool interventionShown = false;
 /// off the push's own `data.type` — batch-checkin needs the full habit
 /// list re-encoded as the structured JSON payload
 /// `LocalNotificationService.onSelectNotification` recognizes; a
-/// tailored notification (D-036) needs only the same plain `/` payload
+/// tailored notification (D-189) needs only the same plain `/` payload
 /// every other "go to the pyramid tab" local notification already uses,
 /// since `onNotificationListener` (homescreen.dart) already handles that
 /// string correctly. Null for any other/unknown type — this is a
@@ -76,7 +76,7 @@ String? pushTapPayloadFrom(Map<String, dynamic> data) {
 /// push, keyed off `data.type` — shared by the backgrounded-tap
 /// (`onMessageOpenedApp`) and terminated-launch (`getInitialMessage`)
 /// paths. `batch_checkin` opens [BatchCheckinScreen] directly from the
-/// push's own habit list. `tailored` (D-036) routes through the exact
+/// push's own habit list. `tailored` (D-189) routes through the exact
 /// same `onNotificationClick` stream every local notification already
 /// uses — `/` on that stream already means "switch to the pyramid tab,"
 /// correctly, since `onNotificationListener`'s Phase-6 fix — rather than
@@ -164,7 +164,7 @@ Future<void> main() async {
     debugPrint('App Check setup failed: $e\n$st');
   }
 
-  // D-036: a push arriving while the app is foregrounded isn't
+  // D-189: a push arriving while the app is foregrounded isn't
   // auto-displayed by the OS on most platforms — show it via the same
   // local-notification channel. Registered unconditionally; it simply
   // never fires for an account with no FCM token registered.
@@ -196,7 +196,7 @@ Future<void> main() async {
   // happen from: a tap while backgrounded fires onMessageOpenedApp; a
   // tap that launches the app from terminated fires getInitialMessage
   // instead. handlePushTap dispatches on `data.type`, covering both the
-  // batch-checkin push (D-124) and the tailored notification (D-036,
+  // batch-checkin push (D-124) and the tailored notification (D-189,
   // fixed alongside this).
   try {
     FirebaseMessaging.onMessageOpenedApp.listen(handlePushTap);
@@ -210,7 +210,7 @@ Future<void> main() async {
     debugPrint('Failed to read initial FCM message: $e\n$st');
   }
 
-  // D-086: migration is best-effort. If the database cannot be opened or
+  // D-187: migration is best-effort. If the database cannot be opened or
   // migrated, tell the user plainly rather than crashing on a null database
   // or wiping their data without saying so.
   int defaultCats;
@@ -240,7 +240,7 @@ Future<void> main() async {
 }
 
 /// D-032: create (or resume) the silent anonymous account, then run D-034's
-/// migration / D-075's ongoing sync. Every step logs its own failure rather
+/// migration / D-187's ongoing sync. Every step logs its own failure rather
 /// than throwing past this function — one failed step must not stop the
 /// others, and none of them may ever block habit check-off (D-031).
 Future<void> _bootstrapAccountSync({required bool setupComplete}) async {
@@ -284,8 +284,8 @@ Future<void> _bootstrapAccountSync({required bool setupComplete}) async {
   // local cache still reads whatever it read before that failure, masking
   // the very condition this retry exists to catch. Which grant to retry
   // depends on how this account reached completion: one that has a real
-  // `setup`-typed Council session (D-082) went through the new flow and
-  // gets D-058's normal request retried; one that doesn't is the D-034
+  // `setup`-typed Council session (D-188) went through the new flow and
+  // gets D-188's normal request retried; one that doesn't is the D-034
   // migration cohort (old flow, no Council setup, so no device-bound
   // trial was ever requested) and gets D-071's one-time 30-day grant.
   if (setupComplete && !hasServerEntitlement) {
@@ -298,7 +298,7 @@ Future<void> _bootstrapAccountSync({required bool setupComplete}) async {
     }
   }
 
-  // D-036/D-039: keeps the FCM token and local fallback current on every
+  // D-189/D-189: keeps the FCM token and local fallback current on every
   // launch. Only for accounts that have already been through D-065's
   // permission screen — a brand-new install reaches this for the first
   // time from PushPermissionScreen, right after setup completes, not here.

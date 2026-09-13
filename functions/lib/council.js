@@ -1,10 +1,10 @@
-// Pure logic for the Council backend route (D-027/D-028/D-040), split out
+// Pure logic for the Council backend route (D-027/D-185/D-040), split out
 // from index.js so it's testable without spinning up Express or Firebase
 // Admin. index.js imports these directly; there is no duplicate copy.
 
 // Strips characters that can break out of prompt quote delimiters or inject
 // instructions. Ported verbatim from Kansei's backend/src/utils/sanitize.js
-// (D-026's sibling defense — AiGuard.sanitizeField does the same job
+// (D-188's sibling defense — AiGuard.sanitizeField does the same job
 // client-side; this is the server-side backstop).
 export function sanitize(value, maxLen = 500) {
   if (value == null) return '';
@@ -40,7 +40,7 @@ export const ADVISORS = {
 
 // D-073: no slider UI exists yet — sliderValue is always the caller's
 // default (0.5) in practice, which is what makes each advisor's system
-// prompt fully static and therefore cacheable (D-041). The backend still
+// prompt fully static and therefore cacheable (D-185). The backend still
 // accepts the parameter so adding the control later needs no server change.
 export function biasInstruction(trait, sliderValue) {
   const v = Number(sliderValue);
@@ -52,7 +52,7 @@ export function biasInstruction(trait, sliderValue) {
   return `Express your natural ${trait} character — not overwhelming, but clearly present.`;
 }
 
-// D-028: builds the system prompt (the cacheable stable prefix, D-041) and
+// D-185: builds the system prompt (the cacheable stable prefix, D-185) and
 // the per-turn user message (category context + trailing chat history) for
 // one advisor turn. Exported so index.js's route handler stays a thin
 // HTTP/Anthropic-SDK wrapper around logic that's directly testable here.
@@ -116,7 +116,7 @@ export function buildAdvisorTurnPrompt({
   // what was just said" has nothing to anchor to, and an empty history
   // was previously indistinguishable from "say something in this
   // ongoing conversation." Explicit framing here, not a systemText
-  // change (D-041: the system block must stay a static, cacheable
+  // change (D-185: the system block must stay a static, cacheable
   // per-advisor prefix — this varies per call, so it belongs in the
   // user message, the same discipline D-100's convergence nudge and
   // D-095's pyramid context already follow).
@@ -191,7 +191,7 @@ export function buildGeneralCouncilTurnPrompt({
     // sidestepped in favor of continuing the diagnostic thread. A relevance-
     // based advisor-selection mechanism was considered and rejected: it
     // would require deciding the speaking advisor dynamically, which
-    // conflicts with D-041's caching (this system block is cacheable only
+    // conflicts with D-185's caching (this system block is cacheable only
     // because it's a fixed, known persona per call) for no benefit this
     // instruction doesn't already deliver.
     `If their last message is a direct question about you, the Council, or what kind of help you can ` +
@@ -204,7 +204,7 @@ export function buildGeneralCouncilTurnPrompt({
     `"probably" or "I think" when you're drawing on what they've actually told you.\n` +
     `Never wrap your response in quotation marks.`;
 
-  // D-041: kept out of the system prompt, same discipline buildAdvisorTurnPrompt
+  // D-185: kept out of the system prompt, same discipline buildAdvisorTurnPrompt
   // follows for categoryContext — the pyramid is user-specific, so it belongs
   // in the per-turn user message, not the cacheable stable system prefix.
   const pyramidText = (pyramidContext || []).length > 0
@@ -225,7 +225,7 @@ export function buildGeneralCouncilTurnPrompt({
   // D-100: the push toward a concrete next step lives here, in the
   // per-turn user message, rather than in systemText — a turn-count-gated
   // instruction in the cached system block would vary the "stable" prefix
-  // every time the gate flips, defeating D-041's caching for every advisor.
+  // every time the gate flips, defeating D-185's caching for every advisor.
   // The user message already varies per turn (conversation history), so
   // this costs nothing extra it wasn't already paying.
   const convergenceLine = nudgeConvergence

@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-028: a Council session scoped to one category. CouncilScreen owns
+/// D-185: a Council session scoped to one category. CouncilScreen owns
 /// live service singletons (CouncilService.instance) the same way
 /// GeneralCouncilScreen and SetupScreen do, so — same as those — this is a
 /// source-structure test, not a widget test (see

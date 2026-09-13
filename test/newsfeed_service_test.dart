@@ -19,7 +19,7 @@ class _TempPathProvider extends PathProviderPlatform
   Future<String?> getApplicationDocumentsPath() async => dir;
 }
 
-/// D-155: a fake standing in for the real network call — same
+/// D-150: a fake standing in for the real network call — same
 /// implements-plus-noSuchMethod pattern account_link_service_test.dart's
 /// own fakes already use in this codebase.
 class _FakeCouncilClient implements CouncilClient {
@@ -209,8 +209,8 @@ void main() {
     });
   });
 
-  group('D-168: the five sample cards seed once, at "now," with no '
-      'artificial backdating — replaces D-158\'s welcome-card spacing '
+  group('D-150: the five sample cards seed once, at "now," with no '
+      'artificial backdating — replaces D-150\'s welcome-card spacing '
       'mechanism entirely, since these carry a subscribe pitch and '
       "should age naturally alongside real content rather than being "
       'deliberately buried', () {
@@ -225,7 +225,7 @@ void main() {
     });
 
     test('after a targeted wipe of only type=welcome rows (the retired '
-        "D-158/D-154 card type, deleted by D-168's own migration), the "
+        "D-150/D-150 card type, deleted by D-150's own migration), the "
         'sample cards seed correctly on an account that already has '
         'plenty of real content — not just on a genuinely empty table',
         () async {
@@ -233,7 +233,7 @@ void main() {
       await db.insertCategoryEssence(categoryId: 1, essence: 'One.');
       await db.insertCategoryEssence(categoryId: 1, essence: 'Two.');
       // Simulate an account that still had old welcome rows before the
-      // D-168 migration ran.
+      // D-150 migration ran.
       await db.insertNewsfeedItem(
           type: 'welcome', title: 'old', body: 'old', dedupeKey: 'welcome-1');
       await service.seedSampleCardsIfNeeded();
@@ -251,7 +251,7 @@ void main() {
     });
   });
 
-  group('D-154: no emoji anywhere in generated copy — found live: "do not '
+  group('D-150: no emoji anywhere in generated copy — found live: "do not '
       'use emojis" in the copy used for each new item', () {
     bool containsEmoji(String s) =>
         s.runes.any((r) => r >= 0x1F300 && r <= 0x1FAFF);
@@ -267,7 +267,7 @@ void main() {
     });
   });
 
-  group('D-154: getItemPosition — how far back a specific item sits in '
+  group('D-150: getItemPosition — how far back a specific item sits in '
       "the feed's own order, so a notification tap can load exactly that "
       'far without paging through unrelated history first', () {
     test('the newest item is at position 0; each older one increments',
@@ -290,7 +290,7 @@ void main() {
     });
   });
 
-  group('D-155: the AI-written newsfeed article — owner: "I want you to '
+  group('D-150: the AI-written newsfeed article — owner: "I want you to '
       'produce something through AI that maps to the headline and make '
       'it like an analysis shaped as a news article"', () {
     late _FakeCouncilClient fakeClient;
@@ -397,7 +397,7 @@ void main() {
     });
   });
 
-  group('D-168: on-demand article generation — owner: "I also want '
+  group('D-150: on-demand article generation — owner: "I also want '
       'subscribed users to be able to generate a new news item on '
       'demand in addition to the news item that gets generated '
       'automatically once per day"', () {

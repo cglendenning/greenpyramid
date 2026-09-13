@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import 'ai_guard.dart';
 
-/// D-025 step 7 / D-123: a wrapper around the device calendar, feeding
+/// D-185 step 7 / D-123: a wrapper around the device calendar, feeding
 /// P-8's context-sensitivity (D-037) and, since D-123, writing real
 /// events for scheduled habits — reversing this class's original
 /// read-only design, ported from Kansei's own `calendar_service.dart`

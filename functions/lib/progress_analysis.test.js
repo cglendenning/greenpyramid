@@ -24,7 +24,7 @@ test('D-114: an empty task-log window says so plainly, never invented '
 });
 
 test('D-114: the prompt explicitly forbids inventing a pattern when '
-  + 'there\'s too little data — the same D-074 discipline domain-finding '
+  + 'there\'s too little data — the same D-188 discipline domain-finding '
   + 'derivation already follows for an empty result', () => {
   const { system } = buildProgressAnalysisPrompt({ taskLogs: [] });
   assert.match(system, /too little data/);

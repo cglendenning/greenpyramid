@@ -46,7 +46,7 @@ void main() {
   });
 
   test(
-      'D-154: the settings test notification now uses a real newsfeed '
+      'D-150: the settings test notification now uses a real newsfeed '
       "item's own headline/body, not a generic message — owner: \"the "
       'button to send a test notification [should] behave the same way '
       "that it will have a headline of one of the news items and when "
@@ -76,7 +76,7 @@ void main() {
       'legacy morning/afternoon/evening local notifications on every '
       'build — found live while building this change: they routed to '
       '/morning, /afternoon, /evening, screens D-083 already deleted, and '
-      'ran regardless of push authorization, duplicating the real D-038 '
+      'ran regardless of push authorization, duplicating the real D-189 '
       'fallback push_messaging_service.dart already implements correctly',
       () {
     final source = File('lib/screens/homescreen.dart').readAsStringSync();

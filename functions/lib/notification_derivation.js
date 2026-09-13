@@ -1,4 +1,4 @@
-// D-036/D-037: the scheduled cloud job's generation logic — a tailored
+// D-189/D-037: the scheduled cloud job's generation logic — a tailored
 // push notification synthesized from exactly the enumerated context D-037
 // permits, nothing else.
 import { sanitize } from './council.js';
@@ -22,9 +22,9 @@ export const NOTIFICATION_TOOL = {
 // D-178 to add firstName): exactly this context, nothing else.
 // [categories] is [{name, tier, essence}] (essence null for cat4-cat6
 // without one, D-010). [recentActivity] is the bounded task_log window
-// already synced (D-075). [domainFindings] is [{domain, note}].
+// already synced (D-187). [domainFindings] is [{domain, note}].
 // [calendarContext] is a short pre-summarized string, present only when the
-// user granted calendar access (D-025 step 7) — absent entirely otherwise,
+// user granted calendar access (D-185 step 7) — absent entirely otherwise,
 // never a placeholder. [firstName] lets a notification address the reader
 // by name instead of writing only in the abstract second person.
 export function buildNotificationPrompt({

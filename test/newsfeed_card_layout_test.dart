@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-154: "each card will be maybe half of the screen and mostly text but
+/// D-150: "each card will be maybe half of the screen and mostly text but
 /// one of the images ... arranged in a random layout so that not each
 /// card has the same layout." NewsfeedScreen owns live Firebase/
 /// DatabaseHelper singletons the same way other screens in this class do
@@ -58,7 +58,7 @@ void main() {
     expect(_stableHash('essence-42'), _stableHash('essence-42'));
   });
 
-  test('D-164: on an article card, the date sits directly under the '
+  test('D-150: on an article card, the date sits directly under the '
       '"ANALYSIS" label — not trailing at the bottom of the card, '
       "underneath the body text, the way every other card's date does",
       () {
@@ -72,13 +72,13 @@ void main() {
             'not after the body');
   });
 
-  test('D-164: a non-article card still shows its date at the bottom, '
+  test('D-150: a non-article card still shows its date at the bottom, '
       'after the body — there is no "ANALYSIS" label to place it under',
       () {
     expect(source, contains('if (!isArticle && !isSample && created != null)'));
   });
 
-  group('D-168: sample cards carry a distinct SAMPLE label and a '
+  group('D-150: sample cards carry a distinct SAMPLE label and a '
       'subscribe link — owner: "some designation that these are sample '
       'newsfeed" and "each one of the cards will have a subscribe link '
       'and a short indication that if they subscribe then they are '
@@ -100,7 +100,7 @@ void main() {
     });
 
     test('the card body itself stays non-interactive — the subscribe '
-        'link is its own distinct tappable element, matching D-154\'s '
+        'link is its own distinct tappable element, matching D-150\'s '
         '"we\'re not clicking into each news article" for every other '
         'card type', () {
       expect(source, contains('GestureDetector('));
@@ -124,7 +124,7 @@ void main() {
     });
   });
 
-  group('D-168: the "Generate new analysis" control', () {
+  group('D-150: the "Generate new analysis" control', () {
     test('is hidden entirely for a non-entitled account, not merely '
         'disabled', () {
       expect(source, contains('if (!_entitled) return null;'));

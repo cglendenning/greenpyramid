@@ -1,4 +1,4 @@
-// D-155: the newsfeed's AI-written "news article" — a Claude-authored
+// D-150: the newsfeed's AI-written "news article" — a Claude-authored
 // analysis of consistency trends across the whole pyramid, framed exactly
 // like a real news article (headline + body), not a chat reply. Modeled
 // directly on progress_analysis.js's own prompt-builder shape; the two
@@ -65,7 +65,7 @@ export function buildNewsfeedAnalysisPrompt({ categories = [], firstName = null 
   return { system, user };
 }
 
-// D-157: Claude sometimes wraps its JSON reply in a markdown code fence
+// D-150: Claude sometimes wraps its JSON reply in a markdown code fence
 // despite being told not to — found live, the very first real article a
 // subscribed account generated came back as ```json ... ``` and fell
 // through to the generic "Your Pyramid, Analyzed" fallback with the raw

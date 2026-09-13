@@ -29,22 +29,22 @@ BoardMessage msg(String advisorKey) => BoardMessage(
     );
 
 void main() {
-  group('D-082: session type and category scope are consistent', () {
-    test('D-082: a category session requires a categoryId', () {
+  group('D-188: session type and category scope are consistent', () {
+    test('D-188: a category session requires a categoryId', () {
       expect(
         () => session(type: BoardSessionType.category, categoryId: null),
         throwsA(isA<AssertionError>()),
       );
     });
 
-    test('D-082: a setup session must not carry a categoryId', () {
+    test('D-188: a setup session must not carry a categoryId', () {
       expect(
         () => session(type: BoardSessionType.setup, categoryId: 3),
         throwsA(isA<AssertionError>()),
       );
     });
 
-    test('D-082: a setup session with no categoryId constructs fine', () {
+    test('D-188: a setup session with no categoryId constructs fine', () {
       final s = session(type: BoardSessionType.setup, categoryId: null);
       expect(s.type, BoardSessionType.setup);
     });
@@ -60,7 +60,7 @@ void main() {
     });
   });
 
-  group('D-028: rotation and resume, ported from Kansei\'s BoardSession', () {
+  group('D-185: rotation and resume, ported from Kansei\'s BoardSession', () {
     test('resumeAction: an empty session retries the opening round', () {
       final s = session(type: BoardSessionType.category, categoryId: 1);
       expect(s.resumeAction, BoardResumeAction.retryOpeningRound);

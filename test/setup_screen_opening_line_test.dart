@@ -30,7 +30,7 @@ void main() {
   });
 
   test(
-      'D-045: no review, confirmation, or "does this look right?" step '
+      'D-188: no review, confirmation, or "does this look right?" step '
       'exists anywhere in the setup path', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
     for (final phrase in [
@@ -39,7 +39,7 @@ void main() {
       'Review your'
     ]) {
       expect(source, isNot(contains(phrase)),
-          reason: '"$phrase" would be a review step, forbidden by D-045');
+          reason: '"$phrase" would be a review step, forbidden by D-188');
     }
     // Essences remain editable *later*, from the category detail screen
     // (D-047) — never inside setup itself.

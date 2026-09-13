@@ -7,7 +7,7 @@ import 'council_screen.dart';
 
 /// D-061: Settings' "Revisit a category with the Council" entry point.
 /// Lists the six categories; choosing one opens a Council session scoped to
-/// it (D-028), gated behind D-016's entitlement check.
+/// it (D-185), gated behind D-016's entitlement check.
 ///
 /// D-013: this is the app's first value-triggered paywall placement — the
 /// user has already named the exact next step (deepen this category with

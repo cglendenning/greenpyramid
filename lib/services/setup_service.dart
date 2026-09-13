@@ -12,9 +12,9 @@ import 'model_output_guard.dart';
 import 'package:sqflite/sqflite.dart';
 
 /// D-043: orchestrates the single continuous setup conversation — one
-/// `setup`-typed [BoardSession] (D-082) that produces six tiered
+/// `setup`-typed [BoardSession] (D-188) that produces six tiered
 /// categories (D-051), habits per category (D-052), three foundational
-/// essences (D-009/D-028), and the closing vision statement (D-055). The
+/// essences (D-009/D-185), and the closing vision statement (D-055). The
 /// screen calls these methods and renders state; no SQL or prompt
 /// construction lives in the screen (D-024).
 class SetupService {
@@ -194,7 +194,7 @@ class SetupService {
     }
   }
 
-  /// D-009/D-028: commits a foundational category's captured essence.
+  /// D-009/D-185: commits a foundational category's captured essence.
   Future<void> commitEssence({
     required int categoryId,
     required String essence,
@@ -209,7 +209,7 @@ class SetupService {
 
   /// D-048: derives and commits domain findings for one foundational
   /// category's conversation, at the moment its essence is accepted. Never
-  /// throws past this point — advisory, never required (D-074). D-100:
+  /// throws past this point — advisory, never required (D-188). D-100:
   /// delegates to `CouncilService.recordDomainFindings`, the single shared
   /// implementation (also used by `CouncilScreen` and the general Council
   /// conversation) — this stays only as the setup-specific entry point
@@ -338,7 +338,7 @@ class SetupService {
   Future<void> acknowledgeCompletion(BoardSession session) =>
       _client.completeSetup(session.sessionId);
 
-  /// Pushes everything setup just wrote to Firestore (D-075) in one pass,
+  /// Pushes everything setup just wrote to Firestore (D-187) in one pass,
   /// same as any other profile change — the account bootstrap in
   /// main.dart already guarantees a signed-in uid by the time setup runs.
   Future<void> syncAfterSetup() async {
@@ -348,7 +348,7 @@ class SetupService {
   }
 }
 
-/// D-082/D-096: thrown by [SetupService.startOrResumeSetup] whenever setup
+/// D-188/D-187: thrown by [SetupService.startOrResumeSetup] whenever setup
 /// has nothing left to do for this account — either this device already
 /// had a real local pyramid and the account already completed a setup
 /// session (re-entering setup, e.g. the home screen's menu item, must not

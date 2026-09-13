@@ -24,10 +24,10 @@ import 'trial_disclosure_screen.dart';
 import 'welcome_screen.dart';
 
 /// D-042/D-043: the app's first screen and setup in full — one continuous
-/// Council conversation (D-082's `setup`-typed session), never a
+/// Council conversation (D-188's `setup`-typed session), never a
 /// step-by-step wizard. D-051 (categories) and D-052 (habits) appear as
 /// tappable elements inline in the same scrolling conversation, not
-/// separate screens; D-045 means no review step exists anywhere in this
+/// separate screens; D-188 means no review step exists anywhere in this
 /// file.
 ///
 /// Simplification, disclosed in the spec: D-051 mentions dragging to
@@ -407,7 +407,7 @@ class _SetupScreenState extends State<SetupScreen> {
         await _runMiraTurn();
       }
     } on SetupAlreadyCompleteException {
-      // D-082: this account already has a real local pyramid and already
+      // D-188: this account already has a real local pyramid and already
       // completed a setup session — nothing here to resume or redo.
       // D-112: found live — this silently bounced straight back to the
       // home screen with zero explanation, which read as "Begin flashes
@@ -554,7 +554,7 @@ class _SetupScreenState extends State<SetupScreen> {
     } on SpendLimitException catch (e) {
       setState(() => _error = e.toString());
     } on SetupCallLimitException {
-      // D-072: approaching the bound — close gracefully rather than fail.
+      // D-188: approaching the bound — close gracefully rather than fail.
       final priorCategories = _refinementContext;
       await _proceedFromReadyToBuild(priorCategories);
     } on CouncilClientException catch (e) {
@@ -905,7 +905,7 @@ class _SetupScreenState extends State<SetupScreen> {
     if (!_manual) await _askAboutCurrentFoundational();
   }
 
-  // ── Essences for the three foundational categories (D-009/D-028) ───────
+  // ── Essences for the three foundational categories (D-009/D-185) ───────
 
   Future<void> _acceptEssence(String text) async {
     final session = _session;
@@ -938,7 +938,7 @@ class _SetupScreenState extends State<SetupScreen> {
       _essenceAcknowledged = false;
       // D-109: reverses D-106 — one advisor per category, varying across
       // the three (session.rotationOrder, already shuffled per session,
-      // D-028), not always Mira. D-106's "always Mira" treated advisor
+      // D-185), not always Mira. D-106's "always Mira" treated advisor
       // variety itself as the source of confusion; the owner's live
       // experience of D-105's fix (each category now a clean, bounded
       // exchange) showed the real cause was D-108's context-leak — a
