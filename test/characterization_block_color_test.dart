@@ -17,8 +17,15 @@ void main() {
   const green = Color(0xFF66CC5D);
 
   group('D-019: setColor is a four-band scale', () {
-    test('D-019: a category with no tasks is blue', () {
+    test('D-019: a category with no tasks defined at all is blue', () {
       expect(setColor(-1), blue);
+    });
+
+    test('D-183: a category with tasks defined but none due in the '
+        'current window is green, not blue — owner: "whenever there is '
+        'a category that has no tasks for that day, the default for the '
+        'block should be green"', () {
+      expect(setColor(-2), green);
     });
 
     test('D-019: 0 through 54 is red', () {
@@ -43,9 +50,10 @@ void main() {
       expect(setColor(101), blue);
     });
 
-    test('D-019: exactly four distinct colors across the whole range', () {
+    test('D-019/D-183: exactly four distinct colors across the whole '
+        'range, -2 included', () {
       final distinct = <Color>{};
-      for (var pct = -1; pct <= 101; pct++) {
+      for (var pct = -2; pct <= 101; pct++) {
         distinct.add(setColor(pct));
       }
       expect(distinct.length, 4,

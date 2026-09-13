@@ -1231,6 +1231,20 @@ class DatabaseHelper {
   }
 
   // return -1 if there are no tasks at all for this category.
+  /// D-183: two distinct "nothing to show" cases, two distinct sentinels
+  /// — found live: a category with tasks defined generally, but none
+  /// scheduled/logged within [days] (e.g. a habit that isn't due today),
+  /// used to return `0`, indistinguishable from a genuine 0%-complete
+  /// day. `getTotalPercentage`'s average then dragged down for a
+  /// category with literally nothing to check off — owner: "if I check
+  /// off all of the boxes for every other block it still happens to
+  /// only come out to 83% but it should be 100% because there are no
+  /// other check boxes to check." `-1` (D-019's own original sentinel)
+  /// stays exactly what it was — no tasks defined for this category at
+  /// all, ever. The new `-2` means tasks exist for the category, just
+  /// none in this particular window — genuinely different information a
+  /// caller may want to treat differently (see `setColor`, which now
+  /// colors `-2` green rather than `-1`'s blue).
   Future<int> getCompletionPercentage(String cat, int days) async {
     Database db = await instance.database;
     // First, check if there are any tasks for this category
@@ -1238,7 +1252,7 @@ class DatabaseHelper {
     final taskRes = await db
         .query(taskTable, where: '$columnCategory = ?', whereArgs: [cat]);
     if (taskRes.isEmpty) {
-      return -1; // No tasks defined for this category
+      return -1; // No tasks defined for this category, ever
     }
     final intl.DateFormat formatter = intl.DateFormat('yyyy-MM-dd');
     var fromDate = formatter
@@ -1256,7 +1270,7 @@ class DatabaseHelper {
     var checked = res2.length;
     print('[RADAR][PCT] Checked logs for $cat: $checked');
     if (total == 0) {
-      return 0; // Tasks exist, but no logs in range
+      return -2; // Tasks exist for this category, but none due in this window
     }
     var percentage = ((checked / total) * 100).toInt();
     print('[RADAR][PCT] Percentage for $cat: $percentage');

@@ -379,10 +379,16 @@ class _TaskListState extends State<TaskList> {
                         if (!snapshot.hasData) {
                           return const Center(child: Text(''));
                         } else {
-                          // if there are no tasks at all, getCompletionPercentage()
-                          // will return -1.
+                          // D-183: -1 means no tasks defined at all; -2
+                          // means tasks exist but none were due in this
+                          // 7-day window — neither is a real percentage
+                          // to print.
                           if (snapshot.data == -1) {
                             return const Center(child: Text(''));
+                          } else if (snapshot.data == -2) {
+                            return const Center(
+                                child: Text('No tasks due in the last 7 days.',
+                                    style: TextStyle(color: AppColors.textSecondary)));
                           } else {
                             return Center(
                                 child: Text(
@@ -401,12 +407,18 @@ class _TaskListState extends State<TaskList> {
                                   'Tap "Edit Task List" to add tasks.',
                                   style: TextStyle(color: AppColors.textSecondary)));
                         } else {
-                          // if there are no tasks at all, getCompletionPercentage()
-                          // will return -1.
+                          // D-183: -1 means no tasks defined at all; -2
+                          // means tasks exist but none were due in this
+                          // 30-day window — neither is a real percentage
+                          // to print.
                           if (snapshot.data == -1) {
                             return const Center(
                                 child: Text(
                                     'Tap "Edit Task List" to add tasks.',
+                                    style: TextStyle(color: AppColors.textSecondary)));
+                          } else if (snapshot.data == -2) {
+                            return const Center(
+                                child: Text('No tasks due in the last 30 days.',
                                     style: TextStyle(color: AppColors.textSecondary)));
                           } else {
                             return Center(

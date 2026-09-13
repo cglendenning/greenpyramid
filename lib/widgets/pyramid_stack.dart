@@ -90,11 +90,22 @@ class PyramidStack extends StatelessWidget {
 ///
 /// D-019 protects this function: tiered weighting must not change block
 /// color. Despite eight branches this is effectively a four-band scale
-/// (II-B). A negative [pctComplete] means no tasks are defined.
+/// (II-B).
+///
+/// D-183: two distinct negative sentinels, two distinct colors — a
+/// category with no tasks defined at all (`-1`) is genuinely different
+/// from one with tasks defined but none due in the current window
+/// (`-2`, D-183). The owner's own words: "whenever there is a category
+/// that has no tasks for that day, the default for the block should be
+/// green" — nothing to check off reads as success, not as "not
+/// applicable."
 Color setColor(int pctComplete) {
-  // If there are no tasks, pctComplete should be -1, so return blue
+  if (pctComplete == -2) {
+    return buildColor("#66CC5D"); // green — nothing due in this window
+  }
+  // If there are no tasks defined at all, pctComplete is -1: blue.
   if (pctComplete < 0) {
-    return buildColor("#54B6FF"); // blue for no tasks
+    return buildColor("#54B6FF"); // blue for no tasks ever defined
   }
   if (pctComplete >= 0 && pctComplete < 15) {
     return buildColor("#F96E6E"); // red
