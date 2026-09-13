@@ -136,6 +136,7 @@ void main() {
     expect(findings.docs, isEmpty);
   });
 
+  // D-002-AC-01: retained account content survives cloud restore.
   test('D-075: vision statement and timezone sync into profile/main', () async {
     await db.insertVisionStatement('My body carries me through every challenge.');
     await db.setAccountTimezone('America/Los_Angeles');

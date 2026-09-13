@@ -14,6 +14,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// credential — D-130 only fires *during* setup, never for an account
 /// that predates it.
 void main() {
+  // D-002-AC-02: completed accounts remain in tracking without forced setup.
   final homescreenSource = File('lib/screens/homescreen.dart').readAsStringSync();
 
   group('D-132: a real account is enforced by the time the home screen is '

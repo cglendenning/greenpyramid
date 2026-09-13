@@ -33,6 +33,7 @@ class _TempPathProvider extends PathProviderPlatform with MockPlatformInterfaceM
 /// exception into another test using an equal-looking MockUser — found
 /// live while writing this file.
 void main() {
+  // D-002-AC-03: local check-off remains available through linking failure.
   test(
       'D-130: linking succeeds normally — same uid preserved, no account '
       'switch', () async {
