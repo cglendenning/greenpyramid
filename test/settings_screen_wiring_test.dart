@@ -109,12 +109,27 @@ void main() {
       expect(source, isNot(contains('Permission.notification')));
     });
 
-    test('a denied/off state shows a banner with an "Open Settings" '
-        'action, using the same app-settings: URL scheme the existing '
-        '"Adjust Previews" flow already uses on this screen', () {
+    test('an off state shows a banner whose action requests permission '
+        'directly first — not just a bare "Open Settings" link — since an '
+        'account that completed setup before D-065\'s permission screen '
+        'existed has never called the OS request API at all, so iOS never '
+        'creates a Notifications entry under Settings to open: found live '
+        'via a screenshot showing no Notifications row whatsoever under '
+        'Settings > Green Pyramid', () {
       final source = File('lib/screens/settings.dart').readAsStringSync();
       expect(source, contains('Notifications are off for Green Pyramid'));
+      expect(source, contains('widget.lns.requestPermissions()'));
       expect(source, contains("Uri.parse('app-settings:')"));
+      expect(source, contains('Enable Notifications'));
+    });
+
+    test('requestPermissions() returns whether permission was actually '
+        'granted, so the banner can fall back to opening Settings only '
+        'when it was already asked and declined, not on a first-ever ask',
+        () {
+      final source = File('lib/services/notification.dart').readAsStringSync();
+      expect(source, contains('Future<bool> requestPermissions()'));
+      expect(source, contains('Future<bool> _requestNotificationPermissions()'));
     });
 
     test('the permission state is rechecked on app resume, so returning '

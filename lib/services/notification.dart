@@ -327,7 +327,18 @@ class LocalNotificationService {
   /// settles. D-038: denial degrades nothing and this is never re-asked on
   /// a schedule — callers should not invoke this more than once per
   /// install.
-  Future<void> requestPermissions() => _requestNotificationPermissions();
+  ///
+  /// D-184: also reused from Settings' notification banner for an account
+  /// that completed setup before D-065's screen existed and so has never
+  /// called this at all — found live: on such an account, iOS never
+  /// creates a Notifications entry under Settings > Green Pyramid in the
+  /// first place, because the OS only adds that entry once an app has
+  /// actually invoked the permission-request API. Returns whether
+  /// permission ended up granted, so a caller can tell "just granted it"
+  /// from "already decided (denied) earlier — nothing to (re-)ask, direct
+  /// to Settings instead," which iOS itself distinguishes: calling this
+  /// again after a prior denial returns false immediately with no dialog.
+  Future<bool> requestPermissions() => _requestNotificationPermissions();
 
   /// D-184: the real, current OS authorization state — distinct from
   /// [isTestNotificationPending], which only confirms the plugin
@@ -360,7 +371,7 @@ class LocalNotificationService {
     return true;
   }
 
-  Future<void> _requestNotificationPermissions() async {
+  Future<bool> _requestNotificationPermissions() async {
     try {
       // Platform-specific permission requests
       if (Platform.isAndroid) {
@@ -374,16 +385,6 @@ class LocalNotificationService {
           print('Android notification permission granted: $granted');
         }
 
-        // Check if notifications are enabled
-        final bool? areNotificationsEnabled = await _localNotificationService
-            .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin>()
-            ?.areNotificationsEnabled();
-
-        if (kDebugMode) {
-          print('Android notifications enabled: $areNotificationsEnabled');
-        }
-
         // Request battery optimization exemption (Android only)
         await _requestBatteryOptimizationExemption();
 
@@ -391,6 +392,8 @@ class LocalNotificationService {
         if (kDebugMode) {
           print('USE_EXACT_ALARM permission handled via manifest');
         }
+
+        return granted ?? false;
       } else if (Platform.isIOS) {
         // D-065: initialize() no longer requests permission (see
         // intialize() above) — this is what actually shows the OS dialog.
@@ -402,11 +405,15 @@ class LocalNotificationService {
         if (kDebugMode) {
           print('iOS notification permission granted: $granted');
         }
+
+        return granted ?? false;
       }
+      return true;
     } catch (e) {
       if (kDebugMode) {
         print('Error requesting notification permissions: $e');
       }
+      return false;
     }
   }
 

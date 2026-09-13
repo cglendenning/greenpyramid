@@ -471,6 +471,26 @@ class _TestNotificationButtonState extends State<_TestNotificationButton>
     });
   }
 
+  /// D-184: found live — an account that completed setup before D-065's
+  /// PushPermissionScreen existed has never called the OS permission API
+  /// at all, so iOS never created a Notifications entry under Settings for
+  /// this app in the first place; "Open Settings" alone sent the owner to
+  /// a screen with nothing on it to toggle. Requesting directly handles
+  /// this correctly: iOS shows its real dialog only when the app has never
+  /// been asked, and returns denied immediately with no dialog when it was
+  /// already asked and declined — which is exactly when Settings is the
+  /// right place to send someone instead.
+  Future<void> _enableNotifications() async {
+    final granted = await widget.lns.requestPermissions();
+    if (!mounted) return;
+    if (granted) {
+      await _checkPermission();
+      return;
+    }
+    final uri = Uri.parse('app-settings:');
+    if (await canLaunchUrl(uri)) await launchUrl(uri);
+  }
+
   Future<void> _send() async {
     setState(() => _scheduling = true);
     try {
@@ -518,12 +538,9 @@ class _TestNotificationButtonState extends State<_TestNotificationButton>
                 ),
                 const SizedBox(height: 10),
                 TextButton(
-                  onPressed: () async {
-                    final uri = Uri.parse('app-settings:');
-                    if (await canLaunchUrl(uri)) await launchUrl(uri);
-                  },
+                  onPressed: _enableNotifications,
                   style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                  child: const Text('Open Settings',
+                  child: const Text('Enable Notifications',
                       style: TextStyle(fontFamily: 'Exo2', color: AppColors.brandGreen)),
                 ),
               ],

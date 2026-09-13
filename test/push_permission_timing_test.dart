@@ -15,10 +15,18 @@ void main() {
     expect(source, isNot(contains('requestPermissions')));
   });
 
-  test('D-065: requestPermissions is invoked only from the post-completion '
-      'push permission screen', () {
+  test('D-065/D-184: requestPermissions is invoked only from the '
+      'post-completion push permission screen and Settings\' notification '
+      'banner — no other screen calls it directly. D-184 deliberately adds '
+      'the second call site: an account that completed setup before this '
+      'screen existed has no other path that ever calls it at all, which '
+      'is exactly why iOS never created a Notifications entry for the app '
+      'under Settings on that account (found live, screenshot showing no '
+      'Notifications row under Settings > Green Pyramid) — Settings\' own '
+      "banner is the recovery path for that account, not a new schedule", () {
     final callers = [
       'lib/screens/push_permission_screen.dart',
+      'lib/screens/settings.dart',
     ];
     for (final path in callers) {
       expect(File(path).readAsStringSync(), contains('requestPermissions()'));
