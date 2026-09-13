@@ -45,6 +45,19 @@ class SetupDraftStore {
         conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
+  /// Deletes only the selected in-flight setup session from local and cloud
+  /// storage. Completed account data is never touched by this operation.
+  Future<void> delete(String uid, String sessionId) async {
+    final database = await db.database;
+    await database.delete('setup_drafts', where: 'uid = ?', whereArgs: [uid]);
+    await cloud
+        .collection('users')
+        .doc(uid)
+        .collection('councilSessions')
+        .doc(sessionId)
+        .delete();
+  }
+
   Future<void> publish(String uid, String sessionId) async {
     final payload = await load(uid);
     if (payload == null || payload['session']['sessionId'] != sessionId) return;

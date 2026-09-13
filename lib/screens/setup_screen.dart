@@ -21,6 +21,7 @@ import 'first_name_screen.dart';
 import 'setup_completion_screen.dart';
 import 'push_permission_screen.dart';
 import 'trial_disclosure_screen.dart';
+import 'welcome_screen.dart';
 
 /// D-042/D-043: the app's first screen and setup in full — one continuous
 /// Council conversation (D-082's `setup`-typed session), never a
@@ -286,6 +287,40 @@ class _SetupScreenState extends State<SetupScreen> {
       Navigator.of(context).pushNamedAndRemoveUntil('/setup', (route) => false);
   }
 
+  Future<void> _startOver() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Start over?'),
+        content: const Text(
+            'This will delete everything from this setup session and return you to the beginning.'),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel')),
+          FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Start over')),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    final uid = _setup.auth.currentUid;
+    final sessionId = _session?.sessionId;
+    if (uid == null || sessionId == null) return;
+    try {
+      await _setup.drafts.delete(uid, sessionId);
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+          (route) => false);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _error = 'Could not start over. Please retry.');
+      }
+    }
+  }
+
   Future<void> _manualCompletion() async {
     setState(() {
       _manual = true;
@@ -526,8 +561,7 @@ class _SetupScreenState extends State<SetupScreen> {
       setState(() => _error = e.message);
     } catch (e) {
       if (mounted)
-        setState(() =>
-            _error = 'AI is unavailable. Retry, pause or complete manually.');
+        setState(() => _error = 'AI is unavailable. Retry or start over.');
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -580,8 +614,7 @@ class _SetupScreenState extends State<SetupScreen> {
       setState(() => _error = e.message);
     } catch (e) {
       if (mounted)
-        setState(() =>
-            _error = 'AI is unavailable. Retry, pause or complete manually.');
+        setState(() => _error = 'AI is unavailable. Retry or start over.');
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -632,8 +665,7 @@ class _SetupScreenState extends State<SetupScreen> {
       setState(() => _error = e.message);
     } catch (e) {
       if (mounted)
-        setState(() =>
-            _error = 'AI is unavailable. Retry, pause or complete manually.');
+        setState(() => _error = 'AI is unavailable. Retry or start over.');
     } finally {
       if (mounted) {
         setState(() => _busy = false);
@@ -1209,10 +1241,8 @@ class _SetupScreenState extends State<SetupScreen> {
               Column(
                 children: [
                   Row(children: [
-                    if (!_manual)
-                      TextButton(
-                          onPressed: _manualCompletion,
-                          child: const Text('Complete manually')),
+                    TextButton(
+                        onPressed: _startOver, child: const Text('Start over')),
                     if (_error != null)
                       TextButton(
                           onPressed: _busy ? null : _retryCurrentPhase,

@@ -117,6 +117,11 @@ class _MemoryDrafts extends SetupDraftStore {
 
   @override
   Future<void> publish(String uid, String id) async {}
+
+  @override
+  Future<void> delete(String uid, String sessionId) async {
+    payload = null;
+  }
 }
 
 class _Setup extends SetupService {
@@ -254,7 +259,7 @@ void main() {
     await drafts.save(auth.currentUid, session, state('categories'));
     await drafts.publish(auth.currentUid, session.sessionId);
     await (await db.database).delete('setup_drafts');
-    expect(await drafts.load(auth.currentUid), isNull);
+    expect(await setup.drafts.load(auth.currentUid), isNull);
     await setup.startOrResumeSetup();
     expect(
         (await drafts.load(auth.currentUid))!['state']['phase'], 'categories');
@@ -320,23 +325,15 @@ void main() {
     final tooMany = habits()..['Health'] = ['A', 'B', 'C'];
     expect(SetupService.validateHabits(categories, tooMany), isNotNull);
   });
-  testWidgets(
-      'D-001-AC-03: manual entry is available from opening without a model call',
-      (tester) async {
-    await pump(tester);
-    await tester.tap(find.text('Complete manually'));
-    await tester.pumpAndSettle();
-    expect(find.text('Your vision, in your own words'), findsOneWidget);
-    await tester.tap(find.text('Next'));
-    await tester.pumpAndSettle();
-    // Tier introduction retains its normal orientation before editable empty slots.
-    final next = find.text('Next');
-    await tester.scrollUntilVisible(next, 200,
-        scrollable: find.byType(Scrollable).first);
-    await tester.tap(next);
-    await tester.pumpAndSettle();
-    expect(find.text('Edit'), findsNWidgets(6));
-    expect(client.transcript, isNull);
+  test(
+      'D-001: setup source exposes confirmed start over and no manual completion',
+      () {
+    final source = File('lib/screens/setup_screen.dart').readAsStringSync();
+    expect(source, contains("const Text('Start over')"));
+    expect(source, contains("title: const Text('Start over?')"));
+    expect(source, contains('await _setup.drafts.delete(uid, sessionId)'));
+    expect(source, contains('const WelcomeScreen()'));
+    expect(source, isNot(contains("const Text('Complete manually')")));
   });
   testWidgets(
       'D-001-AC-03: empty explanations advance through all foundational phases',
@@ -395,65 +392,5 @@ void main() {
     expect(find.text('Home'), findsOneWidget);
     expect((await setup.drafts.load(auth.currentUid))!['state']['phase'],
         'finished');
-  });
-  testWidgets(
-      'D-001-AC-03: manual setup completes from opening through home without AI proposals',
-      (tester) async {
-    await pump(tester, link: () async {
-      auth.linked = true;
-      return false;
-    });
-    await tester.tap(find.text('Complete manually'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Next'));
-    await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Next'), 200,
-        scrollable: find.byType(Scrollable).first);
-    await tester.tap(find.text('Next'));
-    await tester.pumpAndSettle();
-    for (var i = 0; i < 6; i++) {
-      final edit = find.text('Edit').at(i);
-      await tester.ensureVisible(edit);
-      await tester.tap(edit);
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField).first, categories[i].name);
-      await tester.enterText(
-          find.byType(TextField).last, 'A meaningful part of my life.');
-      await tester.tap(find.text('Save'));
-      await tester.pumpAndSettle();
-    }
-    await tester.ensureVisible(find.text('Next'));
-    await tester.tap(find.text('Next'));
-    await tester.pumpAndSettle();
-    await tester.ensureVisible(find.text("Let's go deeper"));
-    await tester.tap(find.text("Let's go deeper"));
-    await tester.pumpAndSettle();
-    for (var i = 0; i < 3; i++) {
-      await tester.tap(find.text("That's it — save this"));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Save explanation'));
-      await tester.pumpAndSettle();
-    }
-    for (var i = 0; i < 6; i++) {
-      final add = find.widgetWithText(ActionChip, 'Add').at(i);
-      await tester.ensureVisible(add);
-      await tester.tap(add);
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField),
-          'Practice ${categories[i].name.toLowerCase()}');
-      await tester.tap(find.widgetWithText(TextButton, 'Add'));
-      await tester.pumpAndSettle();
-    }
-    await tester.ensureVisible(find.text('Build my pyramid'));
-    await tester.tap(find.text('Build my pyramid'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Pyramid complete'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Got it'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Enter home'));
-    await tester.pumpAndSettle();
-    expect(find.text('Home'), findsOneWidget);
-    expect(client.transcript, isNull);
   });
 }
