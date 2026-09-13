@@ -10,6 +10,7 @@ import 'package:life_ops/services/council_client.dart';
 import 'package:life_ops/services/council_service.dart';
 import 'package:life_ops/services/db.dart';
 import 'package:life_ops/services/setup_service.dart';
+import 'package:life_ops/services/setup_draft_store.dart';
 import 'package:life_ops/services/sync_service.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -137,6 +138,7 @@ void main() {
     final council = CouncilService(firestore: fakeFirestore, auth: auth, client: sharedClient);
     return SetupService(
       council: council,
+      drafts: SetupDraftStore(db: db, cloud: fakeFirestore),
       db: db,
       client: sharedClient,
       sync: SyncService(firestore: fakeFirestore, db: db),
@@ -181,6 +183,7 @@ void main() {
       final council = CouncilService(firestore: firestore, auth: auth);
       final svc = SetupService(
         council: council,
+        drafts: SetupDraftStore(db: db, cloud: firestore),
         db: db,
         client: _FakeCouncilClient(),
         sync: SyncService(firestore: firestore, db: db),
@@ -203,74 +206,15 @@ void main() {
           throwsA(isA<SetupAlreadyCompleteException>()));
     });
 
-    test(
-        'D-098: an anonymous device with no real local pyramid, whose '
-        'account already has prior cloud data, gets wiped and starts a '
-        'genuinely fresh session — the owner\'s explicit reversal of '
-        'D-096\'s original restore-on-reinstall behavior for anonymous '
-        'accounts: "the only activity that should delete all of that '
-        'data is the act of deleting the application off of their '
-        'phone... this should only ever delete anonymous accounts"',
-        () async {
-      final auth = MockFirebaseAuth(
-          signedIn: true, mockUser: MockUser(uid: 'u-wipe', isAnonymous: true));
+    test('D-001-AC-01: missing local state preserves anonymous cloud content and identity', () async {
       final firestore = FakeFirebaseFirestore();
-      final council = CouncilService(firestore: firestore, auth: auth);
-      final sync = SyncService(firestore: firestore, db: db);
-      final authSvc = AuthService(auth: auth);
-      final accountReset = AccountResetService(firestore: firestore, auth: auth);
-
-      // "First install": complete a setup session with a real pyramid,
-      // then push it to Firestore the same way real setup completion does.
-      final svc1 = SetupService(
-          council: council,
-          db: db,
-          client: _FakeCouncilClient(),
-          sync: sync,
-          auth: authSvc,
-          accountReset: accountReset);
-      final first = await svc1.startOrResumeSetup();
-      await council.endSession(first.sessionId);
-      await svc1.commitCategories(const [
-        CategoryProposal(position: 1, name: 'Health', description: 'my body carries me'),
-        CategoryProposal(position: 2, name: 'Craft'),
-        CategoryProposal(position: 3, name: 'Family'),
-        CategoryProposal(position: 4, name: 'Money'),
-        CategoryProposal(position: 5, name: 'Friendship'),
-        CategoryProposal(position: 6, name: 'Legacy'),
-      ]);
-      await sync.syncAll('u-wipe', setupComplete: true);
-
-      // "Reinstall": a brand-new local database, AND SharedPreferences
-      // reset — both are app-sandboxed local storage genuinely wiped by
-      // a real uninstall, unlike the Keychain-persisted auth credential.
-      final freshDir = await Directory.systemTemp.createTemp('gp_setup_test_wipe');
-      addTearDown(() {
-        if (freshDir.existsSync()) freshDir.deleteSync(recursive: true);
-      });
-      PathProviderPlatform.instance = _TempPathProvider(freshDir.path);
-      SharedPreferences.setMockInitialValues({});
-
-      final svc2 = SetupService(
-          council: council,
-          db: db,
-          client: _FakeCouncilClient(),
-          sync: sync,
-          auth: authSvc,
-          accountReset: accountReset);
-      // Must NOT throw SetupAlreadyCompleteException — a wipe proceeds
-      // straight into a fresh session, it doesn't bounce the user home.
-      final second = await svc2.startOrResumeSetup();
-      expect(second.sessionId, isNot(first.sessionId));
-
-      final profile =
-          await firestore.collection('users').doc('u-wipe').collection('profile').doc('main').get();
-      expect(profile.exists, isFalse,
-          reason: 'the old account\'s cloud data must actually be gone, not merely bypassed');
-
-      final categories = await db.queryCategories();
-      expect(categories.any((c) => c[DatabaseHelper.columnCat] == 'Health'), isFalse,
-          reason: 'nothing should have been restored — wiping and restoring are mutually exclusive');
+      final svc = buildService(firestore: firestore);
+      final first = await svc.startOrResumeSetup();
+      await firestore.collection('users').doc('u1').collection('profile').doc('main').set({'note':'retained'});
+      final second = await svc.startOrResumeSetup();
+      expect(second.sessionId, first.sessionId);
+      expect(svc.auth.currentUid, 'u1');
+      expect((await firestore.collection('users').doc('u1').collection('profile').doc('main').get()).data()?['note'], 'retained');
     });
 
     test(
@@ -287,6 +231,7 @@ void main() {
 
       final svc1 = SetupService(
           council: council,
+          drafts: SetupDraftStore(db: db, cloud: firestore),
           db: db,
           client: _FakeCouncilClient(),
           sync: sync,
@@ -316,6 +261,7 @@ void main() {
 
       final svc2 = SetupService(
           council: council,
+          drafts: SetupDraftStore(db: db, cloud: firestore),
           db: db,
           client: _FakeCouncilClient(),
           sync: sync,
@@ -431,7 +377,7 @@ void main() {
       final session = await svc.startOrResumeSetup();
 
       await svc.proposeHabits(session: session, categoryName: 'Health', essence: null);
-      expect(client.lastMaxAllowedByCategory.last, 3);
+      expect(client.lastMaxAllowedByCategory.last, 2);
 
       await svc.proposeHabits(
           session: session, categoryName: 'Craft', essence: null, maxAllowed: 1);

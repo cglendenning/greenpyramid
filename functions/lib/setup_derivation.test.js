@@ -231,3 +231,10 @@ test('D-118: an empty or missing essences list states plainly that none '
     });
     assert.match(withMissing, /none yet/);
   });
+
+
+test('D-001-AC-02: habit proposals include conversation even without an explanation', () => {
+  const { system, user } = buildDeriveHabitsPrompt({ categoryName: 'Family', essence: '', transcript: [{ advisor: 'user', text: 'I want to read with my children.' }] });
+  assert.ok(user.includes('I want to read with my children.'));
+  assert.ok(system.includes('conversation as the source'));
+});

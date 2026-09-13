@@ -21,17 +21,23 @@ void main() {
     );
   });
 
-  test('D-042: setup carries one action, not a menu — a text field, no '
+  test(
+      'D-042: setup carries one action, not a menu — a text field, no '
       'category picker widget', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
     expect(source, isNot(contains('DropdownButton')));
     expect(source, isNot(contains('preset')));
   });
 
-  test('D-045: no review, confirmation, or "does this look right?" step '
+  test(
+      'D-045: no review, confirmation, or "does this look right?" step '
       'exists anywhere in the setup path', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
-    for (final phrase in ['Does this look right', 'Confirm your', 'Review your']) {
+    for (final phrase in [
+      'Does this look right',
+      'Confirm your',
+      'Review your'
+    ]) {
       expect(source, isNot(contains(phrase)),
           reason: '"$phrase" would be a review step, forbidden by D-045');
     }
@@ -42,7 +48,8 @@ void main() {
 
   test('D-053: none of the six duplicate habit-generator files survive', () {
     for (final n in [1, 2, 3, 4, 5, 6]) {
-      expect(File('lib/screens/setup/tasks/cat${n}tasks.dart').existsSync(), isFalse);
+      expect(File('lib/screens/setup/tasks/cat${n}tasks.dart').existsSync(),
+          isFalse);
     }
     expect(File('lib/screens/setup/tasks/taskdow.dart').existsSync(), isFalse);
     expect(Directory('lib/screens/setup/tasks').existsSync(), isFalse);
@@ -70,7 +77,7 @@ void main() {
     expect(loadEnd, greaterThan(loadStart));
     final loadBody = source.substring(loadStart, loadEnd);
 
-    final signInIndex = loadBody.indexOf('AuthService.instance.signInSilently()');
+    final signInIndex = loadBody.indexOf('_setup.auth.signInSilently()');
     final sessionIndex = loadBody.indexOf('_setup.startOrResumeSetup()');
     expect(signInIndex, greaterThan(-1),
         reason: '_load() must await AuthService.instance.signInSilently() '
@@ -132,14 +139,16 @@ void main() {
   test(
       'D-090: a pause follows Mira\'s closing line before the categories '
       'phase replaces the transcript — same pacing discipline D-042 '
-      'established for the old multi-advisor round, kept for the solo one',
-      () {
+      'established for the old multi-advisor round, kept for the solo one', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
     final roundStart = source.indexOf('Future<void> _runMiraTurn()');
     expect(roundStart, greaterThan(-1));
-    final roundEnd = source.indexOf('\n  Future<BoardSession> _runSetupTurn', roundStart);
+    final roundEnd =
+        source.indexOf('\n  Future<void> _loadCategories', roundStart);
     expect(roundEnd, greaterThan(roundStart));
-    final delays = 'Future.delayed'.allMatches(source.substring(roundStart, roundEnd)).length;
+    final delays = 'Future.delayed'
+        .allMatches(source.substring(roundStart, roundEnd))
+        .length;
     expect(delays, greaterThanOrEqualTo(1),
         reason: 'expected a pause before the categories transition, so '
             'Mira\'s closing line is read, not instantly replaced');
@@ -147,12 +156,12 @@ void main() {
 
   test(
       'D-090: setup is a solo conversation with Mira — no rotation over the '
-      'other three advisors happens inside the opening round anymore',
-      () {
+      'other three advisors happens inside the opening round anymore', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
     final roundStart = source.indexOf('Future<void> _runMiraTurn()');
     expect(roundStart, greaterThan(-1));
-    final roundEnd = source.indexOf('\n  Future<BoardSession> _runSetupTurn', roundStart);
+    final roundEnd =
+        source.indexOf('\n  Future<void> _loadCategories', roundStart);
     final round = source.substring(roundStart, roundEnd);
     expect(round, contains('runMiraSetupTurn'));
     expect(round, isNot(contains('rotationOrder')));
@@ -189,8 +198,8 @@ void main() {
     expect(source, isNot(contains('orElse: () => openPositions.first')));
     expect(source, isNot(contains('orElse: () => tierPositions.first')));
 
-    final moveStart = source.indexOf(
-        'void _moveToTier(int index, List<int> tierPositions)');
+    final moveStart =
+        source.indexOf('void _moveToTier(int index, List<int> tierPositions)');
     expect(moveStart, greaterThan(-1));
     final moveEnd = source.indexOf('\n  void _pickSwapTarget', moveStart);
     expect(moveEnd, greaterThan(moveStart));
@@ -217,7 +226,8 @@ void main() {
     expect(body, contains(r'$label (${list.length}/$capacity)'));
     // A tier that has been emptied by a bad move must still render — it
     // is exactly the state that most needs to be visible, not hidden.
-    expect(body, isNot(contains('if (list.isEmpty) return const SizedBox.shrink()')));
+    expect(body,
+        isNot(contains('if (list.isEmpty) return const SizedBox.shrink()')));
   });
 
   test(
@@ -236,13 +246,13 @@ void main() {
 
   test(
       'D-093: "Not quite right" re-enters the conversation and refines the '
-      'existing categories — it must never discard them and start over',
-      () {
+      'existing categories — it must never discard them and start over', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
 
     final requestStart = source.indexOf('Future<void> _requestRefinement()');
     expect(requestStart, greaterThan(-1));
-    final requestEnd = source.indexOf('\n  Future<void> _runMiraTurn()', requestStart);
+    final requestEnd =
+        source.indexOf('\n  Future<void> _runMiraTurn()', requestStart);
     expect(requestEnd, greaterThan(requestStart));
     final requestBody = source.substring(requestStart, requestEnd);
     expect(requestBody, contains('_Phase.refining'),
@@ -260,13 +270,16 @@ void main() {
     // refining path) — this scan now covers both, since that's where the
     // call moved to.
     final turnStart = source.indexOf('Future<void> _runMiraTurn()');
-    final turnEnd = source.indexOf('\n  Future<BoardSession> _runSetupTurn', turnStart);
+    final turnEnd =
+        source.indexOf('\n  Future<void> _loadCategories', turnStart);
     final turnBody = source.substring(turnStart, turnEnd);
     expect(turnBody, contains('existingCategories: _refinementContext'));
     expect(turnBody, contains('_proceedFromReadyToBuild(priorCategories)'));
 
-    final helperStart = source.indexOf('Future<void> _proceedFromReadyToBuild(');
-    final helperEnd = source.indexOf('\n  Future<void> _deriveOpeningVisionStatement', helperStart);
+    final helperStart =
+        source.indexOf('Future<void> _proceedFromReadyToBuild(');
+    final helperEnd = source.indexOf(
+        '\n  Future<void> _deriveOpeningVisionStatement', helperStart);
     final helperBody = source.substring(helperStart, helperEnd);
     expect(helperBody, contains('existingCategories: priorCategories'));
   });
@@ -277,12 +290,14 @@ void main() {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
     final buildStart = source.indexOf('Widget build(BuildContext context)');
     final buildEnd = source.indexOf('\n  double _progressFor', buildStart);
-    expect(source.substring(buildStart, buildEnd), contains('_phase == _Phase.refining'));
+    expect(source.substring(buildStart, buildEnd),
+        contains('_phase == _Phase.refining'));
 
     final submitStart = source.indexOf('void _onSubmitText()');
     expect(submitStart, greaterThan(-1));
     final submitEnd = source.indexOf('\n}', submitStart);
-    expect(source.substring(submitStart, submitEnd), contains('_phase == _Phase.refining'));
+    expect(source.substring(submitStart, submitEnd),
+        contains('_phase == _Phase.refining'));
   });
 
   test(
@@ -297,7 +312,8 @@ void main() {
     expect(start, greaterThan(-1));
     final end = source.indexOf('\n  // ── Essences', start);
     expect(end, greaterThan(start));
-    expect(source.substring(start, end), contains('_askAboutCurrentFoundational()'));
+    expect(source.substring(start, end),
+        contains('_askAboutCurrentFoundational()'));
   });
 
   test(

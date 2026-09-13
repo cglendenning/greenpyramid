@@ -337,6 +337,7 @@ class CouncilService {
     await _db.runTransaction((tx) async {
       final snap = await tx.get(ref);
       final raw = (snap.data()?['messages'] as List<dynamic>?) ?? [];
+      if (raw.isNotEmpty && raw.last['advisorKey'] == msg.advisorKey && raw.last['text'] == msg.text) return;
       tx.update(ref, {
         'messages': [...raw, msg.toMap()],
         'lastUpdatedAt': Timestamp.fromDate(DateTime.now()),

@@ -10,6 +10,7 @@ import 'package:life_ops/services/notification.dart';
 import "package:timezone/data/latest.dart" as tz show initializeTimeZones;
 import 'package:life_ops/services/db.dart';
 import 'package:life_ops/services/auth_service.dart';
+import 'package:life_ops/services/setup_draft_store.dart';
 import 'package:life_ops/services/sync_service.dart';
 import 'package:flutter/services.dart';
 import 'package:app_install_date/app_install_date.dart';
@@ -218,32 +219,11 @@ Future<void> main() async {
     return;
   }
 
-  // D-137: iOS Keychain survives app deletion even though local SQLite
-  // does not — found live: deleting and reinstalling the app still
-  // resumed the old (anonymous, never-linked) Firebase session, so
-  // `defaultCats == 6` (local storage genuinely fresh) disagreed with
-  // `currentUser != null` (Firebase disagrees). That mismatch landed on
-  // the home screen's D-132 gate instead of the true first screen. Local
-  // storage being empty is the one signal actually guaranteed to reflect
-  // a real reinstall (the OS wipes the app's own sandboxed files, no
-  // Keychain-style survival) — when it disagrees with Firebase, Firebase
-  // is what's stale, so it's what gets corrected: sign out, matching
-  // what local storage already shows, before anything else runs.
-  if (defaultCats == 6 && FirebaseAuth.instance.currentUser != null) {
-    await AuthService.instance.signOut();
-  }
-
-  // D-136: "signed out" is read live from Firebase itself, not from any
-  // app-managed history — sign-out (homescreen.dart, settings.dart)
-  // deliberately leaves `currentUser` null rather than eagerly
-  // re-anonymizing, so this check alone is enough to route a relaunch
-  // after sign-out to WelcomeScreen exactly like a fresh install (both
-  // are, structurally, "no session yet"). `defaultCats == 6` stays as an
-  // independent signal for the case local storage is empty but a session
-  // already exists — the D-137 check above is what keeps that case from
-  // actually happening in practice, but this stays as a second,
-  // independent guarantee rather than relying on the first alone.
-  if (FirebaseAuth.instance.currentUser == null || defaultCats == 6) {
+  // D-001: empty local categories do not invalidate anonymous credentials.
+  // Pending setup must route to its draft even after categories were accepted.
+  final pending = FirebaseAuth.instance.currentUser?.uid;
+  final draft = pending == null ? null : await SetupDraftStore(db: dbHelper).load(pending);
+  if (FirebaseAuth.instance.currentUser == null || defaultCats == 6 || (draft != null && draft['state']['phase'] != 'finished')) {
     routeToGo = '/setup';
   }
   runApp(HomeScreen());
@@ -252,7 +232,7 @@ Future<void> main() async {
   // so it never gates app startup or changes the setup step count (D-007).
   // Not awaited — a failure here is retried on the next launch, never shown
   // to the user (D-032 acceptance criteria).
-  unawaited(_bootstrapAccountSync(setupComplete: defaultCats != 6));
+  unawaited(_bootstrapAccountSync(setupComplete: defaultCats != 6 && (draft == null || draft['state']['phase'] == 'finished')));
 }
 
 /// D-032: create (or resume) the silent anonymous account, then run D-034's

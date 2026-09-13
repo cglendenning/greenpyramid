@@ -1,5 +1,3 @@
-import 'package:shared_preferences/shared_preferences.dart';
-
 import '../models/board_session.dart';
 import 'account_reset_service.dart';
 import 'ai_guard.dart';
@@ -8,6 +6,10 @@ import 'council_client.dart';
 import 'council_service.dart';
 import 'db.dart';
 import 'sync_service.dart';
+import 'setup_draft_store.dart';
+import 'entitlement_service.dart';
+import 'model_output_guard.dart';
+import 'package:sqflite/sqflite.dart';
 
 /// D-043: orchestrates the single continuous setup conversation — one
 /// `setup`-typed [BoardSession] (D-082) that produces six tiered
@@ -22,13 +24,14 @@ class SetupService {
       CouncilClient? client,
       SyncService? sync,
       AuthService? auth,
-      AccountResetService? accountReset})
+      AccountResetService? accountReset,
+      SetupDraftStore? drafts})
       : _council = council ?? CouncilService.instance,
         _db = db ?? DatabaseHelper.instance,
         _client = client ?? CouncilClient.instance,
         _sync = sync ?? SyncService.instance,
         _auth = auth ?? AuthService.instance,
-        _accountReset = accountReset ?? AccountResetService.instance;
+        drafts = drafts ?? SetupDraftStore(db: db);
 
   static final SetupService instance = SetupService();
 
@@ -37,40 +40,19 @@ class SetupService {
   final CouncilClient _client;
   final SyncService _sync;
   final AuthService _auth;
-  final AccountResetService _accountReset;
 
-  static const _reinstallCheckedKey = 'setup_reinstall_check_done';
+  final SetupDraftStore drafts;
+  CouncilService get council => _council;
+  DatabaseHelper get localDb => _db;
+  AuthService get auth => _auth;
+  EntitlementService get entitlement => EntitlementService.instance;
+  Future<Map<String, dynamic>?> loadDraft() async {
+    final uid = _auth.currentUid;
+    return uid == null ? null : drafts.load(uid);
+  }
 
-  /// D-082: exactly one setup session may exist per account, ever — but
-  /// only enforced once this device actually has a real local pyramid to
-  /// protect. Found live: this was never actually checked (only an
-  /// *active* session was), so completing setup and later relaunching
-  /// with no active session in progress just created another one —
-  /// harmless-looking, but the guarantee this directive documents as
-  /// `done` didn't really hold.
-  ///
-  /// D-098: a device with no real local pyramid gets exactly one chance,
-  /// per local install, to be wiped — an anonymous account whose
-  /// (Keychain-persisted) credential already has prior server-side data
-  /// can only be in this state because the app was deleted and
-  /// reinstalled, and the owner's explicit decision is that a deletion
-  /// means the whole account is gone, not that it comes back. Gated by
-  /// [_reinstallCheckedKey] in SharedPreferences — itself app-sandboxed
-  /// local storage, wiped by the same uninstall that wipes the local
-  /// database, so it naturally resets to unchecked on every genuine
-  /// reinstall and nowhere else. **Found live, the hard way**: without
-  /// this gate, the very first version of this method re-ran the check
-  /// on *every* call while local still had no real pyramid — which is
-  /// also true for the entire rest of setup before categories are
-  /// committed — so a second call in the same conversation (an ordinary
-  /// app relaunch mid-setup, not a reinstall at all) found the
-  /// in-progress session itself as "prior data" and wiped the
-  /// conversation the user was still actively having.
-  ///
-  /// D-096: a device with no real local pyramid whose account is *not*
-  /// anonymous (a future linked/paid account) restores instead of being
-  /// wiped — [AccountResetService.wipeIfReinstalled] is a safe no-op for
-  /// those, by its own internal check, not by trusting this caller.
+  /// D-001: resume the account's local draft before requiring cloud access.
+  /// Missing local data never revokes credentials or deletes an anonymous user.
   Future<BoardSession> startOrResumeSetup() async {
     // Checked directly against the category rows themselves — "at least
     // one category isn't a placeholder" — rather than reusing
@@ -79,34 +61,33 @@ class SetupService {
     // hasn't been seeded at all (rows.isEmpty) must read the same as one
     // that's still all placeholders: no real pyramid either way.
     final rows = await _db.queryCategories();
-    final hasRealLocalPyramid =
-        rows.any((r) => !(r[DatabaseHelper.columnCat] as String).startsWith('Empty'));
+    final hasRealLocalPyramid = rows.any(
+        (r) => !(r[DatabaseHelper.columnCat] as String).startsWith('Empty'));
 
-    if (!hasRealLocalPyramid) {
-      final prefs = await SharedPreferences.getInstance();
-      if (!(prefs.getBool(_reinstallCheckedKey) ?? false)) {
-        // This must run — and resolve, one way or another — *before* the
-        // active-session check below, and exactly once: a stale session
-        // from before a genuine reinstall must be wiped away before it's
-        // ever considered for resume, but only on this one occasion, not
-        // on every call for the rest of this local install's lifetime.
-        if (await _accountReset.wipeIfReinstalled()) {
-          // The old identity no longer exists — establish the new one
-          // before anything below touches auth.currentUser.
-          await _auth.signInSilently();
-        } else {
-          final uid = _auth.currentUid;
-          if (uid != null && await _sync.restoreFromCloud(uid)) {
-            await prefs.setBool(_reinstallCheckedKey, true);
-            throw SetupAlreadyCompleteException();
-          }
-        }
-        await prefs.setBool(_reinstallCheckedKey, true);
+    final uid = _auth.currentUid;
+    if (uid != null) {
+      final local = await drafts.load(uid);
+      if (local != null && local['state']['phase'] != 'finished') {
+        return SetupDraftStore.decodeSession(
+            Map<String, dynamic>.from(local['session']));
       }
     }
 
-    final active = await _council.getActiveSession(type: BoardSessionType.setup);
-    if (active != null) return active;
+    final active =
+        await _council.getActiveSession(type: BoardSessionType.setup);
+    if (active != null) {
+      if (uid != null) await drafts.recover(uid, active.sessionId);
+      return active;
+    }
+
+    if (!hasRealLocalPyramid && uid != null && !_auth.isAnonymous) {
+      final completed = await drafts.recoverCompletion(uid);
+      if (completed != null && completed['state']['phase'] != 'finished')
+        return SetupDraftStore.decodeSession(
+            Map<String, dynamic>.from(completed['session']));
+      if (await _sync.restoreFromCloud(uid))
+        throw SetupAlreadyCompleteException();
+    }
 
     if (hasRealLocalPyramid && await _council.hasEverCreatedSetupSession()) {
       throw SetupAlreadyCompleteException();
@@ -140,7 +121,7 @@ class SetupService {
     required String categoryName,
     String? essence,
     List<String> existingHabits = const [],
-    int maxAllowed = 3,
+    int maxAllowed = 2,
   }) {
     return _client.deriveHabits(
       sessionId: session.sessionId,
@@ -186,6 +167,7 @@ class SetupService {
         DatabaseHelper.columnCategoryId: c.position,
         DatabaseHelper.columnCat: c.name,
         DatabaseHelper.columnPosition: c.position,
+        DatabaseHelper.columnCategoryDescription: c.description ?? '',
         DatabaseHelper.columnCategoryCreated: now,
       });
     }
@@ -198,7 +180,8 @@ class SetupService {
     for (final habit in habits) {
       await _db.insertTask({
         DatabaseHelper.columnCategory: categoryName,
-        DatabaseHelper.columnTaskDescription: AiGuard.sanitizeField(habit, maxChars: 120),
+        DatabaseHelper.columnTaskDescription:
+            AiGuard.sanitizeField(habit, maxChars: 120),
         DatabaseHelper.columnSunday: 'true',
         DatabaseHelper.columnMonday: 'true',
         DatabaseHelper.columnTuesday: 'true',
@@ -219,7 +202,7 @@ class SetupService {
   }) {
     return _db.insertCategoryEssence(
       categoryId: categoryId,
-      essence: AiGuard.sanitizeField(essence, maxChars: 400),
+      essence: AiGuard.sanitizeField(essence, maxChars: 1000),
       sourceSessionId: sessionId,
     );
   }
@@ -246,13 +229,122 @@ class SetupService {
         essence: essence,
       );
 
+  static String? validateCategories(List<CategoryProposal> categories) {
+    if (categories.length != 6 ||
+        categories.map((c) => c.position).toSet().length != 6 ||
+        categories.any((c) => c.position < 1 || c.position > 6))
+      return 'Provide six categories in the six pyramid positions.';
+    if (categories.any((c) =>
+        c.name.trim().isEmpty ||
+        c.name.length > 24 ||
+        c.name.trim().split(RegExp(r'\s+')).length > 2 ||
+        looksLikePlaceholder(c.name) ||
+        (c.description ?? '').trim().isEmpty ||
+        (c.description ?? '').length > 140))
+      return 'Use distinct category names of one or two words, up to 24 characters; include a short description up to 140 characters.';
+    if (categories.map((c) => c.name.trim().toLowerCase()).toSet().length != 6)
+      return 'Category names must be distinct.';
+    return null;
+  }
+
+  static String? validateHabits(
+      List<CategoryProposal> categories, Map<String, List<String>> habits) {
+    if (validateCategories(categories) != null)
+      return validateCategories(categories);
+    var count = 0;
+    for (final category in categories) {
+      final rows = habits[category.name] ?? [];
+      if (rows.isEmpty || rows.length > 2)
+        return 'Choose one or two habits for each category.';
+      if (rows.any((h) =>
+              h.trim().isEmpty || h.length > 40 || looksLikePlaceholder(h)) ||
+          rows.map((h) => h.trim().toLowerCase()).toSet().length != rows.length)
+        return 'Habits must be distinct, nonempty and at most 40 characters.';
+      count += rows.length;
+    }
+    return count > 10 ? 'Choose at most ten initial habits.' : null;
+  }
+
+  Future<String?> firstName() async =>
+      (await _db.getAccountState())[DatabaseHelper.columnFirstName] as String?;
+  Future<String?> entitlementState() async =>
+      (await _db.getAccountState())[DatabaseHelper.columnEntitlement]
+          as String?;
+  Future<void> saveManualVision(String vision) =>
+      _db.insertVisionStatement(vision).then((_) {});
+
+  Future<void> materializeDraft(
+      BoardSession session,
+      List<CategoryProposal> categories,
+      List<Map<String, dynamic>> explanations,
+      Map<String, List<String>> habits) async {
+    final invalid = validateHabits(categories, habits);
+    if (invalid != null) throw StateError(invalid);
+    final database = await _db.database;
+    final created = session.createdAt.toIso8601String();
+    await database.transaction((tx) async {
+      for (final c in categories) {
+        await tx.insert(
+            DatabaseHelper.categoryTable,
+            {
+              DatabaseHelper.columnCategoryId: c.position,
+              DatabaseHelper.columnCat: c.name,
+              DatabaseHelper.columnPosition: c.position,
+              DatabaseHelper.columnCategoryCreated: created,
+              DatabaseHelper.columnCategoryDescription: c.description ?? '',
+            },
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final step in explanations) {
+        final text = (step['essence'] ?? '') as String;
+        if (text.length > 1000) throw StateError('Explanation is too long.');
+        final existing = await tx.query(DatabaseHelper.categoryEssenceTable,
+            where: 'categoryid = ?',
+            whereArgs: [step['categoryId']],
+            orderBy: 'id DESC',
+            limit: 1);
+        if (existing.isEmpty || existing.first['essence'] != text)
+          await tx.insert(DatabaseHelper.categoryEssenceTable, {
+            DatabaseHelper.columnEssenceCategoryId: step['categoryId'],
+            DatabaseHelper.columnEssenceText: text,
+            DatabaseHelper.columnEssenceCreated: created,
+            DatabaseHelper.columnEssenceSourceSession: session.sessionId,
+          });
+      }
+      for (final category in categories) {
+        for (final habit in habits[category.name]!) {
+          await tx.insert(
+              DatabaseHelper.taskTable,
+              {
+                DatabaseHelper.columnCategory: category.name,
+                DatabaseHelper.columnTaskDescription: habit,
+                DatabaseHelper.columnSunday: 'true',
+                DatabaseHelper.columnMonday: 'true',
+                DatabaseHelper.columnTuesday: 'true',
+                DatabaseHelper.columnWednesday: 'true',
+                DatabaseHelper.columnThursday: 'true',
+                DatabaseHelper.columnFriday: 'true',
+                DatabaseHelper.columnSaturday: 'true',
+                DatabaseHelper.columnCreateDate: created,
+              },
+              conflictAlgorithm: ConflictAlgorithm.ignore);
+        }
+      }
+    });
+    await syncAfterSetup();
+    await entitlement.requestTrialAfterSetup();
+  }
+
+  Future<void> acknowledgeCompletion(BoardSession session) =>
+      _client.completeSetup(session.sessionId);
+
   /// Pushes everything setup just wrote to Firestore (D-075) in one pass,
   /// same as any other profile change — the account bootstrap in
   /// main.dart already guarantees a signed-in uid by the time setup runs.
   Future<void> syncAfterSetup() async {
-    final uid = AuthService.instance.currentUid;
+    final uid = _auth.currentUid;
     if (uid == null) return;
-    await SyncService.instance.syncAll(uid, setupComplete: true);
+    await _sync.syncAll(uid, setupComplete: true);
   }
 }
 
@@ -265,6 +357,5 @@ class SetupService {
 /// show an error inside a chat UI that has nothing to resume.
 class SetupAlreadyCompleteException implements Exception {
   @override
-  String toString() =>
-      'Setup has already been completed for this account.';
+  String toString() => 'Setup has already been completed for this account.';
 }

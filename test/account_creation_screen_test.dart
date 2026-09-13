@@ -80,7 +80,7 @@ void main() {
     test('an already non-anonymous current user (shouldn\'t happen mid-'
         'setup, but linkWithCredential throws on one) skips straight to '
         'completion instead of showing a screen with nothing to do', () {
-      expect(setupSource, contains('FirebaseAuth.instance.currentUser?.isAnonymous == false'));
+      expect(setupSource, contains('if (_setup.auth.isAnonymous)'));
     });
   });
 

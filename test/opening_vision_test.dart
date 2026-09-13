@@ -88,7 +88,7 @@ void main() {
     final end = source.indexOf('\n    } on AiBudgetException', start);
     expect(end, greaterThan(start));
     final body = source.substring(start, end);
-    expect(body, contains('CouncilService.instance.endSession('));
+    expect(body, contains('_setup.acknowledgeCompletion('));
   });
 
   test(

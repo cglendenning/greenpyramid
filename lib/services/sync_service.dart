@@ -94,6 +94,7 @@ class SyncService {
       return {
         'id': id,
         'cat': row[DatabaseHelper.columnCat],
+        'description': row[DatabaseHelper.columnCategoryDescription] ?? '',
         'position': row[DatabaseHelper.columnPosition],
         'created': row[DatabaseHelper.columnCategoryCreated],
         'activeEssence':
@@ -320,6 +321,7 @@ class SyncService {
       await _db.insertCategory({
         DatabaseHelper.columnCategoryId: id,
         DatabaseHelper.columnCat: c['cat'] as String,
+        DatabaseHelper.columnCategoryDescription: c['description'] as String? ?? '',
         DatabaseHelper.columnPosition: c['position'] as int? ?? 0,
         if (c['created'] != null) DatabaseHelper.columnCategoryCreated: c['created'],
       });

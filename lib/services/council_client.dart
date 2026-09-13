@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
 
 import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -107,6 +108,10 @@ class CouncilClient {
   static const String _baseUrl =
       'https://us-central1-life-ops.cloudfunctions.net/api';
 
+  Future<void> completeSetup(String sessionId) async {
+    await _post('completeSetup', {'requestId': sessionId, 'sessionId': sessionId, 'expectedRevision': 0});
+  }
+
   Future<Map<String, String>> _headers() async {
     String? appCheckToken;
     try {
@@ -136,12 +141,17 @@ class CouncilClient {
     Map<String, dynamic> body, {
     Duration timeout = const Duration(seconds: 30),
   }) async {
+    final payload = Map<String, dynamic>.from(body);
+    if (body['sessionId'] != null && path != 'completeSetup') {
+      final hash = sha256.convert(utf8.encode('$path:${jsonEncode(body)}')).toString();
+      payload['requestId'] = '${hash.substring(0,8)}-${hash.substring(8,12)}-${hash.substring(12,16)}-${hash.substring(16,20)}-${hash.substring(20,32)}';
+    }
     final headers = await _headers();
     http.Response resp;
     try {
       resp = await http
           .post(Uri.parse('$_baseUrl/$path'),
-              headers: headers, body: jsonEncode(body))
+              headers: headers, body: jsonEncode(payload))
           .timeout(timeout);
     } catch (e) {
       debugPrint('CouncilClient: request to $path failed: $e');

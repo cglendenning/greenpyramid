@@ -26,6 +26,7 @@ class AccountCreationScreen extends StatefulWidget {
   // two outcomes call for genuinely different next steps (see setup_screen
   // .dart, homescreen.dart, and welcome_screen.dart's respective onDone).
   final void Function({required bool switchedToExistingAccount}) onDone;
+  final VoidCallback? onPause;
   final String headline;
   final String subhead;
   // Injectable for tests: the real singleton talks to the native Apple/
@@ -35,6 +36,7 @@ class AccountCreationScreen extends StatefulWidget {
   AccountCreationScreen({
     super.key,
     required this.onDone,
+    this.onPause,
     this.headline = 'One last step.',
     this.subhead = "Create your account so your pyramid is never lost — one "
         "tap, nothing to type.",
@@ -99,6 +101,7 @@ class _AccountCreationScreenState extends State<AccountCreationScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (widget.onPause != null) TextButton(onPressed: widget.onPause, child: const Text('Pause setup')),
                 const Spacer(flex: 5),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 28),

@@ -142,7 +142,7 @@ export function habitsTool(maxAllowed) {
 // range ("2-3 sprints") or bundled several conditions into one checkbox
 // ("desk clear, phone silent, distractions removed"), both ambiguous for
 // something meant to be a single yes/no daily check.
-export function buildDeriveHabitsPrompt({ categoryName, essence, existingHabits = [], maxAllowed = 3 }) {
+export function buildDeriveHabitsPrompt({ categoryName, essence, existingHabits = [], maxAllowed = 3, transcript = [] }) {
   const name = sanitize(categoryName, 60);
   const essenceText = essence ? sanitize(essence, 400) : null;
   const blacklist = (existingHabits || []).map((h) => sanitize(h, 80));
@@ -152,6 +152,7 @@ export function buildDeriveHabitsPrompt({ categoryName, essence, existingHabits 
     (essenceText
       ? `Their own words for why this category matters to them: "${essenceText}" — let this shape which habits you propose, not just the category name.`
       : 'No stated reason exists for this category yet — propose from the category name alone, and do not invent one.') +
+    (transcript.length ? ' Use the conversation as the source for personalized actions; do not invent interests or motivations. It takes precedence over a name-only fallback.' : '') +
     ' Each habit is a short, concrete, dailyable action someone can check off in one glance — a hard limit of ' +
     '40 characters, ideally closer to five words, never a full sentence, never a vague aspiration like "be ' +
     'healthier" or "improve relationships". Never a range ("2-3 times") — pick one clear number or drop the ' +
@@ -165,7 +166,7 @@ export function buildDeriveHabitsPrompt({ categoryName, essence, existingHabits 
     `three ways, not three habits; three flavors of studying the same narrow subject is the same trap). If you ` +
     `can't think of habits that are truly distinct from each other, propose fewer, not more — a single ` +
     `well-chosen habit beats three overlapping ones. Call propose_habits with 1 to ${max} habits.`;
-  const user = `Category: '${name}'`;
+  const user = `Category: '${name}'` + (transcript.length ? `\nREFERENCE — USER CONVERSATION:\n${transcriptText(transcript)}` : '');
   return { system, user };
 }
 

@@ -78,7 +78,7 @@ class _FirstNameScreenState extends State<FirstNameScreen> {
                   ),
                   child: TextField(
                     controller: _controller,
-                    maxLength: 40,
+                    maxLength: 100,
                     autofocus: true,
                     textCapitalization: TextCapitalization.words,
                     onChanged: (_) => setState(() {}),

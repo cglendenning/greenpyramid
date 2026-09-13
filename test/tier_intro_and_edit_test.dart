@@ -71,7 +71,7 @@ void main() {
       'name and description together, in one place — extends D-051\'s '
       '"adjust by tapping" and matches D-113\'s "wherever you can edit '
       'the category, you can edit the description too" principle', () {
-    final start = source.indexOf('void _editCategory(int index)');
+    final start = source.indexOf('Future<void> _editCategory(int index)');
     expect(start, greaterThan(-1));
     final end = source.indexOf('\n  }', start);
     expect(end, greaterThan(start));
@@ -89,7 +89,7 @@ void main() {
       'D-117: an edit only flips _categoriesEdited when the name or '
       'description actually changed — reopening Edit and saving without '
       'changing anything must not collapse the buttons', () {
-    final start = source.indexOf('void _editCategory(int index)');
+    final start = source.indexOf('Future<void> _editCategory(int index)');
     final end = source.indexOf('\n  }', start);
     final body = source.substring(start, end);
 

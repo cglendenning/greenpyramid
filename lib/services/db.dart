@@ -2,13 +2,14 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:path/path.dart';
 import 'package:sqflite/sqflite.dart';
+import 'setup_draft_store.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart' as intl;
 import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 22; // 7: R3 schema — position, essences,
+  static const _databaseVersion = 23; // 7: R3 schema — position, essences,
   // domain findings, account state (Part IV). 8: R6/D-062 — discards an
   // incomplete old-flow setup so the user starts the new Council setup
   // fresh instead of landing on a half-populated pyramid with no way back
@@ -183,6 +184,7 @@ class DatabaseHelper {
   static const columnPhone = 'phone';
   static const columnProfilePhotoPath = 'profile_photo_path';
 
+  static const columnCategoryDescription = 'description';
   static const columnCategoryId = 'categoryid';
   static const columnCat = 'cat';
 
@@ -649,6 +651,8 @@ class DatabaseHelper {
     await applyV7Schema(db);
     // D-150: the newsfeed table, shared with the v12 migration.
     await applyV12Schema(db);
+    await SetupDraftStore.createTable(db);
+    await db.execute('ALTER TABLE $categoryTable ADD COLUMN $columnCategoryDescription TEXT NOT NULL DEFAULT \'\'');
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -897,6 +901,10 @@ class DatabaseHelper {
             await db.delete(newsfeedItemTable,
                 where: '$columnNewsfeedType IN (?, ?)',
                 whereArgs: ['streak', 'essence']);
+            break;
+          case 23:
+            await SetupDraftStore.createTable(db);
+            await db.execute('ALTER TABLE $categoryTable ADD COLUMN $columnCategoryDescription TEXT NOT NULL DEFAULT \'\'');
             break;
           case 22:
             // D-178: single account-level personal-info fields, collected

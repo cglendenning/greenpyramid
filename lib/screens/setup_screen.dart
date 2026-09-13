@@ -1,18 +1,14 @@
 import 'dart:async';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../models/board_session.dart';
 import '../services/ai_guard.dart';
-import '../services/auth_service.dart';
 import '../services/council_client.dart';
-import '../services/council_service.dart';
 import '../services/sync_service.dart';
-import '../services/db.dart';
-import '../services/entitlement_service.dart';
 import '../services/resonance_service.dart';
 import '../services/setup_service.dart';
+import '../services/model_output_guard.dart';
 import '../theme/app_colors.dart';
 import '../widgets/advisor.dart';
 import '../widgets/chat_backdrop.dart';
@@ -38,7 +34,16 @@ import 'trial_disclosure_screen.dart';
 /// implements the same outcome (the user can move a category to a
 /// different tier) via tap, not a drag gesture.
 class SetupScreen extends StatefulWidget {
-  const SetupScreen({super.key});
+  final SetupService? setupService;
+  final Future<bool> Function()? linkAccount;
+  final Widget Function(VoidCallback)? completionBuilder;
+  final Widget Function(VoidCallback)? permissionBuilder;
+  const SetupScreen(
+      {super.key,
+      this.setupService,
+      this.linkAccount,
+      this.completionBuilder,
+      this.permissionBuilder});
 
   @override
   State<SetupScreen> createState() => _SetupScreenState();
@@ -68,7 +73,10 @@ enum _Phase {
   essenceIntro,
   essences,
   habits,
-  closing
+  closing,
+  reveal,
+  permission,
+  finished
 }
 
 class _FoundationalStep {
@@ -113,7 +121,7 @@ class _SetupScreenState extends State<SetupScreen> {
   BoardMessage get _openingMessage => BoardMessage(
       advisorKey: 'mira', text: _openingLine, timestamp: DateTime.now());
 
-  final _setup = SetupService.instance;
+  SetupService get _setup => widget.setupService ?? SetupService.instance;
   final _textController = TextEditingController();
   final _scrollController = ScrollController();
 
@@ -165,6 +173,142 @@ class _SetupScreenState extends State<SetupScreen> {
   final Map<String, List<String>> _habitsByCategory = {};
   Set<String> _habitCategoriesLoading = {};
 
+  String? _draftUid;
+  String? _firstName;
+  bool _readyToBuild = false;
+  bool _manual = false;
+  bool _restoring = false;
+  Future<void> _draftWrites = Future.value();
+
+  Map<String, dynamic> _draftState() => {
+        'readyToBuild': _readyToBuild,
+        'firstName': _firstName,
+        'phase': _phase.name,
+        'manual': _manual,
+        'refining': _refining,
+        'tierIntroShown': _tierIntroShown,
+        'categoriesEdited': _categoriesEdited,
+        'vision': _visionStatement,
+        'essenceIndex': _essenceIndex,
+        'essenceStepStartIndex': _essenceStepStartIndex,
+        'essenceAcknowledged': _essenceAcknowledged,
+        'categories': _categories
+            .map((c) => {
+                  'position': c.position,
+                  'name': c.name,
+                  'description': c.description ?? ''
+                })
+            .toList(),
+        'foundational': _foundational
+            .map((f) => {
+                  'categoryId': f.categoryId,
+                  'categoryName': f.categoryName,
+                  'essence': f.capturedEssence
+                })
+            .toList(),
+        'habits': {
+          for (final e in _habitsByCategory.entries) e.key: [...e.value]
+        },
+      };
+
+  void _restoreDraft(Map<String, dynamic> state) {
+    _readyToBuild = state['readyToBuild'] ?? false;
+    _firstName = state['firstName'];
+    _phase = _Phase.values.byName(state['phase']);
+    _manual = state['manual'] ?? false;
+    _refining = state['refining'] ?? false;
+    _tierIntroShown = state['tierIntroShown'] ?? false;
+    _categoriesEdited = state['categoriesEdited'] ?? false;
+    _visionStatement = state['vision'];
+    _essenceIndex = state['essenceIndex'] ?? 0;
+    _essenceStepStartIndex = state['essenceStepStartIndex'];
+    _essenceAcknowledged = state['essenceAcknowledged'] ?? false;
+    _categories = (state['categories'] as List)
+        .map((c) => CategoryProposal(
+            position: c['position'],
+            name: c['name'],
+            description: c['description']))
+        .toList();
+    _foundational = (state['foundational'] as List)
+        .map((f) => _FoundationalStep(
+            categoryId: f['categoryId'], categoryName: f['categoryName'])
+          ..capturedEssence = f['essence'])
+        .toList();
+    _habitsByCategory.clear();
+    (state['habits'] as Map).forEach((key, value) =>
+        _habitsByCategory[key] = (value as List).cast<String>());
+    // Interrupted completion is retried explicitly, using the same draft/session.
+    if (_phase == _Phase.closing) _phase = _Phase.habits;
+  }
+
+  @override
+  void setState(VoidCallback fn) {
+    super.setState(fn);
+    if (_session != null && !_restoring) _queueDraftSave();
+  }
+
+  void _queueDraftSave() {
+    final session = _session;
+    final uid = _draftUid;
+    if (session == null || uid == null) return;
+    final state = _draftState();
+    _draftWrites = _draftWrites
+        .catchError((_) {})
+        .then((_) => _setup.drafts.save(uid, session, state))
+        .then((_) {
+      if (_setup.auth.currentUid == uid)
+        unawaited(_setup.drafts
+            .publish(uid, session.sessionId)
+            .timeout(const Duration(seconds: 5))
+            .catchError((Object e) {
+          debugPrint(
+              'Setup draft remains saved on this device; cloud save will retry.');
+        }));
+    });
+  }
+
+  Future<void> _saveDraft({bool cloud = false}) async {
+    _queueDraftSave();
+    await _draftWrites;
+    if (cloud &&
+        _session != null &&
+        _draftUid != null &&
+        _setup.auth.currentUid == _draftUid) {
+      await _setup.drafts
+          .publish(_draftUid!, _session!.sessionId)
+          .timeout(const Duration(seconds: 20));
+    }
+  }
+
+  Future<void> _pause() async {
+    await _saveDraft();
+    if (mounted)
+      Navigator.of(context).pushNamedAndRemoveUntil('/setup', (route) => false);
+  }
+
+  Future<void> _manualCompletion() async {
+    setState(() {
+      _manual = true;
+      _busy = false;
+      _error = null;
+      _refining = false;
+      if (_phase == _Phase.opening ||
+          _phase == _Phase.openingRound ||
+          _phase == _Phase.refining ||
+          _phase == _Phase.openingVision ||
+          _phase == _Phase.tierIntro) {
+        _phase = _Phase.openingVision;
+        _visionStatement ??= '';
+      } else if (_phase == _Phase.categories && _categories.isEmpty) {
+        _categories = List.generate(
+            6,
+            (i) =>
+                CategoryProposal(position: i + 1, name: '', description: ''));
+      }
+    });
+    await _saveDraft();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -187,8 +331,11 @@ class _SetupScreenState extends State<SetupScreen> {
       // device (no cached Firebase Auth session) this screen would
       // otherwise race that sign-in and lose. signInSilently() is a no-op
       // once already signed in, so awaiting it here is always cheap.
-      await AuthService.instance.signInSilently();
+      await _setup.auth.signInSilently();
+      _draftUid = _setup.auth.currentUid;
       final session = await _setup.startOrResumeSetup();
+      final draft = await _setup.loadDraft();
+      _restoring = true;
       setState(() {
         _session = session;
         // D-062-adjacent resume: an in-progress session with messages
@@ -196,13 +343,32 @@ class _SetupScreenState extends State<SetupScreen> {
         // Mira's fixed line a second time.
         _phase =
             session.messages.isEmpty ? _Phase.opening : _Phase.openingRound;
+        if (draft != null)
+          _restoreDraft(Map<String, dynamic>.from(draft['state']));
       });
+      _restoring = false;
+      await _saveDraft();
+      if (_readyToBuild &&
+          (_phase == _Phase.openingRound || _phase == _Phase.refining)) {
+        await _proceedFromReadyToBuild(_refinementContext);
+        return;
+      }
+      if ((_phase == _Phase.openingVision && _visionStatement == null) ||
+          (_phase == _Phase.categories && _categories.isEmpty)) {
+        _error = 'Setup was interrupted. Retry or complete manually.';
+      }
+      if (_phase == _Phase.reveal || _phase == _Phase.permission) {
+        await _showCompletion();
+        return;
+      }
       // D-090: resuming mid-round only needs a fresh Mira turn if the
       // session was interrupted right after the user's own message —
       // otherwise she has already replied and it's the user's turn next,
       // so there is nothing to run and the text input just waits for them.
       final last = session.messages.isNotEmpty ? session.messages.last : null;
-      if (_phase == _Phase.openingRound && last?.advisorKey == 'user') {
+      if (!_manual &&
+          _phase == _Phase.openingRound &&
+          last?.advisorKey == 'user') {
         await _runMiraTurn();
       }
     } on SetupAlreadyCompleteException {
@@ -240,7 +406,10 @@ class _SetupScreenState extends State<SetupScreen> {
       debugPrint('SetupScreen: failed to start or resume setup: $e\n$st');
       setState(() => _error = 'Could not start setup. Please try again.');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+        await _saveDraft();
+      }
     }
   }
 
@@ -267,9 +436,9 @@ class _SetupScreenState extends State<SetupScreen> {
     _textController.clear();
     setState(() => _busy = true);
     try {
-      await CouncilService.instance.appendUserMessage(session.sessionId, text);
-      final refreshed = await CouncilService.instance
-          .getActiveSession(type: BoardSessionType.setup);
+      await _setup.council.appendUserMessage(session.sessionId, text);
+      final refreshed =
+          await _setup.council.getActiveSession(type: BoardSessionType.setup);
       setState(() {
         _session = refreshed ?? session;
         // D-093: a reply sent while refining stays in the refining phase
@@ -277,11 +446,15 @@ class _SetupScreenState extends State<SetupScreen> {
         // the shared openingRound phase.
         _phase = _refining ? _Phase.refining : _Phase.openingRound;
       });
+      await _saveDraft();
       await _runMiraTurn();
     } on AiBudgetException catch (e) {
       setState(() => _error = e.message);
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+        await _saveDraft();
+      }
     }
   }
 
@@ -295,10 +468,10 @@ class _SetupScreenState extends State<SetupScreen> {
     if (session == null) return;
     setState(() => _busy = true);
     try {
-      await CouncilService.instance
+      await _setup.council
           .appendAdvisorMessage(session.sessionId, 'mira', _refinementPrompt);
-      final refreshed = await CouncilService.instance
-          .getActiveSession(type: BoardSessionType.setup);
+      final refreshed =
+          await _setup.council.getActiveSession(type: BoardSessionType.setup);
       setState(() {
         _session = refreshed ?? session;
         _refining = true;
@@ -306,7 +479,10 @@ class _SetupScreenState extends State<SetupScreen> {
       });
       _scrollToBottom();
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+        await _saveDraft();
+      }
     }
   }
 
@@ -315,9 +491,14 @@ class _SetupScreenState extends State<SetupScreen> {
     if (session == null) return;
     setState(() => _busy = true);
     try {
-      final result = await CouncilService.instance
+      final result = await _setup.council
           .runMiraSetupTurn(session, existingCategories: _refinementContext);
-      setState(() => _session = result.session);
+      if (!mounted || _manual) return;
+      setState(() {
+        _session = result.session;
+        _readyToBuild = result.readyToBuild;
+      });
+      await _saveDraft();
       _scrollToBottom();
       if (result.readyToBuild) {
         // A beat before the categories phase replaces the transcript
@@ -343,23 +524,16 @@ class _SetupScreenState extends State<SetupScreen> {
       await _proceedFromReadyToBuild(priorCategories);
     } on CouncilClientException catch (e) {
       setState(() => _error = e.message);
+    } catch (e) {
+      if (mounted)
+        setState(() =>
+            _error = 'AI is unavailable. Retry, pause or complete manually.');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+        await _saveDraft();
+      }
     }
-  }
-
-  Future<BoardSession> _runSetupTurn(BoardSession session, String advisorKey,
-      {String? categoryName}) async {
-    await CouncilService.instance.runAdvisorTurn(
-      session: session,
-      advisorKey: advisorKey,
-      categoryName: categoryName ?? 'their life',
-    );
-    final refreshed = await CouncilService.instance
-        .getActiveSession(type: BoardSessionType.setup);
-    final updated = refreshed ?? session;
-    if (mounted) setState(() => _session = updated);
-    return updated;
   }
 
   // ── Opening vision statement (D-118) ────────────────────────────────────
@@ -396,6 +570,7 @@ class _SetupScreenState extends State<SetupScreen> {
     setState(() => _busy = true);
     try {
       final vision = await _setup.deriveOpeningVisionStatement(session);
+      if (!mounted || _manual) return;
       setState(() => _visionStatement = vision);
     } on AiBudgetException catch (e) {
       setState(() => _error = e.message);
@@ -403,8 +578,15 @@ class _SetupScreenState extends State<SetupScreen> {
       setState(() => _error = e.toString());
     } on CouncilClientException catch (e) {
       setState(() => _error = e.message);
+    } catch (e) {
+      if (mounted)
+        setState(() =>
+            _error = 'AI is unavailable. Retry, pause or complete manually.');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+        await _saveDraft();
+      }
     }
   }
 
@@ -414,10 +596,17 @@ class _SetupScreenState extends State<SetupScreen> {
   // (or straight to categories if it's already been shown this session,
   // matching D-117's own once-per-session rule).
   Future<void> _proceedFromOpeningVision() async {
+    if (_manual) await _setup.saveManualVision(_visionStatement ?? '');
     setState(() {
       _phase = _tierIntroShown ? _Phase.categories : _Phase.tierIntro;
     });
-    await _loadCategories();
+    if (_manual) {
+      setState(() => _categories = List.generate(6,
+          (i) => CategoryProposal(position: i + 1, name: '', description: '')));
+      await _saveDraft();
+    } else {
+      await _loadCategories();
+    }
   }
 
   // ── Categories (D-051) ──────────────────────────────────────────────────
@@ -430,16 +619,26 @@ class _SetupScreenState extends State<SetupScreen> {
     try {
       final categories = await _setup.proposeCategories(session,
           existingCategories: existingCategories);
+      if (!mounted || _manual) return;
+      final invalid = SetupService.validateCategories(categories);
+      if (invalid != null) throw CouncilClientException(invalid);
       setState(() => _categories = categories);
     } on SetupCallLimitException {
       // Nothing to propose from if the bound is already hit on the very
       // first derivation call — surface plainly rather than looping.
-      setState(
-          () => _error = 'Setup reached its limit. Please try again shortly.');
+      setState(() => _error =
+          'AI setup is unavailable. You can complete your pyramid manually.');
     } on CouncilClientException catch (e) {
       setState(() => _error = e.message);
+    } catch (e) {
+      if (mounted)
+        setState(() =>
+            _error = 'AI is unavailable. Retry, pause or complete manually.');
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+        await _saveDraft();
+      }
     }
   }
 
@@ -452,12 +651,12 @@ class _SetupScreenState extends State<SetupScreen> {
   // comment). maxChars matches this screen's own derivation bounds —
   // 24 for a name (D-051's amendment, "a label, not a clause") and 140
   // for a description (the `deriveCategories` tool schema).
-  void _editCategory(int index) {
+  Future<void> _editCategory(int index) async {
     final original = _categories[index];
     final nameController = TextEditingController(text: original.name);
     final descriptionController =
         TextEditingController(text: original.description ?? '');
-    showDialog<void>(
+    await showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
@@ -497,6 +696,15 @@ class _SetupScreenState extends State<SetupScreen> {
               final description = AiGuard.sanitizeField(
                   descriptionController.text,
                   maxChars: 140);
+              if (name.isEmpty ||
+                  name.split(RegExp(r'\s+')).length > 2 ||
+                  _categories.any((c) =>
+                      c.position != original.position &&
+                      c.name.toLowerCase() == name.toLowerCase())) {
+                ScaffoldMessenger.of(this.context).showSnackBar(const SnackBar(
+                    content: Text('Use a distinct name of one or two words.')));
+                return;
+              }
               if (name.isNotEmpty) {
                 final changed = name != original.name ||
                     description != (original.description ?? '');
@@ -588,8 +796,8 @@ class _SetupScreenState extends State<SetupScreen> {
             ),
             for (final c in candidates)
               ListTile(
-                title:
-                    Text(c.name, style: const TextStyle(color: AppColors.textPrimary)),
+                title: Text(c.name,
+                    style: const TextStyle(color: AppColors.textPrimary)),
                 onTap: () => _swapPositions(index, c.position),
               ),
           ],
@@ -600,7 +808,8 @@ class _SetupScreenState extends State<SetupScreen> {
 
   void _swapPositions(int index, int otherPosition) {
     Navigator.pop(context); // the swap-choice sheet
-    final otherIndex = _categories.indexWhere((c) => c.position == otherPosition);
+    final otherIndex =
+        _categories.indexWhere((c) => c.position == otherPosition);
     final sourcePosition = _categories[index].position;
     setState(() {
       _categories = [..._categories];
@@ -617,9 +826,14 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   Future<void> _confirmCategories() async {
+    final invalid = SetupService.validateCategories(_categories);
+    if (invalid != null) {
+      setState(() => _error = invalid);
+      return;
+    }
     setState(() => _busy = true);
     try {
-      await _setup.commitCategories(_categories);
+      // Categories remain draft content until linked completion.
       _foundational = _categories
           .where((c) => c.position <= 3)
           .map((c) =>
@@ -633,7 +847,10 @@ class _SetupScreenState extends State<SetupScreen> {
       // chat," not entering a new, purposeful step of setup.
       setState(() => _phase = _Phase.essenceIntro);
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+        await _saveDraft();
+      }
     }
   }
 
@@ -652,43 +869,26 @@ class _SetupScreenState extends State<SetupScreen> {
     // the 2nd and 3rd) called this. The first category's screen opened
     // onto whatever was already in the transcript from earlier in setup,
     // never a question actually directed at it.
-    await _askAboutCurrentFoundational();
+    await _saveDraft();
+    if (!_manual) await _askAboutCurrentFoundational();
   }
 
   // ── Essences for the three foundational categories (D-009/D-028) ───────
 
   Future<void> _acceptEssence(String text) async {
-    if (!ResonanceService.qualifies(text)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content: Text('Say a little more before we call that your essence.'),
-      ));
-      return;
-    }
     final session = _session;
     if (session == null) return;
     final step = _foundational[_essenceIndex];
-    await _setup.commitEssence(
-        categoryId: step.categoryId,
-        essence: text,
-        sessionId: session.sessionId);
-    step.capturedEssence = text;
-
-    // D-048: advisory, never required (D-074) — never blocks setup's
-    // progression, which continues immediately below.
-    unawaited(_setup.recordDomainFindings(
-      session: session,
-      categoryId: step.categoryId,
-      categoryName: step.categoryName,
-      essence: text,
-      isSetup: true,
-    ));
+    step.capturedEssence = text.trim();
 
     if (_essenceIndex + 1 < _foundational.length) {
       setState(() => _essenceIndex++);
-      await _askAboutCurrentFoundational();
+      await _saveDraft();
+      if (!_manual) await _askAboutCurrentFoundational();
     } else {
       setState(() => _phase = _Phase.habits);
-      await _loadAllHabits();
+      if (!_manual) await _loadAllHabits();
+      await _saveDraft();
     }
   }
 
@@ -716,7 +916,7 @@ class _SetupScreenState extends State<SetupScreen> {
       // single voice per category (never more than one per category's
       // own exchange — that was never the actual problem) reads as
       // "different personalities," not disjointed.
-      await CouncilService.instance.runAdvisorTurn(
+      await _setup.council.runAdvisorTurn(
         session: session,
         advisorKey:
             session.rotationOrder[_essenceIndex % session.rotationOrder.length],
@@ -726,12 +926,15 @@ class _SetupScreenState extends State<SetupScreen> {
         // for this specific call.
         conversationHistoryOverride: const [],
       );
-      final refreshed = await CouncilService.instance
-          .getActiveSession(type: BoardSessionType.setup);
+      final refreshed =
+          await _setup.council.getActiveSession(type: BoardSessionType.setup);
       setState(() => _session = refreshed ?? session);
       _scrollToBottom();
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+        await _saveDraft();
+      }
     }
   }
 
@@ -742,7 +945,7 @@ class _SetupScreenState extends State<SetupScreen> {
     _textController.clear();
     setState(() => _busy = true);
     try {
-      await CouncilService.instance.appendUserMessage(session.sessionId, text);
+      await _setup.council.appendUserMessage(session.sessionId, text);
       // D-110: a fixed, zero-cost acknowledgment — never a new model
       // call — once the reply actually qualifies, before the "save
       // this" button appears. Found live: the button appearing with no
@@ -751,21 +954,24 @@ class _SetupScreenState extends State<SetupScreen> {
       // actually landed. Fires at most once per category.
       if (!_essenceAcknowledged && ResonanceService.qualifies(text)) {
         _essenceAcknowledged = true;
-        await CouncilService.instance.appendAdvisorMessage(
+        await _setup.council.appendAdvisorMessage(
           session.sessionId,
           session.rotationOrder[_essenceIndex % session.rotationOrder.length],
           _essenceAcknowledgment,
         );
       }
-      final refreshed = await CouncilService.instance
-          .getActiveSession(type: BoardSessionType.setup);
+      final refreshed =
+          await _setup.council.getActiveSession(type: BoardSessionType.setup);
       setState(() => _session = refreshed ?? session);
       // D-105: found live — the "Save this" button (once it earns
       // showing, per _buildEssences' resonance gate above) could land
       // below the fold with nothing scrolling it into view.
       _scrollToBottom();
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+        await _saveDraft();
+      }
     }
   }
 
@@ -781,6 +987,10 @@ class _SetupScreenState extends State<SetupScreen> {
     var totalCommitted = 0;
     for (var i = 0; i < _categories.length; i++) {
       final c = _categories[i];
+      if ((_habitsByCategory[c.name] ?? []).isNotEmpty) {
+        totalCommitted += _habitsByCategory[c.name]!.length;
+        continue;
+      }
       setState(
           () => _habitCategoriesLoading = {..._habitCategoriesLoading, c.name});
       final essence = _foundational
@@ -794,7 +1004,7 @@ class _SetupScreenState extends State<SetupScreen> {
       // allowance) but never exceed it.
       final remainingAfterThis = _categories.length - 1 - i;
       final maxAllowed =
-          (_maxTotalHabits - totalCommitted - remainingAfterThis).clamp(1, 3);
+          (_maxTotalHabits - totalCommitted - remainingAfterThis).clamp(1, 2);
       try {
         final habits = await _setup.proposeHabits(
           session: session,
@@ -802,6 +1012,13 @@ class _SetupScreenState extends State<SetupScreen> {
           essence: essence,
           maxAllowed: maxAllowed,
         );
+        if (!mounted || _manual) return;
+        if (habits.isEmpty ||
+            habits.length > maxAllowed ||
+            habits.any((h) =>
+                h.trim().isEmpty || h.length > 40 || looksLikePlaceholder(h)))
+          throw CouncilClientException(
+              'Invalid habit proposal. Add your own habits.');
         totalCommitted += habits.length;
         setState(() => _habitsByCategory[c.name] = habits);
       } catch (e) {
@@ -828,15 +1045,22 @@ class _SetupScreenState extends State<SetupScreen> {
   /// screen chain (pop-then-push-again visibly re-shows the popped-to
   /// screen for however long the intervening work takes).
   Future<void> _onBuildMyPyramidTapped() async {
-    final account = await DatabaseHelper.instance.getAccountState();
-    final firstName = account[DatabaseHelper.columnFirstName] as String?;
+    final invalid = SetupService.validateHabits(_categories, _habitsByCategory);
+    if (invalid != null) {
+      setState(() => _error = invalid);
+      return;
+    }
+    final firstName = await _setup.firstName();
     if (firstName != null && firstName.isNotEmpty) {
       await _confirmHabitsAndClose();
       return;
     }
     if (!mounted) return;
     await Navigator.of(context).push(MaterialPageRoute(
-      builder: (context) => FirstNameScreen(onDone: _confirmHabitsAndClose),
+      builder: (context) => FirstNameScreen(onDone: () {
+        Navigator.of(context).pop();
+        _confirmHabitsAndClose();
+      }),
     ));
   }
 
@@ -846,79 +1070,62 @@ class _SetupScreenState extends State<SetupScreen> {
       _phase = _Phase.closing;
     });
     try {
-      for (final entry in _habitsByCategory.entries) {
-        await _setup.commitHabits(entry.key, entry.value);
-      }
-      // D-118: the vision statement was already written once, right after
-      // the opening conversation (_deriveOpeningVisionStatement) — this
-      // moment only closes the session out; it no longer generates a
-      // second one. Reversing D-055's original "closing synthesis" — see
-      // deriveOpeningVisionStatement's own doc comment for why.
-      await CouncilService.instance.endSession(_session!.sessionId);
-      await _setup.syncAfterSetup();
-      // D-058: the trial clock starts here, at the pyramid reveal — awaited
-      // before navigating so the D-014 disclosure screen below can show the
-      // real outcome (a device that already consumed its trial lands in
-      // 'lapsed', not 'trialing').
-      await EntitlementService.instance.requestTrialAfterSetup();
-      final account = await DatabaseHelper.instance.getAccountState();
-      final entitlement = account[DatabaseHelper.columnEntitlement] as String?;
-      if (!mounted) return;
-
-      void goToCompletion() {
-        Navigator.of(context).pushReplacement(MaterialPageRoute(
-          builder: (context) => SetupCompletionScreen(
-            onDone: () => Navigator.of(context).pushReplacement(MaterialPageRoute(
-              builder: (context) => TrialDisclosureScreen(
-                entitlement: entitlement,
-                // D-065: push permission is requested here — immediately
-                // after the completion moment settles, before the home
-                // screen, never on first launch.
-                onDone: () =>
-                    Navigator.of(context).pushReplacement(MaterialPageRoute(
-                  builder: (context) => PushPermissionScreen(
-                    onDone: () => Navigator.of(context)
-                        .pushNamedAndRemoveUntil('/', (route) => false),
+      final invalid =
+          SetupService.validateHabits(_categories, _habitsByCategory);
+      if (invalid != null) throw CouncilClientException(invalid);
+      await _saveDraft();
+      _firstName = await _setup.firstName();
+      await _saveDraft();
+      if (_setup.auth.isAnonymous) {
+        if (widget.linkAccount != null) {
+          final existing = await widget.linkAccount!();
+          if (existing)
+            throw CouncilClientException(
+                'Resume the existing account instead of replacing its pyramid.');
+          if (_setup.auth.isAnonymous)
+            throw CouncilClientException('Link your account to finish.');
+        } else {
+          if (!mounted) return;
+          await Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => AccountCreationScreen(
+                    onPause: () {
+                      Navigator.of(context).pop();
+                      _pause();
+                    },
+                    onDone: ({required switchedToExistingAccount}) async {
+                      if (switchedToExistingAccount) {
+                        final uid = _setup.auth.currentUid;
+                        if (uid != null)
+                          await SyncService.instance.restoreFromCloud(uid);
+                        if (mounted)
+                          Navigator.of(context)
+                              .pushNamedAndRemoveUntil('/', (route) => false);
+                        return;
+                      }
+                      Navigator.of(context).pop();
+                      Navigator.of(context).pop();
+                      await _confirmHabitsAndClose();
+                    },
                   ),
-                )),
-              ),
-            )),
-          ),
-        ));
+              settings: const RouteSettings(name: 'setup-account-link')));
+          return;
+        }
       }
-
-      // D-130 (supersedes D-033/Q-28): a real account is now required
-      // here, before the pyramid reveal. Guard against a user somehow
-      // already non-anonymous at this point (shouldn't happen mid-setup,
-      // but linkWithCredential throws if called on one) — skip straight
-      // to completion rather than showing a screen with nothing to do.
-      if (FirebaseAuth.instance.currentUser?.isAnonymous == false) {
-        goToCompletion();
-      } else {
-        Navigator.of(context).pushReplacement(MaterialPageRoute(
-          builder: (context) => AccountCreationScreen(
-            onDone: ({required switchedToExistingAccount}) async {
-              if (!switchedToExistingAccount) {
-                goToCompletion();
-                return;
-              }
-              // D-132: the Apple/Google identity just used already
-              // belongs to a different, real account — the pyramid this
-              // session just built lives under the now-abandoned
-              // anonymous uid, not this one. That real account's own
-              // data (if any) needs restoring instead of showing the
-              // fresh, session-local pyramid as if it were theirs.
-              final uid = FirebaseAuth.instance.currentUser?.uid;
-              if (uid != null) {
-                await SyncService.instance.restoreFromCloud(uid);
-              }
-              if (!context.mounted) return;
-              Navigator.of(context)
-                  .pushNamedAndRemoveUntil('/', (route) => false);
-            },
-          ),
-        ));
-      }
+      await _saveDraft(cloud: true);
+      await _setup.acknowledgeCompletion(_session!);
+      await _setup.materializeDraft(
+          _session!,
+          _categories,
+          _foundational
+              .map((f) => {
+                    'categoryId': f.categoryId,
+                    'essence': f.capturedEssence ?? ''
+                  })
+              .toList(),
+          _habitsByCategory);
+      setState(() => _phase = _Phase.reveal);
+      await _saveDraft();
+      await _showCompletion();
     } on AiBudgetException catch (e) {
       // Found live: this whole method had no catch clause at all — any
       // failure here (most plausibly this one, a client-side rate/day
@@ -949,8 +1156,46 @@ class _SetupScreenState extends State<SetupScreen> {
         _phase = _Phase.habits;
       });
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() => _busy = false);
+        await _saveDraft();
+      }
     }
+  }
+
+  Widget _completionScreen(VoidCallback done) =>
+      widget.completionBuilder?.call(done) ??
+      SetupCompletionScreen(onDone: done);
+  Widget _permissionScreen(VoidCallback done) =>
+      widget.permissionBuilder?.call(done) ??
+      PushPermissionScreen(onDone: done);
+
+  Future<void> _showCompletion() async {
+    final entitlement = await _setup.entitlementState();
+    if (!mounted) return;
+    final navigator = Navigator.of(context);
+    Future<void> permissions() async {
+      _phase = _Phase.permission;
+      await _saveDraft();
+      if (!navigator.mounted) return;
+      navigator.pushReplacement(MaterialPageRoute(
+          builder: (_) => _permissionScreen(() async {
+                _phase = _Phase.finished;
+                await _saveDraft();
+                if (navigator.mounted)
+                  navigator.pushNamedAndRemoveUntil('/', (route) => false);
+              })));
+    }
+
+    if (_phase == _Phase.permission) {
+      await permissions();
+      return;
+    }
+    navigator.pushReplacement(MaterialPageRoute(
+        builder: (_) => _completionScreen(() => navigator.pushReplacement(
+            MaterialPageRoute(
+                builder: (_) => TrialDisclosureScreen(
+                    entitlement: entitlement, onDone: permissions))))));
   }
 
   @override
@@ -963,6 +1208,18 @@ class _SetupScreenState extends State<SetupScreen> {
             children: [
               Column(
                 children: [
+                  Row(children: [
+                    TextButton(
+                        onPressed: _pause, child: const Text('Pause setup')),
+                    if (!_manual)
+                      TextButton(
+                          onPressed: _manualCompletion,
+                          child: const Text('Complete manually')),
+                    if (_error != null)
+                      TextButton(
+                          onPressed: _busy ? null : _retryCurrentPhase,
+                          child: const Text('Retry')),
+                  ]),
                   if (_error != null)
                     Padding(
                       padding: const EdgeInsets.all(12),
@@ -1009,9 +1266,57 @@ class _SetupScreenState extends State<SetupScreen> {
         return 0.35 + 0.3 * (_essenceIndex / 3);
       case _Phase.habits:
         return 0.8;
+      case _Phase.reveal:
+      case _Phase.permission:
+      case _Phase.finished:
       case _Phase.closing:
         return 0.95;
     }
+  }
+
+  Future<void> _retryCurrentPhase() async {
+    setState(() => _error = null);
+    switch (_phase) {
+      case _Phase.openingVision:
+        await _deriveOpeningVisionStatement();
+        break;
+      case _Phase.categories:
+        await _loadCategories(existingCategories: _refinementContext);
+        break;
+      case _Phase.essences:
+        await _askAboutCurrentFoundational();
+        break;
+      case _Phase.habits:
+        await _loadAllHabits();
+        break;
+      default:
+        if (_session == null) {
+          await _load();
+        } else {
+          await _runMiraTurn();
+        }
+    }
+  }
+
+  Future<void> _reviewExplanation(String initial) async {
+    final controller = TextEditingController(text: initial);
+    final accepted = await showDialog<String>(
+        context: context,
+        builder: (context) => AlertDialog(
+              title: const Text('Why this matters to you'),
+              content: TextField(
+                  controller: controller, maxLength: 1000, maxLines: 5),
+              actions: [
+                TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('Cancel')),
+                TextButton(
+                    onPressed: () => Navigator.pop(context, controller.text),
+                    child: const Text('Save explanation'))
+              ],
+            ));
+    controller.dispose();
+    if (accepted != null) await _acceptEssence(accepted);
   }
 
   Widget _buildBody() {
@@ -1054,6 +1359,9 @@ class _SetupScreenState extends State<SetupScreen> {
         return _buildEssences();
       case _Phase.habits:
         return _buildHabits();
+      case _Phase.reveal:
+      case _Phase.permission:
+      case _Phase.finished:
       case _Phase.closing:
         // D-046: this phase covers committing habits, the closing
         // synthesis, syncing, and requesting the trial — "writing your
@@ -1071,7 +1379,8 @@ class _SetupScreenState extends State<SetupScreen> {
   // session.nextAdvisorKey, which reflects a shuffled four-advisor
   // rotationOrder that setup sessions carry but never actually use for
   // these turns.
-  Widget _buildTranscript(List<BoardMessage> messages, {String? typingAdvisorKey}) {
+  Widget _buildTranscript(List<BoardMessage> messages,
+      {String? typingAdvisorKey}) {
     return CouncilTranscript(
       messages: messages,
       scrollController: _scrollController,
@@ -1112,8 +1421,8 @@ class _SetupScreenState extends State<SetupScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('${advisor.name} — ${advisor.title}',
-                      style: OnboardingStyles.buttonLabel
-                          .copyWith(color: AppColors.textPrimary, fontSize: 15)),
+                      style: OnboardingStyles.buttonLabel.copyWith(
+                          color: AppColors.textPrimary, fontSize: 15)),
                   const SizedBox(height: 3),
                   Text(advisor.description,
                       style: const TextStyle(
@@ -1165,7 +1474,8 @@ class _SetupScreenState extends State<SetupScreen> {
             child: ElevatedButton(
               onPressed: _busy ? null : _beginEssenceDeepening,
               style: OnboardingStyles.primaryButton,
-              child: const Text("Let's go deeper", style: OnboardingStyles.buttonLabel),
+              child: const Text("Let's go deeper",
+                  style: OnboardingStyles.buttonLabel),
             ),
           ),
         ],
@@ -1186,6 +1496,21 @@ class _SetupScreenState extends State<SetupScreen> {
   // rather than a bare spinner with no words (compare _buildHabits'
   // equivalent state).
   Widget _buildOpeningVision() {
+    if (_manual)
+      return Padding(
+          padding: const EdgeInsets.all(24),
+          child: ListView(children: [
+            const Text('Your vision, in your own words',
+                style: OnboardingStyles.headline),
+            TextFormField(
+                initialValue: _visionStatement ?? '',
+                maxLength: 4000,
+                maxLines: 5,
+                onChanged: (value) => setState(() => _visionStatement = value)),
+            ElevatedButton(
+                onPressed: _proceedFromOpeningVision,
+                child: const Text('Next')),
+          ]));
     if (_visionStatement == null) {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: 28),
@@ -1202,17 +1527,16 @@ class _SetupScreenState extends State<SetupScreen> {
     }
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: ListView(
         children: [
-          const Spacer(flex: 3),
+          const SizedBox(height: 24),
           const Text('Here is who you are becoming.',
               style: OnboardingStyles.headline),
           const SizedBox(height: 14),
           OnboardingStyles.accentDivider,
           const SizedBox(height: 20),
           Text(_visionStatement!, style: OnboardingStyles.subhead),
-          const Spacer(flex: 4),
+          const SizedBox(height: 28),
           Padding(
             padding: const EdgeInsets.only(bottom: 28),
             child: SizedBox(
@@ -1269,10 +1593,9 @@ class _SetupScreenState extends State<SetupScreen> {
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: ListView(
         children: [
-          const Spacer(flex: 2),
+          const SizedBox(height: 24),
           const Text('Your pyramid has three tiers.',
               style: OnboardingStyles.headline),
           const SizedBox(height: 14),
@@ -1313,7 +1636,7 @@ class _SetupScreenState extends State<SetupScreen> {
             "aren't just labels, they shape how much each habit matters.",
             style: OnboardingStyles.subhead,
           ),
-          const Spacer(flex: 4),
+          const SizedBox(height: 28),
           Padding(
             padding: const EdgeInsets.only(bottom: 28),
             child: SizedBox(
@@ -1340,7 +1663,8 @@ class _SetupScreenState extends State<SetupScreen> {
     if (_categories.isEmpty) {
       return const Center(child: CircularProgressIndicator());
     }
-    Widget tierSection(String label, int capacity, Iterable<CategoryProposal> items) {
+    Widget tierSection(
+        String label, int capacity, Iterable<CategoryProposal> items) {
       final list = items.toList();
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -1503,9 +1827,8 @@ class _SetupScreenState extends State<SetupScreen> {
     // substantial enough, so tapping it immediately bounced with a
     // snackbar. The button now only ever appears once it will actually
     // work.
-    final userMessages = stepMessages
-        .where((m) => m.advisorKey == 'user' && ResonanceService.qualifies(m.text))
-        .toList();
+    final userMessages =
+        stepMessages.where((m) => m.advisorKey == 'user').toList();
     return Column(
       children: [
         Padding(
@@ -1514,25 +1837,28 @@ class _SetupScreenState extends State<SetupScreen> {
               'Going deeper: ${step.categoryName} (${_essenceIndex + 1} of 3)',
               style: const TextStyle(color: AppColors.textSecondary)),
         ),
-        Expanded(child: _buildTranscript(
+        Expanded(
+            child: _buildTranscript(
           stepMessages,
           // D-109: matches _askAboutCurrentFoundational's per-category
           // rotation pick, not a hardcoded 'mira'.
           typingAdvisorKey: (_busy && _session != null)
-              ? _session!.rotationOrder[_essenceIndex % _session!.rotationOrder.length]
+              ? _session!
+                  .rotationOrder[_essenceIndex % _session!.rotationOrder.length]
               : null,
         )),
-        if (userMessages.isNotEmpty)
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () => _acceptEssence(userMessages.last.text),
-                child: const Text("That's it — save this"),
-              ),
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => _reviewExplanation(userMessages.isEmpty
+                  ? (_textController.text.trim())
+                  : userMessages.last.text),
+              child: const Text("That's it — save this"),
             ),
           ),
+        ),
       ],
     );
   }
@@ -1555,10 +1881,11 @@ class _SetupScreenState extends State<SetupScreen> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
           TextButton(
             onPressed: () {
-              final text = AiGuard.sanitizeField(controller.text, maxChars: 60);
+              final text = AiGuard.sanitizeField(controller.text, maxChars: 40);
               if (text.isNotEmpty) {
                 setState(() {
                   _habitsByCategory[categoryName] = [
@@ -1591,12 +1918,21 @@ class _SetupScreenState extends State<SetupScreen> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
           TextButton(
             onPressed: () {
-              final text = AiGuard.sanitizeField(controller.text, maxChars: 60);
+              final text = AiGuard.sanitizeField(controller.text, maxChars: 40);
               if (text.isNotEmpty) {
                 setState(() {
+                  if ((_habitsByCategory[categoryName]?.length ?? 0) >= 2 ||
+                      _habitsByCategory.values
+                              .fold<int>(0, (n, hs) => n + hs.length) >=
+                          10) {
+                    _error =
+                        'Choose one or two habits per category, at most ten total.';
+                    return;
+                  }
                   _habitsByCategory[categoryName] = [
                     ...?_habitsByCategory[categoryName],
                     text,
@@ -1664,7 +2000,8 @@ class _SetupScreenState extends State<SetupScreen> {
                         label: Text(h,
                             overflow: TextOverflow.ellipsis, maxLines: 1),
                         backgroundColor: AppColors.surfaceHigh,
-                        labelStyle: const TextStyle(color: AppColors.textPrimary),
+                        labelStyle:
+                            const TextStyle(color: AppColors.textPrimary),
                         // The auto-generated ones are a starting point, not
                         // the final word: tap to change the wording, the x
                         // to drop it entirely.

@@ -23,6 +23,8 @@ class _TempPathProvider extends PathProviderPlatform
 /// present, the same as a real device would.
 Future<void> _createV12SchemaWithEssence(Database db) async {
   await DatabaseHelper.applyV12Schema(db);
+  await db.execute(
+      'CREATE TABLE IF NOT EXISTS category (id INTEGER PRIMARY KEY, cat TEXT, position INTEGER, created TEXT)');
   await db.execute('CREATE TABLE IF NOT EXISTS category_essence ('
       'id INTEGER PRIMARY KEY AUTOINCREMENT, '
       'categoryid INTEGER NOT NULL, '
@@ -59,14 +61,16 @@ void main() {
     databaseFactory = databaseFactoryFfi;
   });
   setUp(() async {
-    tempDir = await Directory.systemTemp.createTemp('gp_newsfeed_backfill_test');
+    tempDir =
+        await Directory.systemTemp.createTemp('gp_newsfeed_backfill_test');
     PathProviderPlatform.instance = _TempPathProvider(tempDir.path);
   });
   tearDown(() async {
     if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
   });
 
-  test('D-156: a newsfeed_item row from an existing v12 database is gone '
+  test(
+      'D-156: a newsfeed_item row from an existing v12 database is gone '
       'after upgrading to v13 — the actual migration, not just the SQL '
       'string', () async {
     // Simulate a real existing device: a v12 database, created
@@ -88,9 +92,9 @@ void main() {
       DatabaseHelper.columnNewsfeedCreated: DateTime.now().toIso8601String(),
       DatabaseHelper.columnNewsfeedDedupeKey: 'essence-1',
     });
-    final beforeUpgrade =
-        await raw.query(DatabaseHelper.newsfeedItemTable);
-    expect(beforeUpgrade, hasLength(1), reason: 'the stale row is really there');
+    final beforeUpgrade = await raw.query(DatabaseHelper.newsfeedItemTable);
+    expect(beforeUpgrade, hasLength(1),
+        reason: 'the stale row is really there');
     await raw.close();
 
     // The real app-launch path: DatabaseHelper opens the same file,
@@ -100,14 +104,17 @@ void main() {
     expect(rows, isEmpty);
   });
 
-  test('D-156: a fresh install (no existing database at all) is '
+  test(
+      'D-156: a fresh install (no existing database at all) is '
       'unaffected — there is nothing to wipe, and _onCreate never touches '
       'newsfeed_item beyond creating the empty table', () async {
-    final rows = await (await db.database).query(DatabaseHelper.newsfeedItemTable);
+    final rows =
+        await (await db.database).query(DatabaseHelper.newsfeedItemTable);
     expect(rows, isEmpty);
   });
 
-  test('D-157: upgrading from v13 applies every migration in the chain '
+  test(
+      'D-157: upgrading from v13 applies every migration in the chain '
       'without error — found live: a real article generated before the '
       "backend's markdown-code-fence parsing bug was fixed server-side "
       "consumed that day's dedupeKey, so only that row needed clearing "
@@ -117,8 +124,7 @@ void main() {
       'of any type, which is expected and covered by its own dedicated '
       'test further below; this test\'s own job is confirming the whole '
       'chain runs cleanly from this starting point, not re-asserting '
-      'what survives, since nothing does.)',
-      () async {
+      'what survives, since nothing does.)', () async {
     // Same schema as v12 (v13's own migration was a DELETE, not a
     // schema change), with one row of each type already in it.
     final path = '${tempDir.path}/LifeOps.db';
@@ -149,7 +155,8 @@ void main() {
             'reaching the current version from this starting point');
   });
 
-  test('D-158: upgrading from v14 applies every migration in the chain '
+  test(
+      'D-158: upgrading from v14 applies every migration in the chain '
       'without error — this directive originally fixed the two welcome '
       "cards' spacing; by the current version, D-168's own full wipe "
       "(v19->v20) leaves nothing of any type, which is expected and "
@@ -182,7 +189,8 @@ void main() {
             'reaching the current version from this starting point');
   });
 
-  test('D-165: upgrading from v15 applies every migration in the chain '
+  test(
+      'D-165: upgrading from v15 applies every migration in the chain '
       'without error — this directive originally rewrote essence-card '
       "copy; by the current version, D-168's own full wipe (v19->v20) "
       'leaves nothing of any type, which is expected and covered by its '
@@ -215,7 +223,8 @@ void main() {
             'reaching the current version from this starting point');
   });
 
-  test('D-166: the v16->v17 migration collapses consecutive same-text '
+  test(
+      'D-166: the v16->v17 migration collapses consecutive same-text '
       'essence rows per category (phantom versions manufactured by every '
       "past call to SyncService.restoreFromCloud, before "
       'insertCategoryEssence was guarded) down to just the first '
@@ -239,9 +248,12 @@ void main() {
         });
     // Exactly the shape found live: several "restored" duplicates of the
     // same text, a genuine change, then more duplicates of the new text.
-    await insertEssence(1, 'Reconnect with your essence', '2026-09-11T11:13:32');
-    await insertEssence(1, 'Reconnect with your essence', '2026-09-11T11:27:15');
-    await insertEssence(1, 'Reconnect with your essence', '2026-09-11T11:29:33');
+    await insertEssence(
+        1, 'Reconnect with your essence', '2026-09-11T11:13:32');
+    await insertEssence(
+        1, 'Reconnect with your essence', '2026-09-11T11:27:15');
+    await insertEssence(
+        1, 'Reconnect with your essence', '2026-09-11T11:29:33');
     await insertEssence(1, 'Something new.', '2026-09-12T06:05:39');
     await insertEssence(1, 'Something new.', '2026-09-12T06:58:20');
     await raw.insert(DatabaseHelper.newsfeedItemTable, {
@@ -268,7 +280,8 @@ void main() {
             'regenerate from the corrected history');
   });
 
-  test('D-167: the v17->v18 migration installs the duplicate-guard '
+  test(
+      'D-167: the v17->v18 migration installs the duplicate-guard '
       'trigger on an existing database — an account already upgraded to '
       'v17 (and therefore already missing the trigger, since it was only '
       "created in applyV7Schema for a fresh install) gets it retroactively",
@@ -296,14 +309,15 @@ void main() {
       'essence': 'Stay strong.',
       'created': DateTime.now().toIso8601String(),
     });
-    final rows =
-        await upgraded.query('category_essence', where: 'categoryid = ?', whereArgs: [1]);
+    final rows = await upgraded
+        .query('category_essence', where: 'categoryid = ?', whereArgs: [1]);
     expect(rows.length, 1,
         reason: 'the v17->v18 migration installed the trigger, so the '
             'duplicate insert above was silently skipped');
   });
 
-  test('D-168: upgrading from v18 applies every migration in the chain '
+  test(
+      'D-168: upgrading from v18 applies every migration in the chain '
       'without error — this directive originally retired the two '
       "generic welcome cards on their own (v18->v19); by the current "
       "version, D-168's own later full wipe (v19->v20) leaves nothing "
@@ -339,7 +353,8 @@ void main() {
             'reaching the current version from this starting point');
   });
 
-  test('D-168 (backfill): the v19->v20 migration unconditionally wipes '
+  test(
+      'D-168 (backfill): the v19->v20 migration unconditionally wipes '
       'every newsfeed_item row — owner: "I also need you to clean up my '
       'database because I still have cards in there that were generated '
       'before this change." Every card, of every type, regenerates fresh '
@@ -373,7 +388,8 @@ void main() {
             'of any type survives it');
   });
 
-  test('D-170: the v20->v21 migration deletes only streak/essence rows, '
+  test(
+      'D-170: the v20->v21 migration deletes only streak/essence rows, '
       'leaving sample and article rows untouched — owner: "I only want '
       '#3 and #4. Get rid of both #1 and #2," #1/#2 being streak-milestone '
       'and essence-change cards, #3/#4 being the sample cards and the AI '

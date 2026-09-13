@@ -5,6 +5,8 @@
 // token (proves the request came from the genuine app) and an anonymous
 // Firebase ID token (proves an app-minted identity). Mirrors the goal-executor
 // backend, plus App Check.
+import { setupIdempotency } from './lib/setup_idempotency.js';
+import { completeSetup } from './lib/setup_completion.js';
 import { onRequest } from 'firebase-functions/v2/https';
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { setGlobalOptions } from 'firebase-functions/v2';
@@ -225,6 +227,20 @@ async function guardCouncilCall(req, res, { isSetup, sessionId }) {
 // D-034 migration cohort, once at first launch of this build). Device-bound
 // for new users; account-bound and device-check-free for the migration
 // grant, per D-059's explicit carve-out.
+app.post('/completeSetup', requireFirebaseAuth, async (req, res) => {
+  try {
+    const user = await admin.auth().getUser(req.uid);
+    if (!user.providerData.some(p => ['apple.com', 'google.com'].includes(p.providerId))) {
+      return res.status(403).json({ error: 'linked_account_required' });
+    }
+    const result = await completeSetup(admin.firestore(), req.uid, req.body?.sessionId);
+    res.json(result);
+  } catch (e) {
+    const invalid = /required|invalid|duplicate|limit|already_complete/.test(e.message);
+    res.status(invalid ? 400 : 503).json({ error: invalid ? e.message : 'completion_unavailable' });
+  }
+});
+
 app.post('/requestTrial', requireFirebaseAuth, async (req, res) => {
   const { platform, androidIdHash, deviceCheckToken, isDevelopmentBuild, isMigration } = req.body || {};
   try {
@@ -248,7 +264,7 @@ app.post('/requestTrial', requireFirebaseAuth, async (req, res) => {
   }
 });
 
-app.post('/boardAdvisorTurn', requireFirebaseAuth, async (req, res) => {
+app.post('/boardAdvisorTurn', requireFirebaseAuth, (req, res, next) => req.body?.isSetup ? setupIdempotency(() => admin.firestore())(req, res, next) : next(), async (req, res) => {
   // D-090/D-097: soloSetup — not isSetup — is a solo conversation with
   // Mira, forced through a tool call so her readiness to build the pyramid
   // comes back as data, not free text. isSetup only ever meant "billed
@@ -409,7 +425,7 @@ async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conver
 // All three are setup-only: always free (D-017), always bounded by D-072's
 // call count, never by D-087's spend cap.
 
-app.post('/deriveCategories', requireFirebaseAuth, async (req, res) => {
+app.post('/deriveCategories', requireFirebaseAuth, setupIdempotency(() => admin.firestore()), async (req, res) => {
   const { sessionId, transcript, existingCategories } = req.body || {};
   if (!(await guardCouncilCall(req, res, { isSetup: true, sessionId }))) return;
 
@@ -434,7 +450,7 @@ app.post('/deriveCategories', requireFirebaseAuth, async (req, res) => {
   }
 });
 
-app.post('/deriveHabits', requireFirebaseAuth, async (req, res) => {
+app.post('/deriveHabits', requireFirebaseAuth, setupIdempotency(() => admin.firestore()), async (req, res) => {
   const { sessionId, categoryName, essence, existingHabits, maxAllowed } = req.body || {};
   if (!(await guardCouncilCall(req, res, { isSetup: true, sessionId }))) return;
 
@@ -444,9 +460,11 @@ app.post('/deriveHabits', requireFirebaseAuth, async (req, res) => {
   // a fixed constant, so the model is never even offered more room than
   // this specific category has left in the budget.
   const tool = habitsTool(maxAllowed);
-  const { system, user } = buildDeriveHabitsPrompt({ categoryName, essence, existingHabits, maxAllowed });
   const model = await getCouncilModel();
   try {
+    const saved = await admin.firestore().collection('users').doc(req.uid).collection('councilSessions').doc(sessionId).get();
+    const transcript = (saved.data()?.messages || []).map(m => ({ advisor: m.advisorKey, text: m.text }));
+    const { system, user } = buildDeriveHabitsPrompt({ categoryName, essence, existingHabits, maxAllowed, transcript });
     const msg = await claude().messages.create({
       model,
       max_tokens: 300,
@@ -471,7 +489,7 @@ app.post('/deriveHabits', requireFirebaseAuth, async (req, res) => {
 // re-clarification — so, like boardAdvisorTurn, it takes a dynamic isSetup
 // and goes through the full guardCouncilCall gate rather than being
 // hardcoded free.
-app.post('/deriveDomainFindings', requireFirebaseAuth, async (req, res) => {
+app.post('/deriveDomainFindings', requireFirebaseAuth, (req, res, next) => req.body?.isSetup ? setupIdempotency(() => admin.firestore())(req, res, next) : next(), async (req, res) => {
   const { sessionId, categoryName, essence, transcript, isSetup, pyramidContext } = req.body || {};
   if (!(await guardCouncilCall(req, res, { isSetup, sessionId }))) return;
 
@@ -515,7 +533,7 @@ app.post('/deriveDomainFindings', requireFirebaseAuth, async (req, res) => {
 // session, passes false and goes through D-016's entitlement gate like
 // every other non-setup AI surface. sessionId/transcript are optional —
 // a regeneration has neither, only the pyramid's current essences.
-app.post('/deriveVisionStatement', requireFirebaseAuth, async (req, res) => {
+app.post('/deriveVisionStatement', requireFirebaseAuth, (req, res, next) => req.body?.isSetup ? setupIdempotency(() => admin.firestore())(req, res, next) : next(), async (req, res) => {
   const { sessionId, essences, transcript, isSetup } = req.body || {};
   if (!(await guardCouncilCall(req, res, { isSetup: !!isSetup, sessionId }))) return;
 

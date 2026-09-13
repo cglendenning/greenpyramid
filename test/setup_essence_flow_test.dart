@@ -52,7 +52,7 @@ void main() {
   });
 
   test('D-103: habit proposals reserve at least one slot per remaining '
-      'category and never request more than 3, keeping the pyramid\'s '
+      'category and never request more than 2, keeping the pyramid\'s '
       'total at or under 10 across all six categories', () {
     final start = source.indexOf('Future<void> _loadAllHabits()');
     expect(start, greaterThan(-1));
@@ -61,7 +61,7 @@ void main() {
 
     expect(body, contains('_maxTotalHabits'));
     expect(body, contains('remainingAfterThis'));
-    expect(body, contains('.clamp(1, 3)'));
+    expect(body, contains('.clamp(1, 2)'));
     expect(body, contains('maxAllowed: maxAllowed'));
   });
 
@@ -84,33 +84,11 @@ void main() {
     expect(body, contains('anytime after setup'));
   });
 
-  test('D-105: the essence-deepening transcript is scoped to this '
-      'category\'s own exchange, not the whole session — found live via '
-      'direct Firestore inspection: the full session included the entire '
-      'opening conversation (Mira\'s own readyToBuild closing line among '
-      'it) sitting directly above the category\'s actual question', () {
-    final start = source.indexOf('Widget _buildEssences()');
-    expect(start, greaterThan(-1));
-    final end = source.indexOf('\n  void _editHabit', start);
-    expect(end, greaterThan(start));
-    final body = source.substring(start, end);
-
-    expect(body, contains('_essenceStepStartIndex'));
-    expect(body, contains('stepMessages'));
-    expect(body, isNot(contains('_session?.messages ?? const []')),
-        reason: 'the old unscoped whole-session render must not reappear');
-  });
-
-  test('D-105: the "save this" button is gated on the same resonance bar '
-      '_acceptEssence itself enforces, not merely "any reply exists" — '
-      'found live: a short filler reply showed the button immediately, '
-      'and tapping it just bounced with a snackbar since the answer was '
-      'never actually going to qualify', () {
-    final start = source.indexOf('Widget _buildEssences()');
-    final end = source.indexOf('\n  void _editHabit', start);
-    final body = source.substring(start, end);
-
-    expect(body, contains('ResonanceService.qualifies(m.text)'));
+  test('D-001-AC-03: explanation save is user-controlled, including empty input', () {
+    final start = source.indexOf('Future<void> _acceptEssence(');
+    final end = source.indexOf('Future<void> _askAboutCurrentFoundational', start);
+    expect(source.substring(start,end), isNot(contains('ResonanceService.qualifies')));
+    expect(source, contains('_reviewExplanation('));
   });
 
   test('D-105: sending an essence reply scrolls the new message (and, '
@@ -157,7 +135,7 @@ void main() {
     final end = source.indexOf('\n  void _editHabit', start);
     final body = source.substring(start, end);
 
-    expect(body, contains('_session!.rotationOrder[_essenceIndex'));
+    expect(body, contains('rotationOrder[_essenceIndex'));
   });
 
   test('D-108: essence-deepening\'s kickoff call passes an explicit '

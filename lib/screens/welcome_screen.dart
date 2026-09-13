@@ -132,7 +132,7 @@ class WelcomeScreen extends StatelessWidget {
     // Idempotent — harmless when local storage is already empty (a
     // genuine fresh install). No confirmation: a signed-out user has
     // nothing here that isn't already recoverable by signing back in.
-    await LocalPyramidResetService.instance.wipeLocalPyramid();
+    // D-001: Begin also resumes an existing draft; never reset it here.
     if (!context.mounted) return;
     Navigator.of(context)
         .pushReplacement(MaterialPageRoute(builder: (_) => const SetupScreen()));
