@@ -2,8 +2,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/services/push_messaging_service.dart';
 
 void main() {
-  group('D-189/D-189/D-023: notification fallback decision', () {
-    test('D-023: a lapsed account always gets the static pool, even with '
+  group('D-189/D-189/D-021: notification fallback decision', () {
+    test('D-021: a lapsed account always gets the static pool, even with '
         'push fully working', () {
       final action = decideNotificationFallback(
           entitlement: 'lapsed', pushAuthorized: true, hasToken: true);

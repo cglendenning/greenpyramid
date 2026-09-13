@@ -27,6 +27,7 @@ import 'package:life_ops/screens/philosophy_screen.dart';
 import 'package:life_ops/screens/profile.dart';
 import 'package:life_ops/screens/visualizations.dart';
 import 'package:life_ops/theme/app_colors.dart';
+import 'package:life_ops/theme/app_theme.dart';
 
 int currentScreenIndex = 0;
 
@@ -38,22 +39,7 @@ class HomeScreen extends StatelessWidget {
     return MaterialApp(
       title: 'Green Pyramid',
       navigatorKey: navigatorKey,
-      theme: ThemeData(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: AppColors.background,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.brandGreen,
-          brightness: Brightness.dark,
-          primary: AppColors.brandGreen,
-          secondary: AppColors.brandPurple,
-          surface: AppColors.surface,
-        ),
-        textTheme: Theme.of(context).textTheme.apply(
-            bodyColor: AppColors.textPrimary,
-            displayColor: AppColors.textPrimary),
-        useMaterial3: true,
-        fontFamily: 'Exo2',
-      ),
+      theme: AppTheme.dark(),
       initialRoute: routeToGo,
       onGenerateRoute: _generateRoute,
       // D-138: Flutter's default initial-route generation
@@ -74,7 +60,6 @@ class HomeScreen extends StatelessWidget {
         return [_generateRoute(RouteSettings(name: initialRouteName)) ?? _errorRoute()];
       },
       debugShowCheckedModeBanner: false,
-      home: _home,
     );
   }
 
@@ -317,7 +302,7 @@ class _HomeScreen extends State<HomeScreenWidget> {
 
   /// D-083 amendment / Phase 6 fix (2026-09-10): every tap-routing path
   /// that isn't the new D-124 batch check-in — D-189's local fallback,
-  /// D-023's lapsed static pool, and now D-189's real tailored push (once
+  /// D-021's lapsed static pool, and now D-189's real tailored push (once
   /// it carries a `type: 'tailored'` data payload, wired in main.dart) —
   /// funnels through this one listener via [payload]. It used to call
   /// `navigatorKey.currentState?.pushNamed(payload)` for every payload,

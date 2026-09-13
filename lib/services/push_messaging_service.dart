@@ -11,7 +11,7 @@ enum NotificationFallbackAction {
   /// local fallback so the account is never double-notified (D-189).
   relyOnPush,
 
-  /// D-023: the account is lapsed — static pool, local, tap opens the
+  /// D-021: the account is lapsed — static pool, local, tap opens the
   /// paywall. Independent of push authorization.
   lapsedStatic,
 
@@ -39,7 +39,7 @@ NotificationFallbackAction decideNotificationFallback({
 /// D-189/D-189: registers the FCM token for server-generated tailored
 /// notifications, and keeps a local fallback in sync for whenever push
 /// isn't available — permission denied, token registration failed, or the
-/// account is lapsed (D-023's static pool instead). Called once after
+/// account is lapsed (D-021's static pool instead). Called once after
 /// D-065's permission screen, and again on each app open so the fallback
 /// content and token both stay current.
 class PushMessagingService {

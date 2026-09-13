@@ -33,7 +33,7 @@ test('D-037: recent activity is bounded to 250 rows even if more are '
   assert.ok(lines.length <= 250);
 });
 
-test('D-023: the system prompt forbids manufactured urgency', () => {
+test('D-021: the system prompt forbids manufactured urgency', () => {
   const { system } = buildNotificationPrompt({});
   assert.match(system, /Never invent urgency/);
 });

@@ -1,7 +1,7 @@
 /// D-063: the static pool a lapsed account's notifications rotate through.
 /// No personalization, no user data, no manufactured urgency (P-2) — each
 /// entry states something true and offers a way forward (D-012). Every
-/// entry's tap action opens the paywall (D-023).
+/// entry's tap action opens the paywall (D-021).
 class LapsedNotificationPool {
   LapsedNotificationPool._();
 
@@ -15,7 +15,7 @@ class LapsedNotificationPool {
   ];
 
   /// Rotates deterministically across the three-times-daily cadence
-  /// (D-023) rather than randomly — [slotIndex] is 0 (morning), 1
+  /// (D-021) rather than randomly — [slotIndex] is 0 (morning), 1
   /// (afternoon), or 2 (evening); [dayIndex] lets the rotation advance day
   /// to day so the same three lines don't repeat every day in the same
   /// order.

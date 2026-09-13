@@ -5,7 +5,7 @@
 // every timezone, including half-hour-offset ones (UTC+5:30 etc.), without
 // per-timezone cron entries.
 
-// D-023: same three-times-daily cadence as the existing local notification
+// D-021: same three-times-daily cadence as the existing local notification
 // times (settings.dart: 9am / 12pm / 8pm).
 export const DAILY_SLOTS = [
   { hour: 9, minute: 0 },

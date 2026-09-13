@@ -59,7 +59,7 @@ class SubscriptionService {
   }
 
   /// Fetches the $29.99/mo product directly by its platform-specific ID
-  /// (D-022) — no offerings configuration needed.
+  /// (D-020) — no offerings configuration needed.
   static Future<StoreProduct?> getMonthlyProduct() async {
     final products = await Purchases.getProducts([_platformProductId]);
     return products.firstOrNull;
