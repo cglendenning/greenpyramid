@@ -84,9 +84,15 @@ class _SigningInScreenState extends State<SigningInScreen> {
 
   Future<void> _run() async {
     try {
-      final uidBefore = FirebaseAuth.instance.currentUser?.uid;
+      final before = FirebaseAuth.instance.currentUser;
+      final uidBefore = before?.uid;
+      final wasAnonymousBefore = before?.isAnonymous ?? true;
       final user = await widget.signIn();
-      final switchedAccount = user != null && user.uid != uidBefore;
+      final switchedAccount = isExistingAccountResult(
+        uidBefore: uidBefore,
+        wasAnonymousBefore: wasAnonymousBefore,
+        uidAfter: user?.uid,
+      );
       unawaited(_analytics.logEvent(
         name: 'account_created',
         parameters: {
@@ -169,6 +175,18 @@ class _SigningInScreenState extends State<SigningInScreen> {
     );
   }
 }
+
+/// A restored real Firebase account keeps the same uid through provider
+/// authentication, so uid change alone cannot identify the existing-account
+/// destination. Anonymous linking remains the setup path.
+bool isExistingAccountResult({
+  required String? uidBefore,
+  required bool wasAnonymousBefore,
+  required String? uidAfter,
+}) =>
+    uidAfter != null &&
+    uidBefore != null &&
+    (!wasAnonymousBefore || uidAfter != uidBefore);
 
 String _appleAuthorizationMessage(AuthorizationErrorCode code) =>
     switch (code) {

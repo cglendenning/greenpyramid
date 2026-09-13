@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:life_ops/screens/signing_in_screen.dart'
+    show isExistingAccountResult;
 
 /// D-143: structural regression tests, not a full widget pump — this
 /// screen calls FirebaseAnalytics.instance and FirebaseAuth.instance
@@ -103,6 +105,27 @@ void main() {
       expect(source, contains('That account is already connected.'));
       expect(source, contains('Apple sign-in couldn\'t be completed.'));
       expect(source, isNot(contains('userFacingCode')));
+    });
+
+    test(
+        'D-162-AC-01: an existing real account stays on the restore path when provider '
+        'authentication returns the same uid', () {
+      expect(
+          isExistingAccountResult(
+              uidBefore: 'real-uid',
+              wasAnonymousBefore: false,
+              uidAfter: 'real-uid'),
+          isTrue);
+      expect(
+          isExistingAccountResult(
+              uidBefore: 'anonymous-uid',
+              wasAnonymousBefore: true,
+              uidAfter: 'linked-uid'),
+          isTrue);
+      expect(
+          isExistingAccountResult(
+              uidBefore: null, wasAnonymousBefore: true, uidAfter: 'new-uid'),
+          isFalse);
     });
   });
 }

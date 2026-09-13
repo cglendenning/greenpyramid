@@ -104,7 +104,8 @@ class WelcomeScreen extends StatelessWidget {
     await Navigator.of(context).push(MaterialPageRoute(
       builder: (_) => AccountCreationScreen(
         headline: 'Welcome back.',
-        subhead: welcomeBackTaglines[Random().nextInt(welcomeBackTaglines.length)],
+        subhead:
+            welcomeBackTaglines[Random().nextInt(welcomeBackTaglines.length)],
         onDone: ({required switchedToExistingAccount}) async {
           if (switchedToExistingAccount) {
             final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -112,13 +113,21 @@ class WelcomeScreen extends StatelessWidget {
               await SyncService.instance.restoreFromCloud(uid);
             }
             if (!context.mounted) return;
-            Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+            Navigator.of(context)
+                .pushNamedAndRemoveUntil('/', (route) => false);
             return;
           }
           // No prior account for that identity — it just linked onto the
           // current (signed-out-until-now) session. Nothing to lose:
           // reset local storage the same way "Begin" does, then proceed
           // into setup as this newly-linked user.
+          final uid = FirebaseAuth.instance.currentUser?.uid;
+          if (uid != null && await SyncService.instance.restoreFromCloud(uid)) {
+            if (!context.mounted) return;
+            Navigator.of(context)
+                .pushNamedAndRemoveUntil('/', (route) => false);
+            return;
+          }
           await LocalPyramidResetService.instance.wipeLocalPyramid();
           if (!context.mounted) return;
           Navigator.of(context).pushReplacement(
@@ -134,8 +143,8 @@ class WelcomeScreen extends StatelessWidget {
     // nothing here that isn't already recoverable by signing back in.
     // D-001: Begin also resumes an existing draft; never reset it here.
     if (!context.mounted) return;
-    Navigator.of(context)
-        .pushReplacement(MaterialPageRoute(builder: (_) => const SetupScreen()));
+    Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const SetupScreen()));
   }
 
   @override
@@ -181,7 +190,8 @@ class WelcomeScreen extends StatelessWidget {
                       child: ElevatedButton(
                         onPressed: () => _begin(context),
                         style: OnboardingStyles.primaryButton,
-                        child: const Text('Begin', style: OnboardingStyles.buttonLabel),
+                        child: const Text('Begin',
+                            style: OnboardingStyles.buttonLabel),
                       ),
                     ),
                   ),
@@ -232,12 +242,14 @@ class WelcomeScreen extends StatelessWidget {
                       child: TextButton(
                         style: TextButton.styleFrom(padding: EdgeInsets.zero),
                         onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(builder: (_) => const TermsScreen()),
+                          MaterialPageRoute(
+                              builder: (_) => const TermsScreen()),
                         ),
                         child: Text(
                           'Terms and Conditions',
                           style: TextStyle(
-                              color: AppColors.textPrimary.withValues(alpha: 0.6),
+                              color:
+                                  AppColors.textPrimary.withValues(alpha: 0.6),
                               fontSize: 13),
                         ),
                       ),
@@ -251,7 +263,8 @@ class WelcomeScreen extends StatelessWidget {
                   left: 4,
                   child: IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+                    icon: const Icon(Icons.arrow_back,
+                        color: AppColors.textPrimary),
                   ),
                 ),
             ],
