@@ -260,7 +260,7 @@ void main() {
         (await drafts.load(auth.currentUid))!['state']['phase'], 'categories');
   });
   testWidgets(
-      'D-001-AC-01: resume displays saved habits and pause retains edits',
+      'D-001-AC-01: resume displays saved habits without a pause control',
       (tester) async {
     final saved = state('habits');
     saved['habits']['Health'] = ['Walk outdoors'];
@@ -268,9 +268,7 @@ void main() {
     await pump(tester);
     expect(find.text('Walk outdoors'), findsOneWidget);
     expect(find.text('Here is what I heard.'), findsNothing);
-    await tester.tap(find.text('Pause setup'));
-    await tester.pumpAndSettle();
-    expect(find.text('Paused'), findsOneWidget);
+    expect(find.text('Pause setup'), findsNothing);
     expect((await setup.drafts.load(auth.currentUid))!['state']['phase'],
         'habits');
   });
@@ -295,8 +293,6 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(find.text('Fitness'), findsOneWidget);
-    await tester.tap(find.text('Pause setup'));
-    await tester.pumpAndSettle();
     expect(
         (await setup.drafts.load(auth.currentUid))!['state']['categories'][0]
             ['name'],

@@ -1209,8 +1209,6 @@ class _SetupScreenState extends State<SetupScreen> {
               Column(
                 children: [
                   Row(children: [
-                    TextButton(
-                        onPressed: _pause, child: const Text('Pause setup')),
                     if (!_manual)
                       TextButton(
                           onPressed: _manualCompletion,
