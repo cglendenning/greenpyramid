@@ -15,7 +15,8 @@ import 'sync_service.dart';
 /// (see its own doc comment) — this is the only place that talks to
 /// `sign_in_with_apple` and `google_sign_in` directly.
 class AccountLinkService {
-  AccountLinkService({FirebaseAuth? auth, AuthService? authService, SyncService? sync})
+  AccountLinkService(
+      {FirebaseAuth? auth, AuthService? authService, SyncService? sync})
       : _auth = auth ?? FirebaseAuth.instance,
         _authService = authService ?? AuthService.instance,
         _syncOverride = sync;
@@ -74,7 +75,7 @@ class AccountLinkService {
       idToken: appleCredential.identityToken,
       rawNonce: rawNonce,
     );
-    return linkWithCredentialOrSwitch(oauthCredential);
+    return authenticateOrLink(oauthCredential);
   }
 
   /// Same for Google — no nonce concept in google_sign_in's flow. See
@@ -86,6 +87,18 @@ class AccountLinkService {
     final googleUser = await GoogleSignIn.instance.authenticate();
     final idToken = googleUser.authentication.idToken;
     final credential = GoogleAuthProvider.credential(idToken: idToken);
+    return authenticateOrLink(credential);
+  }
+
+  /// Completes provider authentication without confusing a restored real
+  /// Firebase account with the anonymous setup identity. An anonymous user
+  /// is linked in place so its draft keeps the same uid; a real or absent
+  /// user signs in directly with the provider credential.
+  Future<User?> authenticateOrLink(AuthCredential credential) async {
+    final current = _auth.currentUser;
+    if (current == null || !current.isAnonymous) {
+      return (await _auth.signInWithCredential(credential)).user;
+    }
     return linkWithCredentialOrSwitch(credential);
   }
 
@@ -119,7 +132,8 @@ class AccountLinkService {
       // on iOS/Android; e.credential here). Falls back to the original
       // credential when absent, matching prior behavior exactly (Google's
       // flow has no nonce and has never needed this).
-      final result = await _auth.signInWithCredential(e.credential ?? credential);
+      final result =
+          await _auth.signInWithCredential(e.credential ?? credential);
       return result.user;
     }
   }
@@ -154,7 +168,8 @@ class AccountLinkService {
       await _ensureGoogleSignInInitialized();
       await GoogleSignIn.instance.signOut();
     } catch (e, st) {
-      debugPrint('AccountLinkService: Google sign-out failed (non-fatal): $e\n$st');
+      debugPrint(
+          'AccountLinkService: Google sign-out failed (non-fatal): $e\n$st');
     }
     await _authService.signOut();
   }
@@ -168,4 +183,5 @@ String _generateNonce([int length = 32]) {
       .join();
 }
 
-String _sha256ofString(String input) => sha256.convert(utf8.encode(input)).toString();
+String _sha256ofString(String input) =>
+    sha256.convert(utf8.encode(input)).toString();

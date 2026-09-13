@@ -77,7 +77,8 @@ class _SigningInScreenState extends State<SigningInScreen> {
   @override
   void initState() {
     super.initState();
-    _analytics.logEvent(name: 'signing_in_screen', parameters: {'provider': widget.provider});
+    _analytics.logEvent(
+        name: 'signing_in_screen', parameters: {'provider': widget.provider});
     _run();
   }
 
@@ -88,7 +89,10 @@ class _SigningInScreenState extends State<SigningInScreen> {
       final switchedAccount = user != null && user.uid != uidBefore;
       unawaited(_analytics.logEvent(
         name: 'account_created',
-        parameters: {'provider': widget.provider, 'switched_existing_account': switchedAccount},
+        parameters: {
+          'provider': widget.provider,
+          'switched_existing_account': switchedAccount
+        },
       ));
       if (!mounted) return;
       widget.onDone(switchedToExistingAccount: switchedAccount);
@@ -120,14 +124,20 @@ class _SigningInScreenState extends State<SigningInScreen> {
       // analytics above for real diagnosis; only a genuinely legible
       // code — Firebase's or Apple's own named error strings — is shown
       // here at all.
-      final userFacingCode = switch (error) {
-        FirebaseAuthException e => e.code,
-        SignInWithAppleAuthorizationException e => 'apple.${e.code.name}',
-        _ => null,
+      final userFacingMessage = switch (error) {
+        FirebaseAuthException e when e.code == 'network-request-failed' =>
+          "We couldn't reach the sign-in service. Check your connection and try again.",
+        FirebaseAuthException e when e.code == 'credential-already-in-use' =>
+          'That account is already connected. Try signing in again.',
+        FirebaseAuthException e when e.code == 'invalid-credential' =>
+          "Apple sign-in couldn't be completed. Please try again.",
+        SignInWithAppleAuthorizationException e =>
+          _appleAuthorizationMessage(e.code),
+        FirebaseAuthException _ =>
+          "We couldn't finish signing you in. Please try again.",
+        _ => "We couldn't finish signing you in. Please try again.",
       };
-      Navigator.of(context).pop(SignInOutcome.failure(userFacingCode != null
-          ? "Couldn't sign in — check your connection and try again. ($userFacingCode)"
-          : "Couldn't sign in — check your connection and try again."));
+      Navigator.of(context).pop(SignInOutcome.failure(userFacingMessage));
     }
   }
 
@@ -160,6 +170,19 @@ class _SigningInScreenState extends State<SigningInScreen> {
   }
 }
 
+String _appleAuthorizationMessage(AuthorizationErrorCode code) =>
+    switch (code) {
+      AuthorizationErrorCode.failed =>
+        "Apple sign-in couldn't be completed. Please try again.",
+      AuthorizationErrorCode.invalidResponse =>
+        "Apple sign-in returned an invalid response. Please try again.",
+      AuthorizationErrorCode.notHandled =>
+        "Apple sign-in couldn't be completed. Please try again.",
+      AuthorizationErrorCode.notInteractive =>
+        'Apple sign-in needs your attention. Please try again.',
+      _ => "We couldn't finish signing you in. Please try again.",
+    };
+
 /// A small, slowly and continuously rotating brand pyramid with a soft
 /// green glow — a blurred, tinted copy of the same vector mark sits
 /// behind the crisp one, both spinning together.
@@ -179,8 +202,9 @@ class _GlowingPyramidIconState extends State<_GlowingPyramidIcon>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(vsync: this, duration: const Duration(seconds: 10))
-      ..repeat();
+    _controller =
+        AnimationController(vsync: this, duration: const Duration(seconds: 10))
+          ..repeat();
   }
 
   @override
@@ -209,7 +233,8 @@ class _GlowingPyramidIconState extends State<_GlowingPyramidIcon>
                 asset,
                 width: widget.size * 1.2,
                 height: widget.size * 1.2,
-                colorFilter: const ColorFilter.mode(AppColors.brandGreen, BlendMode.srcIn),
+                colorFilter: const ColorFilter.mode(
+                    AppColors.brandGreen, BlendMode.srcIn),
               ),
             ),
             SvgPicture.asset(asset, width: widget.size, height: widget.size),

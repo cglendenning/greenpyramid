@@ -18,9 +18,11 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final source = File('lib/screens/signing_in_screen.dart').readAsStringSync();
 
-  group('D-143: a dedicated screen owns the actual sign-in wait, instead '
+  group(
+      'D-143: a dedicated screen owns the actual sign-in wait, instead '
       'of a fixed-duration message on the button screen', () {
-    test('shows a small, continuously and slowly rotating pyramid — not '
+    test(
+        'shows a small, continuously and slowly rotating pyramid — not '
         'a fixed splash, an ongoing animation for as long as sign-in '
         'actually takes', () {
       expect(source, contains('RotationTransition('));
@@ -28,7 +30,8 @@ void main() {
       expect(source, contains("duration: const Duration(seconds: 10)"));
     });
 
-    test('the pyramid has a soft glow — a blurred, tinted copy behind '
+    test(
+        'the pyramid has a soft glow — a blurred, tinted copy behind '
         'the crisp one', () {
       expect(source, contains('ImageFiltered('));
       expect(source, contains('ImageFilter.blur('));
@@ -43,20 +46,26 @@ void main() {
       expect(source, contains("'Signing in…'"));
     });
 
-    test('wraps its content in PopScope(canPop: false) — nothing '
+    test(
+        'wraps its content in PopScope(canPop: false) — nothing '
         'coherent to go back to mid-sign-in', () {
       expect(source, contains('canPop: false'));
     });
 
-    test('kicks off the sign-in call immediately from initState, and on '
+    test(
+        'kicks off the sign-in call immediately from initState, and on '
         'success calls onDone directly rather than popping back to '
         'AccountCreationScreen', () {
       expect(source, contains('_run();'));
       expect(source, contains('await widget.signIn()'));
-      expect(source, contains('widget.onDone(switchedToExistingAccount: switchedAccount)'));
+      expect(
+          source,
+          contains(
+              'widget.onDone(switchedToExistingAccount: switchedAccount)'));
     });
 
-    test('D-162: found live — popping back to AccountCreationScreen on '
+    test(
+        'D-162: found live — popping back to AccountCreationScreen on '
         'success genuinely re-revealed it (including its own reveal '
         'transition) for the entire duration of whatever async work the '
         'caller\'s onDone still had left (a real Firestore round trip for '
@@ -70,27 +79,30 @@ void main() {
       expect(source, contains('required this.onDone'));
     });
 
-    test('D-139 carried over: a canceled Apple sheet is not treated as '
+    test(
+        'D-139 carried over: a canceled Apple sheet is not treated as '
         'an error', () {
       expect(source, contains('AuthorizationErrorCode.canceled'));
       expect(source, contains('SignInOutcome.cancelled()'));
     });
 
-    test('D-139 carried over: the real error code is always logged via '
+    test(
+        'D-139 carried over: the real error code is always logged via '
         'analytics, regardless of whether it\'s shown to the user', () {
       expect(source, contains("name: 'account_creation_failed'"));
       expect(source, contains("'error_code': errorCode"));
     });
 
-    test('D-180: found live — a raw internal exception type name '
+    test(
+        'D-180: found live — a raw internal exception type name '
         '("PlatformException") used to leak straight into the user-facing '
         'message; only a genuinely legible named error code (Firebase\'s '
         'or Apple\'s own) is shown, and the bare-runtimeType fallback '
         'never reaches the user at all', () {
-      expect(source, contains(r'($userFacingCode)"'));
-      expect(source, contains('_ => null,'));
-      expect(source,
-          contains('"Couldn\'t sign in — check your connection and try again."'));
+      expect(source, contains('We couldn\'t reach the sign-in service.'));
+      expect(source, contains('That account is already connected.'));
+      expect(source, contains('Apple sign-in couldn\'t be completed.'));
+      expect(source, isNot(contains('userFacingCode')));
     });
   });
 }

@@ -13,7 +13,8 @@ import 'package:path_provider_platform_interface/path_provider_platform_interfac
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-class _TempPathProvider extends PathProviderPlatform with MockPlatformInterfaceMixin {
+class _TempPathProvider extends PathProviderPlatform
+    with MockPlatformInterfaceMixin {
   _TempPathProvider(this.dir);
   final String dir;
   @override
@@ -45,8 +46,8 @@ void main() {
     // auth_service_test.dart already uses for this.
     final user = _FakeAnonymousUser('preserved-uid');
     final authService = AuthService(auth: _FakeAuthWithCurrentUser(user));
-    final linkService =
-        AccountLinkService(auth: _FakeAuthWithCurrentUser(user), authService: authService);
+    final linkService = AccountLinkService(
+        auth: _FakeAuthWithCurrentUser(user), authService: authService);
 
     final credential = GoogleAuthProvider.credential(idToken: 'fake-id-token');
     final result = await linkService.linkWithCredentialOrSwitch(credential);
@@ -58,7 +59,8 @@ void main() {
       'D-188: credential-already-in-use signs into the existing account '
       'instead of throwing past the caller — the "welcome back" path, same '
       'treatment D-187 gives a reinstall', () async {
-    final anonUser = MockUser(uid: 'anon-uid-already-in-use', isAnonymous: true);
+    final anonUser =
+        MockUser(uid: 'anon-uid-already-in-use', isAnonymous: true);
     final authForLinking = MockFirebaseAuth(signedIn: true, mockUser: anonUser);
     whenCalling(Invocation.method(#linkWithCredential, null))
         .on(anonUser)
@@ -70,9 +72,12 @@ void main() {
     // is what this test verifies, isolated from AuthService's own guard
     // (which requires an anonymous currentUser and would otherwise reject
     // a pre-switched non-anonymous mock before the throw path is reached).
-    final existingUser = MockUser(uid: 'existing-uid-already-in-use', isAnonymous: false);
-    final authForFallback = MockFirebaseAuth(signedIn: true, mockUser: existingUser);
-    final linkService = AccountLinkService(auth: authForFallback, authService: authService);
+    final existingUser =
+        MockUser(uid: 'existing-uid-already-in-use', isAnonymous: false);
+    final authForFallback =
+        MockFirebaseAuth(signedIn: true, mockUser: existingUser);
+    final linkService =
+        AccountLinkService(auth: authForFallback, authService: authService);
 
     final credential = GoogleAuthProvider.credential(idToken: 'fake-id-token');
     final result = await linkService.linkWithCredentialOrSwitch(credential);
@@ -86,23 +91,29 @@ void main() {
       '(idToken, nonce) pair is single-use against Firebase\'s servers, '
       'so resubmitting the already-consumed original credential always '
       'failed live with missing-or-invalid-nonce', () async {
-    final anonUser = MockUser(uid: 'anon-uid-fresh-credential', isAnonymous: true);
+    final anonUser =
+        MockUser(uid: 'anon-uid-fresh-credential', isAnonymous: true);
     final authForLinking = MockFirebaseAuth(signedIn: true, mockUser: anonUser);
-    final freshCredential = GoogleAuthProvider.credential(idToken: 'fresh-id-token');
+    final freshCredential =
+        GoogleAuthProvider.credential(idToken: 'fresh-id-token');
     whenCalling(Invocation.method(#linkWithCredential, null))
         .on(anonUser)
         .thenThrow(FirebaseAuthException(
             code: 'credential-already-in-use', credential: freshCredential));
     final authService = AuthService(auth: authForLinking);
 
-    final existingUser = MockUser(uid: 'existing-uid-fresh-credential', isAnonymous: false);
+    final existingUser =
+        MockUser(uid: 'existing-uid-fresh-credential', isAnonymous: false);
     final authForFallback = _CredentialCapturingAuth(
       MockFirebaseAuth(signedIn: true, mockUser: existingUser),
     );
-    final linkService = AccountLinkService(auth: authForFallback, authService: authService);
+    final linkService =
+        AccountLinkService(auth: authForFallback, authService: authService);
 
-    final staleCredential = GoogleAuthProvider.credential(idToken: 'stale-id-token');
-    final result = await linkService.linkWithCredentialOrSwitch(staleCredential);
+    final staleCredential =
+        GoogleAuthProvider.credential(idToken: 'stale-id-token');
+    final result =
+        await linkService.linkWithCredentialOrSwitch(staleCredential);
 
     expect(result?.uid, 'existing-uid-fresh-credential');
     expect(authForFallback.lastCredential, freshCredential);
@@ -116,7 +127,8 @@ void main() {
     final user = MockUser(uid: 'signout-uid', isAnonymous: false);
     final auth = MockFirebaseAuth(signedIn: true, mockUser: user);
     final authService = AuthService(auth: auth);
-    final linkService = AccountLinkService(auth: auth, authService: authService);
+    final linkService =
+        AccountLinkService(auth: auth, authService: authService);
 
     expect(auth.currentUser, isNotNull);
     // GoogleSignIn.instance.signOut() has no real platform binding in a
@@ -127,7 +139,9 @@ void main() {
     expect(auth.currentUser, isNull);
   });
 
-  group('D-187: signOut flushes pending local changes before switching identity', () {
+  group(
+      'D-187: signOut flushes pending local changes before switching identity',
+      () {
     final db = DatabaseHelper.instance;
     late Directory tempDir;
 
@@ -137,7 +151,8 @@ void main() {
       databaseFactory = databaseFactoryFfi;
     });
     setUp(() async {
-      tempDir = await Directory.systemTemp.createTemp('gp_account_link_sync_test');
+      tempDir =
+          await Directory.systemTemp.createTemp('gp_account_link_sync_test');
       PathProviderPlatform.instance = _TempPathProvider(tempDir.path);
     });
     tearDown(() async {
@@ -187,12 +202,14 @@ void main() {
         .on(anonUser)
         .thenThrow(FirebaseAuthException(code: 'network-request-failed'));
     final authService = AuthService(auth: auth);
-    final linkService = AccountLinkService(auth: auth, authService: authService);
+    final linkService =
+        AccountLinkService(auth: auth, authService: authService);
 
     final credential = GoogleAuthProvider.credential(idToken: 'fake-id-token');
     await expectLater(
       linkService.linkWithCredentialOrSwitch(credential),
-      throwsA(isA<FirebaseAuthException>().having((e) => e.code, 'code', 'network-request-failed')),
+      throwsA(isA<FirebaseAuthException>()
+          .having((e) => e.code, 'code', 'network-request-failed')),
     );
   });
 
@@ -200,11 +217,13 @@ void main() {
   // the live Apple/Google SDK calls that can't run in a unit test (see the
   // file-level doc comment) — GoogleSignIn.instance.initialize() has no
   // injectable seam of its own to mock against.
-  test('D-180: found live — "Continue with Google" threw a raw '
+  test(
+      'D-180: found live — "Continue with Google" threw a raw '
       'PlatformException on iOS because GoogleSignIn.instance.initialize() '
       'was never called; google_sign_in 7.x\'s own doc comment requires it '
       'exactly once before any other method on that instance', () {
-    final source = File('lib/services/account_link_service.dart').readAsStringSync();
+    final source =
+        File('lib/services/account_link_service.dart').readAsStringSync();
     expect(source, contains('Future<void>? _googleSignInInit;'));
     expect(source,
         contains('_googleSignInInit ??= GoogleSignIn.instance.initialize()'));
@@ -216,6 +235,33 @@ void main() {
     final signOutEnd = source.indexOf('\n  }', signOutStart);
     expect(source.substring(signOutStart, signOutEnd),
         contains('await _ensureGoogleSignInInitialized();'));
+  });
+
+  test(
+      'D-188-AC-04: provider authentication signs in directly when Firebase restored a '
+      'real account instead of attempting anonymous linking', () async {
+    final auth = _FakeAuthWithCurrentUser(
+        MockUser(uid: 'restored-real-uid', isAnonymous: false));
+    final service =
+        AccountLinkService(auth: auth, authService: AuthService(auth: auth));
+
+    final result = await service.authenticateOrLink(
+        GoogleAuthProvider.credential(idToken: 'provider-token'));
+
+    expect(result?.uid, 'restored-real-uid');
+  });
+
+  test(
+      'D-188-AC-04: provider authentication signs in directly when anonymous bootstrap '
+      'left no current Firebase user', () async {
+    final auth = MockFirebaseAuth(signedIn: false);
+    final service =
+        AccountLinkService(auth: auth, authService: AuthService(auth: auth));
+
+    final result = await service.authenticateOrLink(
+        GoogleAuthProvider.credential(idToken: 'provider-token'));
+
+    expect(result, isNotNull);
   });
 }
 
