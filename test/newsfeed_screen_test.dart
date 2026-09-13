@@ -59,6 +59,26 @@ void main() {
     });
   });
 
+  group('D-182: entitlement state is pulled from the server before the '
+      'local cache is read — found live: the local account_state cache '
+      'can sit stale (a successful purchase whose optimistic local write '
+      'never landed) while Firestore already has the true value, and '
+      'nothing but a cold app launch or a 402 refusal elsewhere ever '
+      'otherwise refreshed it', () {
+    test('_loadEntitlementState calls EntitlementService.pullFromServer '
+        'before reading the local account_state row', () {
+      final start = source.indexOf('Future<void> _loadEntitlementState()');
+      final end = source.indexOf('\n  }', start);
+      final body = source.substring(start, end);
+      final pullIdx = body.indexOf('EntitlementService.instance.pullFromServer');
+      final readIdx = body.indexOf('_db.getAccountState()');
+      expect(pullIdx, greaterThan(-1));
+      expect(readIdx, greaterThan(pullIdx),
+          reason: 'the server pull must happen before the local read it is '
+              'meant to freshen');
+    });
+  });
+
   group('D-177: a sample card\'s subscribe pitch disappears once the '
       'account is entitled — owner: "I want that whole text block to '
       'not appear when I am subscribed"', () {

@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:intl/intl.dart';
 
+import '../services/auth_service.dart';
 import '../services/db.dart';
+import '../services/entitlement_service.dart';
 import '../services/newsfeed_service.dart';
 import '../theme/app_colors.dart';
 import '../utils/stock_images.dart';
@@ -64,7 +66,23 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
     _loadEntitlementState();
   }
 
+  /// D-182: found live — the local `account_state.entitlement` cache can
+  /// sit stale indefinitely (it's only otherwise refreshed at app cold
+  /// launch, or reactively after a 402 refusal elsewhere) while
+  /// Firestore already has the true, current value — exactly what
+  /// happened after a purchase whose optimistic local write
+  /// (`markSubscribedLocally`) never landed, most plausibly because of
+  /// a hiccup partway through the purchase flow (the invalidReceiptError
+  /// incident earlier this session is the concrete example). Settings'
+  /// own subscription panel never hits this, since it queries RevenueCat
+  /// live directly rather than this cache — this screen now closes that
+  /// same gap by pulling from Firestore first, so it self-heals against
+  /// server truth on every open, not just at cold launch.
   Future<void> _loadEntitlementState() async {
+    final uid = AuthService.instance.currentUid;
+    if (uid != null) {
+      await EntitlementService.instance.pullFromServer(uid);
+    }
     final account = await _db.getAccountState();
     final entitlement = account[DatabaseHelper.columnEntitlement] as String?;
     final entitled = entitlement == 'trialing' || entitlement == 'subscribed';
