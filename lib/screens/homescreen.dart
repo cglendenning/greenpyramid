@@ -102,11 +102,12 @@ class HomeScreen extends StatelessWidget {
           builder: (_) => const HomeScreenWidget(),
         );
       case '/setup':
-        // D-089/D-136: a fresh install lands here first via
-        // routeToGo — the welcome screen, not straight into Mira's
-        // opening line. A relaunch right after sign-out lands here
-        // too now, identically — both are just "no session yet."
-        return MaterialPageRoute(builder: (context) => const WelcomeScreen());
+        // D-001/D-188: a process restart with an in-flight draft returns to
+        // the persisted setup phase. Only fresh setup needs the welcome.
+        return MaterialPageRoute(
+            builder: (_) => resumePendingSetup
+                ? const SetupScreen()
+                : const WelcomeScreen());
       default:
         return _errorRoute();
     }

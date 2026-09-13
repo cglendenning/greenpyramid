@@ -43,6 +43,9 @@ final GlobalKey<NavigatorState> navigatorKey =
     GlobalKey(debugLabel: "Main Navigator");
 
 String routeToGo = '/';
+// D-001/D-188: an unfinished setup draft resumes directly in its persisted
+// phase after a process restart. Fresh setup still starts at WelcomeScreen.
+bool resumePendingSetup = false;
 String payload = '';
 bool populateGap = true;
 DateTime installDate = DateTime.now();
@@ -223,7 +226,8 @@ Future<void> main() async {
   // Pending setup must route to its draft even after categories were accepted.
   final pending = FirebaseAuth.instance.currentUser?.uid;
   final draft = pending == null ? null : await SetupDraftStore(db: dbHelper).load(pending);
-  if (FirebaseAuth.instance.currentUser == null || defaultCats == 6 || (draft != null && draft['state']['phase'] != 'finished')) {
+  resumePendingSetup = draft != null && draft['state']['phase'] != 'finished';
+  if (FirebaseAuth.instance.currentUser == null || defaultCats == 6 || resumePendingSetup) {
     routeToGo = '/setup';
   }
   runApp(HomeScreen());
