@@ -84,4 +84,68 @@ void main() {
     expect(source, isNot(contains("payload: '/afternoon'")));
     expect(source, isNot(contains("payload: '/evening'")));
   });
+
+  group('D-184: the real OS notification-permission state is checked and '
+      'surfaced, not just whether a test notification was accepted for '
+      'scheduling — found live: "Send test notification" showed '
+      '"Pending…" and the notification never arrived, with no error '
+      'anywhere, because iOS accepts a schedule request and silently '
+      'drops it at delivery time when permission is denied', () {
+    test('checks the real permission state via '
+        'LocalNotificationService.areNotificationsEnabled(), not '
+        'isTestNotificationPending() (which only confirms the plugin '
+        'accepted the schedule request)', () {
+      final source = File('lib/screens/settings.dart').readAsStringSync();
+      expect(source, contains('widget.lns.areNotificationsEnabled()'));
+    });
+
+    test('does not depend on package:permission_handler for this check — '
+        'that package requires an iOS Podfile macro '
+        '(PERMISSION_NOTIFICATIONS) this project has never enabled for '
+        'any permission group, so it would silently report the wrong '
+        'status rather than the real one', () {
+      final source = File('lib/screens/settings.dart').readAsStringSync();
+      expect(source, isNot(contains('permission_handler')));
+      expect(source, isNot(contains('Permission.notification')));
+    });
+
+    test('a denied/off state shows a banner with an "Open Settings" '
+        'action, using the same app-settings: URL scheme the existing '
+        '"Adjust Previews" flow already uses on this screen', () {
+      final source = File('lib/screens/settings.dart').readAsStringSync();
+      expect(source, contains('Notifications are off for Green Pyramid'));
+      expect(source, contains("Uri.parse('app-settings:')"));
+    });
+
+    test('the permission state is rechecked on app resume, so returning '
+        'from the "Open Settings" button reflects a just-granted '
+        'permission without needing to leave and re-enter this screen',
+        () {
+      final source = File('lib/screens/settings.dart').readAsStringSync();
+      expect(source, contains('with WidgetsBindingObserver'));
+      expect(source, contains('didChangeAppLifecycleState'));
+      expect(source, contains('AppLifecycleState.resumed'));
+    });
+  });
+
+  group('D-184: LocalNotificationService.areNotificationsEnabled() reads '
+      'the real OS state per platform', () {
+    final source = File('lib/services/notification.dart').readAsStringSync();
+
+    test('iOS reads IOSFlutterLocalNotificationsPlugin.checkPermissions() '
+        '— the same already-working plugin every other notification '
+        'call in this file already uses, not a second, unconfigured one',
+        () {
+      expect(source, contains('checkPermissions()'));
+      expect(source, contains('options?.isEnabled'));
+    });
+
+    test('Android reads AndroidFlutterLocalNotificationsPlugin.'
+        'areNotificationsEnabled(), the same call _requestNotificationPermissions() '
+        'already makes for its own debug logging', () {
+      final start = source.indexOf('Future<bool> areNotificationsEnabled()');
+      final end = source.indexOf('\n  }', start);
+      expect(source.substring(start, end), contains('.areNotificationsEnabled()'));
+    });
+  });
 }

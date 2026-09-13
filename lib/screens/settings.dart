@@ -424,15 +424,50 @@ class _TestNotificationButton extends StatefulWidget {
   State<_TestNotificationButton> createState() => _TestNotificationButtonState();
 }
 
-class _TestNotificationButtonState extends State<_TestNotificationButton> {
+class _TestNotificationButtonState extends State<_TestNotificationButton>
+    with WidgetsBindingObserver {
   bool _pending = false;
   bool _scheduling = false;
+  // D-184: found live — a test notification "schedules" successfully
+  // (isTestNotificationPending() just confirms the OS accepted the
+  // request) even when notification permission is denied; iOS then
+  // silently drops it at delivery time with no error anywhere. Owner:
+  // "I think notifications are broken and not working at all anymore" —
+  // tapped the test button, saw "Pending…", nothing ever arrived, no
+  // indication why. This makes the real permission state visible
+  // instead of a silent, confusing no-op.
+  bool _permissionGranted = true;
+  bool _checkedPermission = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     widget.lns.isTestNotificationPending().then((p) {
       if (mounted) setState(() => _pending = p);
+    });
+    _checkPermission();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Catches a return from the "Open Settings" button below — the
+    // permission status is only stale if we don't refresh it on resume.
+    if (state == AppLifecycleState.resumed) _checkPermission();
+  }
+
+  Future<void> _checkPermission() async {
+    final enabled = await widget.lns.areNotificationsEnabled();
+    if (!mounted) return;
+    setState(() {
+      _permissionGranted = enabled;
+      _checkedPermission = true;
     });
   }
 
@@ -461,6 +496,39 @@ class _TestNotificationButtonState extends State<_TestNotificationButton> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (_checkedPermission && !_permissionGranted)
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.redAccent.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.redAccent.withValues(alpha: 0.35)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Notifications are off for Green Pyramid. Nothing below '
+                  'will actually arrive — including a scheduled test — '
+                  'until you turn them back on.',
+                  style: TextStyle(
+                      fontFamily: 'Raleway', color: Colors.redAccent, fontSize: 14, height: 1.3),
+                ),
+                const SizedBox(height: 10),
+                TextButton(
+                  onPressed: () async {
+                    final uri = Uri.parse('app-settings:');
+                    if (await canLaunchUrl(uri)) await launchUrl(uri);
+                  },
+                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                  child: const Text('Open Settings',
+                      style: TextStyle(fontFamily: 'Exo2', color: AppColors.brandGreen)),
+                ),
+              ],
+            ),
+          ),
         Text(
           _pending
               ? 'A test notification is scheduled — it will fire in about a minute, using one of your own newsfeed headlines. Come back after it fires to send another.'

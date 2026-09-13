@@ -329,6 +329,37 @@ class LocalNotificationService {
   /// install.
   Future<void> requestPermissions() => _requestNotificationPermissions();
 
+  /// D-184: the real, current OS authorization state — distinct from
+  /// [isTestNotificationPending], which only confirms the plugin
+  /// *accepted* a schedule request. iOS happily "schedules" a
+  /// notification with permission denied and silently drops it at
+  /// delivery time with no error anywhere, which is exactly what made
+  /// this invisible: found live, the owner tapped "Send test
+  /// notification," saw it go to "Pending…," and nothing ever arrived,
+  /// with no indication why. Uses this plugin's own
+  /// checkPermissions() (already correctly wired, no extra native
+  /// config) rather than package:permission_handler's
+  /// Permission.notification — that package requires an iOS Podfile
+  /// macro (PERMISSION_NOTIFICATIONS) this project has never enabled
+  /// for any permission group, so it would have silently returned a
+  /// wrong status rather than the real one.
+  Future<bool> areNotificationsEnabled() async {
+    if (Platform.isAndroid) {
+      final enabled = await _localNotificationService
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.areNotificationsEnabled();
+      return enabled ?? false;
+    }
+    if (Platform.isIOS) {
+      final options = await _localNotificationService
+          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+          ?.checkPermissions();
+      return options?.isEnabled ?? false;
+    }
+    return true;
+  }
+
   Future<void> _requestNotificationPermissions() async {
     try {
       // Platform-specific permission requests
