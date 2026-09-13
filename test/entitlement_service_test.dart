@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/services/db.dart';
 import 'package:life_ops/services/entitlement_service.dart';
@@ -101,7 +102,13 @@ void main() {
       'the RevenueCat webhook) into the local cache', () async {
     final firestore = FakeFirebaseFirestore();
     await seedProfile(firestore, {'entitlement': 'subscribed'});
-    final service = EntitlementService(db: db, firestore: firestore);
+    // D-182: signed out for this service instance deliberately — this
+    // test is specifically about the explicit pullFromServer(uid) call
+    // below, not isEntitled()'s own new auto-pull (covered separately);
+    // isEntitled() here just reads back what that explicit call already
+    // wrote locally.
+    final service =
+        EntitlementService(db: db, firestore: firestore, auth: MockFirebaseAuth());
 
     await service.pullFromServer(uid);
 
@@ -110,7 +117,8 @@ void main() {
 
   test('markSubscribedLocally sets the local cache to subscribed '
       'immediately, without touching Firestore', () async {
-    final service = EntitlementService(db: db, firestore: FakeFirebaseFirestore());
+    final service = EntitlementService(
+        db: db, firestore: FakeFirebaseFirestore(), auth: MockFirebaseAuth());
     await service.markSubscribedLocally();
     expect(await service.isEntitled(), isTrue);
     final account = await db.getAccountState();
@@ -119,7 +127,8 @@ void main() {
 
   test('D-016: isEntitled is true for trialing and subscribed, false for '
       'pre_trial and lapsed', () async {
-    final service = EntitlementService(db: db, firestore: FakeFirebaseFirestore());
+    final service = EntitlementService(
+        db: db, firestore: FakeFirebaseFirestore(), auth: MockFirebaseAuth());
 
     await db.setAccountEntitlement(entitlement: 'pre_trial');
     expect(await service.isEntitled(), isFalse);
@@ -131,6 +140,39 @@ void main() {
     expect(await service.isEntitled(), isTrue);
 
     await db.setAccountEntitlement(entitlement: 'subscribed');
+    expect(await service.isEntitled(), isTrue);
+  });
+
+  test('D-182: isEntitled pulls from the server before trusting the '
+      'local cache — found live: local account_state.entitlement can sit '
+      'stale (a purchase whose optimistic local write never landed) '
+      'while Firestore already has the true value, and nothing but a '
+      'cold app launch otherwise refreshed it', () async {
+    final firestore = FakeFirebaseFirestore();
+    await seedProfile(firestore, {'entitlement': 'subscribed'});
+    final auth = MockFirebaseAuth(
+        signedIn: true, mockUser: MockUser(uid: uid, isAnonymous: false));
+    final service = EntitlementService(db: db, firestore: firestore, auth: auth);
+
+    // The local cache still says pre_trial — nothing has pulled the real,
+    // already-correct server value down into it yet.
+    await db.setAccountEntitlement(entitlement: 'pre_trial');
+
+    expect(await service.isEntitled(), isTrue,
+        reason: 'isEntitled() itself must reconcile against the server, '
+            'not just read whatever the local cache happens to hold');
+    final account = await db.getAccountState();
+    expect(account[DatabaseHelper.columnEntitlement], 'subscribed',
+        reason: 'the pull should also have corrected the local cache in place');
+  });
+
+  test('D-182: a signed-out account (no current user) skips the server '
+      'pull and falls back to whatever the local cache holds, rather '
+      'than throwing', () async {
+    final service = EntitlementService(
+        db: db, firestore: FakeFirebaseFirestore(), auth: MockFirebaseAuth());
+    await db.setAccountEntitlement(entitlement: 'subscribed');
+
     expect(await service.isEntitled(), isTrue);
   });
 }

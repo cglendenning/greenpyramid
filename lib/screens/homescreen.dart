@@ -8,6 +8,7 @@ import 'package:life_ops/services/local_pyramid_reset_service.dart';
 import 'package:life_ops/services/notification.dart';
 import 'package:life_ops/services/db.dart';
 import 'package:life_ops/services/dbtools.dart';
+import 'package:life_ops/services/entitlement_gate.dart';
 import 'package:life_ops/services/sync_service.dart';
 import 'package:life_ops/main.dart';
 import 'package:life_ops/widgets/pyramid.dart';
@@ -648,30 +649,23 @@ class CustomAppBarState extends State<CustomAppBar> {
     );
   }
 
-  // D-091/D-016: same client-side entitlement gate CouncilCategoryPicker
-  // already uses (council_category_picker.dart:_open) — found live, the
-  // hard way: without it, an unentitled account reaches GeneralCouncilScreen,
-  // the backend's EntitlementRequiredException isn't one of the exceptions
-  // that screen catches (matching CouncilScreen's own convention of relying
+  // D-091/D-016: the shared ensureEntitled gate — same one CouncilCategoryPicker
+  // uses (council_category_picker.dart:_open) — found live, the hard way:
+  // without it, an unentitled account reaches GeneralCouncilScreen, the
+  // backend's EntitlementRequiredException isn't one of the exceptions that
+  // screen catches (matching CouncilScreen's own convention of relying
   // entirely on this gate rather than handling the exception mid-screen),
   // and the user sees a generic "Could not open this conversation" with no
   // path forward.
+  //
+  // D-182 (amended): this used to be its own private duplicate of the
+  // check, which meant it never benefited from ensureEntitled's own
+  // server-freshness fix — now the shared gate itself, not a copy of it.
   Future<void> navigateToCouncil(BuildContext context) async {
-    final account = await DatabaseHelper.instance.getAccountState();
-    final entitlement = account[DatabaseHelper.columnEntitlement] as String?;
-    final entitled = entitlement == 'trialing' || entitlement == 'subscribed';
-
-    if (!mounted) return;
-
-    if (!entitled) {
-      final subscribed = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(
-          builder: (context) => const PaywallScreen(reason: 'Talk to the Council of Advisors'),
-        ),
-      );
-      if (subscribed != true || !mounted) return;
+    if (!await ensureEntitled(context, reason: 'Talk to the Council of Advisors')) {
+      return;
     }
+    if (!mounted) return;
 
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(context,

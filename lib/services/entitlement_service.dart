@@ -18,9 +18,10 @@ import 'db.dart';
 /// class only asks for a grant and mirrors the answer into the local
 /// account_state cache. It never decides entitlement on-device.
 class EntitlementService {
-  EntitlementService({DatabaseHelper? db, FirebaseFirestore? firestore})
+  EntitlementService({DatabaseHelper? db, FirebaseFirestore? firestore, FirebaseAuth? auth})
       : _db = db ?? DatabaseHelper.instance,
-        _firestore = firestore ?? FirebaseFirestore.instance;
+        _firestore = firestore ?? FirebaseFirestore.instance,
+        _authOverride = auth;
 
   static final EntitlementService instance = EntitlementService();
 
@@ -29,6 +30,15 @@ class EntitlementService {
 
   final DatabaseHelper _db;
   final FirebaseFirestore _firestore;
+  final FirebaseAuth? _authOverride;
+
+  // Resolved lazily, not in the constructor: FirebaseAuth.instance throws
+  // in a unit test with no Firebase app initialized, and many existing
+  // tests construct this service without ever needing auth at all (e.g.
+  // pullFromServer's own tests) — same lazy-getter fix already applied
+  // to AccountLinkService's SyncService dependency (D-172) for the
+  // identical reason.
+  FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
 
   Future<Map<String, String>> _headers() async {
     final appCheckToken = await FirebaseAppCheck.instance.getToken();
@@ -172,7 +182,21 @@ class EntitlementService {
   /// in Firestore and get pulled back down on the next launch.
   Future<void> markSubscribedLocally() => _db.setAccountEntitlement(entitlement: 'subscribed');
 
+  /// D-182 (amended): the single shared gate (`ensureEntitled`, and
+  /// through it every screen that calls it) now self-heals against
+  /// Firestore before trusting the local cache — found live, the local
+  /// `account_state.entitlement` column is otherwise refreshed only at
+  /// cold app launch or by a purchase's own optimistic local write
+  /// (`markSubscribedLocally`), which can be skipped entirely if the
+  /// purchase flow hiccups partway through. A failed or empty pull is a
+  /// silent no-op ([pullFromServer]'s own designed behavior) — this
+  /// never blocks or fails a gate check just because the network is
+  /// down, it only ever has a chance to *improve* on what's cached.
   Future<bool> isEntitled() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid != null) {
+      await pullFromServer(uid);
+    }
     final entitlement = await currentLocalEntitlement();
     return entitlement == 'trialing' || entitlement == 'subscribed';
   }

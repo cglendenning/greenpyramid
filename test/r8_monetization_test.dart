@@ -8,27 +8,29 @@ import 'package:flutter_test/flutter_test.dart';
 /// screens themselves need Firebase/RevenueCat to exercise meaningfully, so
 /// these confirm the wiring in source rather than via widget tests.
 void main() {
-  test('D-013/D-016: an unentitled account revisiting a category is routed '
-      'to the paywall, not a dead-end dialog', () {
+  test('D-013/D-016/D-182: an unentitled account revisiting a category is '
+      'routed to the paywall, not a dead-end dialog — via the shared '
+      'ensureEntitled gate (which itself pushes PaywallScreen), not a '
+      'private duplicate of that push', () {
     final source = File('lib/screens/council_category_picker.dart').readAsStringSync();
-    expect(source, contains('PaywallScreen('));
+    expect(source, contains('ensureEntitled(context'));
     expect(source, contains('reason:'));
   });
 
-  test('D-091/D-016: an unentitled account opening the general Council is '
-      'routed to the paywall before GeneralCouncilScreen is ever pushed, not '
-      'a dead-end "could not open" error — found live, missing on the entry '
-      'point CouncilCategoryPicker already had', () {
+  test('D-091/D-016/D-182: an unentitled account opening the general '
+      'Council is routed to the paywall before GeneralCouncilScreen is '
+      'ever pushed, not a dead-end "could not open" error — via the '
+      'shared ensureEntitled gate, same as CouncilCategoryPicker', () {
     final source = File('lib/screens/homescreen.dart').readAsStringSync();
     final navIdx = source.indexOf('Future<void> navigateToCouncil(');
     expect(navIdx, greaterThan(-1));
     final navEnd = source.indexOf('\n  }', navIdx);
     final body = source.substring(navIdx, navEnd);
-    expect(body, contains('PaywallScreen('));
+    expect(body, contains('ensureEntitled(context'));
     expect(body, contains('reason:'));
-    final paywallIdx = body.indexOf('PaywallScreen(');
+    final gateIdx = body.indexOf('ensureEntitled(context');
     final pushIdx = body.indexOf('GeneralCouncilScreen()');
-    expect(pushIdx, greaterThan(paywallIdx),
+    expect(pushIdx, greaterThan(gateIdx),
         reason: 'the entitlement check and paywall route must come before '
             'GeneralCouncilScreen is ever pushed');
   });

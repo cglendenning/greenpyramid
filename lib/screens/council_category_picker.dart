@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../services/db.dart';
+import '../services/entitlement_gate.dart';
 import '../theme/app_colors.dart';
 import 'council_screen.dart';
-import 'paywall_screen.dart';
 
 /// D-061: Settings' "Revisit a category with the Council" entry point.
 /// Lists the six categories; choosing one opens a Council session scoped to
@@ -34,24 +34,17 @@ class _CouncilCategoryPickerState extends State<CouncilCategoryPicker> {
     return 3;
   }
 
+  /// D-182 (amended): now the shared `ensureEntitled` gate instead of a
+  /// private duplicate of its check — found live, this screen's own
+  /// inline copy meant it never benefited from `ensureEntitled`'s
+  /// server-freshness fix, and duplicating it here was already exactly
+  /// the drift D-114's own tests elsewhere in this app guard against.
   Future<void> _open(int categoryId, String categoryName, int tier) async {
-    final account = await DatabaseHelper.instance.getAccountState();
-    final entitlement = account[DatabaseHelper.columnEntitlement] as String?;
-    final entitled = entitlement == 'trialing' || entitlement == 'subscribed';
-
-    if (!mounted) return;
-
-    if (!entitled) {
-      final subscribed = await Navigator.push<bool>(
-        context,
-        MaterialPageRoute(
-          builder: (context) => PaywallScreen(
-            reason: 'Revisit $categoryName with the Council of Advisors',
-          ),
-        ),
-      );
-      if (subscribed != true || !mounted) return;
+    if (!await ensureEntitled(context,
+        reason: 'Revisit $categoryName with the Council of Advisors')) {
+      return;
     }
+    if (!mounted) return;
 
     await Navigator.push(
       context,
