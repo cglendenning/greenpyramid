@@ -232,17 +232,17 @@ Future<void> main() async {
   }
   runApp(HomeScreen());
 
-  // D-032/D-034: silent account bootstrap, kicked off after the first frame
+  // D-029/D-027: silent account bootstrap, kicked off after the first frame
   // so it never gates app startup or changes the setup step count (D-005).
   // Not awaited — a failure here is retried on the next launch, never shown
-  // to the user (D-032 acceptance criteria).
+  // to the user (D-029 acceptance criteria).
   unawaited(_bootstrapAccountSync(setupComplete: defaultCats != 6 && (draft == null || draft['state']['phase'] == 'finished')));
 }
 
-/// D-032: create (or resume) the silent anonymous account, then run D-034's
+/// D-029: create (or resume) the silent anonymous account, then run D-027's
 /// migration / D-187's ongoing sync. Every step logs its own failure rather
 /// than throwing past this function — one failed step must not stop the
-/// others, and none of them may ever block habit check-off (D-031).
+/// others, and none of them may ever block habit check-off (D-026).
 Future<void> _bootstrapAccountSync({required bool setupComplete}) async {
   final uid = await AuthService.instance.signInSilently();
   if (uid == null) return;
@@ -269,7 +269,7 @@ Future<void> _bootstrapAccountSync({required bool setupComplete}) async {
     debugPrint('Failed to log in to RevenueCat: $e\n$st');
   }
 
-  // D-057: pulls the server-authoritative entitlement into the local cache
+  // D-044: pulls the server-authoritative entitlement into the local cache
   // on every launch — a subscription confirmed via the RevenueCat webhook
   // never touches this device directly, so this is how it reaches the
   // local gate CouncilCategoryPicker reads.
@@ -279,13 +279,13 @@ Future<void> _bootstrapAccountSync({required bool setupComplete}) async {
   // its trial grant (re)requested here, on every launch until it succeeds.
   // Checked against [hasServerEntitlement], never the local cache (D-116)
   // — found live: `requestTrialAfterSetup()`'s original call can fail
-  // (D-059's DeviceCheck reliability issue) and is never otherwise
+  // (D-045's DeviceCheck reliability issue) and is never otherwise
   // retried, silently leaving the account permanently ungated while the
   // local cache still reads whatever it read before that failure, masking
   // the very condition this retry exists to catch. Which grant to retry
   // depends on how this account reached completion: one that has a real
   // `setup`-typed Council session (D-188) went through the new flow and
-  // gets D-188's normal request retried; one that doesn't is the D-034
+  // gets D-188's normal request retried; one that doesn't is the D-027
   // migration cohort (old flow, no Council setup, so no device-bound
   // trial was ever requested) and gets D-071's one-time 30-day grant.
   if (setupComplete && !hasServerEntitlement) {
@@ -299,7 +299,7 @@ Future<void> _bootstrapAccountSync({required bool setupComplete}) async {
   }
 
   // D-189/D-189: keeps the FCM token and local fallback current on every
-  // launch. Only for accounts that have already been through D-065's
+  // launch. Only for accounts that have already been through D-050's
   // permission screen — a brand-new install reaches this for the first
   // time from PushPermissionScreen, right after setup completes, not here.
   if (setupComplete) {

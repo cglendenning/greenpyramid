@@ -4,27 +4,27 @@ import 'package:flutter/foundation.dart';
 import 'calendar_service.dart';
 import 'db.dart';
 
-/// D-034/D-187: uploads exactly the enumerated local dataset to Firestore
+/// D-027/D-187: uploads exactly the enumerated local dataset to Firestore
 /// under the signed-in uid, in the layout IV-D prescribes:
 /// ```
 /// users/{uid}
 ///   ttlAt                       D-187 prune marker (see below)
 ///   profile/main                categories, tiers, active essences, vision
 ///                                statement, timezone, entitlement, trial window
-///   essenceVersions/{id}        every version of every essence (D-061)
-///   domainFindings/{id}         accumulated four-domain findings (D-048)
+///   essenceVersions/{id}        every version of every essence (D-047)
+///   domainFindings/{id}         accumulated four-domain findings (D-036)
 ///   recentActivity/{id}         every task_log row, full history (D-187)
 ///   tasks/{id}                  every habit/task currently defined (D-187)
 /// ```
 /// `councilSessions/` and `deviceTrial/` are also part of IV-D but are not
-/// built yet (R5 and D-059's Android trial marker respectively) — nothing
+/// built yet (R5 and D-045's Android trial marker respectively) — nothing
 /// syncs into them until that lands.
 ///
 /// Every write is a deterministic-ID `set(..., merge: true)` or an explicit
 /// diff-and-delete, never a blind append, so an interrupted sync is safe to
 /// re-run (MIG-1) and never produces duplicates.
 ///
-/// This runs after habit check-off, never in its path (D-031): check-off
+/// This runs after habit check-off, never in its path (D-026): check-off
 /// itself never calls into this class or awaits anything here.
 ///
 /// D-187: [restoreFromCloud] is the pull direction — the rest of this
@@ -50,7 +50,7 @@ class SyncService {
   /// of inventing a second one.
   static const pruneEligibleWindow = Duration(days: 30);
 
-  /// D-034: never swallowed — a failure here means the next launch's sync
+  /// D-027: never swallowed — a failure here means the next launch's sync
   /// finds the same unsynced local state and retries automatically, but
   /// only if the failure was actually logged and someone can see it.
   Future<void> syncAll(String uid, {required bool setupComplete}) async {
@@ -112,7 +112,7 @@ class SyncService {
     // removes a field that's simply left out of the payload.
     final calendarContext = await _calendar.summarizeToday();
 
-    // D-057: entitlement/trialStartedAt/trialExpiresAt are server-authoritative
+    // D-044: entitlement/trialStartedAt/trialExpiresAt are server-authoritative
     // (granted by /requestTrial, transitioned by the RevenueCat webhook) —
     // never uploaded here. The local account_state copy is a downstream cache
     // (EntitlementService pulls it down), not a source pushed back up; pushing
@@ -137,7 +137,7 @@ class SyncService {
   }
 
   /// IV-D `essenceVersions/{id}`: every version of every category's essence
-  /// (D-061) — the full audit trail `profile/main.activeEssence` is drawn
+  /// (D-047) — the full audit trail `profile/main.activeEssence` is drawn
   /// from.
   Future<void> _syncEssenceVersions(DocumentReference<Map<String, dynamic>> userDoc) async {
     final rows = await _db.queryAllCategoryEssences();
@@ -159,7 +159,7 @@ class SyncService {
     await batch.commit();
   }
 
-  /// IV-D `domainFindings/{id}`: accumulated four-domain findings (D-048).
+  /// IV-D `domainFindings/{id}`: accumulated four-domain findings (D-036).
   Future<void> _syncDomainFindings(DocumentReference<Map<String, dynamic>> userDoc) async {
     final rows = await _db.queryAllDomainFindings();
     if (rows.isEmpty) return;
@@ -274,7 +274,7 @@ class SyncService {
   /// behavior depends on), the vision statement, every habit/task, and
   /// (D-187/D-187) every check-off ever pushed by [_syncRecentActivity] —
   /// which, as of D-187, is all of it, not a bounded recent window.
-  /// Domain findings (D-048, advisory-only per D-188) still do not
+  /// Domain findings (D-036, advisory-only per D-188) still do not
   /// restore — genuinely low-stakes to lose.
   ///
   /// D-187 amendment: check-off activity restore was originally left out

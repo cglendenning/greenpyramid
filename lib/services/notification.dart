@@ -283,9 +283,9 @@ class LocalNotificationService {
     const AndroidInitializationSettings androidInitializationSettings =
         AndroidInitializationSettings('@drawable/ic_launcher');
 
-    // D-189/D-065: these must stay false. The plugin's initialize() call
+    // D-189/D-050: these must stay false. The plugin's initialize() call
     // itself requests permission immediately when they're true — on iOS
-    // that means the OS dialog fires at app launch, not from D-065's
+    // that means the OS dialog fires at app launch, not from D-050's
     // screen. Permission is requested explicitly later via
     // IOSFlutterLocalNotificationsPlugin.requestPermissions() in
     // _requestNotificationPermissions().
@@ -323,13 +323,13 @@ class LocalNotificationService {
     );
   }
 
-  /// D-065: called once, immediately after D-046's completion moment
+  /// D-050: called once, immediately after D-034's completion moment
   /// settles. D-189: denial degrades nothing and this is never re-asked on
   /// a schedule — callers should not invoke this more than once per
   /// install.
   ///
   /// D-184: also reused from Settings' notification banner for an account
-  /// that completed setup before D-065's screen existed and so has never
+  /// that completed setup before D-050's screen existed and so has never
   /// called this at all — found live: on such an account, iOS never
   /// creates a Notifications entry under Settings > Green Pyramid in the
   /// first place, because the OS only adds that entry once an app has
@@ -395,7 +395,7 @@ class LocalNotificationService {
 
         return granted ?? false;
       } else if (Platform.isIOS) {
-        // D-065: initialize() no longer requests permission (see
+        // D-050: initialize() no longer requests permission (see
         // intialize() above) — this is what actually shows the OS dialog.
         final bool? granted = await _localNotificationService
             .resolvePlatformSpecificImplementation<
@@ -506,7 +506,7 @@ class LocalNotificationService {
     }
     if (!idFound) {
       // Generate dynamic message based on notification ID
-      // D-189: an explicit body (cached server content, or the D-063
+      // D-189: an explicit body (cached server content, or the D-049
       // static pool) overrides the built-in generic message pool.
       String dynamicBody = body ?? _generateNotificationMessage(id);
       // Create iOS details with the question as the body

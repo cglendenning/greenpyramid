@@ -7,9 +7,9 @@ import '../theme/app_colors.dart';
 import '../widgets/confetti_overlay.dart';
 import '../widgets/pyramid_3d.dart';
 
-/// D-046: the completion moment, sequenced after D-055's closing synthesis.
+/// D-034: the completion moment, sequenced after D-042's closing synthesis.
 /// The real main-screen pyramid (not a bespoke celebration graphic),
-/// confetti (D-066's single sanctioned exception), and a 3-second
+/// confetti (D-051's single sanctioned exception), and a 3-second
 /// decelerating spin. Skippable by tapping; respects reduce-motion.
 class SetupCompletionScreen extends StatefulWidget {
   final VoidCallback onDone;
@@ -38,7 +38,7 @@ class _SetupCompletionScreenState extends State<SetupCompletionScreen> {
   void initState() {
     super.initState();
     _categories = widget.queryCategories();
-    // D-046's own text — "settles" after the 3-second spin, "skippable by
+    // D-034's own text — "settles" after the 3-second spin, "skippable by
     // tapping" — describes an otherwise-automatic transition a tap can
     // shortcut, not a screen that waits forever for one. This was
     // previously the only way forward at all: nothing ever called

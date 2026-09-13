@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-048/D-185/D-068/D-185 step 7: structural checks for R9's domain map
+/// D-036/D-185/D-068/D-185 step 7: structural checks for R9's domain map
 /// and calendar context, matching this repo's convention for screens gated
 /// behind a live account (council_entry_point_test.dart) — the screens
 /// themselves need Firebase/a real calendar to exercise meaningfully.
@@ -55,9 +55,9 @@ void main() {
     expect(manifest, contains('android.permission.READ_CALENDAR'));
   });
 
-  test('D-037 (amended): the notification job pulls domain findings and '
+  test('D-028 (amended): the notification job pulls domain findings and '
       'calendar context into the same prompt-building call as everything '
-      'else D-037 already enumerated', () {
+      'else D-028 already enumerated', () {
     final source = File('functions/index.js').readAsStringSync();
     final buildIdx = source.indexOf('buildNotificationPrompt({');
     final block = source.substring(buildIdx, buildIdx + 400);

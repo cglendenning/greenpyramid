@@ -1,12 +1,12 @@
-// D-019/D-057/D-188/D-059/D-071: grants the one free trial a device (or,
-// for the D-034 migration cohort, an account) is owed, exactly once, and
+// D-019/D-044/D-188/D-045/D-071: grants the one free trial a device (or,
+// for the D-027 migration cohort, an account) is owed, exactly once, and
 // never lets that grant touch an already-subscribed account.
 import admin from 'firebase-admin';
 import { queryTwoBits, updateTwoBits } from './device_check.js';
 
-export const TRIAL_DAYS = 3; // D-057
+export const TRIAL_DAYS = 3; // D-044
 export const MIGRATION_TRIAL_DAYS = 30; // D-071
-// D-060/D-187: the Android hash is retained 24 months from last write, then
+// D-046/D-187: the Android hash is retained 24 months from last write, then
 // purged — long enough to defeat trial farming, bounded enough to be
 // defensible under GDPR data-minimisation. After 24 months the device can
 // claim a trial again; that expiry is the deliberate trade the spec's own
@@ -39,10 +39,10 @@ function trialWindow(days, now) {
   };
 }
 
-// D-059: the Android marker is a hash the client already computed (SHA-256
+// D-045: the Android marker is a hash the client already computed (SHA-256
 // of ANDROID_ID) — this never sees or stores the raw identifier. A device
 // that has already consumed its trial lands the account in 'lapsed', not
-// 'trialing', even on a brand-new account (the reinstall case D-059 exists
+// 'trialing', even on a brand-new account (the reinstall case D-045 exists
 // to close).
 async function grantAndroidTrial(uid, androidIdHash, { _store, _now }) {
   if (!androidIdHash) throw new DeviceTrialError('android_id_hash_required');
@@ -71,7 +71,7 @@ async function grantAndroidTrial(uid, androidIdHash, { _store, _now }) {
   });
 }
 
-// D-059: iOS's marker lives entirely in Apple's DeviceCheck bits — Green
+// D-045: iOS's marker lives entirely in Apple's DeviceCheck bits — Green
 // Pyramid persists no device identifier of its own here, so there is no
 // local transaction to guard this with; Apple's query/update pair is the
 // only state.
@@ -124,7 +124,7 @@ export async function grantTrialIfEligible(
 
 // D-071: existing users get one 30-day trial, granted once, at the first
 // launch of the build that lands this specification — never device-bound
-// (D-059's explicit carve-out for this cohort). Guarded by a transaction on
+// (D-045's explicit carve-out for this cohort). Guarded by a transaction on
 // the account's own entitlement field, so a retried request can never grant
 // it twice: only an account still at 'pre_trial' (never through setup's own
 // grant, and never migrated before) is eligible.

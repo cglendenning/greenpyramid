@@ -20,7 +20,7 @@ void main() {
   group('D-132: a real account is enforced by the time the home screen is '
       'reached', () {
     test('_HomeScreen awaits signInSilently() before checking isAnonymous '
-        '— main.dart\'s bootstrap is fire-and-forget (D-032) and not '
+        '— main.dart\'s bootstrap is fire-and-forget (D-029) and not '
         'guaranteed to have run yet', () {
       expect(homescreenSource, contains('await AuthService.instance.signInSilently();'));
       expect(homescreenSource, contains('AuthService.instance.isAnonymous'));

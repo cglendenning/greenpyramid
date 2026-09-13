@@ -49,12 +49,12 @@ export function makeModelConfig(docId, fallback = FALLBACK_MODEL) {
   return { getModel, _resetCacheForTest };
 }
 
-// D-050/D-185: the Council's model.
+// D-037/D-185: the Council's model.
 const council = makeModelConfig('council');
 export const getCouncilModel = council.getModel;
 export const _resetModelCacheForTest = council._resetCacheForTest;
 
-// D-189/D-037: the notification generator's model — its own configuration
+// D-189/D-028: the notification generator's model — its own configuration
 // location, independently switchable from the Council's.
 const notifications = makeModelConfig('notifications');
 export const getNotificationModel = notifications.getModel;

@@ -6,7 +6,7 @@ import '../widgets/radarchart.dart';
 
 /// D-185/D-068: the four domains as a user-facing map — a destination the
 /// user visits deliberately, never interposed in the daily path. Domain
-/// state is derived entirely from accumulated findings (D-048), never
+/// state is derived entirely from accumulated findings (D-036), never
 /// asked of the user directly (D-185's own acceptance criterion).
 ///
 /// Disclosed simplification: no scoring formula is specified in the spec

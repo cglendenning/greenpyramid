@@ -1,8 +1,8 @@
-// D-048: when a category conversation surfaces an impediment, this derives
+// D-036: when a category conversation surfaces an impediment, this derives
 // which of the four domains it falls in, from the transcript and captured
 // essence for that one category. Run once per essence acceptance (setup's
-// foundational essences and D-061's re-clarification both converge on the
-// same moment), not on every conversational turn — matching D-052's
+// foundational essences and D-047's re-clarification both converge on the
+// same moment), not on every conversational turn — matching D-039's
 // existing derive-at-a-checkpoint pattern rather than adding cost to every
 // message.
 import { sanitize } from './council.js';

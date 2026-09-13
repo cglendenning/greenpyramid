@@ -18,7 +18,7 @@ class _TempPathProvider extends PathProviderPlatform
   Future<String?> getApplicationDocumentsPath() async => dir;
 }
 
-/// D-057: only the locally-testable half of EntitlementService — pulling
+/// D-044: only the locally-testable half of EntitlementService — pulling
 /// the server's answer into the local cache, and reading that cache back —
 /// is covered here. requestTrialAfterSetup/requestMigrationTrial are pure
 /// network transport (App Check + Firebase Auth + the live backend) and are
@@ -46,7 +46,7 @@ void main() {
     return firestore.collection('users').doc(uid).collection('profile').doc('main').set(data);
   }
 
-  test('D-057: pullFromServer mirrors a trialing entitlement, with its '
+  test('D-044: pullFromServer mirrors a trialing entitlement, with its '
       'trial window, into the local cache', () async {
     final firestore = FakeFirebaseFirestore();
     await seedProfile(firestore, {
@@ -65,7 +65,7 @@ void main() {
     expect(storedExpiry.toUtc(), DateTime.utc(2026, 6, 4));
   });
 
-  test('D-057: pullFromServer is a no-op when profile/main has no '
+  test('D-044: pullFromServer is a no-op when profile/main has no '
       'entitlement field yet (a brand-new, not-yet-synced account) — the '
       'local default is left alone rather than cleared', () async {
     final firestore = FakeFirebaseFirestore();
@@ -85,7 +85,7 @@ void main() {
       'main.dart\'s bootstrap uses this return value, not the local cache, '
       'to decide whether a trial grant needs retrying. Regression test '
       'for a defect found live: an account whose original '
-      'requestTrialAfterSetup() call failed (D-059\'s DeviceCheck '
+      'requestTrialAfterSetup() call failed (D-045\'s DeviceCheck '
       'reliability issue) had a local cache stuck reading "trialing" from '
       'before the failure, which permanently masked the retry condition '
       'a check against the local cache would have relied on', () async {
@@ -98,7 +98,7 @@ void main() {
     expect(found, isFalse);
   });
 
-  test('D-057: pullFromServer reflects a subscribed account (as written by '
+  test('D-044: pullFromServer reflects a subscribed account (as written by '
       'the RevenueCat webhook) into the local cache', () async {
     final firestore = FakeFirebaseFirestore();
     await seedProfile(firestore, {'entitlement': 'subscribed'});

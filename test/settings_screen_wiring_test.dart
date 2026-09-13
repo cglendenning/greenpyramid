@@ -111,7 +111,7 @@ void main() {
 
     test('an off state shows a banner whose action requests permission '
         'directly first — not just a bare "Open Settings" link — since an '
-        'account that completed setup before D-065\'s permission screen '
+        'account that completed setup before D-050\'s permission screen '
         'existed has never called the OS request API at all, so iOS never '
         'creates a Notifications entry under Settings to open: found live '
         'via a screenshot showing no Notifications row whatsoever under '

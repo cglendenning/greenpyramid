@@ -37,7 +37,7 @@ const profilePath = (uid) => `users/${uid}/profile/main`;
 const trialPath = (hash) => `deviceTrials/${hash}`;
 const now = new Date('2026-06-01T00:00:00Z');
 
-test('D-059: a fresh Android device is granted a 3-day trial and marked '
+test('D-045: a fresh Android device is granted a 3-day trial and marked '
     + 'consumed', async () => {
   const store = new FakeFirestore();
   const result = await grantTrialIfEligible(
@@ -51,7 +51,7 @@ test('D-059: a fresh Android device is granted a 3-day trial and marked '
   assert.equal(expiresAt.getTime() - now.getTime(), TRIAL_DAYS * 24 * 60 * 60 * 1000);
 });
 
-test('D-060/D-187: the device trial marker carries a 24-month ttlAt so '
+test('D-046/D-187: the device trial marker carries a 24-month ttlAt so '
     + 'Firestore purges it — retained, not kept forever', () => {
   const store = new FakeFirestore();
   return grantTrialIfEligible(
@@ -63,7 +63,7 @@ test('D-060/D-187: the device trial marker carries a 24-month ttlAt so '
   });
 });
 
-test('D-059: an Android device that already consumed its trial lands a '
+test('D-045: an Android device that already consumed its trial lands a '
     + 'brand-new account in lapsed, not trialing — the reinstall case', async () => {
   const store = new FakeFirestore({ [trialPath('hash1')]: { uid: 'old-uid' } });
   const result = await grantTrialIfEligible(
@@ -74,7 +74,7 @@ test('D-059: an Android device that already consumed its trial lands a '
   assert.equal(store.data[profilePath('new-uid')].entitlement, 'lapsed');
 });
 
-test('D-059: android_id_hash_required is thrown when no hash is provided', async () => {
+test('D-045: android_id_hash_required is thrown when no hash is provided', async () => {
   const store = new FakeFirestore();
   await assert.rejects(
     () => grantTrialIfEligible('u1', { platform: 'android' }, store, now),

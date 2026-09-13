@@ -14,7 +14,7 @@ class _TempPathProvider extends PathProviderPlatform
   Future<String?> getApplicationDocumentsPath() async => dir;
 }
 
-/// D-051/D-084: regression test for a defect found live — a real setup
+/// D-038/D-084: regression test for a defect found live — a real setup
 /// completed, essences and all, but every category synced to Firestore
 /// still literally named "Empty1".."Empty6" (populateCategory()'s seed
 /// values), each stuck at position 0. Root cause: category.categoryid is
@@ -43,7 +43,7 @@ void main() {
   });
 
   test(
-      'D-051: committing a real category over a seeded placeholder id '
+      'D-038: committing a real category over a seeded placeholder id '
       'replaces it — the seed name and default position=0 must not '
       'survive', () async {
     // Simulates populateCategory()'s unconditional seed at every launch.
@@ -69,7 +69,7 @@ void main() {
             'broke the completion screen\'s pyramid rendering');
   });
 
-  test('D-051: all six categories can be committed over all six seeded '
+  test('D-038: all six categories can be committed over all six seeded '
       'placeholders in one pass, matching real setup completion', () async {
     for (var i = 1; i <= 6; i++) {
       await db.insertCategory(

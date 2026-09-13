@@ -8,7 +8,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 /// for. Found stale during a direct read-through: "Coach" was retired for
 /// the Council of Advisors (D-069); setup described a manual multi-step
 /// wizard with day-of-week scheduling, but setup is now a conversation
-/// with Mira and day-of-week scheduling moved out of it entirely (D-054);
+/// with Mira and day-of-week scheduling moved out of it entirely (D-041);
 /// the color legend was missing blue (no tasks defined) and stated 3
 /// bands instead of the real 4-band scale (pyramid_stack.dart's
 /// setColor); nothing mentioned accounts, the trial/subscription model,

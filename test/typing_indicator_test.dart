@@ -32,7 +32,7 @@ void main() {
 
   testWidgets(
       'D-101: respects reduce-motion — no AnimatedBuilder in the tree, '
-      'same discipline as SetupProgressIndicator (D-044): the static '
+      'same discipline as SetupProgressIndicator (D-033): the static '
       'branch is taken, not merely a paused animation', (tester) async {
     await tester.pumpWidget(wrap(const TypingIndicator(advisorKey: 'eli'),
         disableAnimations: true));

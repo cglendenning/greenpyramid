@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildNotificationPrompt, NOTIFICATION_TOOL } from './notification_derivation.js';
 
-test('D-037: the prompt includes category names, tiers, and essences', () => {
+test('D-028: the prompt includes category names, tiers, and essences', () => {
   const { user } = buildNotificationPrompt({
     categories: [
       { name: 'Health', tier: 1, essence: 'my body carries me through everything' },
@@ -15,7 +15,7 @@ test('D-037: the prompt includes category names, tiers, and essences', () => {
   assert.match(user, /no essence captured yet/);
 });
 
-test('D-037: the vision statement is included when present, omitted when '
+test('D-028: the vision statement is included when present, omitted when '
   + 'not', () => {
   const withVision = buildNotificationPrompt({ visionStatement: 'a real vision' });
   assert.match(withVision.user, /a real vision/);
@@ -23,7 +23,7 @@ test('D-037: the vision statement is included when present, omitted when '
   assert.doesNotMatch(withoutVision.user, /THEIR VISION/);
 });
 
-test('D-037: recent activity is bounded to 250 rows even if more are '
+test('D-028: recent activity is bounded to 250 rows even if more are '
   + 'passed', () => {
   const recentActivity = Array.from({ length: 300 }, (_, i) => ({
     taskdate: '2026-01-01', category: 'Health', taskdescription: `habit ${i}`, checked: 'true',
@@ -48,7 +48,7 @@ test('an injected straight quote cannot close out of the essence\'s own '
   assert.equal(straightQuoteCount, 2, 'only the template\'s own wrapping quotes should be straight');
 });
 
-test('D-048/D-037 (amended): domain findings are included when present, '
+test('D-036/D-028 (amended): domain findings are included when present, '
   + 'omitted entirely when there are none', () => {
   const withFindings = buildNotificationPrompt({
     domainFindings: [{ domain: 'biological', note: 'too tired to cook most nights' }],
@@ -59,7 +59,7 @@ test('D-048/D-037 (amended): domain findings are included when present, '
   assert.doesNotMatch(withoutFindings.user, /DOMAIN FINDINGS/);
 });
 
-test('D-037 (amended): calendar context is included only when granted — '
+test('D-028 (amended): calendar context is included only when granted — '
   + 'never a placeholder when absent', () => {
   const withCalendar = buildNotificationPrompt({ calendarContext: 'Busy 2-4pm, free evening' });
   assert.match(withCalendar.user, /TODAY'S CALENDAR: Busy 2-4pm, free evening/);

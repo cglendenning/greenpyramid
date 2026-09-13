@@ -34,10 +34,10 @@ import { applyRevenueCatEvent, verifyWebhookAuth } from './lib/revenuecat_webhoo
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
 // legacy coach/commentary surfaces until D-083 (R6) retires them; Anthropic
-// backs the Council (D-040, D-050).
+// backs the Council (D-030, D-037).
 const sOpenAI = defineSecret('OPENAI_API_KEY');
 const sAnthropic = defineSecret('ANTHROPIC_API_KEY');
-// D-059: Apple DeviceCheck signing key (.p8, PEM). D-070: RevenueCat's
+// D-045: Apple DeviceCheck signing key (.p8, PEM). D-070: RevenueCat's
 // webhook shared-secret string, configured identically in the RevenueCat
 // dashboard's webhook "Authorization header" field.
 const sDeviceCheckKey = defineSecret('DEVICECHECK_PRIVATE_KEY');
@@ -167,7 +167,7 @@ app.post('/v1/chat/completions', async (req, res) => {
   }
 });
 
-// ── The Council of Advisors (D-027/D-185/D-040/D-050) ──────────────────────
+// ── The Council of Advisors (D-022/D-185/D-030/D-037) ──────────────────────
 // Prompt-building logic lives in lib/council.js so it's testable without
 // spinning up Express or Firebase Admin (node --test lib/*.test.js).
 
@@ -223,10 +223,10 @@ async function guardCouncilCall(req, res, { isSetup, sessionId }) {
   }
 }
 
-// D-188/D-059/D-071: called once, right at setup completion (or, for the
-// D-034 migration cohort, once at first launch of this build). Device-bound
+// D-188/D-045/D-071: called once, right at setup completion (or, for the
+// D-027 migration cohort, once at first launch of this build). Device-bound
 // for new users; account-bound and device-check-free for the migration
-// grant, per D-059's explicit carve-out.
+// grant, per D-045's explicit carve-out.
 app.post('/completeSetup', requireFirebaseAuth, async (req, res) => {
   try {
     const user = await admin.auth().getUser(req.uid);
@@ -421,7 +421,7 @@ async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conver
   }
 }
 
-// ── Setup derivation (D-051/D-052/D-055) ────────────────────────────────────
+// ── Setup derivation (D-038/D-039/D-042) ────────────────────────────────────
 // All three are setup-only: always free (D-015), always bounded by D-188's
 // call count, never by D-087's spend cap.
 
@@ -483,9 +483,9 @@ app.post('/deriveHabits', requireFirebaseAuth, setupIdempotency(() => admin.fire
   }
 });
 
-// D-048: derives domain findings from one category's conversation, at the
+// D-036: derives domain findings from one category's conversation, at the
 // moment its essence is accepted. Unlike the three setup-only derivations
-// above, this runs from both setup (free, D-188-bounded) and D-061's paid
+// above, this runs from both setup (free, D-188-bounded) and D-047's paid
 // re-clarification — so, like boardAdvisorTurn, it takes a dynamic isSetup
 // and goes through the full guardCouncilCall gate rather than being
 // hardcoded free.
@@ -528,7 +528,7 @@ app.post('/deriveDomainFindings', requireFirebaseAuth, (req, res, next) => req.b
 });
 
 // D-114: isSetup now comes from the caller instead of being hardcoded
-// true — setup's own closing synthesis (D-055) still passes true and
+// true — setup's own closing synthesis (D-042) still passes true and
 // stays free (D-015); profile.dart's regeneration, outside any setup
 // session, passes false and goes through D-014's entitlement gate like
 // every other non-setup AI surface. sessionId/transcript are optional —
@@ -628,9 +628,9 @@ export const api = onRequest(
   app,
 );
 
-// ── Notifications (D-189/D-037/D-189) ───────────────────────────────────────
+// ── Notifications (D-189/D-028/D-189) ───────────────────────────────────────
 //
-// D-037: exactly this context, read from profile/main — the array already
+// D-028: exactly this context, read from profile/main — the array already
 // synced by the client (SyncService), never a separate model call to
 // assemble it.
 async function sendTailoredNotification(uid, profileData) {
@@ -645,7 +645,7 @@ async function sendTailoredNotification(uid, profileData) {
       .collection('users').doc(uid).collection('recentActivity').get();
   const recentActivity = recentSnap.docs.map((d) => d.data());
 
-  // D-048/D-037 (amended): findings live in their own subcollection (IV-D),
+  // D-036/D-028 (amended): findings live in their own subcollection (IV-D),
   // synced in full — unbounded, unlike recentActivity's 250-row cap, since
   // findings are sparse by nature (D-188).
   const findingsSnap = await db

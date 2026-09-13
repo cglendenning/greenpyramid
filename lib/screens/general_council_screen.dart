@@ -77,7 +77,7 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
   Future<void> _load() async {
     setState(() => _busy = true);
     try {
-      // D-032/found live: the same startup race SetupScreen was already
+      // D-029/found live: the same startup race SetupScreen was already
       // fixed for — main.dart's account bootstrap is fire-and-forget so
       // it never gates the first frame, so a screen that touches
       // Firestore before sign-in resolves can lose that race on a fresh
@@ -123,7 +123,7 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
       }
 
       // D-100: once per completed round (all four advisors have spoken),
-      // not every message — same checkpoint discipline D-048 already uses
+      // not every message — same checkpoint discipline D-036 already uses
       // elsewhere (once per essence acceptance), applied to the moment
       // that actually exists in a conversation with no such acceptance
       // event of its own. Advisory, never required (D-188); never blocks

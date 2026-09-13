@@ -4,7 +4,7 @@ import '../services/push_messaging_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/onboarding_backdrop.dart';
 
-/// D-065: triggers the OS push-notification permission dialog. One screen,
+/// D-050: triggers the OS push-notification permission dialog. One screen,
 /// one action — no skip path, no second button.
 ///
 /// D-099: shares [OnboardingBackdrop]/[OnboardingStyles] with WelcomeScreen.

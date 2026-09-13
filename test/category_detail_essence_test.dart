@@ -18,7 +18,7 @@ class _TempPathProvider extends PathProviderPlatform
   Future<String?> getApplicationDocumentsPath() async => dir;
 }
 
-/// D-047: the category detail screen surfaces the essence above the habit
+/// D-035: the category detail screen surfaces the essence above the habit
 /// checkboxes. The DB-layer lookup (name -> id -> latest essence) is
 /// tested directly here; the screen's layout order and "no placeholder for
 /// an empty essence" requirement are checked structurally, matching this
@@ -40,14 +40,14 @@ void main() {
     if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
   });
 
-  group('D-047: resolving a category\'s essence by name', () {
-    test('D-047: getCategoryIdByName resolves an existing category', () async {
+  group('D-035: resolving a category\'s essence by name', () {
+    test('D-035: getCategoryIdByName resolves an existing category', () async {
       await db.insertCategory(
           {DatabaseHelper.columnCategoryId: 1, DatabaseHelper.columnCat: 'Health'});
       expect(await db.getCategoryIdByName('Health'), 1);
     });
 
-    test('D-047: an unknown category name resolves to null', () async {
+    test('D-035: an unknown category name resolves to null', () async {
       expect(await db.getCategoryIdByName('Nonexistent'), isNull);
     });
 
@@ -60,8 +60,8 @@ void main() {
       expect(await db.getLatestEssenceForCategory(id!), isNull);
     });
 
-    test('D-047: an edited essence appends a new version rather than '
-        'overwriting (D-061)', () async {
+    test('D-035: an edited essence appends a new version rather than '
+        'overwriting (D-047)', () async {
       await db.insertCategory(
           {DatabaseHelper.columnCategoryId: 1, DatabaseHelper.columnCat: 'Health'});
       await db.insertCategoryEssence(categoryId: 1, essence: 'first draft');
@@ -213,8 +213,8 @@ void main() {
     });
   });
 
-  group('D-047: the category detail screen structure', () {
-    test('D-047: category name, then essence, then habit checkboxes, in '
+  group('D-035: the category detail screen structure', () {
+    test('D-035: category name, then essence, then habit checkboxes, in '
         'that order', () {
       final source = File('lib/screens/tasklist.dart').readAsStringSync();
       final nameIdx = source.indexOf('Text(category, style: _categoryNameStyle)');
@@ -225,7 +225,7 @@ void main() {
       expect(checkboxIdx, greaterThan(essenceIdx));
     });
 
-    test('D-047: an empty essence renders no placeholder text', () {
+    test('D-035: an empty essence renders no placeholder text', () {
       final source = File('lib/screens/tasklist.dart').readAsStringSync();
       expect(source, isNot(contains('Add an essence')));
       expect(source, isNot(contains('No essence yet')));

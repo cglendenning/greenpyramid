@@ -55,7 +55,7 @@ void main() {
 
   test(
       'D-117: the tier-intro screen names all three tiers by their '
-      'established terms — foundational, essential, peak (P-6/D-051), '
+      'established terms — foundational, essential, peak (P-6/D-038), '
       'never invented labels', () {
     final start = source.indexOf('Widget _buildTierIntro()');
     final end = source.indexOf('\n  Widget _buildCategories', start);
@@ -68,7 +68,7 @@ void main() {
 
   test(
       'D-117: editing a category on the categories screen covers both '
-      'name and description together, in one place — extends D-051\'s '
+      'name and description together, in one place — extends D-038\'s '
       '"adjust by tapping" and matches D-113\'s "wherever you can edit '
       'the category, you can edit the description too" principle', () {
     final start = source.indexOf('Future<void> _editCategory(int index)');
@@ -80,7 +80,7 @@ void main() {
     expect(body, contains('nameController'));
     expect(body, contains('descriptionController'));
     expect(body, contains('maxChars: 24'),
-        reason: 'D-051\'s own name bound — a label, not a clause');
+        reason: 'D-038\'s own name bound — a label, not a clause');
     expect(body, contains('maxChars: 140'),
         reason: 'the deriveCategories tool schema\'s own description bound');
   });

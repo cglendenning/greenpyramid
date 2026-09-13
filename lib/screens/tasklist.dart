@@ -94,7 +94,7 @@ class _TaskListState extends State<TaskList> {
     super.initState();
   }
 
-  // D-047: the category name and its full essence, in that order, above
+  // D-035: the category name and its full essence, in that order, above
   // the habit checkboxes. A category with no essence yet (D-003/D-008)
   // renders neither a placeholder nor a prompt to add one — this returns
   // null and the caller skips the block entirely.
@@ -127,7 +127,7 @@ class _TaskListState extends State<TaskList> {
     // null/empty — an intentionally-cleared description is itself a
     // change and must be persisted, not skipped because it's blank.
     if (result.description != (currentEssence ?? '')) {
-      // D-061: essences are versioned, never overwritten — this appends
+      // D-047: essences are versioned, never overwritten — this appends
       // a new version rather than updating the existing row.
       await dbHelper.insertCategoryEssence(
           categoryId: categoryId, essence: result.description);

@@ -11,10 +11,10 @@ import 'entitlement_service.dart';
 import 'model_output_guard.dart';
 import 'package:sqflite/sqflite.dart';
 
-/// D-043: orchestrates the single continuous setup conversation — one
+/// D-032: orchestrates the single continuous setup conversation — one
 /// `setup`-typed [BoardSession] (D-188) that produces six tiered
-/// categories (D-051), habits per category (D-052), three foundational
-/// essences (D-007/D-185), and the closing vision statement (D-055). The
+/// categories (D-038), habits per category (D-039), three foundational
+/// essences (D-007/D-185), and the closing vision statement (D-042). The
 /// screen calls these methods and renders state; no SQL or prompt
 /// construction lives in the screen (D-024).
 class SetupService {
@@ -96,7 +96,7 @@ class SetupService {
     return _council.createSession(type: BoardSessionType.setup);
   }
 
-  /// D-051: derives the six tiered categories from the transcript so far.
+  /// D-038: derives the six tiered categories from the transcript so far.
   /// D-093: [existingCategories], non-null, requests a refinement of that
   /// proposal ("not quite right") rather than a fresh derivation.
   Future<List<CategoryProposal>> proposeCategories(BoardSession session,
@@ -110,7 +110,7 @@ class SetupService {
     );
   }
 
-  /// D-052/D-103: proposes 1 to [maxAllowed] habits for one category
+  /// D-039/D-103: proposes 1 to [maxAllowed] habits for one category
   /// (never more than 3). [essence] is null for a category with none yet
   /// (D-008) — the prompt degrades to name-only without inventing a
   /// reason. [maxAllowed] is the caller's cross-category budget, keeping
@@ -134,7 +134,7 @@ class SetupService {
 
   /// D-118: the vision statement, written once, right after the opening
   /// conversation concludes — before categories, essences, or habits
-  /// exist. Reverses D-055's original "generated at the close of setup,
+  /// exist. Reverses D-042's original "generated at the close of setup,
   /// from essences and the full transcript" timing: the owner's explicit
   /// instruction this round moved it to immediately after Mira's final
   /// "anything else" exchange, so there are no essences yet to draw on —
@@ -156,7 +156,7 @@ class SetupService {
     return vision;
   }
 
-  /// D-051: commits the derived pyramid — category id and position both
+  /// D-038: commits the derived pyramid — category id and position both
   /// equal the proposal's position (1-6), matching the app's existing
   /// convention on a fresh install; D-084's rename-safety uses the id, not
   /// the position, once the user later renames one.
@@ -173,7 +173,7 @@ class SetupService {
     }
   }
 
-  /// D-052/D-054: commits a category's habits, scheduled every day (D-054
+  /// D-039/D-041: commits a category's habits, scheduled every day (D-041
   /// — day-of-week selection does not happen in setup).
   Future<void> commitHabits(String categoryName, List<String> habits) async {
     final now = DateTime.now().toIso8601String();
@@ -207,7 +207,7 @@ class SetupService {
     );
   }
 
-  /// D-048: derives and commits domain findings for one foundational
+  /// D-036: derives and commits domain findings for one foundational
   /// category's conversation, at the moment its essence is accepted. Never
   /// throws past this point — advisory, never required (D-188). D-100:
   /// delegates to `CouncilService.recordDomainFindings`, the single shared

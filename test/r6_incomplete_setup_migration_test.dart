@@ -14,7 +14,7 @@ class _TempPathProvider extends PathProviderPlatform
   Future<String?> getApplicationDocumentsPath() async => dir;
 }
 
-/// D-062: a user whose old-flow setup was incomplete when this build lands
+/// D-048: a user whose old-flow setup was incomplete when this build lands
 /// starts fresh; a user who completed it is untouched (D-002).
 void main() {
   final db = DatabaseHelper.instance;
@@ -33,7 +33,7 @@ void main() {
     if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
   });
 
-  test('D-062: fewer than six categories is incomplete — partial rows are '
+  test('D-048: fewer than six categories is incomplete — partial rows are '
       'discarded', () async {
     final d = await db.database;
     for (var i = 1; i <= 3; i++) {
@@ -51,7 +51,7 @@ void main() {
     expect((await db.queryTasksByCategory('Cat1')).length, 0);
   });
 
-  test('D-062: six categories but zero tasks is incomplete — partial rows '
+  test('D-048: six categories but zero tasks is incomplete — partial rows '
       'are discarded', () async {
     final d = await db.database;
     for (var i = 1; i <= 6; i++) {
@@ -63,7 +63,7 @@ void main() {
     expect((await db.queryCategories()).length, 0);
   });
 
-  test('D-002/D-062: six categories and at least one task is complete — '
+  test('D-002/D-048: six categories and at least one task is complete — '
       'untouched', () async {
     final d = await db.database;
     for (var i = 1; i <= 6; i++) {
@@ -81,7 +81,7 @@ void main() {
     expect((await db.queryTasksByCategory('Cat1')).length, 1);
   });
 
-  test('D-062: a brand-new, empty database (no old-flow data at all) is '
+  test('D-048: a brand-new, empty database (no old-flow data at all) is '
       'also "incomplete" but there is nothing to discard', () async {
     final d = await db.database;
     await DatabaseHelper.applyV8Migration(d);

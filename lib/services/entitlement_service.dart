@@ -12,7 +12,7 @@ import 'package:http/http.dart' as http;
 
 import 'db.dart';
 
-/// D-057/D-188/D-059/D-071: requests and caches the server-authoritative
+/// D-044/D-188/D-045/D-071: requests and caches the server-authoritative
 /// trial/subscription state. `functions/lib/device_trial.js` and
 /// `functions/lib/entitlement.js` are the actual source of truth — this
 /// class only asks for a grant and mirrors the answer into the local
@@ -64,7 +64,7 @@ class EntitlementService {
     return jsonDecode(resp.body) as Map<String, dynamic>;
   }
 
-  /// D-059: SHA-256 of ANDROID_ID — the raw identifier never leaves the
+  /// D-045: SHA-256 of ANDROID_ID — the raw identifier never leaves the
   /// device or reaches this app's own storage, only its hash.
   Future<String?> _androidIdHash() async {
     final id = await const AndroidId().getId();
@@ -72,7 +72,7 @@ class EntitlementService {
     return sha256.convert(utf8.encode(id)).toString();
   }
 
-  /// D-059: whether THIS build's iOS code signing is Apple's "development"
+  /// D-045: whether THIS build's iOS code signing is Apple's "development"
   /// DeviceCheck environment — not whether Dart itself is compiled in debug
   /// mode. These are different facts: `flutter build ipa` (no `--debug`)
   /// always produces `kDebugMode == false`, even when `ios/ExportOptions.

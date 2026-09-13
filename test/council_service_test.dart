@@ -225,7 +225,7 @@ void main() {
         'entirely — this is what lets essence-deepening ask a fresh '
         'question about a new category instead of reacting to another '
         'category\'s leftover closing message, since setup shares one '
-        'session across all three foundational categories (D-043)',
+        'session across all three foundational categories (D-032)',
         () async {
       final client = _FakeCouncilClient();
       final svc = buildService(client: client);
@@ -414,10 +414,10 @@ void main() {
     });
   });
 
-  group('D-032/D-042: session access before sign-in resolves', () {
+  group('D-029/D-031: session access before sign-in resolves', () {
     // Regression test for the setup-screen startup race: main.dart kicks
     // off anonymous sign-in unawaited so it never gates the first frame
-    // (D-032), but SetupScreen's own load path must never reach Firestore
+    // (D-029), but SetupScreen's own load path must never reach Firestore
     // before that sign-in has actually completed — on a device with no
     // cached Firebase Auth session (a fresh install), losing this race
     // surfaced in production as "Could not start setup." This test pins
@@ -451,7 +451,7 @@ void main() {
     });
   });
 
-  group('D-048/D-100: recordDomainFindings', () {
+  group('D-036/D-100: recordDomainFindings', () {
     BoardSession testSession() => BoardSession(
           sessionId: 's1',
           type: BoardSessionType.general,

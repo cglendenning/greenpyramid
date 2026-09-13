@@ -192,7 +192,7 @@ class _SettingsState extends State<Settings> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // D-061: Council re-clarification entry point.
+                  // D-047: Council re-clarification entry point.
                   Align(
                     alignment: Alignment.centerLeft,
                     child: TextButton(
@@ -471,7 +471,7 @@ class _TestNotificationButtonState extends State<_TestNotificationButton>
     });
   }
 
-  /// D-184: found live — an account that completed setup before D-065's
+  /// D-184: found live — an account that completed setup before D-050's
   /// PushPermissionScreen existed has never called the OS permission API
   /// at all, so iOS never created a Notifications entry under Settings for
   /// this app in the first place; "Open Settings" alone sent the owner to

@@ -135,7 +135,7 @@ class AccountLinkService {
     // D-187: flush any pending local changes before the identity switches.
     // syncAll() is otherwise only ever triggered by app launch, a Council
     // conversation, or setup completion (never by an ordinary check-off
-    // or essence edit, D-031) — so a change made since the last of those
+    // or essence edit, D-026) — so a change made since the last of those
     // is still purely local at the moment sign-out is tapped, and once
     // the auth session switches, a write later reaching Firestore under
     // the old uid would be rejected outright (security rules check the

@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'ai_guard.dart';
 
 /// D-185 step 7 / D-123: a wrapper around the device calendar, feeding
-/// P-8's context-sensitivity (D-037) and, since D-123, writing real
+/// P-8's context-sensitivity (D-028) and, since D-123, writing real
 /// events for scheduled habits — reversing this class's original
 /// read-only design, ported from Kansei's own `calendar_service.dart`
 /// (`goal-executor/lib/services/calendar_service.dart`) and adapted to
@@ -12,7 +12,7 @@ import 'ai_guard.dart';
 /// dated "session": one native event per habit, with a weekly recurrence
 /// rule matching the habit's own Sunday-Saturday flags, not a fresh event
 /// per occurrence. Opt-in only, requested from Settings, never on launch
-/// (matching D-065's push-permission discipline) — every write method
+/// (matching D-050's push-permission discipline) — every write method
 /// below checks [hasPermission] itself rather than relying on the
 /// plugin's own internal check, which is a no-op unless `autoPermissions`
 /// has been configured (it never is here).
@@ -135,7 +135,7 @@ class CalendarService {
     }
   }
 
-  /// Requesting `.full` covers both reading (D-037's context) and writing
+  /// Requesting `.full` covers both reading (D-028's context) and writing
   /// (D-123's scheduled events) — the plugin's gentler `.writeOnly` tier
   /// would leave reading unavailable. Called only from an explicit user
   /// action (a Settings toggle), never automatically.
@@ -150,9 +150,9 @@ class CalendarService {
   }
 
   /// A short, sanitized, single-line summary of today's remaining events —
-  /// exactly what D-037 lists as permitted notification context. Returns
+  /// exactly what D-028 lists as permitted notification context. Returns
   /// null when permission isn't granted or there's nothing to summarize
-  /// (an absent field, never a placeholder, per D-037's own acceptance
+  /// (an absent field, never a placeholder, per D-028's own acceptance
   /// criterion).
   Future<String?> summarizeToday({DateTime? now}) async {
     if (!await hasPermission()) return null;

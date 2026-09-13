@@ -1,5 +1,5 @@
-// D-051/D-052/D-055: the structured moments inside the single continuous
-// setup conversation (D-043) where the Council doesn't just chat — it
+// D-038/D-039/D-042: the structured moments inside the single continuous
+// setup conversation (D-032) where the Council doesn't just chat — it
 // proposes the six tiered categories, proposes habits per category, and
 // writes the closing vision statement. Each uses a forced tool call so the
 // response is guaranteed-valid structured data, not text to parse.
@@ -11,7 +11,7 @@ function transcriptText(transcript) {
     .join('\n');
 }
 
-// D-051: exactly six categories, already arranged by pyramid position
+// D-038: exactly six categories, already arranged by pyramid position
 // (1-3 foundational, 4-5 essential, 6 peak) — never a preset list, always
 // drawn from what the user actually said.
 export const CATEGORIES_TOOL = {
@@ -28,7 +28,7 @@ export const CATEGORIES_TOOL = {
           type: 'object',
           properties: {
             position: { type: 'integer', minimum: 1, maximum: 6 },
-            // D-051: found live 2026-09-07 — names were coming back as
+            // D-038: found live 2026-09-07 — names were coming back as
             // full clauses, not a label. 24 chars is roomy for two real
             // words ("Family Time", "Deep Work") without being roomy
             // enough for a sentence to sneak through.
@@ -102,7 +102,7 @@ export function buildDeriveCategoriesPrompt(transcript, { existingCategories } =
 // setup_screen.dart computed for this specific category (see D-103's
 // cross-category reservation, which is what keeps a 6-category pyramid
 // at 10 habits total even though each category alone could ask for 3).
-// D-052: found live 2026-09-07 — 3-5 habits at up to 120 chars each read
+// D-039: found live 2026-09-07 — 3-5 habits at up to 120 chars each read
 // as too many, too long. Tightened to at most 3, ~5 words apiece
 // (maxLength 40 is roomy for that without permitting a full sentence to
 // sneak through) — D-103 then made the floor 1, not a fixed 2, since a
@@ -170,12 +170,12 @@ export function buildDeriveHabitsPrompt({ categoryName, essence, existingHabits 
   return { system, user };
 }
 
-// D-055/D-118: the vision statement — written by the Council collectively
+// D-042/D-118: the vision statement — written by the Council collectively
 // (not any one advisor's persona), from whatever essences exist and, when
 // given, the conversation transcript, in the person's own specifics.
-// D-118 reverses D-055's original "no fixed template opener" call: the
+// D-118 reverses D-042's original "no fixed template opener" call: the
 // owner's explicit instruction this round was "it ought to start with
-// 'I'm the kind of person that' and then it goes on like that." D-055's
+// 'I'm the kind of person that' and then it goes on like that." D-042's
 // own rationale for forbidding a fixed opener (P-4's anti-rote-formula
 // principle — a template phrase is what resonance work exists to avoid)
 // still has real force, and is recorded here rather than silently

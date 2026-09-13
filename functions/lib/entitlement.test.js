@@ -23,17 +23,17 @@ class FakeFirestore {
 const fakeTimestamp = (date) => ({ toDate: () => date });
 const path = (uid) => `users/${uid}/profile/main`;
 
-test('D-057: no uid or store resolves to pre_trial rather than throwing', async () => {
+test('D-044: no uid or store resolves to pre_trial rather than throwing', async () => {
   assert.equal(await resolveEntitlement(null, new FakeFirestore()), 'pre_trial');
   assert.equal(await resolveEntitlement('u1', null), 'pre_trial');
 });
 
-test('D-057: a missing profile doc resolves to pre_trial', async () => {
+test('D-044: a missing profile doc resolves to pre_trial', async () => {
   const store = new FakeFirestore();
   assert.equal(await resolveEntitlement('u1', store), 'pre_trial');
 });
 
-test('D-057: an unexpired trial resolves as trialing, untouched', async () => {
+test('D-044: an unexpired trial resolves as trialing, untouched', async () => {
   const now = new Date('2026-06-01T00:00:00Z');
   const store = new FakeFirestore({
     [path('u1')]: { entitlement: 'trialing', trialExpiresAt: fakeTimestamp(new Date('2026-06-04T00:00:00Z')) },
@@ -41,7 +41,7 @@ test('D-057: an unexpired trial resolves as trialing, untouched', async () => {
   assert.equal(await resolveEntitlement('u1', store, now), 'trialing');
 });
 
-test('D-057: an expired trial transitions to lapsed in place, server-side, '
+test('D-044: an expired trial transitions to lapsed in place, server-side, '
     + 'regardless of what the client clock claims', async () => {
   const now = new Date('2026-06-05T00:00:00Z');
   const store = new FakeFirestore({
@@ -51,7 +51,7 @@ test('D-057: an expired trial transitions to lapsed in place, server-side, '
   assert.equal(store.data[path('u1')].entitlement, 'lapsed');
 });
 
-test('D-057: subscribed and lapsed pass through unchanged', async () => {
+test('D-044: subscribed and lapsed pass through unchanged', async () => {
   const store = new FakeFirestore({
     [path('u1')]: { entitlement: 'subscribed' },
     [path('u2')]: { entitlement: 'lapsed' },

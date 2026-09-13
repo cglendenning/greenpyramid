@@ -16,7 +16,7 @@ void main() {
     test(
         'D-115: a trialing account with no real RevenueCat purchase gets '
         'needsSubscription, never a cancel-only state — this is the exact '
-        'bug: a 3-day trial (D-057) never touches RevenueCat, so '
+        'bug: a 3-day trial (D-044) never touches RevenueCat, so '
         '`isActive` is false the whole time', () {
       expect(decideSubscriptionPanelState(isActive: false),
           SubscriptionPanelState.needsSubscription);

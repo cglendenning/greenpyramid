@@ -4,11 +4,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/services/auth_service.dart';
 import 'package:mock_exceptions/mock_exceptions.dart';
 
-/// R4: silent account creation (D-032) and in-place credential linking
+/// R4: silent account creation (D-029) and in-place credential linking
 /// (D-188), tested against firebase_auth_mocks rather than a live project.
 void main() {
-  group('D-032: anonymous authentication on first launch', () {
-    test('D-032: signInSilently creates an anonymous account and returns a uid',
+  group('D-029: anonymous authentication on first launch', () {
+    test('D-029: signInSilently creates an anonymous account and returns a uid',
         () async {
       final auth = AuthService(auth: MockFirebaseAuth());
       final uid = await auth.signInSilently();
@@ -16,7 +16,7 @@ void main() {
       expect(auth.currentUid, uid);
     });
 
-    test('D-032: signInSilently resumes the existing account rather than '
+    test('D-029: signInSilently resumes the existing account rather than '
         'creating a second one', () async {
       final mockUser = MockUser(isAnonymous: true, uid: 'existing-uid');
       final auth =
@@ -25,7 +25,7 @@ void main() {
       expect(uid, 'existing-uid');
     });
 
-    test('D-032: a sign-in failure never throws, and leaves the app usable '
+    test('D-029: a sign-in failure never throws, and leaves the app usable '
         'locally', () async {
       final mockAuth = MockFirebaseAuth();
       whenCalling(Invocation.method(#signInAnonymously, null))

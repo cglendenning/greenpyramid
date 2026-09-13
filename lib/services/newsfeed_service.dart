@@ -153,7 +153,7 @@ class NewsfeedService {
   /// Best-effort: any failure (budget, spend cap, network) is swallowed
   /// — this is a background enhancement, never something the user should
   /// see an error about, the same "advisory, never required" discipline
-  /// D-048's domain-finding capture already established.
+  /// D-036's domain-finding capture already established.
   Future<void> generateArticleIfDue() async {
     final today = DateTime.now().toIso8601String().substring(0, 10);
     final dedupeKey = 'article-$today';

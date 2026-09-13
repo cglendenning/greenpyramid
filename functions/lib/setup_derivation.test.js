@@ -2,12 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, CATEGORIES_TOOL, habitsTool } from './setup_derivation.js';
 
-test('D-051: CATEGORIES_TOOL requires exactly six category entries', () => {
+test('D-038: CATEGORIES_TOOL requires exactly six category entries', () => {
   assert.equal(CATEGORIES_TOOL.input_schema.properties.categories.minItems, 6);
   assert.equal(CATEGORIES_TOOL.input_schema.properties.categories.maxItems, 6);
 });
 
-test('D-051: the category-derivation prompt embeds the full transcript', () => {
+test('D-038: the category-derivation prompt embeds the full transcript', () => {
   const { user } = buildDeriveCategoriesPrompt([
     { advisor: 'user', text: 'I keep thinking about my kids growing up so fast.' },
     { advisor: 'mira', text: 'What does that bring up for you?' },
@@ -16,7 +16,7 @@ test('D-051: the category-derivation prompt embeds the full transcript', () => {
   assert.match(user, /What does that bring up/);
 });
 
-test('D-051: no preset category list appears in the system prompt — it '
+test('D-038: no preset category list appears in the system prompt — it '
   + 'instructs deriving from the user\'s own words', () => {
   const { system } = buildDeriveCategoriesPrompt([]);
   assert.match(system, /user's own words/);
@@ -26,7 +26,7 @@ test('D-051: no preset category list appears in the system prompt — it '
 // Regression coverage for a defect found live 2026-09-07: category names
 // came back as full clauses, not a one-or-two-word label, with no
 // separate resonant description at all.
-test('D-051: a category entry requires both a short name (max 24 chars) '
+test('D-038: a category entry requires both a short name (max 24 chars) '
   + 'and a description (max 140 chars)', () => {
   const item = CATEGORIES_TOOL.input_schema.properties.categories.items;
   assert.equal(item.properties.name.maxLength, 24);
@@ -35,7 +35,7 @@ test('D-051: a category entry requires both a short name (max 24 chars) '
   assert.deepEqual(item.required, ['position', 'name', 'description']);
 });
 
-test('D-051: the prompt instructs one or two words for the name and a '
+test('D-038: the prompt instructs one or two words for the name and a '
   + 'separate resonant description', () => {
   const { system } = buildDeriveCategoriesPrompt([]);
   assert.match(system, /one or two words/);
@@ -150,7 +150,7 @@ test('D-122: the habit prompt requires the habits within one call to be '
   assert.match(system, /propose fewer, not more/);
 });
 
-test('D-052: the habit prompt includes the essence when one exists', () => {
+test('D-039: the habit prompt includes the essence when one exists', () => {
   const { system } = buildDeriveHabitsPrompt({
     categoryName: 'Health',
     essence: 'my body carries me through every challenge',
@@ -164,7 +164,7 @@ test('D-008: the habit prompt degrades to name-only, without inventing a '
   assert.match(system, /do not invent one/);
 });
 
-test('D-052: existing habits are passed as a do-not-repeat blacklist', () => {
+test('D-039: existing habits are passed as a do-not-repeat blacklist', () => {
   const { system } = buildDeriveHabitsPrompt({
     categoryName: 'Health',
     essence: null,
@@ -181,7 +181,7 @@ test('injection characters in category context cannot break out of the '
 });
 
 test('D-118: the vision-statement prompt now requires the fixed opener '
-  + '"I\'m the kind of person that" — reverses D-055\'s original "no fixed '
+  + '"I\'m the kind of person that" — reverses D-042\'s original "no fixed '
   + 'template opener" call, per the owner\'s explicit instruction',
   () => {
     const { system } = buildVisionStatementPrompt({ essences: [], transcript: [] });
@@ -189,7 +189,7 @@ test('D-118: the vision-statement prompt now requires the fixed opener '
     assert.doesNotMatch(system, /must avoid/);
   });
 
-test('D-055: essences and the full transcript both reach the prompt', () => {
+test('D-042: essences and the full transcript both reach the prompt', () => {
   const { user } = buildVisionStatementPrompt({
     essences: [{ categoryName: 'Health', essence: 'my body carries me through' }],
     transcript: [{ advisor: 'user', text: 'a specific memory about running' }],

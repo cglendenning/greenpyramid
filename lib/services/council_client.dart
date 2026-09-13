@@ -70,7 +70,7 @@ class AdvisorTurnResult {
 class CategoryProposal {
   final int position;
   final String name;
-  // D-051: a short resonant line, distinct from the name — null on a
+  // D-038: a short resonant line, distinct from the name — null on a
   // category the user has hand-renamed (AiGuard.sanitizeField input has
   // no description of its own to carry over).
   final String? description;
@@ -78,7 +78,7 @@ class CategoryProposal {
       {required this.position, required this.name, this.description});
 }
 
-/// D-048: one impediment surfaced during a category conversation, already
+/// D-036: one impediment surfaced during a category conversation, already
 /// classified into one of the four domains.
 class DomainFinding {
   final String domain;
@@ -92,7 +92,7 @@ class DomainFinding {
   const DomainFinding({required this.domain, required this.note, this.categoryName});
 }
 
-/// D-040/D-050: the transport for every Council backend call. Calls Green
+/// D-030/D-037: the transport for every Council backend call. Calls Green
 /// Pyramid's own Cloud Function (not Kansei's), authenticated with both a
 /// Firebase App Check token (proves the genuine app binary — same as
 /// [AiProxy]) and a Firebase ID token (proves which account, so D-087's
@@ -245,7 +245,7 @@ class CouncilClient {
     );
   }
 
-  /// D-051: derives the six pyramid categories, already tiered by position,
+  /// D-038: derives the six pyramid categories, already tiered by position,
   /// from the setup transcript so far. D-093: [existingCategories], when
   /// given, requests a refinement of that proposal instead of a fresh
   /// derivation.
@@ -286,7 +286,7 @@ class CouncilClient {
     return categories;
   }
 
-  /// D-052/D-103: proposes 1 to [maxAllowed] habits for one category
+  /// D-039/D-103: proposes 1 to [maxAllowed] habits for one category
   /// (never more than 3), conditioned on its essence when one exists
   /// (D-008). [maxAllowed] is the caller's own cross-category budget —
   /// see `SetupScreen._loadAllHabits`, which reserves at least 1 slot per
@@ -317,9 +317,9 @@ class CouncilClient {
     return habits;
   }
 
-  /// D-048: derives domain findings from one category's conversation, at
+  /// D-036: derives domain findings from one category's conversation, at
   /// the moment its essence is accepted. Runs from both setup (free,
-  /// [isSetup] true) and D-061's paid re-clarification — the backend gates
+  /// [isSetup] true) and D-047's paid re-clarification — the backend gates
   /// accordingly, same as [boardAdvisorTurn].
   ///
   /// D-100: the general Council conversation (D-091) spans the whole
@@ -354,7 +354,7 @@ class CouncilClient {
         .toList();
   }
 
-  /// D-055/D-114: the closing synthesis, written once at the end of setup
+  /// D-042/D-114: the closing synthesis, written once at the end of setup
   /// ([isSetup] true, free, [sessionId]/[transcript] required); also the
   /// profile screen's regeneration, any time after ([isSetup] false, gated
   /// by D-014 like every other non-setup AI surface, no session or

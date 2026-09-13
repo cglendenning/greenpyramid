@@ -23,14 +23,14 @@ import 'push_permission_screen.dart';
 import 'trial_disclosure_screen.dart';
 import 'welcome_screen.dart';
 
-/// D-042/D-043: the app's first screen and setup in full — one continuous
+/// D-031/D-032: the app's first screen and setup in full — one continuous
 /// Council conversation (D-188's `setup`-typed session), never a
-/// step-by-step wizard. D-051 (categories) and D-052 (habits) appear as
+/// step-by-step wizard. D-038 (categories) and D-039 (habits) appear as
 /// tappable elements inline in the same scrolling conversation, not
 /// separate screens; D-188 means no review step exists anywhere in this
 /// file.
 ///
-/// Simplification, disclosed in the spec: D-051 mentions dragging to
+/// Simplification, disclosed in the spec: D-038 mentions dragging to
 /// change tier placement as one adjustment mechanism among several — this
 /// implements the same outcome (the user can move a category to a
 /// different tier) via tap, not a drag gesture.
@@ -110,7 +110,7 @@ class _SetupScreenState extends State<SetupScreen> {
   static const _essenceAcknowledgment =
       "Got it — that's exactly what I needed. Ready to lock this in?";
 
-  // D-051: the pyramid is fixed at 3/2/1 — shared by _buildCategories'
+  // D-038: the pyramid is fixed at 3/2/1 — shared by _buildCategories'
   // tier headers and _changeTier's tier-choice sheet, so the two never
   // drift into different ideas of which positions belong to which tier.
   static const List<(String, List<int>)> _tierDefinitions = [
@@ -360,7 +360,7 @@ class _SetupScreenState extends State<SetupScreen> {
   Future<void> _load() async {
     setState(() => _busy = true);
     try {
-      // D-032's silent account bootstrap is deliberately fire-and-forget
+      // D-029's silent account bootstrap is deliberately fire-and-forget
       // from main.dart so it never gates the first frame — but a Council
       // session write needs request.auth to already exist. On a brand-new
       // device (no cached Firebase Auth session) this screen would
@@ -373,7 +373,7 @@ class _SetupScreenState extends State<SetupScreen> {
       _restoring = true;
       setState(() {
         _session = session;
-        // D-062-adjacent resume: an in-progress session with messages
+        // D-048-adjacent resume: an in-progress session with messages
         // already resumes into the opening round rather than replaying
         // Mira's fixed line a second time.
         _phase =
@@ -459,7 +459,7 @@ class _SetupScreenState extends State<SetupScreen> {
     });
   }
 
-  // ── Opening (D-042/D-067/D-090): a solo, back-and-forth conversation ───
+  // ── Opening (D-031/D-067/D-090): a solo, back-and-forth conversation ───
   // with Mira alone — not the four-advisor pile-on this used to be. That
   // mechanic moved to the general Council chat (D-091); setup is now one
   // advisor, a few real exchanges, until she signals she has enough.
@@ -538,7 +538,7 @@ class _SetupScreenState extends State<SetupScreen> {
       if (result.readyToBuild) {
         // A beat before the categories phase replaces the transcript
         // outright — Mira's closing line deserves to be read, not
-        // instantly swapped out from under the user (same pacing D-042
+        // instantly swapped out from under the user (same pacing D-031
         // already established for the old multi-advisor round).
         if (mounted) await Future.delayed(const Duration(milliseconds: 700));
         // Captured before _categories is overwritten by the re-derivation
@@ -642,7 +642,7 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
-  // ── Categories (D-051) ──────────────────────────────────────────────────
+  // ── Categories (D-038) ──────────────────────────────────────────────────
 
   Future<void> _loadCategories(
       {List<CategoryProposal>? existingCategories}) async {
@@ -675,13 +675,13 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   // D-117: name and description are edited together, in one place —
-  // extends D-051 step 4's "adjust by tapping" to cover the description
+  // extends D-038 step 4's "adjust by tapping" to cover the description
   // too, matching D-113's principle that wherever a category can be
   // renamed, its description must be editable there as well. Any actual
   // change to either field sets [_categoriesEdited], which collapses
   // _buildCategories' bottom row to a single "Next" (see its own
   // comment). maxChars matches this screen's own derivation bounds —
-  // 24 for a name (D-051's amendment, "a label, not a clause") and 140
+  // 24 for a name (D-038's amendment, "a label, not a clause") and 140
   // for a description (the `deriveCategories` tool schema).
   Future<void> _editCategory(int index) async {
     final original = _categories[index];
@@ -779,7 +779,7 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  // D-051: the pyramid's shape is fixed at 3/2/1 — every position 1-6 is
+  // D-038: the pyramid's shape is fixed at 3/2/1 — every position 1-6 is
   // always occupied by exactly one category. Found live: moving into a
   // full tier used to silently drop the moved category onto an already-
   // taken position, duplicating it and leaving the tier it came from
@@ -1007,7 +1007,7 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
-  // ── Habits (D-052/D-054/D-103) ──────────────────────────────────────────
+  // ── Habits (D-039/D-041/D-103) ──────────────────────────────────────────
 
   // D-103: the owner's explicit ceiling — never more than this many daily
   // habits across the whole pyramid, regardless of category count.
@@ -1054,7 +1054,7 @@ class _SetupScreenState extends State<SetupScreen> {
         totalCommitted += habits.length;
         setState(() => _habitsByCategory[c.name] = habits);
       } catch (e) {
-        // D-052: the proposed set is allowed to be empty — the user can
+        // D-039: the proposed set is allowed to be empty — the user can
         // always add their own — so a failure here degrades rather than
         // blocks setup. Still logged: a silently empty category otherwise
         // looks identical to "the Council had nothing to suggest."
@@ -1353,7 +1353,7 @@ class _SetupScreenState extends State<SetupScreen> {
         return _buildTranscript([_openingMessage],
             typingAdvisorKey: _busy ? 'mira' : null);
       case _Phase.openingRound:
-        // D-067/D-042: Mira's opening line is never persisted to Firestore
+        // D-067/D-031: Mira's opening line is never persisted to Firestore
         // (it's fixed, client-only copy) — only the user's reply and each
         // advisor's turn are. A session resumed after an earlier launch
         // failed mid-round (e.g. a backend call that errored before any
@@ -1391,7 +1391,7 @@ class _SetupScreenState extends State<SetupScreen> {
       case _Phase.permission:
       case _Phase.finished:
       case _Phase.closing:
-        // D-046: this phase covers committing habits, the closing
+        // D-034: this phase covers committing habits, the closing
         // synthesis, syncing, and requesting the trial — "writing your
         // vision statement" named only one of those four steps and read
         // as wrong/stuck-sounding once the others were running.
@@ -1426,7 +1426,7 @@ class _SetupScreenState extends State<SetupScreen> {
   // treatment for one screen.
   // D-121: this is the first mention of "the Council of Advisors" anywhere
   // in setup, so it introduces the concept before using the term again —
-  // who the four advisors are, shown with their real portraits (D-027's
+  // who the four advisors are, shown with their real portraits (D-022's
   // ported AdvisorConfig) and a short description each — rather than the
   // previous copy, which said "The Council will ask..." for what is
   // actually just Mira, alone, per D-106.
@@ -1515,7 +1515,7 @@ class _SetupScreenState extends State<SetupScreen> {
   // dependency on `_categories` (which may still be loading in the
   // background, same as _buildEssenceIntro's D-102 precedent), shown
   // once before the derived categories themselves so their arrangement
-  // ("three foundational, two essential, one peak," P-6/D-051) reads as
+  // ("three foundational, two essential, one peak," P-6/D-038) reads as
   // legible structure rather than an unexplained layout.
   // D-118: shown once, right after the opening conversation's real
   // conclusion — before categories, essences, or habits exist. Loading
@@ -1699,7 +1699,7 @@ class _SetupScreenState extends State<SetupScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // D-051: every tier always holds exactly its fixed count
+            // D-038: every tier always holds exactly its fixed count
             // (3/2/1) — shown here so a tier can never quietly read as
             // empty or overfull the way it used to when a move onto a
             // full tier silently duplicated a position.
@@ -1836,7 +1836,7 @@ class _SetupScreenState extends State<SetupScreen> {
     }
     final step = _foundational[_essenceIndex];
     // D-105: found live — this used to render the whole session's
-    // messages, unscoped. Setup is one continuous session (D-043), so
+    // messages, unscoped. Setup is one continuous session (D-032), so
     // that included the entire opening conversation that already built
     // the pyramid (Mira's own readyToBuild closing line among it) sitting
     // directly above this category's actual question, and — for the 2nd
@@ -1891,7 +1891,7 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  // D-052: the auto-generated set is a starting point, never the only
+  // D-039: the auto-generated set is a starting point, never the only
   // option — the user can reword any of them, drop them (the chip's own
   // x), or write one of their own from scratch.
   void _editHabit(String categoryName, String current) {
@@ -1984,7 +1984,7 @@ class _SetupScreenState extends State<SetupScreen> {
         children: [
           // D-104: explicit, not implicit — the chips below are editable
           // right here, but nothing said so in words, and nothing said
-          // these default to a daily schedule (D-054) or that either fact
+          // these default to a daily schedule (D-041) or that either fact
           // still holds after setup ends. Found live: the owner asked for
           // this stated plainly before the completion reveal, not left
           // for the person to infer from the chips' own affordances.

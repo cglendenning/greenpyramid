@@ -20,7 +20,7 @@ function fakeFetch(status, bodyText) {
   return fn;
 }
 
-test('D-059: query_two_bits treats an empty 200 body as never-set, not an '
+test('D-045: query_two_bits treats an empty 200 body as never-set, not an '
     + 'error — this is Apple\'s documented response for a device with no '
     + 'recorded state', async () => {
   _resetJwtCacheForTest();
@@ -29,21 +29,21 @@ test('D-059: query_two_bits treats an empty 200 body as never-set, not an '
   assert.deepEqual(result, { bit0: false, bit1: false });
 });
 
-test('D-059: query_two_bits parses a real bit response', async () => {
+test('D-045: query_two_bits parses a real bit response', async () => {
   _resetJwtCacheForTest();
   const fetch = fakeFetch(200, JSON.stringify({ bit0: true, bit1: false, last_update_time: '2026-06' }));
   const result = await queryTwoBits('device-token', { privateKeyPem: testPrivateKeyPem, _fetch: fetch });
   assert.deepEqual(result, { bit0: true, bit1: false });
 });
 
-test('D-059: query_two_bits routes to the development endpoint when asked', async () => {
+test('D-045: query_two_bits routes to the development endpoint when asked', async () => {
   _resetJwtCacheForTest();
   const fetch = fakeFetch(200, '');
   await queryTwoBits('device-token', { privateKeyPem: testPrivateKeyPem, isDevelopmentBuild: true, _fetch: fetch });
   assert.match(fetch.calls[0].url, /^https:\/\/api\.development\.devicecheck\.apple\.com/);
 });
 
-test('D-059: query_two_bits routes to production by default', async () => {
+test('D-045: query_two_bits routes to production by default', async () => {
   _resetJwtCacheForTest();
   const fetch = fakeFetch(200, '');
   await queryTwoBits('device-token', { privateKeyPem: testPrivateKeyPem, _fetch: fetch });
@@ -51,7 +51,7 @@ test('D-059: query_two_bits routes to production by default', async () => {
   assert.match(fetch.calls[0].init.headers.Authorization, /^Bearer /);
 });
 
-test('D-059: query_two_bits throws with status and body on a non-2xx response', async () => {
+test('D-045: query_two_bits throws with status and body on a non-2xx response', async () => {
   _resetJwtCacheForTest();
   const fetch = fakeFetch(400, 'bad device token');
   await assert.rejects(
@@ -60,7 +60,7 @@ test('D-059: query_two_bits throws with status and body on a non-2xx response', 
   );
 });
 
-test('D-059: update_two_bits sends the requested bits', async () => {
+test('D-045: update_two_bits sends the requested bits', async () => {
   _resetJwtCacheForTest();
   const fetch = fakeFetch(200, '');
   await updateTwoBits('device-token', { bit0: true, bit1: false, privateKeyPem: testPrivateKeyPem, _fetch: fetch });

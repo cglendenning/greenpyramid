@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// D-160: found stale on a direct read-through — the FAQ still described
 /// the pre-Council "Coach," a manual multi-step setup wizard with
-/// day-of-week scheduling (moved out of setup by D-054), a 3-color legend
+/// day-of-week scheduling (moved out of setup by D-041), a 3-color legend
 /// missing the real 4th band (blue, no tasks defined), and said nothing
 /// about accounts, the trial/subscription model, the Newsfeed, or the
 /// Philosophy screen. Owner: "Go through that FAQ and make sure that it is
@@ -30,7 +30,7 @@ void main() {
 
   test('D-160: setup is described as a conversation with Mira, not a '
       'manual step list, and day-of-week scheduling is not claimed as '
-      'part of setup (moved out of it by D-054)', () {
+      'part of setup (moved out of it by D-041)', () {
     final source = File('lib/screens/faq.dart').readAsStringSync();
     expect(source, contains('Mira'));
     expect(source, isNot(contains('days of the week each task')));

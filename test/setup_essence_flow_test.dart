@@ -141,7 +141,7 @@ void main() {
   test('D-108: essence-deepening\'s kickoff call passes an explicit '
       'empty conversationHistoryOverride — found live: without this, '
       'a category\'s kickoff call inherited the whole session\'s '
-      'history (D-043, one continuous session), so "respond to what '
+      'history (D-032, one continuous session), so "respond to what '
       'was just said" reacted to the previous category\'s leftover '
       'closing message instead of asking a fresh, directed question '
       'about the new category', () {

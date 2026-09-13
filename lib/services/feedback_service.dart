@@ -24,11 +24,11 @@ extension FeedbackCategoryLabel on FeedbackCategory {
 
 /// D-129: writes a single feedback document to the signed-in user's own
 /// Firestore tree (`users/{uid}/feedback/{id}`). This stays inside the
-/// existing D-031/D-187 model — the same per-uid rule that already governs
+/// existing D-026/D-187 model — the same per-uid rule that already governs
 /// every other synced collection covers this one too, so no rules change
 /// was needed. It is a disclosed, user-initiated write (the user taps
 /// "Send"), not passive collection, which is what keeps it consistent with
-/// D-031's "used only to serve the user who produced it": the exception
+/// D-026's "used only to serve the user who produced it": the exception
 /// here is the same one every app's support/feedback channel relies on —
 /// an explicit, intentional submission, never background telemetry.
 class FeedbackService {

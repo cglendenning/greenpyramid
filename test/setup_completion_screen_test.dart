@@ -5,7 +5,7 @@ import 'package:life_ops/services/db.dart';
 import 'package:life_ops/theme/app_colors.dart';
 import 'package:life_ops/widgets/pyramid_3d.dart';
 
-/// D-046: regression test for the completion screen strand — previously
+/// D-034: regression test for the completion screen strand — previously
 /// nothing ever called onDone() without a tap, so a user who didn't know
 /// (or couldn't, if rendering had failed) to tap was stuck forever.
 ///
@@ -35,7 +35,7 @@ void main() {
       );
 
   testWidgets(
-      'D-046: onDone fires automatically a few seconds after the screen '
+      'D-034: onDone fires automatically a few seconds after the screen '
       'appears, with no tap required', (tester) async {
     var doneCalled = false;
     await tester.pumpWidget(harness(() => doneCalled = true));
@@ -52,7 +52,7 @@ void main() {
             'without a tap, which could strand the user here forever');
   });
 
-  testWidgets('D-046: tapping still fires onDone immediately, without '
+  testWidgets('D-034: tapping still fires onDone immediately, without '
       'waiting for the auto-advance timer', (tester) async {
     var doneCalled = false;
     await tester.pumpWidget(harness(() => doneCalled = true));
@@ -63,7 +63,7 @@ void main() {
   });
 
   testWidgets(
-      'D-046: every block is the celebratory brand green, not the real '
+      'D-034: every block is the celebratory brand green, not the real '
       '0%-complete red — nothing has been checked off yet at this moment, '
       'so the accurate color would read as a letdown right after the '
       'pyramid was just built. The home screen, which uses real '

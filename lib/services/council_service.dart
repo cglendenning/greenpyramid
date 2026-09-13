@@ -136,7 +136,7 @@ class CouncilService {
     List<Map<String, dynamic>>? pyramidContext,
     // D-108: overrides the default "the whole session so far" history.
     // Needed because essence-deepening (D-007 step 3) shares one session
-    // across all three foundational categories (D-043) — session.messages
+    // across all three foundational categories (D-032) — session.messages
     // for category 2's kickoff call already contains category 1's entire
     // exchange, so "respond to what was just said" reacted to category
     // 1's closing reply instead of asking a fresh question about category
@@ -197,7 +197,7 @@ class CouncilService {
     return msg;
   }
 
-  /// D-048/D-100: derives and commits domain findings for a Council
+  /// D-036/D-100: derives and commits domain findings for a Council
   /// conversation. Advisory, never required (D-188) — never throws past
   /// this point. Extracted here after this exact derive-then-insert
   /// sequence had been copy-pasted twice already (`SetupService` and
@@ -206,7 +206,7 @@ class CouncilService {
   ///
   /// Two shapes, exactly one required: [categoryId]/[categoryName]/
   /// [essence] for a single-category conversation (setup's foundational
-  /// capture, D-061's re-clarification); [pyramidContext] for the general
+  /// capture, D-047's re-clarification); [pyramidContext] for the general
   /// Council conversation (D-091), which spans the whole pyramid — each
   /// returned finding is attributed to whichever category the model named,
   /// resolved back to a real `categoryId` by matching against

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 
-/// D-044: the small corner indicator that answers "how much longer" during
+/// D-033: the small corner indicator that answers "how much longer" during
 /// the open-ended setup conversation, without a progress bar. Pulses
 /// gently; fills bottom-to-top with a green glow as [progress] (0.0-1.0)
 /// rises, mirroring the pyramid's own tier order. Fill tracks setup

@@ -22,7 +22,7 @@ void main() {
   });
 
   test(
-      'D-042: setup carries one action, not a menu — a text field, no '
+      'D-031: setup carries one action, not a menu — a text field, no '
       'category picker widget', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
     expect(source, isNot(contains('DropdownButton')));
@@ -42,11 +42,11 @@ void main() {
           reason: '"$phrase" would be a review step, forbidden by D-188');
     }
     // Essences remain editable *later*, from the category detail screen
-    // (D-047) — never inside setup itself.
+    // (D-035) — never inside setup itself.
     expect(source, isNot(contains('Edit your essence')));
   });
 
-  test('D-053: none of the six duplicate habit-generator files survive', () {
+  test('D-040: none of the six duplicate habit-generator files survive', () {
     for (final n in [1, 2, 3, 4, 5, 6]) {
       expect(File('lib/screens/setup/tasks/cat${n}tasks.dart').existsSync(),
           isFalse);
@@ -62,7 +62,7 @@ void main() {
   });
 
   test(
-      'D-032: _load() awaits sign-in before touching the Council session — '
+      'D-029: _load() awaits sign-in before touching the Council session — '
       'regression test for the startup race that surfaced in production as '
       '"Could not start setup." main.dart fires anonymous sign-in unawaited '
       'so it never gates the first frame, which means this screen is the '
@@ -89,7 +89,7 @@ void main() {
   });
 
   test(
-      'D-042/D-067: Mira\'s opening line always renders in the openingRound '
+      'D-031/D-067: Mira\'s opening line always renders in the openingRound '
       'phase, not only when a session is brand new — regression test for a '
       'defect found live: Mira\'s line is client-only copy, never persisted '
       'to Firestore, so a session resumed after an earlier launch failed '
@@ -138,7 +138,7 @@ void main() {
 
   test(
       'D-090: a pause follows Mira\'s closing line before the categories '
-      'phase replaces the transcript — same pacing discipline D-042 '
+      'phase replaces the transcript — same pacing discipline D-031 '
       'established for the old multi-advisor round, kept for the solo one', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
     final roundStart = source.indexOf('Future<void> _runMiraTurn()');
@@ -169,7 +169,7 @@ void main() {
   });
 
   test(
-      'D-051: the category card renders both the name and the description '
+      'D-038: the category card renders both the name and the description '
       '— regression test for owner feedback that names alone, with no '
       'resonant line under them, read as too bare', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
@@ -184,7 +184,7 @@ void main() {
   });
 
   test(
-      'D-051: moving a category into a full tier swaps positions rather '
+      'D-038: moving a category into a full tier swaps positions rather '
       'than silently overwriting one — regression test for owner feedback '
       'from a real run: moving a Peak category into Foundational (already '
       'full at 3) left four categories at position 1 and none at position '
@@ -213,7 +213,7 @@ void main() {
   });
 
   test(
-      'D-051: every tier section shows its occupancy against a fixed '
+      'D-038: every tier section shows its occupancy against a fixed '
       'capacity (e.g. "Foundational (3/3)") — regression test for owner '
       'feedback: "I don\'t understand how the organizational system '
       'works" after a move left a tier silently empty with no indication '
@@ -343,7 +343,7 @@ void main() {
   });
 
   test(
-      'D-052: habits can be edited and new ones added by hand, not only '
+      'D-039: habits can be edited and new ones added by hand, not only '
       'deleted — the auto-generated set is a starting point, never the '
       'only option', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
@@ -361,7 +361,7 @@ void main() {
   });
 
   test(
-      'D-046: _confirmHabitsAndClose() catches its own failures instead of '
+      'D-034: _confirmHabitsAndClose() catches its own failures instead of '
       'stranding the user on the closing screen forever — regression test '
       'for a defect found live: the whole method had no catch clause at '
       'all, only a finally, so any failure (most plausibly AiGuard\'s '

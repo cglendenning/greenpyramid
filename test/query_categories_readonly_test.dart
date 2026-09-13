@@ -14,7 +14,7 @@ class _TempPathProvider extends PathProviderPlatform
   Future<String?> getApplicationDocumentsPath() async => dir;
 }
 
-/// D-046/D-061: regression test for the actual cause of the completion
+/// D-034/D-047: regression test for the actual cause of the completion
 /// screen's blank-white-screen defect. `queryCategories()` returns
 /// `db.query(...)`'s result directly — on the real sqflite plugin this is
 /// a read-only list, so `setup_completion_screen.dart`'s and

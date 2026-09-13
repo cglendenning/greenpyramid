@@ -1,5 +1,5 @@
-// D-189/D-037: the scheduled cloud job's generation logic — a tailored
-// push notification synthesized from exactly the enumerated context D-037
+// D-189/D-028: the scheduled cloud job's generation logic — a tailored
+// push notification synthesized from exactly the enumerated context D-028
 // permits, nothing else.
 import { sanitize } from './council.js';
 
@@ -16,8 +16,8 @@ export const NOTIFICATION_TOOL = {
   },
 };
 
-// D-037 (amended for R9 to add domainFindings/calendarContext — D-048's own
-// text always said findings feed notification generation, but D-037's
+// D-028 (amended for R9 to add domainFindings/calendarContext — D-036's own
+// text always said findings feed notification generation, but D-028's
 // enumerated context never listed them until now; amended again for
 // D-178 to add firstName): exactly this context, nothing else.
 // [categories] is [{name, tier, essence}] (essence null for cat4-cat6

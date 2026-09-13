@@ -32,7 +32,7 @@ void main() {
   });
 
   test(
-      'D-032: _load() awaits sign-in before touching the Council session — '
+      'D-029: _load() awaits sign-in before touching the Council session — '
       'regression test for a defect found live: "Could not open this '
       'conversation" on a fresh launch (a reinstall, or D-188\'s wipe). '
       'main.dart fires anonymous sign-in unawaited so it never gates the '

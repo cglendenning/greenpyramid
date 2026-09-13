@@ -8,7 +8,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'secrets.dart';
 
 /// D-070: billing via RevenueCat, ported from Kansei's `revenue_cat_service.dart`.
-/// RevenueCat manages the paid tier only (D-057) — trial state never passes
+/// RevenueCat manages the paid tier only (D-044) — trial state never passes
 /// through this class. Configured with the Firebase uid via [login] so
 /// purchases tie to the same identity `functions/lib/revenuecat_webhook.js`
 /// keys entitlement transitions on.

@@ -32,7 +32,7 @@ void main() {
     expect(find.text('Your pyramid is ready.'), findsOneWidget);
   });
 
-  testWidgets('D-099/D-065: PushPermissionScreen renders the shared '
+  testWidgets('D-099/D-050: PushPermissionScreen renders the shared '
       'rotating backdrop and its copy is unambiguous about requesting '
       'push notification permission', (tester) async {
     await tester.pumpWidget(MaterialApp(
@@ -50,7 +50,7 @@ void main() {
     expect(texts, contains('notification'));
     expect(find.widgetWithText(ElevatedButton, 'Allow notifications'),
         findsOneWidget);
-    // D-065: one action only, still — no skip path was introduced.
+    // D-050: one action only, still — no skip path was introduced.
     expect(find.byType(ElevatedButton), findsOneWidget);
     expect(find.byType(TextButton), findsNothing);
   });

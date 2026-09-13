@@ -104,7 +104,7 @@ void main() {
   test(
       'D-121: the lapsed-notification pool\'s Council mentions say '
       '"Council of Advisors" — this copy is quoted verbatim in the spec '
-      '(D-063) and must match', () {
+      '(D-049) and must match', () {
     final source =
         File('lib/services/lapsed_notification_pool.dart').readAsStringSync();
     expect(source, isNot(contains('The Council has been quiet')));

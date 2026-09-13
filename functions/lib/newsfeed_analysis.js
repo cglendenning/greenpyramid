@@ -12,7 +12,7 @@ import { sanitize } from './council.js';
 // text — owner: "I also do not want to use language like 'this
 // person's' and instead... throughout everything in the app, we need to
 // be using the user's first name." Sanitized like every other
-// user-supplied string reaching a prompt (D-048's own discipline);
+// user-supplied string reaching a prompt (D-036's own discipline);
 // falls back to the original generic framing for an account that
 // somehow has none (predates D-178, or the field is blank).
 export function buildNewsfeedAnalysisPrompt({ categories = [], firstName = null }) {

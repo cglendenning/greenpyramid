@@ -7,7 +7,7 @@ import '../widgets/onboarding_backdrop.dart';
 /// built — a plain, required text-entry screen (owner's own choice over a
 /// conversational Mira turn: "a quick, plain text-entry screen... lower
 /// friction than a conversation for a single unambiguous fact"). No skip
-/// path, matching D-065's PushPermissionScreen precedent for a required
+/// path, matching D-050's PushPermissionScreen precedent for a required
 /// one-action screen. The name is then used throughout the app — AI
 /// prompts included — in place of generic "you"/"this person" phrasing.
 class FirstNameScreen extends StatefulWidget {

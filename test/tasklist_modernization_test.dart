@@ -56,7 +56,7 @@ void main() {
       expect(source, contains('SingleChildScrollView('));
     });
 
-    test('D-113/D-047 structural invariants survive the redesign — exact '
+    test('D-113/D-035 structural invariants survive the redesign — exact '
         'literal Text/FutureBuilder/CheckboxListTile forms other tests '
         'depend on', () {
       expect(source, contains('Text(category, style: _categoryNameStyle)'));

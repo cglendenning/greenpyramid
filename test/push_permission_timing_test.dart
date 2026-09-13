@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-189/D-065: push permission is requested exactly once, right after
+/// D-189/D-050: push permission is requested exactly once, right after
 /// setup's completion moment settles — never on first launch. Structural,
 /// since the actual OS permission dialog can't be exercised in a test.
 void main() {
@@ -15,7 +15,7 @@ void main() {
     expect(source, isNot(contains('requestPermissions')));
   });
 
-  test('D-065/D-184: requestPermissions is invoked only from the '
+  test('D-050/D-184: requestPermissions is invoked only from the '
       'post-completion push permission screen and Settings\' notification '
       'banner — no other screen calls it directly. D-184 deliberately adds '
       'the second call site: an account that completed setup before this '
@@ -43,7 +43,7 @@ void main() {
     expect(offenders, isEmpty);
   });
 
-  test('D-065: setup hands off completion -> push permission -> home, in '
+  test('D-050: setup hands off completion -> push permission -> home, in '
       'that order', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
     final completionIdx = source.indexOf('SetupCompletionScreen(');
@@ -53,7 +53,7 @@ void main() {
         reason: 'push permission must be requested after the completion moment');
   });
 
-  test('D-189/D-065: found live — DarwinInitializationSettings must request '
+  test('D-189/D-050: found live — DarwinInitializationSettings must request '
       'nothing at intialize() time, or iOS shows the OS dialog at app '
       'launch regardless of what requestPermissions() textually calls, '
       'since flutter_local_notifications requests permission from '
@@ -68,7 +68,7 @@ void main() {
     expect(block, contains('requestSoundPermission: false'));
   });
 
-  test('D-189/D-065: the iOS branch of requestPermissions actually calls '
+  test('D-189/D-050: the iOS branch of requestPermissions actually calls '
       'the plugin\'s permission API — found live, it previously only '
       'printed a debug line and relied on initialize() to have already '
       'asked, which is exactly the bug the previous test guards against',

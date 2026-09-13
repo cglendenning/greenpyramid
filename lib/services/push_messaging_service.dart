@@ -40,7 +40,7 @@ NotificationFallbackAction decideNotificationFallback({
 /// notifications, and keeps a local fallback in sync for whenever push
 /// isn't available — permission denied, token registration failed, or the
 /// account is lapsed (D-021's static pool instead). Called once after
-/// D-065's permission screen, and again on each app open so the fallback
+/// D-050's permission screen, and again on each app open so the fallback
 /// content and token both stay current.
 class PushMessagingService {
   PushMessagingService({

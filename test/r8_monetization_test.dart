@@ -76,7 +76,7 @@ void main() {
   });
 
   test(
-      'D-057: entitlement is never decided on-device — the only literal '
+      'D-044: entitlement is never decided on-device — the only literal '
       'entitlement value EntitlementService ever writes locally is '
       "'subscribed', as an optimistic mirror right after a confirmed "
       'purchase; every other value it writes is read from a server '
@@ -89,7 +89,7 @@ void main() {
   });
 
   test(
-      'D-059: the Android device hash is computed with SHA-256 and the '
+      'D-045: the Android device hash is computed with SHA-256 and the '
       'raw ANDROID_ID is never sent to the backend', () {
     final source =
         File('lib/services/entitlement_service.dart').readAsStringSync();
@@ -98,7 +98,7 @@ void main() {
   });
 
   test(
-      'D-059: the DeviceCheck environment flag sent for iOS trial requests '
+      'D-045: the DeviceCheck environment flag sent for iOS trial requests '
       'reflects this build\'s actual code-signing environment, not Dart\'s '
       'kDebugMode — found live: every device on the OTA pipeline silently '
       'failed every trial request because ios/ExportOptions.plist signs '

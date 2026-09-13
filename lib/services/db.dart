@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
   static const _databaseVersion = 23; // 7: R3 schema — position, essences,
-  // domain findings, account state (Part IV). 8: R6/D-062 — discards an
+  // domain findings, account state (Part IV). 8: R6/D-048 — discards an
   // incomplete old-flow setup so the user starts the new Council setup
   // fresh instead of landing on a half-populated pyramid with no way back
   // into the (now-deleted) wizard. 9: D-123 — a habit's optional recurring
@@ -121,12 +121,12 @@ class DatabaseHelper {
 
   // --- R3 / Part IV additions -------------------------------------------
   // Pyramid slot, 1..6. Tier is derived: 1-3 foundational, 4-5 essential,
-  // 6 peak. Replaces tier-implied-by-ordinal so D-051's drag-to-reorder is
+  // 6 peak. Replaces tier-implied-by-ordinal so D-038's drag-to-reorder is
   // expressible.
   static const columnPosition = 'position';
   static const columnCategoryCreated = 'created';
 
-  // Versioned per-category essence (D-003, D-061). Keys on categoryid, not
+  // Versioned per-category essence (D-003, D-047). Keys on categoryid, not
   // the category name, so a rename cannot orphan it (D-084, II-N).
   static const categoryEssenceTable = 'category_essence';
   static const columnEssenceId = 'id';
@@ -149,7 +149,7 @@ class DatabaseHelper {
   static const columnNewsfeedCreated = 'created';
   static const columnNewsfeedDedupeKey = 'dedupekey';
 
-  // Accumulating four-domain findings (D-048).
+  // Accumulating four-domain findings (D-036).
   static const domainFindingTable = 'domain_finding';
   static const columnFindingId = 'id';
   static const columnFindingCategoryId = 'categoryid';
@@ -165,7 +165,7 @@ class DatabaseHelper {
     'environmental'
   };
 
-  // Single-row cache of server-authoritative entitlement (D-057). Never
+  // Single-row cache of server-authoritative entitlement (D-044). Never
   // authoritative itself: it can report a trial, never extend one.
   static const accountStateTable = 'account_state';
   static const columnAccountId = 'id';
@@ -413,11 +413,11 @@ class DatabaseHelper {
     ''');
   }
 
-  /// D-062: a user whose old-flow setup was incomplete when this build
+  /// D-048: a user whose old-flow setup was incomplete when this build
   /// lands starts the new Council setup fresh, discarding their partial
   /// rows. "Complete" is six categories existing **and** at least one
   /// task existing — anything less is incomplete. A user who meets the
-  /// definition is untouched (D-002, D-034). Runs once, gated by the
+  /// definition is untouched (D-002, D-027). Runs once, gated by the
   /// version bump to 8, so it never re-triggers for an account created
   /// after this migration already ran.
   static Future<void> applyV8Migration(Database db) async {
@@ -430,8 +430,8 @@ class DatabaseHelper {
     final complete = categoryCount >= 6 && taskCount >= 1;
     if (complete) return;
 
-    // Never silent at the data layer, per D-062's acceptance criteria.
-    print('D-062: incomplete old-flow setup found ($categoryCount '
+    // Never silent at the data layer, per D-048's acceptance criteria.
+    print('D-048: incomplete old-flow setup found ($categoryCount '
         'categories, $taskCount tasks) — discarding partial rows, '
         'starting the new Council setup fresh.');
 
@@ -723,7 +723,7 @@ class DatabaseHelper {
             await applyV7Schema(db);
             break;
           case 8:
-            // D-062: runs once, after v7 is guaranteed present above.
+            // D-048: runs once, after v7 is guaranteed present above.
             await applyV8Migration(db);
             break;
           case 9:
@@ -1176,7 +1176,7 @@ class DatabaseHelper {
   // Inserts a row in the database where each key in the Map is a column name
   // and the value is the column value. The return value is the id of the
   // inserted row.
-  // D-051/D-084: categoryid is the PRIMARY KEY, and every fresh install
+  // D-038/D-084: categoryid is the PRIMARY KEY, and every fresh install
   // already has rows 1-6 seeded by populateCategory() ("Empty1".."Empty6")
   // — the placeholder the pre-Council flow relied on. Without an explicit
   // conflict policy, sqflite's default is ABORT: committing a real derived
@@ -1946,7 +1946,7 @@ class DatabaseHelper {
 
   // --- R4 / Part IV: account_state, and reads that feed SyncService ------
 
-  /// The single account_state row (D-030). The row always exists after
+  /// The single account_state row (D-025). The row always exists after
   /// applyV7Schema's `INSERT OR IGNORE`, so this never returns null.
   Future<Map<String, dynamic>> getAccountState() async {
     final db = await database;
@@ -1955,7 +1955,7 @@ class DatabaseHelper {
     return rows.first;
   }
 
-  /// D-032/D-034: records the Firebase uid once anonymous sign-in succeeds.
+  /// D-029/D-027: records the Firebase uid once anonymous sign-in succeeds.
   Future<void> setAccountUid(String uid) async {
     final db = await database;
     await db.update(
@@ -2009,7 +2009,7 @@ class DatabaseHelper {
         where: '$columnAccountId = ?', whereArgs: [1]);
   }
 
-  /// D-057: writes the server-authoritative entitlement into the local
+  /// D-044: writes the server-authoritative entitlement into the local
   /// cache. Called only by EntitlementService, after a real server response
   /// (a /requestTrial reply or a profile/main pull) — never from anything
   /// derived purely on-device, since this row "can report a trial, never
@@ -2039,7 +2039,7 @@ class DatabaseHelper {
     return db.query(categoryEssenceTable);
   }
 
-  /// D-047: resolves a category's id from its name — the category detail
+  /// D-035: resolves a category's id from its name — the category detail
   /// screen is addressed by name, but essence lookup keys on id (D-084).
   /// Null if no category with this name exists.
   Future<int?> getCategoryIdByName(String cat) async {
@@ -2050,7 +2050,7 @@ class DatabaseHelper {
     return rows.first[columnCategoryId] as int?;
   }
 
-  /// D-185/D-061: the active (most recent) essence for one category, the
+  /// D-185/D-047: the active (most recent) essence for one category, the
   /// context a Council re-clarification session opens with. Null if the
   /// category has never had an essence captured — a first-class state
   /// (D-003), not an error.
@@ -2228,8 +2228,8 @@ class DatabaseHelper {
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
-  /// D-185/D-061: appends a new essence version for a category (essences are
-  /// versioned, never overwritten — D-061). D-150: a no-op — returns
+  /// D-185/D-047: appends a new essence version for a category (essences are
+  /// versioned, never overwritten — D-047). D-150: a no-op — returns
   /// `false`, inserts nothing — when [essence] is identical to the
   /// category's current latest version. Found live: `SyncService
   /// .restoreFromCloud` called this unconditionally on every restore,
@@ -2260,7 +2260,7 @@ class DatabaseHelper {
     return true;
   }
 
-  /// D-048: records one domain finding surfaced during a category
+  /// D-036: records one domain finding surfaced during a category
   /// conversation. Findings accumulate — never overwritten, never
   /// deduplicated — since the same impediment resurfacing over time is
   /// itself part of the record (P-16).

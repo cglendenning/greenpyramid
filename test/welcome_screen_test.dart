@@ -57,7 +57,7 @@ void main() {
     for (final forbidden in ['foundational', 'essential', 'peak', 'tier']) {
       expect(texts, isNot(contains(forbidden)),
           reason: '"$forbidden" would be explaining the mechanic, which '
-              'D-042/P-15 reserve for nowhere on the first screen');
+              'D-031/P-15 reserve for nowhere on the first screen');
     }
   });
 

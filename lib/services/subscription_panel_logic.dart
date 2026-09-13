@@ -13,7 +13,7 @@
 /// "is there really something to cancel" check explicit and testable:
 /// only [SubscriptionPanelState.activeRenewing] and
 /// [SubscriptionPanelState.activeCancelling] represent a real RevenueCat
-/// purchase; every other state — including a 3-day trial (D-057), which
+/// purchase; every other state — including a 3-day trial (D-044), which
 /// is server-authoritative and never touches RevenueCat at all — is
 /// [SubscriptionPanelState.needsSubscription].
 library;

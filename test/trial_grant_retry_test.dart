@@ -27,7 +27,7 @@ void main() {
   test(
       'D-116: which grant is retried depends on hasEverCreatedSetupSession '
       '— a real Council setup gets D-188\'s normal grant retried, an '
-      'account with no Council setup (the D-034 migration cohort) still '
+      'account with no Council setup (the D-027 migration cohort) still '
       'gets D-071\'s one-time 30-day grant', () {
     final source = File('lib/main.dart').readAsStringSync();
     expect(source, contains('CouncilService.instance.hasEverCreatedSetupSession()'));

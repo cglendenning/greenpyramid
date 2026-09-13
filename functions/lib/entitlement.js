@@ -1,4 +1,4 @@
-// D-014/D-057: every AI surface outside setup requires an active trial or
+// D-014/D-044: every AI surface outside setup requires an active trial or
 // subscription. Trial state is server-authoritative — a device with a
 // manipulated clock cannot extend it, because expiry is evaluated here, on
 // every gated call, not trusted from whatever the client last cached.

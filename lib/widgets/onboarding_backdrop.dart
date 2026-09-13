@@ -5,7 +5,7 @@ import 'crossfading_stock_images.dart';
 
 /// D-099: the shared full-bleed rotating-photograph background used by
 /// every onboarding-adjacent screen — welcome (D-089), trial disclosure
-/// (D-012), push permission (D-065), and any future screen in the same
+/// (D-012), push permission (D-050), and any future screen in the same
 /// family. Extracted from [WelcomeScreen] so the visual treatment the
 /// owner singled out as exactly right ("I love the font. I love the
 /// layout. I love the imagery. It's perfect") doesn't drift screen to

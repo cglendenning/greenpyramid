@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-/// D-027/D-029: the four Council advisors, ported from Kansei's
+/// D-022/D-023: the four Council advisors, ported from Kansei's
 /// `AdvisorConfig` (`goal-executor/lib/widgets/advisor_avatar.dart`).
 /// Advisors are stances (feeling / consistency / leverage / principle), not
-/// domains — every advisor may probe any domain (D-029). Persona prose is
+/// domains — every advisor may probe any domain (D-023). Persona prose is
 /// unchanged from Kansei so it stays recognizably itself.
 class AdvisorConfig {
   final String key;

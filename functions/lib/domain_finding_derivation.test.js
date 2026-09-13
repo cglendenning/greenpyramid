@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildDeriveDomainFindingsPrompt, buildDeriveGeneralDomainFindingsPrompt, DOMAIN_FINDING_TOOL, GENERAL_DOMAIN_FINDING_TOOL, DOMAINS } from './domain_finding_derivation.js';
 
-test('D-048: exactly the four domains, matching P-6\'s internal names', () => {
+test('D-036: exactly the four domains, matching P-6\'s internal names', () => {
   assert.deepEqual(DOMAINS, ['biological', 'psychological', 'relational', 'environmental']);
   assert.deepEqual(DOMAIN_FINDING_TOOL.input_schema.properties.findings.items.properties.domain.enum, DOMAINS);
 });
@@ -14,9 +14,9 @@ test('D-188: the prompt explicitly tells the model an empty findings array '
   assert.match(system, /never invent/);
 });
 
-test('D-048: the transcript is framed as reference material, not a live '
+test('D-036: the transcript is framed as reference material, not a live '
     + 'conversation to continue — same fix as the vision-statement prompt '
-    + 'needed (D-055)', () => {
+    + 'needed (D-042)', () => {
   const { system } = buildDeriveDomainFindingsPrompt({ categoryName: 'Career', essence: null, transcript: [] });
   assert.match(system, /reference material/);
   assert.match(system, /not a conversation to continue/);

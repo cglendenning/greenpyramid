@@ -24,7 +24,7 @@ class Pyramid3D extends StatefulWidget {
   final double size;
   final ValueChanged<int>? onCategoryTap;
 
-  // D-046: the setup completion moment. When true, plays a one-time
+  // D-034: the setup completion moment. When true, plays a one-time
   // decelerating spin from several full turns down to face-on, over
   // exactly 3 seconds, then behaves exactly like a normal settled pyramid.
   // Independent of the drag/settle machinery below — it never touches
@@ -71,7 +71,7 @@ class _Pyramid3DState extends State<Pyramid3D> with TickerProviderStateMixin {
   String? _wallCacheKey;
   int _wallRenderToken = 0;
 
-  // D-046: entrance spin, entirely separate from [_settle] above.
+  // D-034: entrance spin, entirely separate from [_settle] above.
   AnimationController? _entranceSpin;
   static const double _entranceSpinStart = -12 * math.pi; // several full turns
 

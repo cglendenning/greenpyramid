@@ -1,8 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
-/// D-030/D-032/D-188: identity, held separately from data sync
-/// ([SyncService]) so habit check-off (D-031) never depends on this
+/// D-025/D-029/D-188: identity, held separately from data sync
+/// ([SyncService]) so habit check-off (D-026) never depends on this
 /// succeeding.
 ///
 /// [FirebaseAuth] is injectable so tests run against
@@ -23,7 +23,7 @@ class AuthService {
 
   Stream<User?> get userChanges => _auth.userChanges();
 
-  /// D-032: silently create (or resume) an anonymous account. Never throws
+  /// D-029: silently create (or resume) an anonymous account. Never throws
   /// and never surfaces anything to the user — a failure is logged and the
   /// app continues in local-only mode; the caller is expected to retry this
   /// on the next launch, not to block on it now.

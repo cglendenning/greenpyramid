@@ -2,11 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { sanitize, biasInstruction, applyPacingReassurance, buildAdvisorTurnPrompt, buildGeneralCouncilTurnPrompt, buildSetupAdvisorTurnPrompt, countMiraTurns, extractReplyText, hasAskedWrapUpQuestion, SETUP_WRAP_UP_QUESTION, ADVISORS, SETUP_TURN_TOOL } from './council.js';
 
-test('D-029: exactly the four Council advisors exist', () => {
+test('D-023: exactly the four Council advisors exist', () => {
   assert.deepEqual(Object.keys(ADVISORS).sort(), ['eli', 'kenji', 'mira', 'noa']);
 });
 
-test('D-027: each advisor keeps its Kansei name, title, and trait', () => {
+test('D-022: each advisor keeps its Kansei name, title, and trait', () => {
   assert.equal(ADVISORS.mira.name, 'Mira');
   assert.equal(ADVISORS.kenji.title, 'The Anchor');
   assert.equal(ADVISORS.noa.trait, 'competent');

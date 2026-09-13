@@ -12,10 +12,10 @@ import 'setup_screen.dart';
 import 'terms_screen.dart';
 
 /// D-089: a single screen, shown once per entry into setup, that tells the
-/// user what is about to happen before Mira's opening line (D-042) puts
+/// user what is about to happen before Mira's opening line (D-031) puts
 /// them straight into a conversation with no warning. Deliberately NOT a
 /// second version of the old eighteen-screen wizard (D-001) or a feature
-/// carousel D-042 already forbids — one rotating photograph, one line of
+/// carousel D-031 already forbids — one rotating photograph, one line of
 /// intent, one line of what to expect, one action. Owns no service
 /// dependency, so it is genuinely widget-testable, unlike SetupScreen (see
 /// setup_screen_opening_line_test.dart's own comment on why that screen

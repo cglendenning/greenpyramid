@@ -18,7 +18,7 @@ import '../theme/app_colors.dart';
 /// D-185: a Council session scoped to one category. R5 ships the mechanism
 /// — rotation, resume, an essence accepted once it meets P-12's quality bar
 /// (scored by ResonanceService, D-188) — not the richer Council-driven
-/// convergence D-051/D-055 define for setup; that lands in R6, built on
+/// convergence D-038/D-042 define for setup; that lands in R6, built on
 /// this same [CouncilService].
 ///
 /// A user message can be accepted as the category's new essence version at
@@ -170,7 +170,7 @@ class _CouncilScreenState extends State<CouncilScreen> {
     );
     await _council.endSession(session.sessionId);
 
-    // D-048: advisory, never required (D-188) — a failure here must never
+    // D-036: advisory, never required (D-188) — a failure here must never
     // block closing the session, whose essence is already committed above.
     unawaited(_council.recordDomainFindings(
       session: session,

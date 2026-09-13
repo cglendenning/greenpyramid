@@ -8,8 +8,8 @@ Widget wrap(Widget child, {bool disableAnimations = false}) => MediaQuery(
     );
 
 void main() {
-  group('D-044: the setup progress indicator', () {
-    testWidgets('D-044: renders at a fixed size regardless of progress',
+  group('D-033: the setup progress indicator', () {
+    testWidgets('D-033: renders at a fixed size regardless of progress',
         (tester) async {
       await tester.pumpWidget(wrap(const SetupProgressIndicator(progress: 0.0, size: 48)));
       expect(find.byType(SetupProgressIndicator), findsOneWidget);
@@ -18,7 +18,7 @@ void main() {
       expect(box.height, 48);
     });
 
-    testWidgets('D-044: progress values outside 0-1 do not throw',
+    testWidgets('D-033: progress values outside 0-1 do not throw',
         (tester) async {
       await tester.pumpWidget(wrap(const SetupProgressIndicator(progress: -0.5)));
       await tester.pump();
@@ -26,7 +26,7 @@ void main() {
       await tester.pump();
     });
 
-    testWidgets('D-044: respects reduce-motion — no pulsing animation ticks',
+    testWidgets('D-033: respects reduce-motion — no pulsing animation ticks',
         (tester) async {
       await tester.pumpWidget(
           wrap(const SetupProgressIndicator(progress: 0.5), disableAnimations: true));

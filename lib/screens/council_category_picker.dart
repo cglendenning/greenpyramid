@@ -5,7 +5,7 @@ import '../services/entitlement_gate.dart';
 import '../theme/app_colors.dart';
 import 'council_screen.dart';
 
-/// D-061: Settings' "Revisit a category with the Council" entry point.
+/// D-047: Settings' "Revisit a category with the Council" entry point.
 /// Lists the six categories; choosing one opens a Council session scoped to
 /// it (D-185), gated behind D-014's entitlement check.
 ///

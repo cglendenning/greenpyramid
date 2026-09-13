@@ -26,7 +26,7 @@ class _FakeCalendarService extends CalendarService {
   Future<String?> summarizeToday({DateTime? now}) async => summary;
 }
 
-/// R4: D-034's silent migration and D-187's enumerated ongoing sync, tested
+/// R4: D-027's silent migration and D-187's enumerated ongoing sync, tested
 /// against a real (temp, ffi-backed) SQLite database and a fake Firestore —
 /// no live Firebase project involved. Collection names and shapes follow
 /// IV-D's Firestore layout exactly.
@@ -206,7 +206,7 @@ void main() {
     expect(data?.containsKey('calendarContext'), isFalse);
   });
 
-  test('D-057: entitlement/trialStartedAt/trialExpiresAt are never pushed by '
+  test('D-044: entitlement/trialStartedAt/trialExpiresAt are never pushed by '
       'the client — they are server-authoritative, not local-cache-sourced. '
       'A stale local cache must not clobber a real subscribed/lapsed state.',
       () async {
@@ -275,7 +275,7 @@ void main() {
     expect((await col.doc(id1.toString()).get()).exists, isFalse);
   });
 
-  test('D-030: setAccountUid persists the Firebase uid into account_state',
+  test('D-025: setAccountUid persists the Firebase uid into account_state',
       () async {
     await db.setAccountUid('some-firebase-uid');
     final state = await db.getAccountState();

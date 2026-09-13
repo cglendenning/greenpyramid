@@ -1,4 +1,4 @@
-// D-059: Apple's sanctioned per-device trial-abuse mechanism — App Review
+// D-045: Apple's sanctioned per-device trial-abuse mechanism — App Review
 // Guideline 3.1.1 names DeviceCheck specifically for managing trial
 // duration. Apple stores two bits per device, server-side, surviving app
 // deletion and reinstall; Green Pyramid persists no iOS device identifier

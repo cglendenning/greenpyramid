@@ -1,4 +1,4 @@
-// Pure logic for the Council backend route (D-027/D-185/D-040), split out
+// Pure logic for the Council backend route (D-022/D-185/D-030), split out
 // from index.js so it's testable without spinning up Express or Firebase
 // Admin. index.js imports these directly; there is no duplicate copy.
 
@@ -16,7 +16,7 @@ export function sanitize(value, maxLen = 500) {
     .slice(0, maxLen);
 }
 
-// D-029: advisors are stances, not domains — every advisor may probe any
+// D-023: advisors are stances, not domains — every advisor may probe any
 // domain; nothing here is domain-specific. Persona prose ported verbatim
 // from Kansei (II-K) so each advisor stays recognizably themselves.
 export const ADVISORS = {

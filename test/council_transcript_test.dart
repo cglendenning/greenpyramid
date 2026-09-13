@@ -16,7 +16,7 @@ void main() {
         timestamp: DateTime(2026, 1, 1),
       );
 
-  testWidgets('D-042/D-027: an advisor message shows a portrait and the '
+  testWidgets('D-031/D-022: an advisor message shows a portrait and the '
       'advisor\'s name; a user message shows neither', (tester) async {
     await tester.pumpWidget(MaterialApp(
       home: CouncilTranscript(

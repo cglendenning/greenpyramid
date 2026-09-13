@@ -2,12 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/services/lapsed_notification_pool.dart';
 
 void main() {
-  group('D-063: the lapsed static notification pool', () {
-    test('D-063: exactly one pool of six entries', () {
+  group('D-049: the lapsed static notification pool', () {
+    test('D-049: exactly one pool of six entries', () {
       expect(LapsedNotificationPool.pool.length, 6);
     });
 
-    test('D-063: no entry contains user-specific data (a smoke check — the '
+    test('D-049: no entry contains user-specific data (a smoke check — the '
         'pool is a fixed literal, so this really just guards against a '
         'future edit accidentally interpolating something)', () {
       for (final entry in LapsedNotificationPool.pool) {

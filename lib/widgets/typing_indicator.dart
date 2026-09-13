@@ -8,7 +8,7 @@ import 'advisor.dart';
 /// person sends a message — the same three-pulsing-dots convention every
 /// major messenger app uses for "the other person is composing a reply."
 ///
-/// Same reduce-motion discipline as [SetupProgressIndicator] (D-044):
+/// Same reduce-motion discipline as [SetupProgressIndicator] (D-033):
 /// static dots, no animation ticks, whenever the platform requests it.
 class TypingIndicator extends StatefulWidget {
   final String advisorKey;

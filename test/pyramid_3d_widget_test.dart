@@ -96,8 +96,8 @@ void main() {
     expect(tapped, 1);
   });
 
-  group('D-046: entrance spin (setup completion)', () {
-    testWidgets('D-046: without playEntranceSpin, no spin animation runs — '
+  group('D-034: entrance spin (setup completion)', () {
+    testWidgets('D-034: without playEntranceSpin, no spin animation runs — '
         'settles immediately', (tester) async {
       await pumpPyramid(tester, (_) {});
       await tester.pump();
@@ -106,7 +106,7 @@ void main() {
       await tester.pumpAndSettle(const Duration(milliseconds: 100));
     });
 
-    testWidgets('D-046: playEntranceSpin runs for exactly 3 seconds and '
+    testWidgets('D-034: playEntranceSpin runs for exactly 3 seconds and '
         'ends face-on, tappable', (tester) async {
       int? tapped;
       await tester.pumpWidget(
@@ -135,7 +135,7 @@ void main() {
       expect(tapped, 1, reason: 'settled and tappable once the spin ends');
     });
 
-    testWidgets('D-046: respects reduce-motion — settles immediately with '
+    testWidgets('D-034: respects reduce-motion — settles immediately with '
         'no spin', (tester) async {
       await tester.pumpWidget(
         MediaQuery(

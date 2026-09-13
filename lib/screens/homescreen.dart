@@ -174,7 +174,7 @@ class _HomeScreen extends State<HomeScreenWidget> {
 
   // D-132: catches an existing user whose account predates D-188 — Craig's
   // own situation: setup already completed before D-188 existed, so
-  // nothing ever prompted him to link a real credential. D-032's own
+  // nothing ever prompted him to link a real credential. D-029's own
   // convention (every Firestore-touching screen awaits signInSilently()
   // first, since main.dart's bootstrap is fire-and-forget and not
   // guaranteed to have run yet) is what makes the isAnonymous check below

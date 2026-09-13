@@ -103,7 +103,7 @@ class _ThrowingCouncilClient extends _FakeCouncilClient {
 }
 
 /// R6: SetupService orchestrates the single continuous setup conversation
-/// (D-043/D-188) — tested against a real temp SQLite database and a fake
+/// (D-032/D-188) — tested against a real temp SQLite database and a fake
 /// Council backend, no live Firebase project.
 void main() {
   final db = DatabaseHelper.instance;
@@ -288,9 +288,9 @@ void main() {
     });
   });
 
-  group('D-051: category proposals are committed at their proposed '
+  group('D-038: category proposals are committed at their proposed '
       'position', () {
-    test('D-051: commitCategories writes categoryid = position for a fresh '
+    test('D-038: commitCategories writes categoryid = position for a fresh '
         'pyramid', () async {
       final svc = buildService();
       const categories = [
@@ -340,8 +340,8 @@ void main() {
     });
   });
 
-  group('D-052/D-054: habits are committed scheduled every day', () {
-    test('D-054: commitHabits writes every day column true, no '
+  group('D-039/D-041: habits are committed scheduled every day', () {
+    test('D-041: commitHabits writes every day column true, no '
         'day-of-week selection', () async {
       final svc = buildService();
       await svc.commitHabits('Health', ['Walk 20 minutes']);
@@ -396,7 +396,7 @@ void main() {
     });
   });
 
-  group('D-048: domain finding derivation', () {
+  group('D-036: domain finding derivation', () {
     test('recordDomainFindings commits every finding the backend returns',
         () async {
       final client = _FakeCouncilClient()
