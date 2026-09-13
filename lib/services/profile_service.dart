@@ -9,11 +9,11 @@ import 'db.dart';
 /// directly through a now-defunct account (confirmed dead from live Cloud
 /// Run logs — "429 You have no credits remaining" — not guessed).
 ///
-/// Neither call is free (D-016) — profile.dart checks entitlement and
+/// Neither call is free (D-014) — profile.dart checks entitlement and
 /// routes to the paywall before calling either method here, the same
 /// pattern `CouncilCategoryPicker` already establishes; this class assumes
 /// it's being called by an entitled caller and lets the backend's own
-/// D-016 check be the authoritative backstop if that assumption is ever
+/// D-014 check be the authoritative backstop if that assumption is ever
 /// wrong (a stale local cache).
 class ProfileService {
   ProfileService({DatabaseHelper? db, CouncilClient? client})

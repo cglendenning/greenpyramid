@@ -7,9 +7,9 @@ import 'council_screen.dart';
 
 /// D-061: Settings' "Revisit a category with the Council" entry point.
 /// Lists the six categories; choosing one opens a Council session scoped to
-/// it (D-185), gated behind D-016's entitlement check.
+/// it (D-185), gated behind D-014's entitlement check.
 ///
-/// D-013: this is the app's first value-triggered paywall placement — the
+/// D-011: this is the app's first value-triggered paywall placement — the
 /// user has already named the exact next step (deepen this category with
 /// the Council) before ever seeing a price.
 class CouncilCategoryPicker extends StatefulWidget {

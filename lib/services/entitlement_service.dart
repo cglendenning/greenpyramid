@@ -205,7 +205,7 @@ class EntitlementService {
   /// 'lapsed', or 'pre_trial' — for a caller that needs to *display* the
   /// account's state (the settings screen's subscription panel copy),
   /// not gate a feature on it. [isEntitled] remains the gate; keeping the
-  /// raw DB column read here, not in `lib/screens/`, is what lets D-015's
+  /// raw DB column read here, not in `lib/screens/`, is what lets D-013's
   /// "the tracker never checks entitlement" test scan screen files for
   /// `columnEntitlement` and mean it.
   Future<String?> currentLocalEntitlement() async {

@@ -301,7 +301,7 @@ void main() {
   });
 
   test(
-      'D-009: _confirmCategories kicks off the first foundational '
+      'D-007: _confirmCategories kicks off the first foundational '
       'category\'s essence question — regression test for a defect found '
       'live: only _acceptEssence (moving to the 2nd and 3rd category) ever '
       'called _askAboutCurrentFoundational, so the first category\'s '
@@ -317,7 +317,7 @@ void main() {
   });
 
   test(
-      'D-009/D-105: the "save this" essence button only considers messages '
+      'D-007/D-105: the "save this" essence button only considers messages '
       'sent after this category\'s own question was asked — regression '
       'test for a defect found live: it only ever checked "does any user '
       'message exist," so the button appeared immediately using whatever '
@@ -336,7 +336,7 @@ void main() {
     final body = source.substring(start, end);
     expect(body, contains('_essenceStepStartIndex'));
     expect(body, contains('stepMessages'));
-    // D-005/P-12: "essence" is internal spec terminology — the owner
+    // D-003/P-12: "essence" is internal spec terminology — the owner
     // found it confusing in user-facing copy, alongside the whole screen
     // giving no indication of what was happening or why.
     expect(body, isNot(contains('Use as my essence')));

@@ -50,7 +50,7 @@ void main() {
   test('D-113: a category with no description yet still gets an edit '
       'action on the category detail screen — found live, the whole '
       'block (name-editing included) used to be hidden whenever no '
-      'essence existed, D-005/D-010\'s normal state for essential/peak '
+      'essence existed, D-003/D-008\'s normal state for essential/peak '
       'categories', () {
     final source = File('lib/screens/tasklist.dart').readAsStringSync();
     final start = source.indexOf('FutureBuilder<(int?, String?)>');

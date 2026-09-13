@@ -125,7 +125,7 @@ void main() {
     expect(account[DatabaseHelper.columnEntitlement], 'subscribed');
   });
 
-  test('D-016: isEntitled is true for trialing and subscribed, false for '
+  test('D-014: isEntitled is true for trialing and subscribed, false for '
       'pre_trial and lapsed', () async {
     final service = EntitlementService(
         db: db, firestore: FakeFirebaseFirestore(), auth: MockFirebaseAuth());

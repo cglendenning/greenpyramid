@@ -21,7 +21,7 @@ class _TempPathProvider extends PathProviderPlatform
 /// Characterization tests for the completion math.
 ///
 /// These pin the behavior D-024's restructure (R2) must preserve, and enforce
-/// D-019: the aggregate score stays an unweighted mean, so tiered weighting
+/// D-017: the aggregate score stays an unweighted mean, so tiered weighting
 /// must not change either function.
 void main() {
   final db = DatabaseHelper.instance;
@@ -67,8 +67,8 @@ void main() {
     });
   }
 
-  group('D-019: getCompletionPercentage', () {
-    test('D-019: returns -1 when the category has no tasks defined', () async {
+  group('D-017: getCompletionPercentage', () {
+    test('D-017: returns -1 when the category has no tasks defined', () async {
       expect(await db.getCompletionPercentage('Nothing', 7), -1);
     });
 
@@ -83,7 +83,7 @@ void main() {
       expect(await db.getCompletionPercentage('Health', 7), -2);
     });
 
-    test('D-019: is checked logs over total logs, as a truncated percent',
+    test('D-017: is checked logs over total logs, as a truncated percent',
         () async {
       await addTask('Health', 'Run');
       await addTask('Health', 'Lift');
@@ -95,17 +95,17 @@ void main() {
       expect(await db.getCompletionPercentage('Health', 7), 33);
     });
 
-    test('D-019: all checked is 100', () async {
+    test('D-017: all checked is 100', () async {
       await addTask('Health', 'Run');
       await addLog('Health', 'Run', true);
       expect(await db.getCompletionPercentage('Health', 7), 100);
     });
   });
 
-  group('D-019: getTotalPercentage is an unweighted mean', () {
-    test('D-019: averages categories equally, regardless of tier', () async {
+  group('D-017: getTotalPercentage is an unweighted mean', () {
+    test('D-017: averages categories equally, regardless of tier', () async {
       // Health sits at categoryid 1 (foundational), Legacy at 6 (peak). Tier
-      // must not affect the aggregate — that is the whole point of D-019.
+      // must not affect the aggregate — that is the whole point of D-017.
       await addCategory(1, 'Health');
       await addCategory(6, 'Legacy');
       await addTask('Health', 'Run');
@@ -115,7 +115,7 @@ void main() {
       expect(await db.getTotalPercentage(7), '50');
     });
 
-    test('D-019: categories with no tasks are skipped, not counted as zero',
+    test('D-017: categories with no tasks are skipped, not counted as zero',
         () async {
       await addCategory(1, 'Health');
       await addCategory(2, 'Empty');
@@ -126,7 +126,7 @@ void main() {
       expect(await db.getTotalPercentage(7), '100');
     });
 
-    test('D-019: returns 0 when no categories exist', () async {
+    test('D-017: returns 0 when no categories exist', () async {
       expect(await db.getTotalPercentage(7), '0');
     });
 
@@ -146,7 +146,7 @@ void main() {
       expect(await db.getTotalPercentage(7), '100');
     });
 
-    test('D-019: only categoryid 1 through 6 are counted', () async {
+    test('D-017: only categoryid 1 through 6 are counted', () async {
       await addCategory(1, 'Health');
       await addTask('Health', 'Run');
       await addLog('Health', 'Run', true); // 100

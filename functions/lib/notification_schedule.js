@@ -51,7 +51,7 @@ export function isNotificationWindow(timezone, now = new Date()) {
 
 // D-189: lapsed accounts are excluded from the job entirely — no server or
 // model cost. trialing and subscribed accounts both receive tailored
-// notifications (D-021: a trial has identical capability to a subscription);
+// notifications (D-019: a trial has identical capability to a subscription);
 // pre_trial never reaches this in practice, since a pre_trial account has no
 // completed setup and therefore no vision statement or categories to draw a
 // tailored notification from.

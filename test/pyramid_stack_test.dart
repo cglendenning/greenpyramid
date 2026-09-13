@@ -49,7 +49,7 @@ void main() {
 
   testWidgets('once resolved, each block gets its category\'s real label '
       'and a color derived from its completion percentage — the same '
-      'setColor the main pyramid screen uses (D-019)', (tester) async {
+      'setColor the main pyramid screen uses (D-017)', (tester) async {
     final futures = [
       cat('Craft', 95), // green
       cat('Health', 50), // red

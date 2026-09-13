@@ -51,7 +51,7 @@ test('D-189: a lapsed account is never eligible, even inside its notification '
   assert.ok(!eligible);
 });
 
-test('D-016/R7: a pre_trial account is eligible — everyone is treated as '
+test('D-014/R7: a pre_trial account is eligible — everyone is treated as '
   + 'entitled until R8', () => {
   const now = new Date('2026-06-15T09:00:00Z');
   const eligible = isEligibleForTailoredNotification(

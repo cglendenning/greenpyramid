@@ -7,11 +7,11 @@ import '../services/secrets.dart';
 import '../services/subscription_service.dart';
 import '../theme/app_colors.dart';
 
-/// D-013/D-070: shown only at a value-triggered moment (never a launch or
+/// D-011/D-070: shown only at a value-triggered moment (never a launch or
 /// session-start interstitial) — today, that moment is reaching for the
 /// Council's re-clarification entry point without an active trial or
-/// subscription (D-061/D-016). [reason] names that moment in the header so
-/// every presentation is traceable to a specific next step, per D-013's
+/// subscription (D-061/D-014). [reason] names that moment in the header so
+/// every presentation is traceable to a specific next step, per D-011's
 /// acceptance criteria.
 class PaywallScreen extends StatefulWidget {
   final String reason;

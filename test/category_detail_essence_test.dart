@@ -1,6 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+
+// D-003-AC-01: empty explanations remain a first-class state for every consumer.
+// D-003-AC-02: the exact saved explanation text is shown for editing/confirmation.
+// D-003-AC-03: edits append versioned records through the durable database path.
 import 'package:life_ops/services/db.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
@@ -47,7 +51,7 @@ void main() {
       expect(await db.getCategoryIdByName('Nonexistent'), isNull);
     });
 
-    test('D-005/D-010: a category with no essence yet resolves an id but a '
+    test('D-003/D-008: a category with no essence yet resolves an id but a '
         'null essence — a first-class state, not an error', () async {
       await db.insertCategory(
           {DatabaseHelper.columnCategoryId: 4, DatabaseHelper.columnCat: 'Craft'});

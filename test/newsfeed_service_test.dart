@@ -303,7 +303,7 @@ void main() {
 
     Future<void> makeEntitled() => db.setAccountEntitlement(entitlement: 'trialing');
 
-    test('an unentitled account never calls the AI at all — D-016, same '
+    test('an unentitled account never calls the AI at all — D-014, same '
         'gate the Council and Profile analysis already use', () async {
       await seedCategory(1, 'Craft');
       await articleService.generateArticleIfDue();

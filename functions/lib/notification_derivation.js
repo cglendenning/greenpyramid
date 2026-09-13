@@ -21,7 +21,7 @@ export const NOTIFICATION_TOOL = {
 // enumerated context never listed them until now; amended again for
 // D-178 to add firstName): exactly this context, nothing else.
 // [categories] is [{name, tier, essence}] (essence null for cat4-cat6
-// without one, D-010). [recentActivity] is the bounded task_log window
+// without one, D-008). [recentActivity] is the bounded task_log window
 // already synced (D-187). [domainFindings] is [{domain, note}].
 // [calendarContext] is a short pre-summarized string, present only when the
 // user granted calendar access (D-185 step 7) — absent entirely otherwise,

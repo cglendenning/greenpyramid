@@ -158,7 +158,7 @@ test('D-052: the habit prompt includes the essence when one exists', () => {
   assert.match(system, /my body carries me through every challenge/);
 });
 
-test('D-010: the habit prompt degrades to name-only, without inventing a '
+test('D-008: the habit prompt degrades to name-only, without inventing a '
   + 'reason, when no essence exists', () => {
   const { system } = buildDeriveHabitsPrompt({ categoryName: 'Craft', essence: null });
   assert.match(system, /do not invent one/);

@@ -177,8 +177,8 @@ function claude() {
   return anthropicClient;
 }
 
-// D-017/D-188: setup is free — bounded by a 40-model-call count per
-// session, never by the D-087 dollar cap. Every other Council use (D-016)
+// D-015/D-188: setup is free — bounded by a 40-model-call count per
+// session, never by the D-087 dollar cap. Every other Council use (D-014)
 // is gated by spend instead. Shared by every setup-conversation route
 // (turns and the two derivation endpoints below) so the bound is uniform
 // regardless of which kind of call it is.
@@ -195,7 +195,7 @@ async function guardCouncilCall(req, res, { isSetup, sessionId }) {
       throw e;
     }
   }
-  // D-016: every non-setup AI surface requires an active trial or
+  // D-014: every non-setup AI surface requires an active trial or
   // subscription. Checked before the spend cap — an unentitled account
   // should never even reach that check.
   try {
@@ -268,8 +268,8 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, (req, res, next) => req.body?
   // D-090/D-097: soloSetup — not isSetup — is a solo conversation with
   // Mira, forced through a tool call so her readiness to build the pyramid
   // comes back as data, not free text. isSetup only ever meant "billed
-  // free" (D-017); every call inside a setup-typed session sets it,
-  // including essence-deepening's four-advisor rotation (D-009 step 3),
+  // free" (D-015); every call inside a setup-typed session sets it,
+  // including essence-deepening's four-advisor rotation (D-007 step 3),
   // which must NOT be routed through the solo-Mira path — found live,
   // conflating the two silently broke essence-deepening (always Mira,
   // wrong framing, D-092's pacing suffix leaking into a conversation it
@@ -323,7 +323,7 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, (req, res, next) => req.body?
       system: [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: userMessage }],
     });
-    // D-017: setup is free — its cost is never recorded against the D-087
+    // D-015: setup is free — its cost is never recorded against the D-087
     // dollar ledger, only counted against D-188's call limit (already done
     // above, before the model call).
     if (!isSetup) {
@@ -408,7 +408,7 @@ async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conver
       // followed several turns into a real conversation.
       reply = applyPacingReassurance(reply, { turnsSoFar, readyToBuild });
     }
-    // D-017: setup is free — never charged against D-087's dollar ledger,
+    // D-015: setup is free — never charged against D-087's dollar ledger,
     // only counted against D-188's call limit (already done above).
     res.json({
       reply,
@@ -422,7 +422,7 @@ async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conver
 }
 
 // ── Setup derivation (D-051/D-052/D-055) ────────────────────────────────────
-// All three are setup-only: always free (D-017), always bounded by D-188's
+// All three are setup-only: always free (D-015), always bounded by D-188's
 // call count, never by D-087's spend cap.
 
 app.post('/deriveCategories', requireFirebaseAuth, setupIdempotency(() => admin.firestore()), async (req, res) => {
@@ -529,8 +529,8 @@ app.post('/deriveDomainFindings', requireFirebaseAuth, (req, res, next) => req.b
 
 // D-114: isSetup now comes from the caller instead of being hardcoded
 // true — setup's own closing synthesis (D-055) still passes true and
-// stays free (D-017); profile.dart's regeneration, outside any setup
-// session, passes false and goes through D-016's entitlement gate like
+// stays free (D-015); profile.dart's regeneration, outside any setup
+// session, passes false and goes through D-014's entitlement gate like
 // every other non-setup AI surface. sessionId/transcript are optional —
 // a regeneration has neither, only the pyramid's current essences.
 app.post('/deriveVisionStatement', requireFirebaseAuth, (req, res, next) => req.body?.isSetup ? setupIdempotency(() => admin.firestore())(req, res, next) : next(), async (req, res) => {
@@ -561,7 +561,7 @@ app.post('/deriveVisionStatement', requireFirebaseAuth, (req, res, next) => req.
 });
 
 // D-114: the profile screen's 30-day progress analysis — a new AI
-// surface, never gated by anything but D-016's standard entitlement
+// surface, never gated by anything but D-014's standard entitlement
 // check (never free, since it isn't setup).
 app.post('/deriveProgressAnalysis', requireFirebaseAuth, async (req, res) => {
   const { taskLogs, firstName } = req.body || {};
@@ -763,7 +763,7 @@ export const notificationJob = onSchedule(
 // own "already sent today" field is the once-per-day guard.
 //
 // Unlike notificationJob, this calls no model and costs nothing to run —
-// so it is NOT restricted to non-lapsed accounts, matching D-015's
+// so it is NOT restricted to non-lapsed accounts, matching D-013's
 // tracker-is-free-forever and D-123's own "scheduling is available
 // regardless of entitlement."
 async function maybeSendBatchCheckin(uid, profileData, now) {

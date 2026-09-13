@@ -650,7 +650,7 @@ class CustomAppBarState extends State<CustomAppBar> {
     );
   }
 
-  // D-091/D-016: the shared ensureEntitled gate — same one CouncilCategoryPicker
+  // D-091/D-014: the shared ensureEntitled gate — same one CouncilCategoryPicker
   // uses (council_category_picker.dart:_open) — found live, the hard way:
   // without it, an unentitled account reaches GeneralCouncilScreen, the
   // backend's EntitlementRequiredException isn't one of the exceptions that

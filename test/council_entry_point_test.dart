@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// D-061: Settings carries the re-clarification entry point. Structural
 /// (source-text) rather than a widget test, matching this repo's existing
 /// convention for entry-point wiring (r2_restructure_test.dart) — the
-/// screen itself is gated behind Firebase Auth/Firestore and D-016's
+/// screen itself is gated behind Firebase Auth/Firestore and D-014's
 /// entitlement check, which need a live account to exercise meaningfully.
 void main() {
   test('D-061: Settings carries the "Revisit a category with the Council" '
@@ -15,7 +15,7 @@ void main() {
     expect(source, contains('CouncilCategoryPicker'));
   });
 
-  test('D-016/D-182: choosing a category checks entitlement before '
+  test('D-014/D-182: choosing a category checks entitlement before '
       'opening a Council session, via the shared ensureEntitled gate — '
       'not a private duplicate of its check (D-182: a duplicate here '
       'meant this screen never benefited from ensureEntitled\'s own '

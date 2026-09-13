@@ -14,7 +14,7 @@ import 'package:sqflite/sqflite.dart';
 /// D-043: orchestrates the single continuous setup conversation — one
 /// `setup`-typed [BoardSession] (D-188) that produces six tiered
 /// categories (D-051), habits per category (D-052), three foundational
-/// essences (D-009/D-185), and the closing vision statement (D-055). The
+/// essences (D-007/D-185), and the closing vision statement (D-055). The
 /// screen calls these methods and renders state; no SQL or prompt
 /// construction lives in the screen (D-024).
 class SetupService {
@@ -112,7 +112,7 @@ class SetupService {
 
   /// D-052/D-103: proposes 1 to [maxAllowed] habits for one category
   /// (never more than 3). [essence] is null for a category with none yet
-  /// (D-010) — the prompt degrades to name-only without inventing a
+  /// (D-008) — the prompt degrades to name-only without inventing a
   /// reason. [maxAllowed] is the caller's cross-category budget, keeping
   /// the pyramid's total habit count at or under 10 across all six
   /// categories.
@@ -194,7 +194,7 @@ class SetupService {
     }
   }
 
-  /// D-009/D-185: commits a foundational category's captured essence.
+  /// D-007/D-185: commits a foundational category's captured essence.
   Future<void> commitEssence({
     required int categoryId,
     required String essence,

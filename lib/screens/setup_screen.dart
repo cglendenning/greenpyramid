@@ -905,7 +905,7 @@ class _SetupScreenState extends State<SetupScreen> {
     if (!_manual) await _askAboutCurrentFoundational();
   }
 
-  // ── Essences for the three foundational categories (D-009/D-185) ───────
+  // ── Essences for the three foundational categories (D-007/D-185) ───────
 
   Future<void> _acceptEssence(String text) async {
     final session = _session;
@@ -1655,7 +1655,7 @@ class _SetupScreenState extends State<SetupScreen> {
           // matters in terms of habits — that habits fall into those
           // categories, and that some habits matter more than other
           // habits because of these categories that they are in." Ties
-          // directly to D-020's existing mechanic (foundational > essential
+          // directly to D-018's existing mechanic (foundational > essential
           // > peak weight order) rather than inventing new meaning.
           const Text(
             'Every habit you build lives inside one of these tiers. A '

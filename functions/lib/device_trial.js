@@ -1,4 +1,4 @@
-// D-021/D-057/D-188/D-059/D-071: grants the one free trial a device (or,
+// D-019/D-057/D-188/D-059/D-071: grants the one free trial a device (or,
 // for the D-034 migration cohort, an account) is owed, exactly once, and
 // never lets that grant touch an already-subscribed account.
 import admin from 'firebase-admin';

@@ -94,7 +94,7 @@ void main() {
   test(
       'D-118: the tier-intro screen now also explains why the hierarchy '
       'matters for habits — a foundational miss carries more weight than '
-      'a peak one (D-020), not just what the three tiers are named', () {
+      'a peak one (D-018), not just what the three tiers are named', () {
     final start = source.indexOf('Widget _buildTierIntro()');
     final end = source.indexOf('\n  Widget _buildCategories', start);
     final body = source.substring(start, end);

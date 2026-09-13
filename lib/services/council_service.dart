@@ -121,7 +121,7 @@ class CouncilService {
   /// Calls the backend for one advisor turn, persists the message, and
   /// returns it. [categoryName], [categoryTier], and [priorEssence] are the
   /// category-scoped context D-185 requires; sanitized the same way any
-  /// user-derived text reaches a prompt (D-006).
+  /// user-derived text reaches a prompt (D-004).
   ///
   /// D-095: [pyramidContext], non-null, is the general Council chat's
   /// (D-091) whole-pyramid grounding — when present, the backend ignores
@@ -135,7 +135,7 @@ class CouncilService {
     String? priorEssence,
     List<Map<String, dynamic>>? pyramidContext,
     // D-108: overrides the default "the whole session so far" history.
-    // Needed because essence-deepening (D-009 step 3) shares one session
+    // Needed because essence-deepening (D-007 step 3) shares one session
     // across all three foundational categories (D-043) — session.messages
     // for category 2's kickoff call already contains category 1's entire
     // exchange, so "respond to what was just said" reacted to category
@@ -148,7 +148,7 @@ class CouncilService {
     await AiGuard.instance.acquire();
 
     final sliderValue = session.sliderSettings[advisorKey] ?? 0.5;
-    // D-017/D-188: a setup-typed session is free, bounded by call count —
+    // D-015/D-188: a setup-typed session is free, bounded by call count —
     // never charged against D-087's dollar cap. Derived from the session
     // itself so callers can't get this wrong.
     final isSetup = session.type == BoardSessionType.setup;

@@ -211,7 +211,7 @@ class _SettingsState extends State<Settings> {
                   ),
                   const SizedBox(height: 8),
                   // D-185: the domain map — a destination visited
-                  // deliberately, gated as a paid capability (D-016).
+                  // deliberately, gated as a paid capability (D-014).
                   Align(
                     alignment: Alignment.centerLeft,
                     child: TextButton(

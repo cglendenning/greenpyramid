@@ -21,7 +21,7 @@ test('D-050: the Council route imports Anthropic directly, not through a '
 
 test('D-097: /boardAdvisorTurn routes to the solo-Mira handler on '
   + 'soloSetup, never on isSetup — regression test for a defect found '
-  + 'live: isSetup means "billed free" (D-017) and is true for every '
+  + 'live: isSetup means "billed free" (D-015) and is true for every '
   + 'call inside a setup-typed session, including essence-deepening\'s '
   + 'four-advisor rotation; routing on it instead of a dedicated signal '
   + 'silently sent essence-deepening through the solo-Mira pyramid-'
@@ -65,7 +65,7 @@ test('D-100: /deriveDomainFindings branches to the general (whole-pyramid) '
 
 test('D-114: /deriveVisionStatement reads isSetup from the caller instead '
   + 'of hardcoding true — profile.dart\'s regeneration must go through '
-  + 'D-016\'s entitlement gate like every other non-setup AI surface, '
+  + 'D-014\'s entitlement gate like every other non-setup AI surface, '
   + 'not setup\'s free/bounded one', () => {
   const routeStart = indexSource.indexOf("app.post('/deriveVisionStatement'");
   assert.ok(routeStart > -1, 'expected the /deriveVisionStatement route to exist');
@@ -78,7 +78,7 @@ test('D-114: /deriveVisionStatement reads isSetup from the caller instead '
 });
 
 test('D-114: /deriveProgressAnalysis exists, is gated the same way every '
-  + 'other non-setup AI surface is (D-016), and records its cost — it is '
+  + 'other non-setup AI surface is (D-014), and records its cost — it is '
   + 'never free, since it is never setup', () => {
   const routeStart = indexSource.indexOf("app.post('/deriveProgressAnalysis'");
   assert.ok(routeStart > -1, 'expected the /deriveProgressAnalysis route to exist');

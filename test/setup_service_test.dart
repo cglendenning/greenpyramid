@@ -385,7 +385,7 @@ void main() {
     });
   });
 
-  group('D-009/D-185: essence commitment', () {
+  group('D-007/D-185: essence commitment', () {
     test('commitEssence writes a versioned essence for the category',
         () async {
       final svc = buildService();

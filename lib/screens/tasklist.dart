@@ -95,7 +95,7 @@ class _TaskListState extends State<TaskList> {
   }
 
   // D-047: the category name and its full essence, in that order, above
-  // the habit checkboxes. A category with no essence yet (D-005/D-010)
+  // the habit checkboxes. A category with no essence yet (D-003/D-008)
   // renders neither a placeholder nor a prompt to add one — this returns
   // null and the caller skips the block entirely.
   Future<(int?, String?)> _loadEssenceContext() async {
@@ -164,7 +164,7 @@ class _TaskListState extends State<TaskList> {
                       // D-113: a category with no description yet still
                       // gets the Edit action — previously the whole block
                       // (name-editing included) was hidden whenever no
-                      // essence existed, D-005/D-010's normal state for
+                      // essence existed, D-003/D-008's normal state for
                       // essential/peak categories.
                       if (data == null || data.$1 == null) {
                         return const SizedBox.shrink();

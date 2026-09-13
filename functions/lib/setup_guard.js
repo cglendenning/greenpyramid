@@ -1,6 +1,6 @@
 // D-188: the free setup conversation is bounded at 40 model calls,
 // enforced server-side — the client cannot be trusted to stop itself.
-// Separate from D-087's spend cap: setup is free (D-017), so it is never
+// Separate from D-087's spend cap: setup is free (D-015), so it is never
 // charged against an account's dollar cap; it is bounded by call count
 // instead, sitting under AiGuard's existing daily rate limit.
 import admin from 'firebase-admin';

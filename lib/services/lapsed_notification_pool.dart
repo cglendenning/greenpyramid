@@ -1,6 +1,6 @@
 /// D-063: the static pool a lapsed account's notifications rotate through.
 /// No personalization, no user data, no manufactured urgency (P-2) — each
-/// entry states something true and offers a way forward (D-014). Every
+/// entry states something true and offers a way forward (D-012). Every
 /// entry's tap action opens the paywall (D-023).
 class LapsedNotificationPool {
   LapsedNotificationPool._();

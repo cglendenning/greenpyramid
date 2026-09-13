@@ -2,14 +2,14 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-013/D-014/D-016/D-070: structural checks for R8's monetization wiring,
+/// D-011/D-012/D-014/D-070: structural checks for R8's monetization wiring,
 /// matching this repo's convention for screens gated behind a live account
 /// (council_entry_point_test.dart, r7_coach_retirement_test.dart) — the
 /// screens themselves need Firebase/RevenueCat to exercise meaningfully, so
 /// these confirm the wiring in source rather than via widget tests.
 void main() {
   test(
-      'D-013/D-016/D-182: an unentitled account revisiting a category is '
+      'D-011/D-014/D-182: an unentitled account revisiting a category is '
       'routed to the paywall, not a dead-end dialog — via the shared '
       'ensureEntitled gate (which itself pushes PaywallScreen), not a '
       'private duplicate of that push', () {
@@ -20,7 +20,7 @@ void main() {
   });
 
   test(
-      'D-091/D-016/D-182: an unentitled account opening the general '
+      'D-091/D-014/D-182: an unentitled account opening the general '
       'Council is routed to the paywall before GeneralCouncilScreen is '
       'ever pushed, not a dead-end "could not open" error — via the '
       'shared ensureEntitled gate, same as CouncilCategoryPicker', () {
@@ -48,7 +48,7 @@ void main() {
   });
 
   test(
-      'D-188/D-014: setup completion requests the device-bound trial and '
+      'D-188/D-012: setup completion requests the device-bound trial and '
       'shows the one-time disclosure before push permission, in that order',
       () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
@@ -60,7 +60,7 @@ void main() {
   });
 
   test(
-      'D-014: the disclosure screen states different copy for a device '
+      'D-012: the disclosure screen states different copy for a device '
       'that already consumed its trial (lapsed) vs a fresh grant (trialing)',
       () {
     final source =
@@ -126,7 +126,7 @@ void main() {
   });
 
   test(
-      'D-012: the subscription is the sole revenue model — no ad SDK '
+      'D-010: the subscription is the sole revenue model — no ad SDK '
       'dependency exists alongside RevenueCat', () {
     final pubspec = File('pubspec.yaml').readAsStringSync();
     expect(pubspec, contains('purchases_flutter'));
@@ -135,11 +135,11 @@ void main() {
   });
 
   test(
-      'D-015: habit tracking and the pyramid never check entitlement — a '
+      'D-013: habit tracking and the pyramid never check entitlement — a '
       'lapsed account keeps the tracker forever, with no paywall on it', () {
     // homescreen.dart added for D-091: navigateToCouncil() gates the
     // general Council entry point the same way council_category_picker.dart
-    // already gates category re-clarification — a second legitimate D-016
+    // already gates category re-clarification — a second legitimate D-014
     // gate site, not habit tracking or the pyramid gating on entitlement.
     // newsfeed_screen.dart added for D-150: gates visibility of the
     // "Generate new analysis" on-demand control — the base newsfeed
@@ -165,7 +165,7 @@ void main() {
   });
 
   test(
-      'D-017: setup\'s free AI exchange is bounded by call count '
+      'D-015: setup\'s free AI exchange is bounded by call count '
       '(D-188), never by the D-087 spend cap — the two are mutually '
       'exclusive branches', () {
     final source = File('functions/index.js').readAsStringSync();
@@ -179,7 +179,7 @@ void main() {
   });
 
   test(
-      'D-021: trial state is exactly one of three values everywhere it '
+      'D-019: trial state is exactly one of three values everywhere it '
       'is checked', () {
     final source = File('functions/lib/entitlement.js').readAsStringSync();
     expect(source, contains("'trialing'"));

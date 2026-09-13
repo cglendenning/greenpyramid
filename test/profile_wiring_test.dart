@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// D-114: profile.dart's vision-statement regeneration and 30-day
 /// progress analysis are Claude-backed via ProfileService, gated by
-/// D-016's entitlement check like every other non-setup AI surface —
+/// D-014's entitlement check like every other non-setup AI surface —
 /// structural, matching this repo's convention for screens built on live
 /// singletons (setup_screen.dart, editpyramid.dart, tasklist.dart aren't
 /// directly widget-tested elsewhere either).
@@ -29,7 +29,7 @@ void main() {
   });
 
   test(
-      'D-114/D-016: both AI actions are gated by the shared ensureEntitled '
+      'D-114/D-014: both AI actions are gated by the shared ensureEntitled '
       'gate before the call, routing an unentitled account to the paywall '
       'first — the same pattern every other non-setup AI surface uses. '
       'Uses the shared entitlement_gate.dart helper rather than its own '

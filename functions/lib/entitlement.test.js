@@ -60,7 +60,7 @@ test('D-057: subscribed and lapsed pass through unchanged', async () => {
   assert.equal(await resolveEntitlement('u2', store), 'lapsed');
 });
 
-test('D-016: requireEntitlement passes for trialing and subscribed', async () => {
+test('D-014: requireEntitlement passes for trialing and subscribed', async () => {
   const store = new FakeFirestore({
     [path('u1')]: { entitlement: 'trialing', trialExpiresAt: fakeTimestamp(new Date('2099-01-01')) },
     [path('u2')]: { entitlement: 'subscribed' },
@@ -69,7 +69,7 @@ test('D-016: requireEntitlement passes for trialing and subscribed', async () =>
   await requireEntitlement('u2', store);
 });
 
-test('D-016: requireEntitlement throws EntitlementRequiredError for '
+test('D-014: requireEntitlement throws EntitlementRequiredError for '
     + 'pre_trial and lapsed', async () => {
   const store = new FakeFirestore({ [path('u1')]: { entitlement: 'lapsed' } });
   await assert.rejects(() => requireEntitlement('u1', store), EntitlementRequiredError);

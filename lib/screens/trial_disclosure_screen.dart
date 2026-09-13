@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../widgets/onboarding_backdrop.dart';
 
-/// D-014: discloses trial terms before the Council becomes billable.
+/// D-012: discloses trial terms before the Council becomes billable.
 ///
 /// D-099: shares [OnboardingBackdrop]/[OnboardingStyles] with WelcomeScreen
 /// so this screen carries the same rotating-photograph, Raleway-typeset

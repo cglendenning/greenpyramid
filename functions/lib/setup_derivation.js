@@ -94,7 +94,7 @@ export function buildDeriveCategoriesPrompt(transcript, { existingCategories } =
 }
 
 // D-103: 1 to [maxAllowed] habits for one category (maxAllowed itself
-// never exceeds 3), conditioned on its essence when one exists (D-010:
+// never exceeds 3), conditioned on its essence when one exists (D-008:
 // cat4-cat6 leave setup without one — falls back to name-only, degrading
 // without a placeholder). A fixed schema can't express "as many as
 // actually earn a place, up to a per-call ceiling" — habitsTool()

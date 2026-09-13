@@ -88,7 +88,7 @@ class PyramidStack extends StatelessWidget {
 
 /// Maps a category completion percentage to its pyramid block color.
 ///
-/// D-019 protects this function: tiered weighting must not change block
+/// D-017 protects this function: tiered weighting must not change block
 /// color. Despite eight branches this is effectively a four-band scale
 /// (II-B).
 ///

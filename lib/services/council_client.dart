@@ -40,7 +40,7 @@ class SetupCallLimitException implements Exception {
   String toString() => 'Setup call limit reached ($count calls)';
 }
 
-/// D-016: thrown when the backend refuses a non-setup AI call because the
+/// D-014: thrown when the backend refuses a non-setup AI call because the
 /// account is neither trialing nor subscribed. The client-side gate (e.g.
 /// CouncilCategoryPicker) is expected to catch this case before ever
 /// reaching the network — this is the server-authoritative backstop for
@@ -193,13 +193,13 @@ class CouncilClient {
   /// category-scoped replacement for Kansei's goal context. [sliderValue]
   /// defaults to 0.5 and has no UI control yet (D-073). [isSetup]/
   /// [sessionId] route this turn against D-188's free call-count bound
-  /// instead of D-087's spend cap (D-017) — billing only.
+  /// instead of D-087's spend cap (D-015) — billing only.
   ///
   /// D-097: [soloSetup] is a separate signal from [isSetup] — it alone
   /// selects D-090's solo-Mira forced-tool prompt on the backend. Found
   /// live: these were the same flag until now, and every call within a
   /// setup-typed session (including essence-deepening's four-advisor
-  /// rotation, D-009 step 3) is billed free — so `isSetup` was `true` for
+  /// rotation, D-007 step 3) is billed free — so `isSetup` was `true` for
   /// those calls too, silently routing them through the solo-Mira
   /// pyramid-building logic instead of the category-scoped one, ignoring
   /// whichever advisor was actually meant to speak.
@@ -288,7 +288,7 @@ class CouncilClient {
 
   /// D-052/D-103: proposes 1 to [maxAllowed] habits for one category
   /// (never more than 3), conditioned on its essence when one exists
-  /// (D-010). [maxAllowed] is the caller's own cross-category budget —
+  /// (D-008). [maxAllowed] is the caller's own cross-category budget —
   /// see `SetupScreen._loadAllHabits`, which reserves at least 1 slot per
   /// remaining category so a 6-category pyramid never exceeds 10 habits
   /// total.
@@ -357,7 +357,7 @@ class CouncilClient {
   /// D-055/D-114: the closing synthesis, written once at the end of setup
   /// ([isSetup] true, free, [sessionId]/[transcript] required); also the
   /// profile screen's regeneration, any time after ([isSetup] false, gated
-  /// by D-016 like every other non-setup AI surface, no session or
+  /// by D-014 like every other non-setup AI surface, no session or
   /// transcript — only the pyramid's current essences).
   Future<String> deriveVisionStatement({
     required List<Map<String, String>> essences,
@@ -375,7 +375,7 @@ class CouncilClient {
   }
 
   /// D-114: the profile screen's 30-day progress analysis — never free,
-  /// gated by D-016 like every other non-setup AI surface.
+  /// gated by D-014 like every other non-setup AI surface.
   Future<String> deriveProgressAnalysis({
     required List<Map<String, String>> taskLogs,
     String? firstName,
@@ -389,7 +389,7 @@ class CouncilClient {
 
   /// D-150: the newsfeed's AI-written "news article" — a headline and
   /// body analyzing consistency trends across the whole pyramid, never
-  /// free, gated by D-016/D-087 like every other non-setup AI surface.
+  /// free, gated by D-014/D-087 like every other non-setup AI surface.
   Future<({String headline, String body})> deriveNewsfeedArticle({
     required List<Map<String, dynamic>> categories,
     String? firstName,

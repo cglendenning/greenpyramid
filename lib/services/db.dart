@@ -126,7 +126,7 @@ class DatabaseHelper {
   static const columnPosition = 'position';
   static const columnCategoryCreated = 'created';
 
-  // Versioned per-category essence (D-005, D-061). Keys on categoryid, not
+  // Versioned per-category essence (D-003, D-061). Keys on categoryid, not
   // the category name, so a rename cannot orphan it (D-084, II-N).
   static const categoryEssenceTable = 'category_essence';
   static const columnEssenceId = 'id';
@@ -1247,7 +1247,7 @@ class DatabaseHelper {
   /// category with literally nothing to check off — owner: "if I check
   /// off all of the boxes for every other block it still happens to
   /// only come out to 83% but it should be 100% because there are no
-  /// other check boxes to check." `-1` (D-019's own original sentinel)
+  /// other check boxes to check." `-1` (D-017's own original sentinel)
   /// stays exactly what it was — no tasks defined for this category at
   /// all, ever. The new `-2` means tasks exist for the category, just
   /// none in this particular window — genuinely different information a
@@ -2053,7 +2053,7 @@ class DatabaseHelper {
   /// D-185/D-061: the active (most recent) essence for one category, the
   /// context a Council re-clarification session opens with. Null if the
   /// category has never had an essence captured — a first-class state
-  /// (D-005), not an error.
+  /// (D-003), not an error.
   Future<String?> getLatestEssenceForCategory(int categoryId) async {
     final db = await database;
     final rows = await db.query(categoryEssenceTable,

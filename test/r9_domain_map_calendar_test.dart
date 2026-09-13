@@ -29,7 +29,7 @@ void main() {
     expect(source, contains('queryDomainFindingsByDomain'));
   });
 
-  test('D-185/D-016: the domain map is a paid capability — Settings gates '
+  test('D-185/D-014: the domain map is a paid capability — Settings gates '
       'it through the same entitlement check as the Council', () {
     final source = File('lib/screens/settings.dart').readAsStringSync();
     final domainMapIdx = source.indexOf("'Your domain map'");

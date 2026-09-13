@@ -30,7 +30,7 @@ void main() {
       expect(action, NotificationFallbackAction.localFallback);
     });
 
-    test('D-016/R7: a pre_trial account with working push relies on push — '
+    test('D-014/R7: a pre_trial account with working push relies on push — '
         'everyone is treated as entitled until R8', () {
       final action = decideNotificationFallback(
           entitlement: 'pre_trial', pushAuthorized: true, hasToken: true);

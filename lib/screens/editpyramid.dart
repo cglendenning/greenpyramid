@@ -20,7 +20,7 @@ import 'package:life_ops/widgets/pyramid_stack.dart';
 /// code changes in the main screen, they will also change in the edit
 /// screen." This screen now renders the exact same [PyramidStack] the
 /// main screen does — same 3D pyramid, same drag/spin, same
-/// completion-percentage-driven block colors (`setColor`, D-019) — the
+/// completion-percentage-driven block colors (`setColor`, D-017) — the
 /// only difference is what a tap does: the main screen navigates to a
 /// category's task list; this screen opens the rename/essence-edit sheet.
 class EditPyramid extends StatefulWidget {

@@ -233,7 +233,7 @@ Future<void> main() async {
   runApp(HomeScreen());
 
   // D-032/D-034: silent account bootstrap, kicked off after the first frame
-  // so it never gates app startup or changes the setup step count (D-007).
+  // so it never gates app startup or changes the setup step count (D-005).
   // Not awaited — a failure here is retried on the next launch, never shown
   // to the user (D-032 acceptance criteria).
   unawaited(_bootstrapAccountSync(setupComplete: defaultCats != 6 && (draft == null || draft['state']['phase'] == 'finished')));

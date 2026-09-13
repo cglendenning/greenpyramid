@@ -31,10 +31,10 @@ import 'package:life_ops/screens/paywall_screen.dart';
 ///
 /// D-114: both AI features on this screen — regenerating the vision
 /// statement and the 30-day progress analysis — are Claude-backed via
-/// [ProfileService], gated by D-016's entitlement check like every other
+/// [ProfileService], gated by D-014's entitlement check like every other
 /// non-setup AI surface. Neither is free, matching how the rest of the
-/// app treats Council-powered insight (D-013/D-016) versus the always-free
-/// tracker itself (D-015) — the stored vision statement and raw habit
+/// app treats Council-powered insight (D-011/D-014) versus the always-free
+/// tracker itself (D-013) — the stored vision statement and raw habit
 /// history remain visible to everyone; only *generating something new* is
 /// gated.
 class ProfileScreen extends StatefulWidget {

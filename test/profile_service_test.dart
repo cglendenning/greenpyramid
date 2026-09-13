@@ -115,7 +115,7 @@ void main() {
 
   test(
       'D-114: regenerateVisionStatement omits a category with no essence '
-      'yet rather than sending a null one — D-010\'s normal state for a '
+      'yet rather than sending a null one — D-008\'s normal state for a '
       'category that hasn\'t been deepened', () async {
     await db.insertCategory({
       DatabaseHelper.columnCategoryId: 1,
