@@ -16,16 +16,30 @@ void main() {
       expect(auth.currentUid, uid);
     });
 
-    test('D-029: signInSilently resumes the existing account rather than '
+    test(
+        'D-029: signInSilently resumes the existing account rather than '
         'creating a second one', () async {
       final mockUser = MockUser(isAnonymous: true, uid: 'existing-uid');
-      final auth =
-          AuthService(auth: MockFirebaseAuth(signedIn: true, mockUser: mockUser));
+      final auth = AuthService(
+          auth: MockFirebaseAuth(signedIn: true, mockUser: mockUser));
       final uid = await auth.signInSilently();
       expect(uid, 'existing-uid');
     });
 
-    test('D-029: a sign-in failure never throws, and leaves the app usable '
+    test('D-136: startup waits for Firebase auth restoration before routing',
+        () async {
+      final mockUser = MockUser(isAnonymous: false, uid: 'restored-uid');
+      final auth = AuthService(
+          auth: MockFirebaseAuth(signedIn: true, mockUser: mockUser));
+
+      final restored = await auth.waitForRestoredUser();
+
+      expect(restored?.uid, 'restored-uid');
+      expect(restored?.isAnonymous, isFalse);
+    });
+
+    test(
+        'D-029: a sign-in failure never throws, and leaves the app usable '
         'locally', () async {
       final mockAuth = MockFirebaseAuth();
       whenCalling(Invocation.method(#signInAnonymously, null))
@@ -40,8 +54,10 @@ void main() {
     });
   });
 
-  group('D-188: a real credential is requested only when it buys something', () {
-    test('D-188: linkWithCredential refuses to run without a signed-in '
+  group('D-188: a real credential is requested only when it buys something',
+      () {
+    test(
+        'D-188: linkWithCredential refuses to run without a signed-in '
         'anonymous user', () async {
       final auth = AuthService(auth: MockFirebaseAuth());
       await expectLater(
@@ -51,7 +67,8 @@ void main() {
       );
     });
 
-    test('D-188: linking preserves the existing uid — no new account is '
+    test(
+        'D-188: linking preserves the existing uid — no new account is '
         'created', () async {
       // firebase_auth_mocks 0.15.2's MockUser.linkWithCredential hardcodes
       // isAnonymous: false into an internal assertion that requires it match

@@ -32,7 +32,10 @@ import 'db.dart';
 /// install, or one that lost its data) calls it once, before setup would
 /// otherwise start, to bring back what the account already has.
 class SyncService {
-  SyncService({FirebaseFirestore? firestore, DatabaseHelper? db, CalendarService? calendar})
+  SyncService(
+      {FirebaseFirestore? firestore,
+      DatabaseHelper? db,
+      CalendarService? calendar})
       : _firestore = firestore ?? FirebaseFirestore.instance,
         _db = db ?? DatabaseHelper.instance,
         _calendar = calendar ?? CalendarService.instance;
@@ -53,8 +56,15 @@ class SyncService {
   /// D-027: never swallowed — a failure here means the next launch's sync
   /// finds the same unsynced local state and retries automatically, but
   /// only if the failure was actually logged and someone can see it.
-  Future<void> syncAll(String uid, {required bool setupComplete}) async {
+  Future<void> syncAll(String uid,
+      {required bool setupComplete,
+      bool protectCloudFromEmptyLocal = false}) async {
     try {
+      if (protectCloudFromEmptyLocal && !await _hasRealLocalPyramid()) {
+        debugPrint('SyncService: startup sync skipped because local pyramid '
+            'is empty or placeholder-only; cloud remains authoritative.');
+        return;
+      }
       final userDoc = _firestore.collection('users').doc(uid);
       await Future.wait([
         _syncProfile(userDoc),
@@ -69,12 +79,21 @@ class SyncService {
     }
   }
 
+  Future<bool> _hasRealLocalPyramid() async {
+    final categories = await _db.queryCategories();
+    return categories.any((row) {
+      final label = row[DatabaseHelper.columnCat] as String? ?? '';
+      return label.isNotEmpty && !label.startsWith('Empty');
+    });
+  }
+
   /// IV-D `profile/main`: categories with tier-implying position, each
   /// category's *active* (latest) essence, vision statement, timezone, and
   /// the account_state fields D-187 lists (entitlement, trial window).
   /// Every version of essence lives separately in `essenceVersions` — this
   /// doc only ever holds the current one per category.
-  Future<void> _syncProfile(DocumentReference<Map<String, dynamic>> userDoc) async {
+  Future<void> _syncProfile(
+      DocumentReference<Map<String, dynamic>> userDoc) async {
     final categoryRows = await _db.queryCategories();
     final essenceRows = await _db.queryAllCategoryEssences();
 
@@ -84,7 +103,9 @@ class SyncService {
       final created = row[DatabaseHelper.columnEssenceCreated] as String;
       final current = latestEssenceByCategory[categoryId];
       if (current == null ||
-          created.compareTo(current[DatabaseHelper.columnEssenceCreated] as String) > 0) {
+          created.compareTo(
+                  current[DatabaseHelper.columnEssenceCreated] as String) >
+              0) {
         latestEssenceByCategory[categoryId] = row;
       }
     }
@@ -97,8 +118,8 @@ class SyncService {
         'description': row[DatabaseHelper.columnCategoryDescription] ?? '',
         'position': row[DatabaseHelper.columnPosition],
         'created': row[DatabaseHelper.columnCategoryCreated],
-        'activeEssence':
-            latestEssenceByCategory[id]?[DatabaseHelper.columnEssenceText],
+        'activeEssence': latestEssenceByCategory[id]
+            ?[DatabaseHelper.columnEssenceText],
       };
     }).toList();
 
@@ -123,23 +144,23 @@ class SyncService {
     // profile photo is deliberately excluded: it stays local-only
     // (owner's own choice — cloud photo storage would mean adding
     // Firebase Storage, a new integration not approved yet).
-    await userDoc.collection('profile').doc('main').set(
-        {
-          'categories': categories,
-          if (vision != null) 'visionStatement': vision,
-          'timezone': account[DatabaseHelper.columnAccountTimezone],
-          'calendarContext': calendarContext ?? FieldValue.delete(),
-          'firstName': account[DatabaseHelper.columnFirstName] ?? FieldValue.delete(),
-          'email': account[DatabaseHelper.columnEmail] ?? FieldValue.delete(),
-          'phone': account[DatabaseHelper.columnPhone] ?? FieldValue.delete(),
-        },
-        SetOptions(merge: true));
+    await userDoc.collection('profile').doc('main').set({
+      'categories': categories,
+      if (vision != null) 'visionStatement': vision,
+      'timezone': account[DatabaseHelper.columnAccountTimezone],
+      'calendarContext': calendarContext ?? FieldValue.delete(),
+      'firstName':
+          account[DatabaseHelper.columnFirstName] ?? FieldValue.delete(),
+      'email': account[DatabaseHelper.columnEmail] ?? FieldValue.delete(),
+      'phone': account[DatabaseHelper.columnPhone] ?? FieldValue.delete(),
+    }, SetOptions(merge: true));
   }
 
   /// IV-D `essenceVersions/{id}`: every version of every category's essence
   /// (D-047) — the full audit trail `profile/main.activeEssence` is drawn
   /// from.
-  Future<void> _syncEssenceVersions(DocumentReference<Map<String, dynamic>> userDoc) async {
+  Future<void> _syncEssenceVersions(
+      DocumentReference<Map<String, dynamic>> userDoc) async {
     final rows = await _db.queryAllCategoryEssences();
     if (rows.isEmpty) return;
     final batch = _firestore.batch();
@@ -160,7 +181,8 @@ class SyncService {
   }
 
   /// IV-D `domainFindings/{id}`: accumulated four-domain findings (D-036).
-  Future<void> _syncDomainFindings(DocumentReference<Map<String, dynamic>> userDoc) async {
+  Future<void> _syncDomainFindings(
+      DocumentReference<Map<String, dynamic>> userDoc) async {
     final rows = await _db.queryAllDomainFindings();
     if (rows.isEmpty) return;
     final batch = _firestore.batch();
@@ -190,10 +212,12 @@ class SyncService {
   /// Diffs against what's already remote rather than only ever adding, so
   /// a row deleted locally (e.g. a category rename cascade) is also
   /// removed remotely.
-  Future<void> _syncRecentActivity(DocumentReference<Map<String, dynamic>> userDoc) async {
+  Future<void> _syncRecentActivity(
+      DocumentReference<Map<String, dynamic>> userDoc) async {
     final rows = await _db.queryAllTaskLogs();
     final col = userDoc.collection('recentActivity');
-    final localIds = rows.map((r) => r[DatabaseHelper.columnTLId].toString()).toSet();
+    final localIds =
+        rows.map((r) => r[DatabaseHelper.columnTLId].toString()).toSet();
 
     final existing = await col.get();
     final batch = _firestore.batch();
@@ -224,10 +248,12 @@ class SyncService {
   /// against what's already remote, the same reconcile pattern
   /// [_syncRecentActivity] already uses, since a habit can be deleted or
   /// edited locally and a pure-append sync would leave stale rows forever.
-  Future<void> _syncTasks(DocumentReference<Map<String, dynamic>> userDoc) async {
+  Future<void> _syncTasks(
+      DocumentReference<Map<String, dynamic>> userDoc) async {
     final rows = await _db.queryAllTasks();
     final col = userDoc.collection('tasks');
-    final localIds = rows.map((r) => r[DatabaseHelper.columnId].toString()).toSet();
+    final localIds =
+        rows.map((r) => r[DatabaseHelper.columnId].toString()).toSet();
 
     final existing = await col.get();
     final batch = _firestore.batch();
@@ -321,9 +347,11 @@ class SyncService {
       await _db.insertCategory({
         DatabaseHelper.columnCategoryId: id,
         DatabaseHelper.columnCat: c['cat'] as String,
-        DatabaseHelper.columnCategoryDescription: c['description'] as String? ?? '',
+        DatabaseHelper.columnCategoryDescription:
+            c['description'] as String? ?? '',
         DatabaseHelper.columnPosition: c['position'] as int? ?? 0,
-        if (c['created'] != null) DatabaseHelper.columnCategoryCreated: c['created'],
+        if (c['created'] != null)
+          DatabaseHelper.columnCategoryCreated: c['created'],
       });
       final essence = c['activeEssence'] as String?;
       if (essence != null && essence.isNotEmpty) {
@@ -434,15 +462,15 @@ class SyncService {
     final lapsedEligible = entitlement == 'lapsed';
 
     if (!incompleteSetupEligible && !lapsedEligible) {
-      await userDoc.set({'ttlAt': FieldValue.delete()}, SetOptions(merge: true));
+      await userDoc
+          .set({'ttlAt': FieldValue.delete()}, SetOptions(merge: true));
       return;
     }
 
     final existing = await userDoc.get();
     if (existing.data()?['ttlAt'] != null) return;
     final window = lapsedEligible ? lapsedRetentionWindow : pruneEligibleWindow;
-    await userDoc.set(
-        {'ttlAt': Timestamp.fromDate(DateTime.now().add(window))},
+    await userDoc.set({'ttlAt': Timestamp.fromDate(DateTime.now().add(window))},
         SetOptions(merge: true));
   }
 }

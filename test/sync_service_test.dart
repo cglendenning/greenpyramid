@@ -58,29 +58,39 @@ void main() {
         .get();
   }
 
-  test('IV-D/D-187: categories, tiers, and each category\'s active essence '
+  test(
+      'IV-D/D-187: categories, tiers, and each category\'s active essence '
       'sync into profile/main', () async {
-    await db.insertCategory(
-        {DatabaseHelper.columnCategoryId: 1, DatabaseHelper.columnCat: 'Health'});
+    await db.insertCategory({
+      DatabaseHelper.columnCategoryId: 1,
+      DatabaseHelper.columnCat: 'Health'
+    });
     final d = await db.database;
     await d.insert(DatabaseHelper.categoryEssenceTable, {
       DatabaseHelper.columnEssenceCategoryId: 1,
-      DatabaseHelper.columnEssenceText: 'My body carries me through every challenge.',
+      DatabaseHelper.columnEssenceText:
+          'My body carries me through every challenge.',
       DatabaseHelper.columnEssenceCreated: '2026-01-01T00:00:00.000',
     });
     final firestore = FakeFirebaseFirestore();
-    await SyncService(firestore: firestore, db: db).syncAll(uid, setupComplete: true);
+    await SyncService(firestore: firestore, db: db)
+        .syncAll(uid, setupComplete: true);
 
-    final categories = (await profileDoc(firestore)).data()?['categories'] as List;
+    final categories =
+        (await profileDoc(firestore)).data()?['categories'] as List;
     final health = categories.single as Map<String, dynamic>;
     expect(health['cat'], 'Health');
-    expect(health['activeEssence'], 'My body carries me through every challenge.');
+    expect(
+        health['activeEssence'], 'My body carries me through every challenge.');
   });
 
-  test('IV-D: profile/main.activeEssence is the most recent version, not '
+  test(
+      'IV-D: profile/main.activeEssence is the most recent version, not '
       'the first', () async {
-    await db.insertCategory(
-        {DatabaseHelper.columnCategoryId: 1, DatabaseHelper.columnCat: 'Health'});
+    await db.insertCategory({
+      DatabaseHelper.columnCategoryId: 1,
+      DatabaseHelper.columnCat: 'Health'
+    });
     final d = await db.database;
     await d.insert(DatabaseHelper.categoryEssenceTable, {
       DatabaseHelper.columnEssenceCategoryId: 1,
@@ -93,13 +103,16 @@ void main() {
       DatabaseHelper.columnEssenceCreated: '2026-02-01T00:00:00.000',
     });
     final firestore = FakeFirebaseFirestore();
-    await SyncService(firestore: firestore, db: db).syncAll(uid, setupComplete: true);
+    await SyncService(firestore: firestore, db: db)
+        .syncAll(uid, setupComplete: true);
 
-    final categories = (await profileDoc(firestore)).data()?['categories'] as List;
+    final categories =
+        (await profileDoc(firestore)).data()?['categories'] as List;
     expect((categories.single as Map)['activeEssence'], 'revised');
   });
 
-  test('D-187: every version of essence syncs to essenceVersions, not just '
+  test(
+      'D-187: every version of essence syncs to essenceVersions, not just '
       'the active one', () async {
     final d = await db.database;
     await d.insert(DatabaseHelper.categoryEssenceTable, {
@@ -113,7 +126,8 @@ void main() {
       DatabaseHelper.columnEssenceCreated: '2026-02-01T00:00:00.000',
     });
     final firestore = FakeFirebaseFirestore();
-    await SyncService(firestore: firestore, db: db).syncAll(uid, setupComplete: true);
+    await SyncService(firestore: firestore, db: db)
+        .syncAll(uid, setupComplete: true);
 
     final versions = await firestore
         .collection('users')
@@ -123,10 +137,12 @@ void main() {
     expect(versions.docs.length, 2);
   });
 
-  test('D-187: domain findings sync to domainFindings; empty tables sync '
+  test(
+      'D-187: domain findings sync to domainFindings; empty tables sync '
       'without error', () async {
     final firestore = FakeFirebaseFirestore();
-    await SyncService(firestore: firestore, db: db).syncAll(uid, setupComplete: true);
+    await SyncService(firestore: firestore, db: db)
+        .syncAll(uid, setupComplete: true);
 
     final findings = await firestore
         .collection('users')
@@ -138,17 +154,54 @@ void main() {
 
   // D-002-AC-01: retained account content survives cloud restore.
   test('D-187: vision statement and timezone sync into profile/main', () async {
-    await db.insertVisionStatement('My body carries me through every challenge.');
+    await db
+        .insertVisionStatement('My body carries me through every challenge.');
     await db.setAccountTimezone('America/Los_Angeles');
     final firestore = FakeFirebaseFirestore();
-    await SyncService(firestore: firestore, db: db).syncAll(uid, setupComplete: true);
+    await SyncService(firestore: firestore, db: db)
+        .syncAll(uid, setupComplete: true);
 
     final data = (await profileDoc(firestore)).data();
-    expect(data?['visionStatement'], 'My body carries me through every challenge.');
+    expect(data?['visionStatement'],
+        'My body carries me through every challenge.');
     expect(data?['timezone'], 'America/Los_Angeles');
   });
 
-  test('D-178: first name/email/phone sync into profile/main and restore '
+  test(
+      'D-187: startup sync never deletes cloud data when local cache is '
+      'empty or placeholder-only', () async {
+    final firestore = FakeFirebaseFirestore();
+    final user = firestore.collection('users').doc(uid);
+    await user.collection('profile').doc('main').set({
+      'categories': [
+        {'id': 1, 'cat': 'Health', 'position': 1},
+      ],
+    });
+    await user.collection('tasks').doc('1').set({
+      'category': 'Health',
+      'taskdescription': 'CrossFit',
+    });
+    await user.collection('recentActivity').doc('1').set({
+      'category': 'Health',
+      'taskdescription': 'CrossFit',
+      'checked': 'true',
+      'taskdate': '2026-09-13',
+    });
+
+    await SyncService(firestore: firestore, db: db).syncAll(
+      uid,
+      setupComplete: false,
+      protectCloudFromEmptyLocal: true,
+    );
+
+    expect((await user.collection('tasks').get()).docs, hasLength(1));
+    expect((await user.collection('recentActivity').get()).docs, hasLength(1));
+    final profile = await user.collection('profile').doc('main').get();
+    expect((profile.data()?['categories'] as List).single['cat'], 'Health');
+  });
+
+  test(
+      'D-178: first name/email/phone sync into profile/main and restore '
       'back down onto a fresh local database — the profile photo is '
       'deliberately excluded, since it stays local-only', () async {
     await db.insertCategory({
@@ -188,11 +241,15 @@ void main() {
     expect(restoredAccount[DatabaseHelper.columnProfilePhotoPath], isNull);
   });
 
-  test('D-185 step 7: calendar context syncs into profile/main only when '
+  test(
+      'D-185 step 7: calendar context syncs into profile/main only when '
       'CalendarService has a summary; absent (deleted) otherwise, never a '
       'placeholder', () async {
     final firestore = FakeFirebaseFirestore();
-    await SyncService(firestore: firestore, db: db, calendar: _FakeCalendarService('09:00 Standup'))
+    await SyncService(
+            firestore: firestore,
+            db: db,
+            calendar: _FakeCalendarService('09:00 Standup'))
         .syncAll(uid, setupComplete: true);
     var data = (await profileDoc(firestore)).data();
     expect(data?['calendarContext'], '09:00 Standup');
@@ -200,22 +257,29 @@ void main() {
     // Permission revoked / nothing today — the stale value must be removed,
     // not merely left unmentioned, since merge:true never clears a field
     // that's simply omitted from a later write.
-    await SyncService(firestore: firestore, db: db, calendar: _FakeCalendarService(null))
+    await SyncService(
+            firestore: firestore, db: db, calendar: _FakeCalendarService(null))
         .syncAll(uid, setupComplete: true);
     data = (await profileDoc(firestore)).data();
     expect(data?.containsKey('calendarContext'), isFalse);
   });
 
-  test('D-044: entitlement/trialStartedAt/trialExpiresAt are never pushed by '
+  test(
+      'D-044: entitlement/trialStartedAt/trialExpiresAt are never pushed by '
       'the client — they are server-authoritative, not local-cache-sourced. '
       'A stale local cache must not clobber a real subscribed/lapsed state.',
       () async {
     final firestore = FakeFirebaseFirestore();
     // Server has already transitioned this account to subscribed.
-    await firestore.collection('users').doc(uid).collection('profile').doc('main')
+    await firestore
+        .collection('users')
+        .doc(uid)
+        .collection('profile')
+        .doc('main')
         .set({'entitlement': 'subscribed'});
 
-    await SyncService(firestore: firestore, db: db).syncAll(uid, setupComplete: true);
+    await SyncService(firestore: firestore, db: db)
+        .syncAll(uid, setupComplete: true);
 
     final data = (await profileDoc(firestore)).data();
     expect(data?['entitlement'], 'subscribed');
@@ -223,7 +287,8 @@ void main() {
     expect(data?.containsKey('trialExpiresAt'), isFalse);
   });
 
-  test('D-187: every task_log row syncs to recentActivity, not a bounded '
+  test(
+      'D-187: every task_log row syncs to recentActivity, not a bounded '
       'window — a full reinstall must be able to restore all of it', () async {
     final d = await db.database;
     final rowCount = AiGuard.maxTaskLogRows + 10;
@@ -241,7 +306,8 @@ void main() {
     await batch.commit(noResult: true);
 
     final firestore = FakeFirebaseFirestore();
-    await SyncService(firestore: firestore, db: db).syncAll(uid, setupComplete: true);
+    await SyncService(firestore: firestore, db: db)
+        .syncAll(uid, setupComplete: true);
 
     final synced = await firestore
         .collection('users')
@@ -251,7 +317,8 @@ void main() {
     expect(synced.docs.length, rowCount);
   });
 
-  test('D-187: a task_log row deleted locally is removed remotely on the '
+  test(
+      'D-187: a task_log row deleted locally is removed remotely on the '
       'next sync, not left to accumulate', () async {
     final d = await db.database;
     final id1 = await d.insert(DatabaseHelper.taskLogTable, {
@@ -283,7 +350,8 @@ void main() {
     expect(state[DatabaseHelper.columnEntitlementSyncedAt], isNotNull);
   });
 
-  test('D-187: an anonymous account that has not finished setup gets a '
+  test(
+      'D-187: an anonymous account that has not finished setup gets a '
       'ttlAt 30 days out, on users/{uid} itself', () async {
     final firestore = FakeFirebaseFirestore();
     await SyncService(firestore: firestore, db: db)
@@ -308,21 +376,25 @@ void main() {
     expect(second, first);
   });
 
-  test('D-187: finishing setup clears ttlAt — a completed account is never '
+  test(
+      'D-187: finishing setup clears ttlAt — a completed account is never '
       'pruned', () async {
     final firestore = FakeFirebaseFirestore();
     final sync = SyncService(firestore: firestore, db: db);
     await sync.syncAll(uid, setupComplete: false);
-    expect((await firestore.collection('users').doc(uid).get()).data()?['ttlAt'],
+    expect(
+        (await firestore.collection('users').doc(uid).get()).data()?['ttlAt'],
         isNotNull);
 
     await sync.syncAll(uid, setupComplete: true);
 
-    expect((await firestore.collection('users').doc(uid).get()).data()?['ttlAt'],
+    expect(
+        (await firestore.collection('users').doc(uid).get()).data()?['ttlAt'],
         isNull);
   });
 
-  test('D-187: an account that has ever held a subscription is never '
+  test(
+      'D-187: an account that has ever held a subscription is never '
       'marked prune-eligible, even before setup is recorded complete',
       () async {
     final d = await db.database;
@@ -343,13 +415,15 @@ void main() {
         {DatabaseHelper.columnEntitlement: 'lapsed'},
         where: '${DatabaseHelper.columnAccountId} = ?', whereArgs: [1]);
     final firestore = FakeFirebaseFirestore();
-    await SyncService(firestore: firestore, db: db).syncAll(uid, setupComplete: true);
+    await SyncService(firestore: firestore, db: db)
+        .syncAll(uid, setupComplete: true);
 
     final userDoc = await firestore.collection('users').doc(uid).get();
     expect(userDoc.data()?['ttlAt'], isNotNull);
   });
 
-  test('D-187: ttlAt for a lapsed account is anchored at first lapse, not renewed on every '
+  test(
+      'D-187: ttlAt for a lapsed account is anchored at first lapse, not renewed on every '
       'sync', () async {
     final d = await db.database;
     await d.update(DatabaseHelper.accountStateTable,
@@ -368,7 +442,8 @@ void main() {
     expect(second, first);
   });
 
-  test('D-187/D-187: an account that returns from lapsed has ttlAt '
+  test(
+      'D-187/D-187: an account that returns from lapsed has ttlAt '
       'cleared — a returning user is never purged', () async {
     final d = await db.database;
     await d.update(DatabaseHelper.accountStateTable,
@@ -377,7 +452,8 @@ void main() {
     final firestore = FakeFirebaseFirestore();
     final sync = SyncService(firestore: firestore, db: db);
     await sync.syncAll(uid, setupComplete: true);
-    expect((await firestore.collection('users').doc(uid).get()).data()?['ttlAt'],
+    expect(
+        (await firestore.collection('users').doc(uid).get()).data()?['ttlAt'],
         isNotNull);
 
     await d.update(DatabaseHelper.accountStateTable,
@@ -385,18 +461,22 @@ void main() {
         where: '${DatabaseHelper.columnAccountId} = ?', whereArgs: [1]);
     await sync.syncAll(uid, setupComplete: true);
 
-    expect((await firestore.collection('users').doc(uid).get()).data()?['ttlAt'],
+    expect(
+        (await firestore.collection('users').doc(uid).get()).data()?['ttlAt'],
         isNull);
   });
 
-  test('D-187: a non-lapsed, setup-complete account never gets a ttlAt', () async {
+  test('D-187: a non-lapsed, setup-complete account never gets a ttlAt',
+      () async {
     final firestore = FakeFirebaseFirestore();
-    await SyncService(firestore: firestore, db: db).syncAll(uid, setupComplete: true);
+    await SyncService(firestore: firestore, db: db)
+        .syncAll(uid, setupComplete: true);
     final userDoc = await firestore.collection('users').doc(uid).get();
     expect(userDoc.data()?['ttlAt'], isNull);
   });
 
-  test('MIG-1: re-running syncAll against unchanged local data is '
+  test(
+      'MIG-1: re-running syncAll against unchanged local data is '
       'idempotent — no duplicate documents', () async {
     final d = await db.database;
     await d.insert(DatabaseHelper.categoryEssenceTable, {
@@ -434,15 +514,20 @@ void main() {
         DatabaseHelper.columnCreateDate: '2026-01-01T00:00:00.000',
       });
       final firestore = FakeFirebaseFirestore();
-      await SyncService(firestore: firestore, db: db).syncAll(uid, setupComplete: true);
+      await SyncService(firestore: firestore, db: db)
+          .syncAll(uid, setupComplete: true);
 
-      final tasks = await firestore.collection('users').doc(uid).collection('tasks').get();
+      final tasks = await firestore
+          .collection('users')
+          .doc(uid)
+          .collection('tasks')
+          .get();
       expect(tasks.docs.single.data()['taskdescription'], 'Walk 20 minutes');
     });
 
-    test('IV-D/D-187: a task deleted locally is removed from Firestore on '
-        'the next sync — same reconcile pattern as recentActivity',
-        () async {
+    test(
+        'IV-D/D-187: a task deleted locally is removed from Firestore on '
+        'the next sync — same reconcile pattern as recentActivity', () async {
       final id = await db.insertTask({
         DatabaseHelper.columnCategory: 'Health',
         DatabaseHelper.columnTaskDescription: 'Walk 20 minutes',
@@ -464,19 +549,26 @@ void main() {
           where: '${DatabaseHelper.columnId} = ?', whereArgs: [id]);
       await sync.syncAll(uid, setupComplete: true);
 
-      final tasks = await firestore.collection('users').doc(uid).collection('tasks').get();
+      final tasks = await firestore
+          .collection('users')
+          .doc(uid)
+          .collection('tasks')
+          .get();
       expect(tasks.docs, isEmpty);
     });
 
-    test('D-187: restoreFromCloud returns false, and writes nothing, when '
+    test(
+        'D-187: restoreFromCloud returns false, and writes nothing, when '
         'the cloud profile has no real categories (a genuinely new '
         'account)', () async {
       final firestore = FakeFirebaseFirestore();
-      final restored = await SyncService(firestore: firestore, db: db).restoreFromCloud(uid);
+      final restored =
+          await SyncService(firestore: firestore, db: db).restoreFromCloud(uid);
       expect(restored, isFalse);
     });
 
-    test('D-187: restoreFromCloud brings back categories, each category\'s '
+    test(
+        'D-187: restoreFromCloud brings back categories, each category\'s '
         'current essence, the vision statement, and every habit — '
         'regression test for owner feedback: reinstalling the app lost '
         'the whole pyramid because nothing ever pulled Firestore data '
@@ -511,7 +603,8 @@ void main() {
       await push.syncAll(uid, setupComplete: true);
 
       // "Reinstall": a brand-new local database, same Firestore account.
-      final freshDir = await Directory.systemTemp.createTemp('gp_sync_restore_test');
+      final freshDir =
+          await Directory.systemTemp.createTemp('gp_sync_restore_test');
       addTearDown(() {
         if (freshDir.existsSync()) freshDir.deleteSync(recursive: true);
       });
@@ -524,18 +617,20 @@ void main() {
       final categories = await db.queryCategories();
       expect(categories.single[DatabaseHelper.columnCat], 'Health');
       expect(await db.getLatestEssenceForCategory(1), 'my body carries me');
-      expect(await db.getLatestVisionStatement(), 'I show up for what matters.');
+      expect(
+          await db.getLatestVisionStatement(), 'I show up for what matters.');
       final tasks = await db.queryAllTasks();
-      expect(tasks.single[DatabaseHelper.columnTaskDescription], 'Walk 20 minutes');
+      expect(tasks.single[DatabaseHelper.columnTaskDescription],
+          'Walk 20 minutes');
     });
 
-    test('D-187: restoreFromCloud brings back check-off activity too — '
+    test(
+        'D-187: restoreFromCloud brings back check-off activity too — '
         'regression test for owner feedback: "I uninstall the app and '
         'all of my check marks boxes are now gone when I signed back '
         'in." Streaks, essence-redefinition timing, and every '
         'Visualizations chart all depend on this data, so losing it on '
-        'a genuine reinstall is a real loss, not a harmless one.',
-        () async {
+        'a genuine reinstall is a real loss, not a harmless one.', () async {
       final firestore = FakeFirebaseFirestore();
       final push = SyncService(firestore: firestore, db: db);
 
@@ -553,7 +648,8 @@ void main() {
       await push.syncAll(uid, setupComplete: true);
 
       // "Reinstall": a brand-new local database, same Firestore account.
-      final freshDir = await Directory.systemTemp.createTemp('gp_sync_restore_activity_test');
+      final freshDir = await Directory.systemTemp
+          .createTemp('gp_sync_restore_activity_test');
       addTearDown(() {
         if (freshDir.existsSync()) freshDir.deleteSync(recursive: true);
       });
@@ -566,21 +662,29 @@ void main() {
       final logs = await (await db.database).query(DatabaseHelper.taskLogTable);
       expect(logs, hasLength(1));
       expect(logs.single[DatabaseHelper.columnTLCategory], 'Health');
-      expect(logs.single[DatabaseHelper.columnTLTaskDescription], 'Walk 20 minutes');
+      expect(logs.single[DatabaseHelper.columnTLTaskDescription],
+          'Walk 20 minutes');
       expect(logs.single[DatabaseHelper.columnTLChecked], 'true');
       expect(logs.single[DatabaseHelper.columnTLTaskDate], '2026-09-10');
     });
 
-    test('D-187: a cloud profile whose categories are still the Empty% '
+    test(
+        'D-187: a cloud profile whose categories are still the Empty% '
         'placeholder seed is treated as no real data — restoreFromCloud '
         'returns false rather than restoring placeholders', () async {
       final firestore = FakeFirebaseFirestore();
-      await firestore.collection('users').doc(uid).collection('profile').doc('main').set({
+      await firestore
+          .collection('users')
+          .doc(uid)
+          .collection('profile')
+          .doc('main')
+          .set({
         'categories': [
           {'id': 1, 'cat': 'Empty1', 'position': 0},
         ],
       });
-      final restored = await SyncService(firestore: firestore, db: db).restoreFromCloud(uid);
+      final restored =
+          await SyncService(firestore: firestore, db: db).restoreFromCloud(uid);
       expect(restored, isFalse);
     });
   });

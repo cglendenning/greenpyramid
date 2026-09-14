@@ -142,6 +142,12 @@ Future<void> main() async {
     debugPrint('Firebase already initialized, continuing.');
   }
 
+  // D-136/D-187: native Firebase auth restoration completes asynchronously.
+  // Route and synchronize only after the initial state is known; otherwise a
+  // restored linked account can be mistaken for signed-out and replaced by a
+  // new anonymous identity.
+  final restoredUser = await AuthService.instance.waitForRestoredUser();
+
   // D-070: configuring RevenueCat doesn't depend on the app's own account
   // (it's re-tied to the Firebase uid via login() in _bootstrapAccountSync)
   // and must never block first frame — started here, awaited nowhere.
@@ -222,12 +228,22 @@ Future<void> main() async {
     return;
   }
 
+  // D-025/D-187: a linked account with an empty local cache must hydrate from
+  // Firestore before startup sync is allowed to reconcile anything. The
+  // restore path is intentionally awaited before the first route is built.
+  if (restoredUser != null && !restoredUser.isAnonymous && defaultCats == 6) {
+    await SyncService.instance.restoreFromCloud(restoredUser.uid);
+    defaultCats = await dbHelper.queryLaunchSetup();
+  }
+
   // D-001: empty local categories do not invalidate anonymous credentials.
   // Pending setup must route to its draft even after categories were accepted.
-  final pending = FirebaseAuth.instance.currentUser?.uid;
-  final draft = pending == null ? null : await SetupDraftStore(db: dbHelper).load(pending);
+  final pending = restoredUser?.uid;
+  final draft = pending == null
+      ? null
+      : await SetupDraftStore(db: dbHelper).load(pending);
   resumePendingSetup = draft != null && draft['state']['phase'] != 'finished';
-  if (FirebaseAuth.instance.currentUser == null || defaultCats == 6 || resumePendingSetup) {
+  if (restoredUser == null || defaultCats == 6 || resumePendingSetup) {
     routeToGo = '/setup';
   }
   runApp(HomeScreen());
@@ -236,7 +252,9 @@ Future<void> main() async {
   // so it never gates app startup or changes the setup step count (D-005).
   // Not awaited — a failure here is retried on the next launch, never shown
   // to the user (D-029 acceptance criteria).
-  unawaited(_bootstrapAccountSync(setupComplete: defaultCats != 6 && (draft == null || draft['state']['phase'] == 'finished')));
+  unawaited(_bootstrapAccountSync(
+      setupComplete: defaultCats != 6 &&
+          (draft == null || draft['state']['phase'] == 'finished')));
 }
 
 /// D-029: create (or resume) the silent anonymous account, then run D-027's
@@ -244,8 +262,11 @@ Future<void> main() async {
 /// than throwing past this function — one failed step must not stop the
 /// others, and none of them may ever block habit check-off (D-026).
 Future<void> _bootstrapAccountSync({required bool setupComplete}) async {
-  final uid = await AuthService.instance.signInSilently();
-  if (uid == null) return;
+  // Startup must never create an anonymous identity. Begin/setup owns that
+  // explicit action; here we only continue a session Firebase restored.
+  final restoredUser = await AuthService.instance.waitForRestoredUser();
+  if (restoredUser == null) return;
+  final uid = restoredUser.uid;
 
   final dbHelper = DatabaseHelper.instance;
   try {
@@ -261,7 +282,8 @@ Future<void> _bootstrapAccountSync({required bool setupComplete}) async {
     debugPrint('Failed to persist account timezone locally: $e\n$st');
   }
 
-  await SyncService.instance.syncAll(uid, setupComplete: setupComplete);
+  await SyncService.instance.syncAll(uid,
+      setupComplete: setupComplete, protectCloudFromEmptyLocal: true);
 
   try {
     await SubscriptionService.login(uid);
@@ -273,7 +295,8 @@ Future<void> _bootstrapAccountSync({required bool setupComplete}) async {
   // on every launch — a subscription confirmed via the RevenueCat webhook
   // never touches this device directly, so this is how it reaches the
   // local gate CouncilCategoryPicker reads.
-  final hasServerEntitlement = await EntitlementService.instance.pullFromServer(uid);
+  final hasServerEntitlement =
+      await EntitlementService.instance.pullFromServer(uid);
 
   // D-071/D-116: a completed account with no real server entitlement gets
   // its trial grant (re)requested here, on every launch until it succeeds.

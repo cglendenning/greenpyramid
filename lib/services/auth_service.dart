@@ -23,6 +23,12 @@ class AuthService {
 
   Stream<User?> get userChanges => _auth.userChanges();
 
+  /// D-136/D-187: Firebase restores its native session asynchronously during
+  /// startup. Callers that choose a launch route or begin cloud work must
+  /// wait for that initial auth-state event; a transient null must never be
+  /// mistaken for a signed-out user and replaced with a new anonymous uid.
+  Future<User?> waitForRestoredUser() => _auth.authStateChanges().first;
+
   /// D-029: silently create (or resume) an anonymous account. Never throws
   /// and never surfaces anything to the user — a failure is logged and the
   /// app continues in local-only mode; the caller is expected to retry this
