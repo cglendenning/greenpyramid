@@ -652,7 +652,8 @@ class DatabaseHelper {
     // D-150: the newsfeed table, shared with the v12 migration.
     await applyV12Schema(db);
     await SetupDraftStore.createTable(db);
-    await db.execute('ALTER TABLE $categoryTable ADD COLUMN $columnCategoryDescription TEXT NOT NULL DEFAULT \'\'');
+    await db.execute(
+        'ALTER TABLE $categoryTable ADD COLUMN $columnCategoryDescription TEXT NOT NULL DEFAULT \'\'');
   }
 
   Future _onUpgrade(Database db, int oldVersion, int newVersion) async {
@@ -904,7 +905,8 @@ class DatabaseHelper {
             break;
           case 23:
             await SetupDraftStore.createTable(db);
-            await db.execute('ALTER TABLE $categoryTable ADD COLUMN $columnCategoryDescription TEXT NOT NULL DEFAULT \'\'');
+            await db.execute(
+                'ALTER TABLE $categoryTable ADD COLUMN $columnCategoryDescription TEXT NOT NULL DEFAULT \'\'');
             break;
           case 22:
             // D-178: single account-level personal-info fields, collected
@@ -1161,7 +1163,8 @@ class DatabaseHelper {
     int id = 0;
     try {
       Database db = await instance.database;
-      id = await db.insert(getTaskTable(), row);
+      id = await db.insert(getTaskTable(), row,
+          conflictAlgorithm: ConflictAlgorithm.replace);
     } catch (e, s) {
       if (kDebugMode) {
         print(e);
@@ -1208,7 +1211,8 @@ class DatabaseHelper {
     int id = 0;
     try {
       Database db = await instance.database;
-      id = await db.insert(getTaskLogTable(), row);
+      id = await db.insert(getTaskLogTable(), row,
+          conflictAlgorithm: ConflictAlgorithm.replace);
     } catch (e, s) {
       if (kDebugMode) {
         print(e);
@@ -2090,8 +2094,9 @@ class DatabaseHelper {
     for (final row in sorted) {
       final id = row[columnCategoryId] as int;
       final position = row[columnPosition] as int;
-      final tier =
-          position <= 3 ? 'foundational' : (position <= 5 ? 'essential' : 'peak');
+      final tier = position <= 3
+          ? 'foundational'
+          : (position <= 5 ? 'essential' : 'peak');
       summary.add({
         'id': id,
         'name': row[columnCat] as String,
@@ -2188,7 +2193,9 @@ class DatabaseHelper {
   Future<bool> newsfeedItemExists(String dedupeKey) async {
     final db = await database;
     final rows = await db.query(newsfeedItemTable,
-        where: '$columnNewsfeedDedupeKey = ?', whereArgs: [dedupeKey], limit: 1);
+        where: '$columnNewsfeedDedupeKey = ?',
+        whereArgs: [dedupeKey],
+        limit: 1);
     return rows.isNotEmpty;
   }
 
@@ -2206,7 +2213,6 @@ class DatabaseHelper {
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
-
   /// D-150: the 0-based rank of the item identified by [dedupeKey] within
   /// the same newest-first ordering [queryNewsfeedItems] pages through —
   /// how a notification tap can jump the newsfeed screen straight to a
@@ -2216,7 +2222,9 @@ class DatabaseHelper {
   Future<int?> getNewsfeedItemPosition(String dedupeKey) async {
     final db = await database;
     final rows = await db.query(newsfeedItemTable,
-        where: '$columnNewsfeedDedupeKey = ?', whereArgs: [dedupeKey], limit: 1);
+        where: '$columnNewsfeedDedupeKey = ?',
+        whereArgs: [dedupeKey],
+        limit: 1);
     if (rows.isEmpty) return null;
     final target = rows.first;
     final targetCreated = target[columnNewsfeedCreated] as String;
@@ -2299,7 +2307,6 @@ class DatabaseHelper {
     }
     return byDomain;
   }
-
 
   Future<void> insertChatMessage(String sender, String content) async {
     final db = await database;

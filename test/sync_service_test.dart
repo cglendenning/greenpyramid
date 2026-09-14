@@ -622,6 +622,11 @@ void main() {
       final tasks = await db.queryAllTasks();
       expect(tasks.single[DatabaseHelper.columnTaskDescription],
           'Walk 20 minutes');
+
+      // Repeating restore must replace the same local row, not create a
+      // second task that the next push would publish under a new ID.
+      await pull.restoreFromCloud(uid);
+      expect(await db.queryAllTasks(), hasLength(1));
     });
 
     test(
@@ -666,6 +671,10 @@ void main() {
           'Walk 20 minutes');
       expect(logs.single[DatabaseHelper.columnTLChecked], 'true');
       expect(logs.single[DatabaseHelper.columnTLTaskDate], '2026-09-10');
+
+      await pull.restoreFromCloud(uid);
+      expect(await (await db.database).query(DatabaseHelper.taskLogTable),
+          hasLength(1));
     });
 
     test(

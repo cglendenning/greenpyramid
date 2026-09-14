@@ -390,7 +390,9 @@ class SyncService {
     final tasksSnap = await userDoc.collection('tasks').get();
     for (final doc in tasksSnap.docs) {
       final t = doc.data();
+      final stableId = int.tryParse(doc.id);
       await _db.insertTask({
+        if (stableId != null) DatabaseHelper.columnId: stableId,
         DatabaseHelper.columnCategory: t['category'],
         DatabaseHelper.columnTaskDescription: t['taskdescription'],
         DatabaseHelper.columnSunday: t['sunday'] ?? 'true',
@@ -416,12 +418,14 @@ class SyncService {
 
     // D-187/D-187: restores every check-off _syncRecentActivity has
     // pushed — as of D-187, that's full history, not a bounded window.
-    // No explicit id: insertTaskLog lets SQLite assign a fresh local
-    // one, the same choice the tasks restore just above already makes.
+    // Preserve the Firestore document id so repeated restore is idempotent
+    // and the next push reconciles the same logical occurrence document.
     final activitySnap = await userDoc.collection('recentActivity').get();
     for (final doc in activitySnap.docs) {
       final a = doc.data();
+      final stableId = int.tryParse(doc.id);
       await _db.insertTaskLog({
+        if (stableId != null) DatabaseHelper.columnTLId: stableId,
         DatabaseHelper.columnTLCategory: a['category'],
         DatabaseHelper.columnTLTaskDescription: a['taskdescription'],
         DatabaseHelper.columnTLChecked: a['checked'],
