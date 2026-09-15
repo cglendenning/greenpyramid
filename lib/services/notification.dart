@@ -707,7 +707,13 @@ class LocalNotificationService {
       switch (data['type']) {
         case 'batch_checkin':
           final habitsJson = data['habits'] as String?;
-          if (habitsJson == null) return;
+          if (habitsJson == null) {
+            // D-149 transports only stable habit ids. Resolve current local
+            // records at tap time so deleted habits are harmless and the
+            // occurrence date remains the server-supplied date.
+            openBatchCheckinFromPayload(data);
+            return;
+          }
           final habits =
               (jsonDecode(habitsJson) as List).cast<Map<String, dynamic>>();
           navigatorKey.currentState?.push(MaterialPageRoute(

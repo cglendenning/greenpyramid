@@ -97,7 +97,7 @@ void handlePushTap(RemoteMessage message) {
   }
   switch (message.data['type']) {
     case 'batch_checkin':
-      unawaited(_openBatchCheckinFromPush(message.data));
+      unawaited(openBatchCheckinFromPayload(message.data));
       break;
     case 'tailored':
       LocalNotificationService().onNotificationClick.add('/');
@@ -108,7 +108,7 @@ void handlePushTap(RemoteMessage message) {
   }
 }
 
-Future<void> _openBatchCheckinFromPush(Map<String, dynamic> data) async {
+Future<void> openBatchCheckinFromPayload(Map<String, dynamic> data) async {
   final rawIds = data['habitIds'] as String?;
   Set<String>? ids;
   if (rawIds != null) {
