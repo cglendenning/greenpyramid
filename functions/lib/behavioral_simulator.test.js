@@ -1,0 +1,29 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { assertSandboxTarget, REQUIRED_SCENARIOS, runScenario, runSimulation } from './behavioral_simulator.js';
+
+test('D-162-AC-01: virtual months run without wall-clock waiting and emit a timeline/report', () => {
+  const started = Date.now();
+  const report = runSimulation({ months: 6, seed: 7 });
+
+  assert.equal(report.virtualDays, 180);
+  assert.equal(report.timeline.length, 180 * REQUIRED_SCENARIOS.length);
+  assert.equal(report.scenarios[0].metrics.evaluations, 180);
+  assert.equal(Date.now() - started < 1000, true);
+});
+
+test('D-162-AC-02: all required synthetic human scenarios run', () => {
+  const report = runSimulation({ months: 1, seed: 3 });
+
+  assert.deepEqual(report.scenarios.map((scenario) => scenario.name), [...REQUIRED_SCENARIOS]);
+  for (const scenario of report.scenarios) assert.equal(scenario.timeline.length, 30);
+});
+
+test('D-162-AC-03: production targets and credentials are rejected; sandbox writes stay isolated', () => {
+  assert.throws(() => assertSandboxTarget({ projectId: 'life-ops' }), /production_target_rejected/);
+  assert.throws(() => assertSandboxTarget({ projectId: 'greenpyramid-production' }), /production_target_rejected/);
+  assert.throws(() => assertSandboxTarget({ projectId: 'greenpyramid-sandbox', credentials: true }), /production_target_rejected/);
+  const report = runScenario({ name: 'autonomous', days: 2 });
+  assert.equal(report.timeline.every((entry) => entry.decision.accountUid === 'sim-autonomous'), true);
+});
+
