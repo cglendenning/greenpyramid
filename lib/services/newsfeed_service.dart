@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart' show debugPrint;
 
 import 'ai_guard.dart';
@@ -128,8 +130,9 @@ class NewsfeedService {
   Future<List<Map<String, dynamic>>> getFeed({
     int limit = 20,
     int offset = 0,
-  }) {
-    return _db.queryNewsfeedItems(limit: limit, offset: offset);
+  }) async {
+    final rows = await _db.queryNewsfeedItems(limit: limit, offset: offset);
+    return rows.map(normalizeNewsfeedArticleRow).toList();
   }
 
   /// D-122: how far back a specific item sits in the feed's own
@@ -229,7 +232,9 @@ class NewsfeedService {
 
     final dedupeKey = '$prefix${usedToday + 1}';
     final inserted = await _generateAndInsertArticle(dedupeKey: dedupeKey);
-    return inserted ? OnDemandArticleOutcome.generated : OnDemandArticleOutcome.failed;
+    return inserted
+        ? OnDemandArticleOutcome.generated
+        : OnDemandArticleOutcome.failed;
   }
 
   /// D-122: how many on-demand generations are left today — lets the UI
@@ -261,4 +266,37 @@ class NewsfeedService {
     }
     return stats;
   }
+}
+
+/// D-122: repairs an article saved by an older backend that rendered a
+/// model-returned JSON/code-fence response as visible body text. New replies
+/// are normalized server-side; this read-time backstop repairs already-cached
+/// rows without requiring a database-version upgrade or deleting the user's
+/// feed history. Non-article rows and genuinely unparseable articles are
+/// returned unchanged.
+Map<String, dynamic> normalizeNewsfeedArticleRow(Map<String, dynamic> row) {
+  if (row['type'] != 'article') return row;
+  final title = row['title'] as String? ?? '';
+  final body = row['body'] as String? ?? '';
+  final trimmed = body.trim();
+  final fenced = RegExp(
+    r'^```(?:json)?\s*\n?([\s\S]*?)\n?```$',
+    caseSensitive: false,
+  ).firstMatch(trimmed);
+  final candidate = fenced?.group(1)?.trim() ?? trimmed;
+  try {
+    final decoded = jsonDecode(candidate);
+    if (decoded is Map &&
+        decoded['headline'] is String &&
+        decoded['body'] is String) {
+      final headline = (decoded['headline'] as String).trim();
+      final cleanBody = (decoded['body'] as String).trim();
+      if (headline.isNotEmpty && cleanBody.isNotEmpty) {
+        return {...row, 'title': headline, 'body': cleanBody};
+      }
+    }
+  } catch (_) {
+    // Preserve genuinely malformed article text rather than hiding content.
+  }
+  return {...row, 'title': title, 'body': body};
 }
