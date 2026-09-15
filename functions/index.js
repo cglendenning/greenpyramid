@@ -35,6 +35,7 @@ import { buildAdminMetrics } from './lib/admin_metrics.js';
 import { applySyncRequest, restoreAccount } from './lib/sync_operations.js';
 import { cleanupAnonymousAccounts } from './lib/anonymous_cleanup.js';
 import { claimNotificationDispatch, completeNotificationDispatch, failNotificationDispatch, markInboxRead, notificationMessageKey, registerInstallation, upsertInboxItem } from './lib/notification_delivery.js';
+import { evaluateIntervention } from './lib/intervention_engine.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -202,6 +203,37 @@ app.post('/syncOperations', requireFirebaseAuth, async (req, res) => {
     const status = /invalid|conflict/.test(e.message) ? 400 : 500;
     console.error('syncOperations error:', e.message);
     res.status(status).json({ error: e.message === 'operation_payload_conflict' ? e.message : status === 500 ? 'service_unavailable' : e.message });
+  }
+});
+
+// D-152: the client may request an evaluation, but it cannot choose the
+// intervention. Current account state is read server-side and the resulting
+// decision is persisted as an audit record before it is returned.
+app.post('/evaluateIntervention', requireFirebaseAuth, async (req, res) => {
+  try {
+    ensureAdmin();
+    const db = admin.firestore();
+    const user = db.collection('users').doc(req.uid);
+    const profileSnap = await user.collection('profile').doc('main').get();
+    const [tasksSnap, activitySnap] = await Promise.all([
+      user.collection('tasks').get(),
+      user.collection('recentActivity').get(),
+    ]);
+    const decision = evaluateIntervention({
+      accountUid: req.uid,
+      profile: profileSnap.data() || {},
+      tasks: tasksSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
+      recentActivity: activitySnap.docs.map((doc) => doc.data()),
+    });
+    await user.collection('interventionDecisions').doc(decision.decisionId).create({
+      ...decision,
+      evaluatedAt: admin.firestore.Timestamp.fromDate(new Date(decision.evaluatedAt)),
+    });
+    res.json(decision);
+  } catch (e) {
+    if (e.code === 6 || e.code === 'already-exists') return res.status(409).json({ error: 'decision_already_recorded' });
+    console.error('evaluateIntervention error:', e.message);
+    res.status(500).json({ error: 'service_unavailable' });
   }
 });
 
