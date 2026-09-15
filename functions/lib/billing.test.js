@@ -18,13 +18,15 @@ class FakeCollection {
   doc(id) { return new FakeDoc(this.store, `${this.path}/${id}`); }
 }
 class FakeFirestore {
-  constructor(seed = {}) { this.data = seed; }
+  constructor(seed = {}) { this.data = seed; this.queue = Promise.resolve(); }
   collection(name) { return new FakeCollection(this, name); }
   async runTransaction(fn) {
-    return fn({
+    const result = this.queue.then(() => fn({
       get: (ref) => ref.get(),
       set: (ref, data, opts) => ref.set(data, opts),
-    });
+    }));
+    this.queue = result.catch(() => {});
+    return result;
   }
 }
 
@@ -109,6 +111,31 @@ test('D-146/D-061: reservation rejects unknown pricing before dispatch', async (
 test('D-146/D-061: committed spend plus outstanding reservations cannot exceed cap', async () => {
   const store = new FakeFirestore({ [profilePath('u1')]: { totalSpendUsd: 4.99, spendMonthKey: '2026-01' } });
   await assert.rejects(() => reserveCost('u1', 'claude-opus-5', 1000, 1000, 'r1', store, jan), SpendLimitError);
+});
+
+test('D-146-AC-03: concurrent reservations cannot oversubscribe the monthly cap', async () => {
+  const store = new FakeFirestore();
+  const requests = [
+    reserveCost('u1', 'claude-opus-5', 600_000, 0, 'r-a', store, jan),
+    reserveCost('u1', 'claude-opus-5', 600_000, 0, 'r-b', store, jan),
+  ];
+  const results = await Promise.allSettled(requests);
+  assert.equal(results.filter((r) => r.status === 'fulfilled').length, 1);
+  assert.equal(Object.keys(store.data[profilePath('u1')].spendReservations).length, 1);
+});
+
+test('D-146-AC-03: retrying the same reservation key does not create a second charge', async () => {
+  const store = new FakeFirestore();
+  await Promise.all([
+    reserveCost('u1', 'claude-haiku-4-5', 100_000, 1000, 'same-key', store, jan),
+    reserveCost('u1', 'claude-haiku-4-5', 100_000, 1000, 'same-key', store, jan),
+  ]);
+  assert.equal(Object.keys(store.data[profilePath('u1')].spendReservations).length, 1);
+  await settleCost('u1', 'same-key', 'claude-haiku-4-5', 1000, 100, store, jan);
+  await settleCost('u1', 'same-key', 'claude-haiku-4-5', 1000, 100, store, jan);
+  assert.equal(store.data[profilePath('u1')].totalSpendUsd,
+      1000 * MODEL_RATES['claude-haiku-4-5'].input +
+      100 * MODEL_RATES['claude-haiku-4-5'].output);
 });
 
 // D-146-AC-05

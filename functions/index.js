@@ -19,6 +19,7 @@ import admin from 'firebase-admin';
 import { randomUUID, createHash } from 'node:crypto';
 import { applyPacingReassurance, buildAdvisorTurnPrompt, buildGeneralCouncilTurnPrompt, buildSetupAdvisorTurnPrompt, countMiraTurns, extractReplyText, hasAskedWrapUpQuestion, SETUP_TURN_TOOL, SETUP_WRAP_UP_QUESTION } from './lib/council.js';
 import { checkSpendLimit, recordCost, reserveCost, settleCost, releaseCost, SpendLimitError } from './lib/billing.js';
+import { guardCallFrequency, RateLimitError } from './lib/rate_limit.js';
 import { getCouncilModel, getNotificationModel } from './lib/model_config.js';
 import { guardAndCountSetupCall, SetupCallLimitError } from './lib/setup_guard.js';
 import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, CATEGORIES_TOOL, habitsTool } from './lib/setup_derivation.js';
@@ -229,6 +230,15 @@ function claude() {
 // (turns and the two derivation endpoints below) so the bound is uniform
 // regardless of which kind of call it is.
 async function guardCouncilCall(req, res, { isSetup, sessionId }) {
+  try {
+    await guardCallFrequency(req.uid);
+  } catch (e) {
+    if (e instanceof RateLimitError) {
+      res.status(429).json({ error: 'rate_limited', scope: e.scope, limit: e.limit });
+      return false;
+    }
+    throw e;
+  }
   if (isSetup) {
     try {
       await guardAndCountSetupCall(req.uid, sessionId);
