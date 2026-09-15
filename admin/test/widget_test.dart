@@ -8,6 +8,8 @@ void main() {
   // D-162-AC-04: simulator controls and report output are exposed here.
   test('admin surface is authenticated and exposes required views', () {
     expect(source, contains('signInWithProvider'));
+    expect(source, contains("tooltip: 'Sign out'"));
+    expect(source, contains('FirebaseAuth.instance.signOut()'));
     expect(source, contains("/adminMetrics"));
     expect(source, contains('Product pulse'));
     expect(source, contains('Screen utilization'));

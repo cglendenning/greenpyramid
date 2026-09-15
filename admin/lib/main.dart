@@ -127,6 +127,7 @@ class _AdminGateState extends State<AdminGate> {
             setState(() => metricsFuture = _load());
             await metricsFuture;
           },
+          onSignOut: signOutAndRetry,
         );
       },
     );
@@ -156,7 +157,13 @@ class AdminMetricsException implements Exception {
 class Dashboard extends StatelessWidget {
   final Map<String, dynamic> data;
   final Future<void> Function() onRefresh;
-  const Dashboard({super.key, required this.data, required this.onRefresh});
+  final Future<void> Function() onSignOut;
+  const Dashboard({
+    super.key,
+    required this.data,
+    required this.onRefresh,
+    required this.onSignOut,
+  });
   @override
   Widget build(BuildContext context) {
     final f = data['funnel'] as Map<String, dynamic>;
@@ -172,6 +179,11 @@ class Dashboard extends StatelessWidget {
             onPressed: () => Navigator.of(
               context,
             ).push(MaterialPageRoute(builder: (_) => const SimulationScreen())),
+          ),
+          IconButton(
+            tooltip: 'Sign out',
+            icon: const Icon(Icons.logout),
+            onPressed: onSignOut,
           ),
         ],
       ),
@@ -349,7 +361,9 @@ class _SimulationScreenState extends State<SimulationScreen> {
         throw SimulationException(response.statusCode, serverError);
       }
       if (!mounted) return;
-      setState(() => report = jsonDecode(response.body) as Map<String, dynamic>);
+      setState(
+        () => report = jsonDecode(response.body) as Map<String, dynamic>,
+      );
     } catch (e) {
       if (!mounted) return;
       final detail = e is SimulationException ? e.userMessage : null;
