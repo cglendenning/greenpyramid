@@ -410,7 +410,7 @@ export const SETUP_TURN_TOOL = {
       reply: {
         type: 'string',
         minLength: 1,
-        maxLength: 400,
+        maxLength: 1200,
         description: 'Mira\'s next conversational line — a question or a closing line, never both.',
       },
       readyToBuild: {

@@ -58,6 +58,16 @@ test('D-082: /boardAdvisorTurn computes nudgeConvergence from the general '
   assert.match(route, /nudgeConvergence:\s*countMiraTurns\(conversationHistory\)\s*>=/);
 });
 
+test('D-150: general Council replies have enough bounded output budget to '
+  + 'finish a conversational response instead of ending mid-sentence', () => {
+  const routeStart = indexSource.indexOf("app.post('/boardAdvisorTurn'");
+  const routeEnd = indexSource.indexOf('\napp.post(', routeStart + 1);
+  const route = indexSource.substring(routeStart, routeEnd);
+  assert.match(route, /GENERAL_COUNCIL_MAX_OUTPUT_TOKENS\s*=\s*320/);
+  assert.match(route, /max_tokens:\s*GENERAL_COUNCIL_MAX_OUTPUT_TOKENS/);
+  assert.doesNotMatch(route, /max_tokens:\s*120\b/);
+});
+
 test('D-089: /deriveVisionStatement reads isSetup from the caller instead '
   + 'of hardcoding true — profile.dart\'s regeneration must go through '
   + 'D-014\'s entitlement gate like every other non-setup AI surface, '

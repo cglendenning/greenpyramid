@@ -311,6 +311,10 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, (req, res, next) => req.body?
   // solo-setup paths, which have their own convergence signals already
   // (essence acceptance; readyToBuild).
   const GENERAL_CONVERGENCE_TURN_THRESHOLD = 8;
+  // D-150: Council replies need enough room to finish a useful thought.
+  // Keep this bounded for cost control, but do not cap normal conversation
+  // at the old 120-token budget, which could return a sentence fragment.
+  const GENERAL_COUNCIL_MAX_OUTPUT_TOKENS = 320;
   const built = pyramidContext
     ? buildGeneralCouncilTurnPrompt({
         ...(req.body || {}),
@@ -330,7 +334,7 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, (req, res, next) => req.body?
   try {
     const msg = await claude().messages.create({
       model,
-      max_tokens: 120,
+      max_tokens: GENERAL_COUNCIL_MAX_OUTPUT_TOKENS,
       // Thinking is off, not just unrequested: Opus 5 can emit a `thinking`
       // block ahead of the reply even without it, which both costs extra
       // output tokens and (if not parsed defensively) can return an empty

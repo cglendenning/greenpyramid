@@ -16,7 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// Owner: "what I would like is a splash screen that is dark with a
 /// center icon of a glowing Green Pyramid."
 void main() {
-  group('D-114: a dark splash screen with the glowing brand pyramid, '
+  group('D-114 / D-114-AC-01: a dark splash screen with the glowing brand pyramid, '
       'shown natively before Flutter draws its first frame', () {
     test('iOS LaunchScreen.storyboard uses the app\'s dark background '
         'color, not the default white', () {
