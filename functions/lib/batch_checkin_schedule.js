@@ -52,6 +52,11 @@ function parseScheduledMinutes(scheduledtime) {
   return hour * 60 + minute;
 }
 
+function scheduledDurationMinutes(task) {
+  const value = Number(task?.scheduleddurationminutes ?? task?.scheduledDurationMinutes);
+  return Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
 // A habit is part of today's batch when it has a scheduled_time AND
 // today's day-of-week flag (the same field D-098's own scheduling screen
 // reads) is true — mirrors HabitScheduleRow.activeOn on the client.
@@ -67,7 +72,8 @@ export function latestScheduledMinutes(tasks, weekday) {
   let latest = null;
   for (const task of tasks) {
     if (!isScheduledActiveOn(task, weekday)) continue;
-    const minutes = parseScheduledMinutes(task.scheduledtime);
+    const start = parseScheduledMinutes(task.scheduledtime);
+    const minutes = start == null ? null : start + scheduledDurationMinutes(task);
     if (minutes == null) continue;
     if (latest == null || minutes > latest) latest = minutes;
   }

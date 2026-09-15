@@ -82,6 +82,17 @@ test('D-099: a day with no scheduled habits at all never sends', () => {
   assert.ok(!result);
 });
 
+test('D-149-AC-02: a 21:00 habit lasting 60 minutes cannot trigger before 22:00', () => {
+  const task = { id: 'late', monday: 'true', scheduledtime: '21:00', scheduleddurationminutes: 60 };
+  assert.equal(latestScheduledMinutes([task], 'monday'), 22 * 60);
+  assert.equal(shouldSendBatchCheckin({
+    tasks: [task], timezone: 'UTC', now: new Date('2026-06-15T21:59:00Z'), lastSentDate: null,
+  }), false);
+  assert.equal(shouldSendBatchCheckin({
+    tasks: [task], timezone: 'UTC', now: new Date('2026-06-15T22:00:00Z'), lastSentDate: null,
+  }), true);
+});
+
 test('D-099: an unset timezone never sends', () => {
   const now = new Date('2026-06-15T23:59:00Z');
   const result = shouldSendBatchCheckin({
