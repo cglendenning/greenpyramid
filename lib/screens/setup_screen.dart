@@ -108,7 +108,7 @@ class _SetupScreenState extends State<SetupScreen> {
   // "here's a button," with nothing in between confirming what was said
   // actually landed.
   static const _essenceAcknowledgment =
-      "Got it — that's exactly what I needed. Ready to lock this in?";
+      'Thanks — edit this, accept it provisionally, or leave it empty.';
 
   // D-038: the pyramid is fixed at 3/2/1 — shared by _buildCategories'
   // tier headers and _changeTier's tier-choice sheet, so the two never
@@ -178,6 +178,9 @@ class _SetupScreenState extends State<SetupScreen> {
   String? _firstName;
   bool _readyToBuild = false;
   bool _manual = false;
+  // D-148: derivation failure is a recovery state, never an implicit
+  // manual-completion path.
+  bool _habitProposalBlocked = false;
   bool _restoring = false;
   Future<void> _draftWrites = Future.value();
 
@@ -186,6 +189,7 @@ class _SetupScreenState extends State<SetupScreen> {
         'firstName': _firstName,
         'phase': _phase.name,
         'manual': _manual,
+        'habitProposalBlocked': _habitProposalBlocked,
         'refining': _refining,
         'tierIntroShown': _tierIntroShown,
         'categoriesEdited': _categoriesEdited,
@@ -217,6 +221,7 @@ class _SetupScreenState extends State<SetupScreen> {
     _firstName = state['firstName'];
     _phase = _Phase.values.byName(state['phase']);
     _manual = state['manual'] ?? false;
+    _habitProposalBlocked = state['habitProposalBlocked'] ?? false;
     _refining = state['refining'] ?? false;
     _tierIntroShown = state['tierIntroShown'] ?? false;
     _categoriesEdited = state['categoriesEdited'] ?? false;
@@ -288,22 +293,31 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   Future<void> _startOver() async {
+    final confirmationController = TextEditingController();
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Start over?'),
-        content: const Text(
-            'This will delete everything from this setup session and return you to the beginning.'),
+        title: const Text('Discard setup?'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+                'Type DISCARD to delete this setup draft and return to the beginning.'),
+            TextField(controller: confirmationController),
+          ],
+        ),
         actions: [
           TextButton(
               onPressed: () => Navigator.of(context).pop(false),
               child: const Text('Cancel')),
           FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Start over')),
+              onPressed: () => Navigator.of(context)
+                  .pop(confirmationController.text.trim() == 'DISCARD'),
+              child: const Text('Discard setup')),
         ],
       ),
     );
+    confirmationController.dispose();
     if (confirmed != true || !mounted) return;
     final uid = _setup.auth.currentUid;
     final sessionId = _session?.sessionId;
@@ -636,8 +650,7 @@ class _SetupScreenState extends State<SetupScreen> {
     } on SetupCallLimitException {
       // Nothing to propose from if the bound is already hit on the very
       // first derivation call — surface plainly rather than looping.
-      setState(() => _error =
-          'AI setup is unavailable. You can complete your pyramid manually.');
+      setState(() => _error = 'AI setup is unavailable. Retry or start over.');
     } on CouncilClientException catch (e) {
       setState(() => _error = e.message);
     } catch (e) {
@@ -993,6 +1006,7 @@ class _SetupScreenState extends State<SetupScreen> {
   Future<void> _loadAllHabits() async {
     final session = _session;
     if (session == null) return;
+    setState(() => _habitProposalBlocked = false);
     var totalCommitted = 0;
     for (var i = 0; i < _categories.length; i++) {
       final c = _categories[i];
@@ -1031,11 +1045,11 @@ class _SetupScreenState extends State<SetupScreen> {
         totalCommitted += habits.length;
         setState(() => _habitsByCategory[c.name] = habits);
       } catch (e) {
-        // D-039: the proposed set is allowed to be empty — the user can
-        // always add their own — so a failure here degrades rather than
-        // blocks setup. Still logged: a silently empty category otherwise
-        // looks identical to "the Council had nothing to suggest."
+        // D-148: preserve the draft and expose recovery only. User-edited
+        // explanations are allowed to be provisional or empty, but a
+        // failed structured derivation must not become manual completion.
         debugPrint('SetupScreen: habit proposal failed for "${c.name}": $e');
+        setState(() => _habitProposalBlocked = true);
         setState(() => _habitsByCategory[c.name] = const []);
       } finally {
         setState(() => _habitCategoriesLoading = {..._habitCategoriesLoading}
@@ -1292,6 +1306,7 @@ class _SetupScreenState extends State<SetupScreen> {
         await _askAboutCurrentFoundational();
         break;
       case _Phase.habits:
+        setState(() => _habitProposalBlocked = false);
         await _loadAllHabits();
         break;
       default:
@@ -1954,6 +1969,19 @@ class _SetupScreenState extends State<SetupScreen> {
   }
 
   Widget _buildHabits() {
+    if (_habitProposalBlocked) {
+      return const Padding(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Setup could not finish the habit proposal.'),
+            SizedBox(height: 8),
+            Text('Retry the proposal or discard this setup and start again.'),
+          ],
+        ),
+      );
+    }
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
