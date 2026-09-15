@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { checkSpendLimit, recordCost, SpendLimitError, DEFAULT_SPEND_CAP_USD, MODEL_RATES } from './billing.js';
+import { checkSpendLimit, recordCost, reserveCost, settleCost, releaseCost, SpendLimitError, UnknownModelPricingError, DEFAULT_SPEND_CAP_USD, MODEL_RATES } from './billing.js';
 
 // Minimal in-memory Firestore fake — just enough surface for billing.js:
 // collection().doc().collection().doc(), get/set(merge), and runTransaction.
@@ -100,4 +100,32 @@ test('recordCost is a no-op for an unknown model or zero usage', async () => {
   const store = new FakeFirestore();
   await recordCost('u1', 'unknown-model', 1000, 1000, store, jan);
   assert.equal(store.data[profilePath('u1')], undefined);
+});
+
+test('D-146/D-061: reservation rejects unknown pricing before dispatch', async () => {
+  await assert.rejects(() => reserveCost('u1', 'unknown-model', 100, 100, 'r1', new FakeFirestore(), jan), UnknownModelPricingError);
+});
+
+test('D-146/D-061: committed spend plus outstanding reservations cannot exceed cap', async () => {
+  const store = new FakeFirestore({ [profilePath('u1')]: { totalSpendUsd: 4.99, spendMonthKey: '2026-01' } });
+  await assert.rejects(() => reserveCost('u1', 'claude-opus-5', 1000, 1000, 'r1', store, jan), SpendLimitError);
+});
+
+test('D-146: settlement commits actual usage and releases unused reservation exactly once', async () => {
+  const store = new FakeFirestore();
+  await reserveCost('u1', 'claude-haiku-4-5', 100_000, 1000, 'r1', store, jan);
+  await settleCost('u1', 'r1', 'claude-haiku-4-5', 10_000, 100, store, jan);
+  const data = store.data[profilePath('u1')];
+  assert.equal(Object.keys(data.spendReservations).length, 0);
+  assert.equal(data.totalSpendUsd, 10_000 * MODEL_RATES['claude-haiku-4-5'].input + 100 * MODEL_RATES['claude-haiku-4-5'].output);
+  await settleCost('u1', 'r1', 'claude-haiku-4-5', 10_000, 100, store, jan);
+  assert.equal(data.totalSpendUsd, 10_000 * MODEL_RATES['claude-haiku-4-5'].input + 100 * MODEL_RATES['claude-haiku-4-5'].output);
+});
+
+test('D-146: provider rejection releases the reservation without charging', async () => {
+  const store = new FakeFirestore();
+  await reserveCost('u1', 'claude-haiku-4-5', 1000, 1000, 'r1', store, jan);
+  await releaseCost('u1', 'r1', store);
+  assert.equal(store.data[profilePath('u1')].totalSpendUsd, undefined);
+  assert.deepEqual(store.data[profilePath('u1')].spendReservations, {});
 });

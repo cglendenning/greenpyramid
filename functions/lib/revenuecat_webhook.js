@@ -34,13 +34,38 @@ export function verifyWebhookAuth(headerValue, expectedSecret) {
 export async function applyRevenueCatEvent(event, _store) {
   const uid = event?.app_user_id;
   const type = event?.type;
-  if (!uid || !type || !_store) return null;
+  const eventId = event?.id || event?.event_id;
+  const eventTimestamp = Number(event?.event_timestamp_ms || 0);
+  if (!uid || !type || !eventId || !_store) return null;
 
   let next = null;
   if (SUBSCRIBED_EVENTS.has(type)) next = 'subscribed';
   else if (LAPSED_EVENTS.has(type)) next = 'lapsed';
   else return null;
 
-  await profileDoc(_store, uid).set({ entitlement: next }, { merge: true });
-  return next;
+  const profile = profileDoc(_store, uid);
+  const apply = async (tx) => {
+    const snapshot = await tx.get(profile);
+    const current = snapshot.data() || {};
+    const currentTimestamp = Number(current.subscriptionEventTimestampMs || 0);
+    if (current.subscriptionEventId === eventId ||
+        (eventTimestamp && currentTimestamp && eventTimestamp < currentTimestamp)) {
+      return null;
+    }
+    tx.set(profile, {
+      entitlement: next,
+      subscriptionEventId: eventId,
+      subscriptionEventTimestampMs: eventTimestamp,
+      subscriptionExpiresAtMs: Number(event?.expiration_at_ms || current.subscriptionExpiresAtMs || 0),
+    }, { merge: true });
+    return next;
+  };
+  if (typeof _store.runTransaction === 'function') {
+    return _store.runTransaction(apply);
+  }
+  // Test doubles and narrowly scoped callers may expose only document writes.
+  return apply({
+    get: (ref) => ref.get(),
+    set: (ref, data, opts) => ref.set(data, opts),
+  });
 }

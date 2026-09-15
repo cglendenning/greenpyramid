@@ -16,8 +16,9 @@ import cors from 'cors';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import admin from 'firebase-admin';
+import { randomUUID } from 'node:crypto';
 import { applyPacingReassurance, buildAdvisorTurnPrompt, buildGeneralCouncilTurnPrompt, buildSetupAdvisorTurnPrompt, countMiraTurns, extractReplyText, hasAskedWrapUpQuestion, SETUP_TURN_TOOL, SETUP_WRAP_UP_QUESTION } from './lib/council.js';
-import { checkSpendLimit, recordCost, SpendLimitError } from './lib/billing.js';
+import { checkSpendLimit, recordCost, reserveCost, settleCost, releaseCost, SpendLimitError } from './lib/billing.js';
 import { getCouncilModel, getNotificationModel } from './lib/model_config.js';
 import { guardAndCountSetupCall, SetupCallLimitError } from './lib/setup_guard.js';
 import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, CATEGORIES_TOOL, habitsTool } from './lib/setup_derivation.js';
@@ -207,7 +208,12 @@ async function guardCouncilCall(req, res, { isSetup, sessionId }) {
     throw e;
   }
   try {
-    await checkSpendLimit(req.uid);
+    // D-146: reserve before dispatch. The model and bound are server-owned;
+    // client mode flags never decide whether work is free.
+    const model = await getCouncilModel();
+    const reservationId = req.body?.requestId || randomUUID();
+    await reserveCost(req.uid, model, 4000, 400, reservationId);
+    req.spendReservation = { reservationId, model };
     return true;
   } catch (e) {
     if (e instanceof SpendLimitError) {
@@ -220,6 +226,21 @@ async function guardCouncilCall(req, res, { isSetup, sessionId }) {
     }
     throw e;
   }
+}
+
+async function settleReservedCost(req, model, usage) {
+  const reservation = req.spendReservation;
+  if (!reservation) return;
+  await settleCost(req.uid, reservation.reservationId, model,
+    usage?.input_tokens ?? 0, usage?.output_tokens ?? 0);
+  req.spendReservation = null;
+}
+
+async function releaseReservedCost(req) {
+  const reservation = req.spendReservation;
+  if (!reservation) return;
+  await releaseCost(req.uid, reservation.reservationId);
+  req.spendReservation = null;
 }
 
 // D-148/D-045/D-055: called once, right at setup completion (or, for the
@@ -326,8 +347,7 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, (req, res, next) => req.body?
     // dollar ledger, only counted against D-148's call limit (already done
     // above, before the model call).
     if (!isSetup) {
-      recordCost(req.uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
-        .catch((e) => console.error('recordCost error:', e.message));
+      await settleReservedCost(req, model, msg.usage);
     }
     const reply = extractReplyText(msg.content);
     if (!reply) {
@@ -339,6 +359,7 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, (req, res, next) => req.body?
       usage: { inputTokens: msg.usage.input_tokens, outputTokens: msg.usage.output_tokens },
     });
   } catch (e) {
+    if (!isSetup) await releaseReservedCost(req).catch(() => {});
     console.error('boardAdvisorTurn error:', e.message, '— advisor:', advisor.name, '— model:', model);
     res.status(502).json({ error: e.message });
   }
@@ -503,13 +524,13 @@ app.post('/deriveVisionStatement', requireFirebaseAuth, (req, res, next) => req.
       messages: [{ role: 'user', content: user }],
     });
     if (!isSetup) {
-      recordCost(req.uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
-        .catch((e) => console.error('recordCost error:', e.message));
+      await settleReservedCost(req, model, msg.usage);
     }
     const vision = extractReplyText(msg.content);
     if (!vision) return res.status(502).json({ error: 'empty_reply' });
     res.json({ vision });
   } catch (e) {
+    if (!isSetup) await releaseReservedCost(req).catch(() => {});
     console.error('deriveVisionStatement error:', e.message);
     res.status(502).json({ error: e.message });
   }
@@ -532,12 +553,12 @@ app.post('/deriveProgressAnalysis', requireFirebaseAuth, async (req, res) => {
       system: [{ type: 'text', text: system }],
       messages: [{ role: 'user', content: user }],
     });
-    recordCost(req.uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
-      .catch((e) => console.error('recordCost error:', e.message));
+    await settleReservedCost(req, model, msg.usage);
     const analysis = extractReplyText(msg.content);
     if (!analysis) return res.status(502).json({ error: 'empty_reply' });
     res.json({ analysis });
   } catch (e) {
+    await releaseReservedCost(req).catch(() => {});
     console.error('deriveProgressAnalysis error:', e.message);
     res.status(502).json({ error: e.message });
   }
@@ -562,12 +583,12 @@ app.post('/deriveNewsfeedArticle', requireFirebaseAuth, async (req, res) => {
       system: [{ type: 'text', text: system }],
       messages: [{ role: 'user', content: user }],
     });
-    recordCost(req.uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
-      .catch((e) => console.error('recordCost error:', e.message));
+    await settleReservedCost(req, model, msg.usage);
     const raw = extractReplyText(msg.content);
     if (!raw) return res.status(502).json({ error: 'empty_reply' });
     res.json(parseArticleReply(raw));
   } catch (e) {
+    await releaseReservedCost(req).catch(() => {});
     console.error('deriveNewsfeedArticle error:', e.message);
     res.status(502).json({ error: e.message });
   }

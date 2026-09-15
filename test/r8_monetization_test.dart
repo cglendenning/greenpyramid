@@ -75,6 +75,18 @@ void main() {
     expect(source, contains('CancelSubscriptionScreen'));
   });
 
+  test('D-062: spend-limit surfaces do not promise unavailable top-ups', () {
+    for (final path in [
+      'lib/screens/council_screen.dart',
+      'lib/screens/general_council_screen.dart',
+      'lib/screens/profile.dart',
+    ]) {
+      final source = File(path).readAsStringSync();
+      expect(source, isNot(contains('More can be purchased soon')));
+      expect(source, contains('resets at the start of next month'));
+    }
+  });
+
   test(
       'D-044: entitlement is never decided on-device — the only literal '
       'entitlement value EntitlementService ever writes locally is '
@@ -166,16 +178,21 @@ void main() {
 
   test(
       'D-015: setup\'s free AI exchange is bounded by call count '
-      '(D-148), never by the D-061 spend cap — the two are mutually '
-      'exclusive branches', () {
+      '(D-148), while authenticated calls use server-owned reservation '
+      'billing under D-061', () {
     final source = File('functions/index.js').readAsStringSync();
     final guardIdx = source.indexOf('async function guardCouncilCall');
     final isSetupBranchIdx = source.indexOf('if (isSetup) {', guardIdx);
-    final elseIdx = source.indexOf('checkSpendLimit', guardIdx);
+    final authenticatedBillingIdx = source.indexOf('reserveCost(', guardIdx);
     expect(isSetupBranchIdx, greaterThan(-1));
-    expect(elseIdx, greaterThan(isSetupBranchIdx),
+    expect(authenticatedBillingIdx, greaterThan(isSetupBranchIdx),
         reason:
-            'checkSpendLimit must sit in the non-setup branch, after the isSetup check');
+            'authenticated calls must reserve against the server-owned spend cap after the setup branch');
+    final setupBranch = source.substring(isSetupBranchIdx, authenticatedBillingIdx);
+    expect(setupBranch, contains('guardAndCountSetupCall'));
+    expect(setupBranch, isNot(contains('reserveCost(')),
+        reason: 'the setup branch is governed by its call-count allowance');
+    expect(source, contains('settleReservedCost('));
   });
 
   test(

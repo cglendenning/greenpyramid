@@ -30,6 +30,14 @@ export class SpendLimitError extends Error {
   }
 }
 
+export class UnknownModelPricingError extends Error {
+  constructor(model) {
+    super(`unknown_model_pricing:${model}`);
+    this.status = 500;
+    this.model = model;
+  }
+}
+
 function monthKey(date = new Date()) {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
 }
@@ -84,5 +92,84 @@ export async function recordCost(uid, model, inputTokens = 0, outputTokens = 0, 
       totalSpendUsd: carriedOver + cost,
       spendMonthKey: currentMonth,
     }, { merge: true });
+  });
+}
+
+// D-146: reserve the worst-case billable cost before provider dispatch. The
+// reservation lives with the server-owned profile and is included in the
+// same transaction as the cap check, so concurrent requests cannot both
+// spend the same remaining allowance. `reservationId` must be unique per
+// provider dispatch and is returned unchanged for settlement.
+export async function reserveCost(uid, model, inputTokenBound, maxOutputTokens,
+  reservationId, _store = db(), _now = new Date()) {
+  if (!uid || !_store) return { reservationId, amountUsd: 0 };
+  const rates = MODEL_RATES[model];
+  if (!rates) throw new UnknownModelPricingError(model);
+  const amountUsd = Math.max(0, inputTokenBound) * rates.input +
+    Math.max(0, maxOutputTokens) * rates.output;
+  const ref = profileDoc(_store, uid);
+  const currentMonth = monthKey(_now);
+  await _store.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const data = snap.data() ?? {};
+    const carriedOver = (data.spendMonthKey ?? null) === currentMonth
+      ? (data.totalSpendUsd ?? 0) : 0;
+    const existing = (data.spendReservations ?? {})[reservationId];
+    if (existing) return;
+    const reservations = (data.spendMonthKey ?? null) === currentMonth
+      ? { ...(data.spendReservations ?? {}) } : {};
+    const outstanding = Object.values(reservations)
+      .reduce((sum, item) => sum + (Number(item.amountUsd) || 0), 0);
+    const cap = data.spendCapUsd ?? DEFAULT_SPEND_CAP_USD;
+    if (carriedOver + outstanding + amountUsd > cap) {
+      throw new SpendLimitError(carriedOver + outstanding, cap);
+    }
+    reservations[reservationId] = { amountUsd, model, monthKey: currentMonth };
+    tx.set(ref, {
+      spendMonthKey: currentMonth,
+      spendReservations: reservations,
+    }, { merge: true });
+  });
+  return { reservationId, amountUsd };
+}
+
+// D-146: settle exactly once. Actual provider usage becomes committed spend;
+// the unused part of the reservation is released in the same transaction.
+export async function settleCost(uid, reservationId, model, inputTokens = 0,
+  outputTokens = 0, _store = db(), _now = new Date()) {
+  if (!uid || !_store) return;
+  const rates = MODEL_RATES[model];
+  if (!rates) throw new UnknownModelPricingError(model);
+  const actual = Math.max(0, inputTokens) * rates.input +
+    Math.max(0, outputTokens) * rates.output;
+  const ref = profileDoc(_store, uid);
+  const currentMonth = monthKey(_now);
+  await _store.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const data = snap.data() ?? {};
+    const reservations = { ...(data.spendReservations ?? {}) };
+    const reservation = reservations[reservationId];
+    if (!reservation) return;
+    delete reservations[reservationId];
+    const carriedOver = (data.spendMonthKey ?? null) === currentMonth
+      ? (data.totalSpendUsd ?? 0) : 0;
+    tx.set(ref, {
+      totalSpendUsd: carriedOver + actual,
+      spendMonthKey: currentMonth,
+      spendReservations: reservations,
+    }, { merge: true });
+  });
+}
+
+export async function releaseCost(uid, reservationId, _store = db()) {
+  if (!uid || !_store) return;
+  const ref = profileDoc(_store, uid);
+  await _store.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const data = snap.data() ?? {};
+    const reservations = { ...(data.spendReservations ?? {}) };
+    if (!(reservationId in reservations)) return;
+    delete reservations[reservationId];
+    tx.set(ref, { spendReservations: reservations }, { merge: true });
   });
 }

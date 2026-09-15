@@ -102,9 +102,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final account = await _db.getAccountState();
     if (!mounted) return;
     setState(() {
-      _nameController.text = account[DatabaseHelper.columnFirstName] as String? ?? '';
-      _emailController.text = account[DatabaseHelper.columnEmail] as String? ?? '';
-      _phoneController.text = account[DatabaseHelper.columnPhone] as String? ?? '';
+      _nameController.text =
+          account[DatabaseHelper.columnFirstName] as String? ?? '';
+      _emailController.text =
+          account[DatabaseHelper.columnEmail] as String? ?? '';
+      _phoneController.text =
+          account[DatabaseHelper.columnPhone] as String? ?? '';
       photoPath = account[DatabaseHelper.columnProfilePhotoPath] as String?;
       _loadingAccountInfo = false;
     });
@@ -123,8 +126,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   /// documents directory only once Save is actually tapped, matching the
   /// three text fields' own deferred-until-Save behavior.
   Future<void> _pickPhoto() async {
-    final picked = await ImagePicker()
-        .pickImage(source: ImageSource.gallery, maxWidth: 1600, imageQuality: 85);
+    final picked = await ImagePicker().pickImage(
+        source: ImageSource.gallery, maxWidth: 1600, imageQuality: 85);
     if (picked == null || !mounted) return;
     setState(() {
       _pendingPhotoFile = File(picked.path);
@@ -213,7 +216,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _regenerateVisionStatement() async {
-    if (!await ensureEntitled(context, reason: 'Regenerate your vision statement')) return;
+    if (!await ensureEntitled(context,
+        reason: 'Regenerate your vision statement')) return;
     if (!mounted) return;
     setState(() {
       isRegenerating = true;
@@ -240,7 +244,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         visionError =
             'You\'ve reached this month\'s spend limit (\$${e.totalSpendUsd.toStringAsFixed(2)}'
-                ' of \$${e.spendCapUsd.toStringAsFixed(2)}). More can be purchased soon.';
+            ' of \$${e.spendCapUsd.toStringAsFixed(2)}). Your AI access resets at the start of next month; tracking remains available now.';
         isRegenerating = false;
       });
     } on CouncilClientException catch (e) {
@@ -250,7 +254,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
     } catch (e) {
       setState(() {
-        visionError = 'Could not generate a vision statement. Please try again.';
+        visionError =
+            'Could not generate a vision statement. Please try again.';
         isRegenerating = false;
       });
     }
@@ -268,7 +273,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   Future<void> _generateProgressAnalysis() async {
-    if (!await ensureEntitled(context, reason: 'See your 30-day progress analysis')) return;
+    if (!await ensureEntitled(context,
+        reason: 'See your 30-day progress analysis')) return;
     if (!mounted) return;
     setState(() {
       isLoadingAnalysis = true;
@@ -292,7 +298,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         analysisError =
             'You\'ve reached this month\'s spend limit (\$${e.totalSpendUsd.toStringAsFixed(2)}'
-                ' of \$${e.spendCapUsd.toStringAsFixed(2)}). More can be purchased soon.';
+            ' of \$${e.spendCapUsd.toStringAsFixed(2)}). Your AI access resets at the start of next month; tracking remains available now.';
         isLoadingAnalysis = false;
       });
     } on CouncilClientException catch (e) {
@@ -302,7 +308,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
     } catch (e) {
       setState(() {
-        analysisError = 'Could not generate your progress analysis. Please try again.';
+        analysisError =
+            'Could not generate your progress analysis. Please try again.';
         isLoadingAnalysis = false;
       });
     }
@@ -373,7 +380,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 fontFamily: 'Exo2', color: AppColors.textPrimary, fontSize: 16),
             decoration: const InputDecoration(
               border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              contentPadding:
+                  EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             ),
           ),
         ),
@@ -402,13 +410,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
               TextButton(
                 onPressed: _pickPhoto,
                 child: Text(hasPhoto ? 'Change photo' : 'Add photo',
-                    style: const TextStyle(fontFamily: 'Exo2', color: AppColors.brandGreen)),
+                    style: const TextStyle(
+                        fontFamily: 'Exo2', color: AppColors.brandGreen)),
               ),
               if (hasPhoto)
                 TextButton(
                   onPressed: _removePhoto,
                   child: const Text('Remove',
-                      style: TextStyle(fontFamily: 'Exo2', color: AppColors.textSecondary)),
+                      style: TextStyle(
+                          fontFamily: 'Exo2', color: AppColors.textSecondary)),
                 ),
             ],
           ),
@@ -449,7 +459,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         ? const Center(
                             child: Padding(
                               padding: EdgeInsets.all(12),
-                              child: CircularProgressIndicator(color: AppColors.brandGreen),
+                              child: CircularProgressIndicator(
+                                  color: AppColors.brandGreen),
                             ),
                           )
                         : Column(
@@ -492,7 +503,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       'stays on this device only.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                          fontFamily: 'Exo2', fontSize: 12, color: AppColors.textSecondary),
+                          fontFamily: 'Exo2',
+                          fontSize: 12,
+                          color: AppColors.textSecondary),
                     ),
                     const SizedBox(height: 14),
                     SizedBox(
@@ -505,7 +518,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 width: 20,
                                 height: 20,
                                 child: CircularProgressIndicator(
-                                    strokeWidth: 2, color: AppColors.background),
+                                    strokeWidth: 2,
+                                    color: AppColors.background),
                               )
                             : const Text('Save'),
                       ),
@@ -519,11 +533,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         if (visionStatement != null)
                           Text(
                             visionStatement!,
-                            style: const TextStyle(fontSize: 17, color: AppColors.textPrimary),
+                            style: const TextStyle(
+                                fontSize: 17, color: AppColors.textPrimary),
                             textAlign: TextAlign.center,
                           )
                         else
-                          const CircularProgressIndicator(color: AppColors.brandGreen),
+                          const CircularProgressIndicator(
+                              color: AppColors.brandGreen),
                         const SizedBox(height: 20),
                         if (!isRegenerating && !isReviewing)
                           ElevatedButton(
@@ -541,7 +557,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         if (isRegenerating)
                           const Padding(
                             padding: EdgeInsets.all(16.0),
-                            child: CircularProgressIndicator(color: AppColors.brandGreen),
+                            child: CircularProgressIndicator(
+                                color: AppColors.brandGreen),
                           ),
                         if (isReviewing && newVisionStatement != null)
                           Column(
@@ -556,7 +573,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 child: Text(
                                   newVisionStatement!,
                                   style: const TextStyle(
-                                      fontSize: 16, color: AppColors.textPrimary),
+                                      fontSize: 16,
+                                      color: AppColors.textPrimary),
                                   textAlign: TextAlign.center,
                                 ),
                               ),
@@ -592,11 +610,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     child: Column(
                       children: [
                         if (isLoadingAnalysis)
-                          const CircularProgressIndicator(color: AppColors.brandGreen)
+                          const CircularProgressIndicator(
+                              color: AppColors.brandGreen)
                         else if (progressAnalysis != null)
                           Text(
                             progressAnalysis!,
-                            style: const TextStyle(fontSize: 16, color: AppColors.textPrimary),
+                            style: const TextStyle(
+                                fontSize: 16, color: AppColors.textPrimary),
                             textAlign: TextAlign.center,
                           )
                         else

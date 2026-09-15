@@ -38,6 +38,16 @@ test('D-080: /boardAdvisorTurn routes to the solo-Mira handler on '
       'must not route to the solo-Mira handler on isSetup — that flag only means "billed free"');
 });
 
+test('D-080/D-146: non-setup mode reserves server-priced spend before provider dispatch and cannot use client setup flags as authority', () => {
+  const guardStart = indexSource.indexOf('async function guardCouncilCall');
+  const guardEnd = indexSource.indexOf('async function settleReservedCost');
+  const guard = indexSource.substring(guardStart, guardEnd);
+  assert.match(guard, /requireEntitlement/);
+  assert.match(guard, /reserveCost\(/);
+  assert.doesNotMatch(guard, /req\.body\?\.isSetup/);
+  assert.match(indexSource, /await settleReservedCost\(req, model, msg\.usage\)/);
+});
+
 test('D-082: /boardAdvisorTurn computes nudgeConvergence from the general '
   + 'Council conversation\'s own turn count and passes it into the prompt '
   + 'builder — never a hardcoded true/false', () => {
@@ -74,7 +84,7 @@ test('D-089: /deriveProgressAnalysis exists, is gated the same way every '
 
   assert.match(route, /guardCouncilCall\(req, res, \{ isSetup: false \}\)/);
   assert.match(route, /buildProgressAnalysisPrompt/);
-  assert.match(route, /recordCost\(/);
+  assert.match(route, /settleReservedCost\(/);
 });
 
 test('D-093/D-094: handleSetupAdvisorTurn appends the wrap-up question '

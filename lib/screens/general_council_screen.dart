@@ -128,7 +128,7 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
       if (mounted) {
         setState(() => _error =
             'You\'ve reached this month\'s spend limit (\$${e.totalSpendUsd.toStringAsFixed(2)}'
-                ' of \$${e.spendCapUsd.toStringAsFixed(2)}). More can be purchased soon.');
+                ' of \$${e.spendCapUsd.toStringAsFixed(2)}). Your AI access resets at the start of next month; tracking remains available now.');
       }
     } on CouncilClientException catch (e) {
       if (mounted) setState(() => _error = e.message);

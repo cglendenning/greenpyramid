@@ -15,8 +15,7 @@ class CrossfadingStockImages extends StatefulWidget {
   const CrossfadingStockImages({super.key});
 
   @override
-  State<CrossfadingStockImages> createState() =>
-      _CrossfadingStockImagesState();
+  State<CrossfadingStockImages> createState() => _CrossfadingStockImagesState();
 }
 
 class _CrossfadingStockImagesState extends State<CrossfadingStockImages> {
@@ -41,8 +40,10 @@ class _CrossfadingStockImagesState extends State<CrossfadingStockImages> {
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return AnimatedSwitcher(
-      duration: const Duration(seconds: 3),
+      duration: reduceMotion ? Duration.zero : const Duration(seconds: 3),
       child: SizedBox.expand(
         key: ValueKey(_index),
         child: Image.asset(_images[_index], fit: BoxFit.cover),

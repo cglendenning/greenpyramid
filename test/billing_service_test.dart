@@ -78,5 +78,21 @@ void main() {
       final status = await svc.getSpendStatus(now: DateTime(2026, 3, 1));
       expect(status?.atLimit, isTrue);
     });
+
+    test('D-061: reports outstanding server reservations and available allowance', () async {
+      final firestore = FakeFirebaseFirestore();
+      await firestore.collection('users').doc('u1').collection('profile').doc('main').set({
+        'totalSpendUsd': 3.0,
+        'spendCapUsd': 5.0,
+        'spendMonthKey': '2026-03',
+        'spendReservations': {
+          'r1': {'amountUsd': 1.25},
+          'r2': {'amountUsd': 0.5},
+        },
+      });
+      final status = await buildService(firestore).getSpendStatus(now: DateTime(2026, 3, 15));
+      expect(status?.reservedSpendUsd, 1.75);
+      expect(status?.availableSpendUsd, 0.25);
+    });
   });
 }

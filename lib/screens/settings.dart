@@ -10,6 +10,7 @@ import 'package:life_ops/screens/paywall_screen.dart';
 import 'package:life_ops/screens/welcome_screen.dart';
 import 'package:life_ops/services/account_link_service.dart';
 import 'package:life_ops/services/calendar_service.dart';
+import 'package:life_ops/services/billing_service.dart';
 import 'package:life_ops/services/entitlement_service.dart';
 import 'package:life_ops/services/newsfeed_service.dart';
 import 'package:life_ops/services/notification.dart';
@@ -168,6 +169,8 @@ class _SettingsState extends State<Settings> {
           children: [
             _sectionLabel('SUBSCRIPTION'),
             _card(child: const _SubscriptionPanel()),
+            const SizedBox(height: 12),
+            _card(child: const _SpendAllowancePanel()),
             const SizedBox(height: 28),
 
             _sectionLabel('NOTIFICATIONS'),
@@ -236,6 +239,43 @@ class _SettingsState extends State<Settings> {
       ),
     );
   }
+}
+
+class _SpendAllowancePanel extends StatelessWidget {
+  const _SpendAllowancePanel();
+
+  @override
+  Widget build(BuildContext context) => FutureBuilder<BillingStatus?>(
+        future: BillingService.instance.getSpendStatus(),
+        builder: (context, snapshot) {
+          final status = snapshot.data;
+          if (status == null) return const SizedBox.shrink();
+          final reset =
+              DateTime.utc(DateTime.now().year, DateTime.now().month + 1, 1);
+          final committed = status.totalSpendUsd.toStringAsFixed(2);
+          final reserved = status.reservedSpendUsd.toStringAsFixed(2);
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('AI access this month',
+                  style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600)),
+              const SizedBox(height: 6),
+              Text(
+                  '\$$committed of \$${status.spendCapUsd.toStringAsFixed(2)} committed',
+                  style: const TextStyle(color: AppColors.textSecondary)),
+              if (status.reservedSpendUsd > 0)
+                Text('\$$reserved reserved for in-flight requests',
+                    style: const TextStyle(color: AppColors.textSecondary)),
+              const SizedBox(height: 6),
+              Text(
+                  'Available allowance: \$${status.availableSpendUsd.toStringAsFixed(2)}. Resets ${DateFormat.yMMMMd().format(reset)} UTC.',
+                  style: const TextStyle(color: AppColors.textSecondary)),
+            ],
+          );
+        },
+      );
 }
 
 /// D-090: mirrors Kansei's inline subscription panel — branches on

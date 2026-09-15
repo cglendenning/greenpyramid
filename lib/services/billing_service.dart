@@ -4,9 +4,16 @@ import 'package:firebase_auth/firebase_auth.dart';
 class BillingStatus {
   final double totalSpendUsd;
   final double spendCapUsd;
-  const BillingStatus({required this.totalSpendUsd, required this.spendCapUsd});
+  final double reservedSpendUsd;
+  const BillingStatus(
+      {required this.totalSpendUsd,
+      required this.spendCapUsd,
+      this.reservedSpendUsd = 0});
 
-  bool get atLimit => totalSpendUsd >= spendCapUsd;
+  double get availableSpendUsd =>
+      (spendCapUsd - totalSpendUsd - reservedSpendUsd)
+          .clamp(0, double.infinity);
+  bool get atLimit => availableSpendUsd <= 0;
 }
 
 /// D-061: read-only visibility into what an account has spent this month —
@@ -43,14 +50,25 @@ class BillingService {
         .get();
     final data = doc.data();
 
-    final capUsd = (data?['spendCapUsd'] as num?)?.toDouble() ?? defaultSpendCapUsd;
+    final capUsd =
+        (data?['spendCapUsd'] as num?)?.toDouble() ?? defaultSpendCapUsd;
     final storedMonth = data?['spendMonthKey'] as String?;
     // A record from a prior month is stale — the backend resets lazily on
     // the next recordCost, so a month boundary can pass with no write yet.
     final spend = storedMonth == _monthKey(now ?? DateTime.now())
         ? (data?['totalSpendUsd'] as num?)?.toDouble() ?? 0
         : 0.0;
+    final reservations = storedMonth == _monthKey(now ?? DateTime.now())
+        ? (data?['spendReservations'] as Map<String, dynamic>?)
+        : null;
+    final reserved = reservations?.values
+            .map((value) => (value is Map
+                ? (value['amountUsd'] as num?)?.toDouble() ?? 0
+                : 0.0))
+            .fold<double>(0, (sum, amount) => sum + amount) ??
+        0.0;
 
-    return BillingStatus(totalSpendUsd: spend, spendCapUsd: capUsd);
+    return BillingStatus(
+        totalSpendUsd: spend, spendCapUsd: capUsd, reservedSpendUsd: reserved);
   }
 }
