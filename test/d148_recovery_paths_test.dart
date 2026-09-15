@@ -42,7 +42,7 @@ void main() {
     expect(linkService, contains('current == null || !current.isAnonymous'));
     expect(linkService, contains('_auth.signInWithCredential(credential)'));
     expect(source, contains('switchedToExistingAccount'));
-    expect(source, contains('restoreFromCloud(uid)'));
+    expect(source, contains('replaceLocalCacheFromCloud(uid)'));
   });
 
   test(

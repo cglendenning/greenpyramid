@@ -110,7 +110,7 @@ class WelcomeScreen extends StatelessWidget {
           if (switchedToExistingAccount) {
             final uid = FirebaseAuth.instance.currentUser?.uid;
             if (uid != null) {
-              await SyncService.instance.restoreFromCloud(uid);
+              await SyncService.instance.replaceLocalCacheFromCloud(uid);
             }
             if (!context.mounted) return;
             Navigator.of(context)

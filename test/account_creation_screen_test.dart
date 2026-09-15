@@ -73,7 +73,7 @@ void main() {
         'SetupCompletionScreen entirely — the pyramid just built in this '
         'session belongs to the abandoned anonymous account, not the real '
         'one just switched into', () {
-      expect(setupSource, contains('SyncService.instance.restoreFromCloud(uid)'));
+      expect(setupSource, contains('replaceLocalCacheFromCloud(uid)'));
       expect(setupSource, contains("pushNamedAndRemoveUntil('/', (route) => false)"));
     });
 

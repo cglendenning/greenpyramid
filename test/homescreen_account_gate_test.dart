@@ -43,7 +43,8 @@ void main() {
         'cloud data — a real edge case: this device already had a local '
         'pyramid *and* the identity used already belongs to a different, '
         'real account', () {
-      expect(homescreenSource, contains('SyncService.instance.restoreFromCloud(uid)'));
+      expect(homescreenSource,
+          contains('SyncService.instance.replaceLocalCacheFromCloud(uid)'));
     });
   });
 

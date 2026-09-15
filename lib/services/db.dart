@@ -1885,6 +1885,46 @@ class DatabaseHelper {
     return await db.delete(getCategoryTable());
   }
 
+  /// Clears the materialized cache before loading a different Firebase uid.
+  /// The legacy content tables are not uid-scoped, so retaining them would
+  /// make the next account appear to own the previous account's content.
+  /// setup_drafts is deliberately not included: an in-progress anonymous
+  /// setup must survive an account-link switch for recovery.
+  Future<void> clearLocalAccountContent() async {
+    final db = await instance.database;
+    await db.transaction((txn) async {
+      for (final table in [
+        taskLogTable,
+        taskTable,
+        categoryEssenceTable,
+        categoryTable,
+        chatTable,
+        visionStatementTable,
+        commentaryCountdownTable,
+        newsfeedItemTable,
+      ]) {
+        await txn.delete(table);
+      }
+      await txn.update(
+        accountStateTable,
+        {
+          columnAccountUid: null,
+          columnEntitlement: 'pre_trial',
+          columnTrialStartedAt: null,
+          columnTrialExpiresAt: null,
+          columnAccountTimezone: null,
+          columnEntitlementSyncedAt: null,
+          columnFirstName: null,
+          columnEmail: null,
+          columnPhone: null,
+          columnProfilePhotoPath: null,
+        },
+        where: '$columnAccountId = ?',
+        whereArgs: [1],
+      );
+    });
+  }
+
   Future<int> insertVisionStatement(String visionText) async {
     int id = 0;
     try {

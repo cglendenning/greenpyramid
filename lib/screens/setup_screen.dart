@@ -1118,8 +1118,10 @@ class _SetupScreenState extends State<SetupScreen> {
                     onDone: ({required switchedToExistingAccount}) async {
                       if (switchedToExistingAccount) {
                         final uid = _setup.auth.currentUid;
-                        if (uid != null)
-                          await SyncService.instance.restoreFromCloud(uid);
+                        if (uid != null) {
+                          await SyncService.instance
+                              .replaceLocalCacheFromCloud(uid);
+                        }
                         if (mounted)
                           Navigator.of(context)
                               .pushNamedAndRemoveUntil('/', (route) => false);

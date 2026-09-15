@@ -409,6 +409,15 @@ class SyncService {
     return true;
   }
 
+  /// Replaces, rather than merges, the local cache after switching to an
+  /// already-existing Firebase account. The setup_drafts table is preserved
+  /// by clearLocalAccountContent so an anonymous setup can still be recovered.
+  Future<bool> replaceLocalCacheFromCloud(String uid) async {
+    await _db.clearLocalAccountContent();
+    await _db.setAccountUid(uid);
+    return restoreFromCloud(uid);
+  }
+
   /// D-147: cloud data for a `lapsed` account is purged 12 months after
   /// lapse — never the local SQLite copy (D-147), so a returning user still
   /// has their pyramid on-device.

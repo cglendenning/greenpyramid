@@ -556,6 +556,50 @@ void main() {
     });
 
     test(
+        'D-147-AC-05: switching to a distinct uid replaces the local cache '
+        'without deleting an in-progress anonymous setup draft', () async {
+      final firestore = FakeFirebaseFirestore();
+      const incomingUid = 'google-account-uid';
+      await db.insertCategory({
+        DatabaseHelper.columnCategoryId: 1,
+        DatabaseHelper.columnCat: 'Old Apple category',
+      });
+      await db.insertTask({
+        DatabaseHelper.columnCategory: 'Old Apple category',
+        DatabaseHelper.columnTaskDescription: 'Old habit',
+        DatabaseHelper.columnCreateDate: '2026-01-01T00:00:00.000',
+      });
+      final database = await db.database;
+      await database.insert('setup_drafts', {
+        'uid': 'anonymous-setup-uid',
+        'session_id': 'draft-session',
+        'payload': '{}',
+      });
+      await firestore
+          .collection('users')
+          .doc(incomingUid)
+          .collection('profile')
+          .doc('main')
+          .set({
+        'categories': [
+          {'id': 2, 'cat': 'Google category', 'position': 1},
+        ],
+      });
+
+      final switched = await SyncService(firestore: firestore, db: db)
+          .replaceLocalCacheFromCloud(incomingUid);
+      expect(switched, isTrue);
+      final categories = await db.queryCategories();
+      expect(categories, hasLength(1));
+      expect(categories.single[DatabaseHelper.columnCat], 'Google category');
+      expect(await db.queryAllTasks(), isEmpty);
+      expect(
+          await database.query('setup_drafts'), hasLength(1));
+      expect((await db.getAccountState())[DatabaseHelper.columnAccountUid],
+          incomingUid);
+    });
+
+    test(
         'D-147: restoreFromCloud brings back categories, each category\'s '
         'current essence, the vision statement, and every habit — '
         'regression test for owner feedback: reinstalling the app lost '
