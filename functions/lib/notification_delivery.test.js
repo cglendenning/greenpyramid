@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { claimNotificationDispatch, markInboxRead, notificationMessageKey, registerInstallation, upsertInboxItem } from './notification_delivery.js';
+import { createHash } from 'node:crypto';
+import { claimNotificationDispatch, completeNotificationDispatch, failNotificationDispatch, markInboxRead, notificationMessageKey, registerInstallation, upsertInboxItem } from './notification_delivery.js';
 
 class Ref {
   constructor(store, path) { this.store = store; this.path = path; }
@@ -75,4 +76,16 @@ test('D-149-AC-03: concurrent retries claim one logical dispatch', async () => {
     claimNotificationDispatch(store, 'u', key),
   ]);
   assert.deepEqual(claims.sort(), [false, true]);
+});
+
+test('D-149-AC-03: failed transport releases the stable claim for retry, '
+  + 'and accepted transport closes it', async () => {
+  const store = new Store();
+  const key = notificationMessageKey({ type: 'tailored', occurrenceDate: '2026-09-15', slot: 'morning' });
+  assert.equal(await claimNotificationDispatch(store, 'u', key), true);
+  await failNotificationDispatch(store, 'u', key);
+  assert.equal(await claimNotificationDispatch(store, 'u', key), true);
+  await completeNotificationDispatch(store, 'u', key);
+  assert.equal(await claimNotificationDispatch(store, 'u', key), false);
+  assert.equal(store.data['users/u/notificationClaims/' + createHash('sha256').update(key).digest('hex')].state, 'sent');
 });

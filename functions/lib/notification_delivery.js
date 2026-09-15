@@ -37,10 +37,29 @@ export async function claimNotificationDispatch(store, uid, messageKey, now = ne
   const ref = dispatchRef(store, uid, messageKey);
   return store.runTransaction(async (tx) => {
     const existing = await tx.get(ref);
-    if (existing.exists) return false;
+    if (existing.exists) {
+      const state = existing.data()?.state;
+      if (state === 'failed') {
+        tx.set(ref, { state: 'claimed', claimedAt: now }, { merge: true });
+        return true;
+      }
+      return false;
+    }
     tx.set(ref, { uid, messageKey, state: 'claimed', claimedAt: now });
     return true;
   });
+}
+
+/** Records that the provider accepted this logical notification. */
+export async function completeNotificationDispatch(store, uid, messageKey, now = new Date()) {
+  const ref = dispatchRef(store, uid, messageKey);
+  await ref.set({ state: 'sent', sentAt: now }, { merge: true });
+}
+
+/** Releases a failed claim so the same stable key can be retried. */
+export async function failNotificationDispatch(store, uid, messageKey, now = new Date()) {
+  const ref = dispatchRef(store, uid, messageKey);
+  await ref.set({ state: 'failed', failedAt: now }, { merge: true });
 }
 
 export async function registerInstallation(store, uid, request, now = new Date()) {

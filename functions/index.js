@@ -34,7 +34,7 @@ import { applyRevenueCatEvent, verifyWebhookAuth } from './lib/revenuecat_webhoo
 import { buildAdminMetrics } from './lib/admin_metrics.js';
 import { applySyncRequest, restoreAccount } from './lib/sync_operations.js';
 import { cleanupAnonymousAccounts } from './lib/anonymous_cleanup.js';
-import { claimNotificationDispatch, markInboxRead, notificationMessageKey, registerInstallation, upsertInboxItem } from './lib/notification_delivery.js';
+import { claimNotificationDispatch, completeNotificationDispatch, failNotificationDispatch, markInboxRead, notificationMessageKey, registerInstallation, upsertInboxItem } from './lib/notification_delivery.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -812,11 +812,12 @@ async function sendTailoredNotification(uid, profileData) {
       .filter((installation) => installation.token);
   if (installations.length === 0) {
     console.log(`notificationJob: ${uid} has no enabled installation — inbox/local fallback remains available.`);
+    await failNotificationDispatch(db, uid, messageKey, now);
     return;
   }
 
   try {
-    await admin.messaging().sendEachForMulticast({
+    const response = await admin.messaging().sendEachForMulticast({
       tokens: installations.map((installation) => installation.token),
       notification: { title, body },
       data: {
@@ -824,10 +825,16 @@ async function sendTailoredNotification(uid, profileData) {
         occurrenceDate: local.dateString, habitIds: '[]',
       },
     });
+    if (response.successCount > 0) {
+      await completeNotificationDispatch(db, uid, messageKey, now);
+    } else {
+      await failNotificationDispatch(db, uid, messageKey, now);
+    }
   } catch (e) {
     // D-149: a delivery failure is logged and surfaced, never swallowed —
     // lastNotificationTitle/Body above is what lets the client recover.
     console.error(`notificationJob: FCM send failed for ${uid}:`, e.message);
+    await failNotificationDispatch(db, uid, messageKey, now);
   }
 }
 
@@ -953,11 +960,12 @@ async function maybeSendBatchCheckin(uid, profileData, now) {
       .filter((installation) => installation.token);
   if (installations.length === 0) {
     console.log(`batchCheckinJob: ${uid} has no enabled installation — inbox/local fallback remains available.`);
+    await failNotificationDispatch(db, uid, messageKey, now);
     return;
   }
 
   try {
-    await admin.messaging().sendEachForMulticast({
+    const response = await admin.messaging().sendEachForMulticast({
       tokens: installations.map((installation) => installation.token),
       notification: { title: 'Did you do it?', body },
       // D-066's amendment noted real FCM pushes carry no `data` field at
@@ -971,8 +979,14 @@ async function maybeSendBatchCheckin(uid, profileData, now) {
         habitIds: JSON.stringify(habits.map((habit) => String(habit.id))),
       },
     });
+    if (response.successCount > 0) {
+      await completeNotificationDispatch(db, uid, messageKey, now);
+    } else {
+      await failNotificationDispatch(db, uid, messageKey, now);
+    }
   } catch (e) {
     console.error(`batchCheckinJob: FCM send failed for ${uid}:`, e.message);
+    await failNotificationDispatch(db, uid, messageKey, now);
   }
 }
 
