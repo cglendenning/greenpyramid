@@ -319,10 +319,14 @@ class _SimulationScreenState extends State<SimulationScreen> {
     try {
       final user = FirebaseAuth.instance.currentUser!;
       final token = await user.getIdToken(true);
+      if (token == null || token.isEmpty) {
+        throw const SimulationException(null, 'authentication_required');
+      }
       final response = await http.post(
         Uri.parse('$apiBase/adminSimulation'),
         headers: {
           'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
         body: jsonEncode({
@@ -333,13 +337,23 @@ class _SimulationScreenState extends State<SimulationScreen> {
         }),
       );
       if (response.statusCode != 200) {
-        throw SimulationException(response.statusCode);
+        String? serverError;
+        try {
+          final payload = jsonDecode(response.body);
+          if (payload is Map<String, dynamic> && payload['error'] is String) {
+            serverError = payload['error'] as String;
+          }
+        } catch (_) {
+          // Keep the HTTP status when the service did not return JSON.
+        }
+        throw SimulationException(response.statusCode, serverError);
       }
-      setState(
-        () => report = jsonDecode(response.body) as Map<String, dynamic>,
-      );
-    } catch (_) {
-      setState(() => error = 'Simulation could not be completed.');
+      if (!mounted) return;
+      setState(() => report = jsonDecode(response.body) as Map<String, dynamic>);
+    } catch (e) {
+      if (!mounted) return;
+      final detail = e is SimulationException ? e.userMessage : null;
+      setState(() => error = detail ?? 'Simulation could not be completed.');
     } finally {
       if (mounted) setState(() => running = false);
     }
@@ -469,8 +483,24 @@ class _SimulationScreenState extends State<SimulationScreen> {
 }
 
 class SimulationException implements Exception {
-  const SimulationException(this.statusCode);
-  final int statusCode;
+  const SimulationException(this.statusCode, [this.serverError]);
+  final int? statusCode;
+  final String? serverError;
+
+  String get userMessage {
+    switch (serverError) {
+      case 'authentication_required':
+        return 'Your admin session expired. Sign in again and retry.';
+      case 'admin_required':
+        return 'Admin authorization is required for simulations.';
+      case 'simulation_options_invalid':
+        return 'The simulation options are invalid. Check the selected values.';
+      default:
+        return statusCode == null
+            ? 'Authentication could not be completed.'
+            : 'Simulation service returned HTTP $statusCode.';
+    }
+  }
 }
 
 const requiredScenarios = [

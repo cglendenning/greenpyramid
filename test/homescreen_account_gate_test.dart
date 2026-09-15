@@ -30,7 +30,9 @@ void main() {
         '— once per app session (this widget is mounted once at launch), '
         'not once per tab switch', () {
       expect(homescreenSource,
-          contains('WidgetsBinding.instance.addPostFrameCallback((_) => _enforceRealAccount());'));
+          contains('WidgetsBinding.instance.addPostFrameCallback((_) async {'));
+      expect(homescreenSource, contains('await _enforceRealAccount();'));
+      expect(homescreenSource, contains('await _offerNotificationRecovery();'));
     });
 
     test('a plain link (the common case) pops the gate and refreshes — it '

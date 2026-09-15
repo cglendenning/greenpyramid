@@ -72,9 +72,9 @@ void main() {
         contains('Retry the proposal or discard this setup and start again.'));
   });
 
-  test('D-148-AC-06: anonymous discard requires a named confirmation', () {
-    expect(source, contains("title: const Text('Discard setup?')"));
-    expect(source, contains("confirmationController.text.trim() == 'DISCARD'"));
-    expect(source, contains("child: const Text('Discard setup')"));
+  test('D-148-AC-06: anonymous restart requires a named confirmation', () {
+    expect(source, contains("title: const Text('Start over?')"));
+    expect(source, contains("confirmationController.text.trim() == 'START OVER'"));
+    expect(source, contains("child: const Text('Start over')"));
   });
 }

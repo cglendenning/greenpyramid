@@ -297,12 +297,12 @@ class _SetupScreenState extends State<SetupScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Discard setup?'),
+        title: const Text('Start over?'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-                'Type DISCARD to delete this setup draft and return to the beginning.'),
+                'Type START OVER to delete this setup draft and return to the beginning.'),
             TextField(controller: confirmationController),
           ],
         ),
@@ -312,8 +312,8 @@ class _SetupScreenState extends State<SetupScreen> {
               child: const Text('Cancel')),
           FilledButton(
               onPressed: () => Navigator.of(context)
-                  .pop(confirmationController.text.trim() == 'DISCARD'),
-              child: const Text('Discard setup')),
+                  .pop(confirmationController.text.trim() == 'START OVER'),
+              child: const Text('Start over')),
         ],
       ),
     );

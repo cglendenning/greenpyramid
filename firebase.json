@@ -7,6 +7,7 @@
     "runtime": "nodejs22"
   },
   "hosting": {
+    "site": "life-ops",
     "public": "hosting",
     "ignore": ["firebase.json", "**/.*"]
   }
