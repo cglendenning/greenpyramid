@@ -139,6 +139,8 @@ void main() {
     expect(auth.currentUser, isNull);
   });
 
+  // D-147-AC-05: sign-out drains the outgoing uid before switching identity;
+  // failures remain non-fatal and never authorize writes under the new uid.
   group(
       'D-147: signOut flushes pending local changes before switching identity',
       () {

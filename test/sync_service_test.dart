@@ -26,7 +26,10 @@ class _FakeCalendarService extends CalendarService {
   Future<String?> summarizeToday({DateTime? now}) async => summary;
 }
 
-/// R4: D-027's silent migration and D-147's enumerated ongoing sync, tested
+/// D-147-AC-01: local writes are committed immediately and survive until the
+/// next synchronization attempt; D-147-AC-02/03/04/07 cover durable restore,
+/// conflicts, idempotence, and startup safety for D-147-AC-07. R4: D-027's silent migration
+/// and D-147's enumerated ongoing sync, tested
 /// against a real (temp, ffi-backed) SQLite database and a fake Firestore —
 /// no live Firebase project involved. Collection names and shapes follow
 /// IV-D's Firestore layout exactly.
