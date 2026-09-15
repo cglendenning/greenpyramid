@@ -379,7 +379,22 @@ class _SimulationScreenState extends State<SimulationScreen> {
         (report?['scenarios'] as List?)?.cast<Map<String, dynamic>>() ??
         const [];
     return Scaffold(
-      appBar: AppBar(title: const Text('Intervention simulator')),
+      appBar: AppBar(
+        title: const Text('Intervention simulator'),
+        actions: [
+          IconButton(
+            tooltip: 'How the simulator works',
+            icon: const Icon(Icons.help_outline),
+            onPressed: running
+                ? null
+                : () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const SimulationGuideScreen(),
+                    ),
+                  ),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
@@ -399,6 +414,20 @@ class _SimulationScreenState extends State<SimulationScreen> {
                 'bounded reminder. This tests detection, deterministic policy '
                 'selection, delivery failures, and the resulting audit timeline; '
                 'it does not test real people, notifications, or production data.',
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: running
+                  ? null
+                  : () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const SimulationGuideScreen(),
+                      ),
+                    ),
+              icon: const Icon(Icons.menu_book_outlined),
+              label: const Text('Open the step-by-step tutorial'),
+            ),
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<int>(
@@ -590,6 +619,233 @@ class _ScenarioGuide extends StatelessWidget {
           child: Text('$name — ${descriptions[name]}'),
         ),
     ],
+  );
+}
+
+class SimulationGuideScreen extends StatelessWidget {
+  const SimulationGuideScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('How the simulator works')),
+    body: ListView(
+      padding: const EdgeInsets.all(20),
+      children: const [
+        Text(
+          'The goal',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 8),
+        Text(
+          'This is a repeatable safety and behavior test for the Intervention '
+          'Engine. It answers: “If these synthetic check-in patterns happened '
+          'over time, when would the engine stay silent, choose a reminder, '
+          'or encounter a delivery failure?” It is not a prediction about a '
+          'person and it does not send notifications.',
+        ),
+        SizedBox(height: 20),
+        _SimulationFlow(),
+        SizedBox(height: 24),
+        _GuideSection(
+          title: 'A concrete example',
+          children: [
+            Text(
+              'Imagine the “difficult” scenario. On a virtual day the '
+              'synthetic person misses “Daily practice.” The engine looks '
+              'back at recent check-ins, estimates the no-intervention '
+              'completion baseline, and compares two candidates: NONE and a '
+              'REMINDER. If the expected completion lift is worth the modeled '
+              'burden, it selects REMINDER. If not, it selects NONE. The '
+              'decision is recorded even when delivery later fails.',
+            ),
+            SizedBox(height: 8),
+            Text(
+              'By contrast, “autonomous” completes every check-in. Its '
+              'completion is already high, so the engine normally chooses '
+              'NONE. Silence is an intentional success condition, not a '
+              'missing result.',
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
+        _GuideSection(
+          title: 'What each scenario means',
+          children: [
+            Text('autonomous — always completes; tests useful silence.'),
+            Text('responsive — recovers after early misses.'),
+            Text('fatigue — becomes less consistent after day 45.'),
+            Text('sequence — misses every fourth day.'),
+            Text('changing — becomes harder after day 60.'),
+            Text('difficult — usually misses; tests sustained risk.'),
+            Text('mature — improves after day 20.'),
+          ],
+        ),
+        SizedBox(height: 16),
+        _GuideSection(
+          title: 'The terms that are easiest to misread',
+          children: [
+            Text(
+              'deterministic_utility — the policy uses fixed rules to compare '
+              'expected checkbox lift with burden. No AI chooses the policy.',
+            ),
+            Text(
+              'NONE — the engine deliberately chooses not to intervene. This '
+              'can mean strong autonomous completion, insufficient history, '
+              'or too much recent intervention burden.',
+            ),
+            Text(
+              'Default deterministic failures — selected interventions fail '
+              'delivery on every 17th simulated day. This tests delivery '
+              'handling, not policy selection.',
+            ),
+            Text(
+              'Failed delivery — an intervention was selected but not delivered; '
+              'it must not be counted as a successful treatment.',
+            ),
+            Text(
+              'Burden — modeled cost of repeatedly prompting someone. It rises '
+              'with recent interventions, while silence can let it recover.',
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
+        _GuideSection(
+          title: 'How to run a useful comparison',
+          children: [
+            Text(
+              '1. Start with one scenario and failure mode “none” so you can '
+              'see policy behavior without delivery noise.',
+            ),
+            Text(
+              '2. Repeat with the same seed. The report should match exactly; '
+              'that verifies reproducibility.',
+            ),
+            Text(
+              '3. Turn on the default failure mode. Compare delivered versus '
+              'failed delivery without expecting policy counts to change.',
+            ),
+            Text(
+              '4. Add scenarios one at a time, then use Copy JSON when you need '
+              'the complete day-by-day timeline and audit fields.',
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
+class _SimulationFlow extends StatelessWidget {
+  const _SimulationFlow();
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: const [
+          _FlowStep(
+            number: '1',
+            title: 'Synthetic person',
+            body: 'A controlled check-in pattern is generated.',
+          ),
+          _FlowArrow(),
+          _FlowStep(
+            number: '2',
+            title: 'Virtual day',
+            body: 'The clock advances without waiting in real time.',
+          ),
+          _FlowArrow(),
+          _FlowStep(
+            number: '3',
+            title: 'Intervention Engine',
+            body:
+                'Baseline, opportunity, burden and safety rules are evaluated.',
+          ),
+          _FlowArrow(),
+          _FlowStep(
+            number: '4',
+            title: 'Decision',
+            body: 'NONE or a bounded intervention is selected and recorded.',
+          ),
+          _FlowArrow(),
+          _FlowStep(
+            number: '5',
+            title: 'Delivery + report',
+            body:
+                'Delivery may succeed or fail; metrics and timeline are returned.',
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _FlowStep extends StatelessWidget {
+  const _FlowStep({
+    required this.number,
+    required this.title,
+    required this.body,
+  });
+  final String number;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      CircleAvatar(radius: 14, child: Text(number)),
+      const SizedBox(width: 12),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(body),
+          ],
+        ),
+      ),
+    ],
+  );
+}
+
+class _FlowArrow extends StatelessWidget {
+  const _FlowArrow();
+
+  @override
+  Widget build(BuildContext context) => const Padding(
+    padding: EdgeInsets.only(left: 11, top: 3, bottom: 3),
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: Icon(Icons.arrow_downward, size: 18),
+    ),
+  );
+}
+
+class _GuideSection extends StatelessWidget {
+  const _GuideSection({required this.title, required this.children});
+  final String title;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 8),
+          ...children.map(
+            (child) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: child,
+            ),
+          ),
+        ],
+      ),
+    ),
   );
 }
 

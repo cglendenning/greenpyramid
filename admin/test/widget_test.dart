@@ -29,6 +29,11 @@ void main() {
       contains('The same seed and settings produce the same report'),
     );
     expect(source, contains('selectionMode (deterministic_utility)'));
+    expect(source, contains('How the simulator works'));
+    expect(source, contains('The goal'));
+    expect(source, contains('Synthetic person'));
+    expect(source, contains('A concrete example'));
+    expect(source, contains('Failed delivery'));
     for (final scenario in [
       'autonomous',
       'responsive',
