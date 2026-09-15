@@ -86,12 +86,19 @@ class _AdminGateState extends State<AdminGate> {
       future: metricsFuture,
       builder: (context, snap) {
         if (snap.hasError) {
+          final unauthorized =
+              snap.error is AdminMetricsException &&
+              (snap.error as AdminMetricsException).statusCode == 401;
           return Scaffold(
             body: Center(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('Admin access is unavailable.'),
+                  Text(
+                    unauthorized
+                        ? 'Admin authorization is required.'
+                        : 'Admin access is unavailable.',
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     '${snap.error}',
@@ -132,10 +139,17 @@ class _AdminGateState extends State<AdminGate> {
       headers: {'Authorization': 'Bearer $token'},
     );
     if (r.statusCode != 200) {
-      throw Exception('admin_metrics_${r.statusCode} uid=${user.uid}');
+      throw AdminMetricsException(r.statusCode);
     }
     return jsonDecode(r.body) as Map<String, dynamic>;
   }
+}
+
+class AdminMetricsException implements Exception {
+  const AdminMetricsException(this.statusCode);
+  final int statusCode;
+  @override
+  String toString() => 'admin_metrics_$statusCode';
 }
 
 class Dashboard extends StatelessWidget {
@@ -183,26 +197,42 @@ class Dashboard extends StatelessWidget {
             _bar('Subscription rate', f['subscriptionRate'] as num),
             const SizedBox(height: 24),
             const Text('Screen utilization'),
-            ...screens.map(
-              (s) => ListTile(
-                title: Text(s['screenKey'] as String),
-                subtitle: Text(
-                  '${s['opens']} opens · ${s['uniqueUsers']} users',
+            if (screens.isEmpty)
+              const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text('No screen telemetry yet.'),
                 ),
-                trailing: const Icon(Icons.bar_chart),
+              )
+            else
+              ...screens.map(
+                (s) => ListTile(
+                  title: Text(s['screenKey'] as String),
+                  subtitle: Text(
+                    '${s['opens']} opens · ${s['uniqueUsers']} users',
+                  ),
+                  trailing: const Icon(Icons.bar_chart),
+                ),
               ),
-            ),
             const SizedBox(height: 24),
             const Text('Top users by spend'),
-            ...((data['topUsers'] as List).map((u) {
-              final m = u as Map;
-              return ListTile(
-                title: Text(m['uidHash'] as String),
-                trailing: Text(
-                  '\$${(m['spendUsd'] as num).toStringAsFixed(2)}',
+            if ((data['topUsers'] as List).isEmpty)
+              const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text('No cost data yet.'),
                 ),
-              );
-            })),
+              )
+            else
+              ...((data['topUsers'] as List).map((u) {
+                final m = u as Map;
+                return ListTile(
+                  title: Text(m['uidHash'] as String),
+                  trailing: Text(
+                    '\$${(m['spendUsd'] as num).toStringAsFixed(2)}',
+                  ),
+                );
+              })),
           ],
         ),
       ),

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { buildAdminMetrics } from './admin_metrics.js';
 
 test('admin metrics returns bounded funnel, screen usage, and top five users', () => {
+  // D-165-AC-04
   const profiles = Array.from({ length: 6 }, (_, i) => ({
     uidHash: `u${i}`, totalSpendUsd: i, aiCalls: i * 2,
     entitlement: i === 5 ? 'subscribed' : 'pre_trial', setupComplete: i > 0,

@@ -28,23 +28,42 @@ class TelemetryService {
 
   Future<void> event(String eventName, {String? screenKey}) async {
     try {
+      const allowedEvents = {
+        'screen_open',
+        'screen_duration',
+        'setup_begin',
+        'account_link',
+        'setup_complete',
+        'trial_started',
+        'subscription_started',
+        'checkin_complete',
+        'council_request_outcome',
+        'notification_outcome',
+      };
+      if (!allowedEvents.contains(eventName)) return;
       final auth = _auth ?? FirebaseAuth.instance;
       final firestore = _firestore ?? FirebaseFirestore.instance;
       final uid = auth.currentUser?.uid;
       if (uid == null || eventName.isEmpty) return;
       final uidHash = sha256.convert(utf8.encode(uid)).toString();
+      final eventId = sha256
+          .convert(utf8.encode(
+              '$sessionId:${DateTime.now().microsecondsSinceEpoch}:$eventName'))
+          .toString()
+          .substring(0, 32);
       final appInfo = await (_appInfo ??= PackageInfo.fromPlatform());
-      await firestore
-          .collection('users')
-          .doc(uid)
-          .collection('telemetry')
-          .add({
+      await firestore.collection('users').doc(uid).collection('telemetry').add({
         'eventName': eventName.substring(0, eventName.length.clamp(0, 64)),
+        'eventId': eventId,
         if (screenKey != null && screenKey.isNotEmpty)
           'screenKey': screenKey.substring(0, screenKey.length.clamp(0, 96)),
         'uidHash': uidHash,
         'sessionId': sessionId,
-        'platform': Platform.isIOS ? 'ios' : Platform.isAndroid ? 'android' : 'other',
+        'platform': Platform.isIOS
+            ? 'ios'
+            : Platform.isAndroid
+                ? 'android'
+                : 'other',
         'appVersion': '${appInfo.version}+${appInfo.buildNumber}',
         'occurredAt': FieldValue.serverTimestamp(),
       });

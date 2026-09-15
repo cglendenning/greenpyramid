@@ -8,12 +8,14 @@ void main() {
 
   test('D-165 telemetry records bounded metadata and platform/version', () {
     expect(source, contains("'eventName'"));
+    expect(source, contains("'eventId'"));
     expect(source, contains("'screenKey'"));
     expect(source, contains("'uidHash'"));
     expect(source, contains("'sessionId'"));
     expect(source, contains("'appVersion'"));
     expect(source, contains('Platform.isIOS'));
     expect(source, contains('FieldValue.serverTimestamp()'));
+    expect(source, contains('allowedEvents'));
   });
 
   test('D-165 telemetry source never writes content-bearing fields', () {
