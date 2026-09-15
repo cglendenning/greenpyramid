@@ -216,15 +216,17 @@ app.post('/evaluateIntervention', requireFirebaseAuth, async (req, res) => {
     const db = admin.firestore();
     const user = db.collection('users').doc(req.uid);
     const profileSnap = await user.collection('profile').doc('main').get();
-    const [tasksSnap, activitySnap] = await Promise.all([
+    const [tasksSnap, activitySnap, priorInterventionsSnap] = await Promise.all([
       user.collection('tasks').get(),
       user.collection('recentActivity').get(),
+      user.collection('interventionDecisions').get(),
     ]);
     const decision = evaluateIntervention({
       accountUid: req.uid,
       profile: profileSnap.data() || {},
       tasks: tasksSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
       recentActivity: activitySnap.docs.map((doc) => doc.data()),
+      priorInterventions: priorInterventionsSnap.docs.map((doc) => doc.data()),
     });
     await user.collection('interventionDecisions').doc(decision.decisionId).create({
       ...decision,

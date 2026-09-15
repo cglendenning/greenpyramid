@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { buildInterventionContext } from './intervention_context.js';
 import { estimateBaseline } from './baseline_estimator.js';
 import { validateInterventionDecision } from './intervention_taxonomy.js';
+import { chooseIntervention } from './utility_policy.js';
 
 const LOOKBACK_DAYS = 14;
 const AUTONOMOUS_COMPLETION_THRESHOLD = 0.8;
@@ -28,7 +29,7 @@ function stableDecisionId(accountUid, now, state) {
   return createHash('sha256').update(fingerprint).digest('hex').slice(0, 32);
 }
 
-function noneDecision({ accountUid, now, reason, state, decisionId, context, baseline }) {
+function noneDecision({ accountUid, now, reason, state, decisionId, context, baseline, policy }) {
   return {
     decisionId: decisionId || stableDecisionId(accountUid, now, state),
     accountUid,
@@ -40,6 +41,7 @@ function noneDecision({ accountUid, now, reason, state, decisionId, context, bas
     rationale: reason,
     context,
     baseline,
+    policy,
     validityWindowHours: 0,
     measurementWindowDays: 0,
     outcome: {
@@ -60,6 +62,7 @@ export function evaluateIntervention({
   profile = {},
   tasks = [],
   recentActivity = [],
+  priorInterventions = [],
   now = new Date(),
   decisionId,
 }) {
@@ -76,24 +79,29 @@ export function evaluateIntervention({
   const completionRate = observedCount ? completedCount / observedCount : null;
   const baseline = estimateBaseline({ recentActivity: observed });
   const context = buildInterventionContext({ profile, tasks, recentActivity: observed });
-  const state = { observedCount, completedCount, completionRate, target: null };
+  const missed = observed.find((entry) => !isChecked(entry.checked));
+  const target = missed?.taskdescription || activeTasks[0]?.description || activeTasks[0]?.taskdescription || null;
+  const state = { observedCount, completedCount, completionRate, target };
+  const policy = chooseIntervention({
+    baseline, target, objective: 'support_next_checkbox', priorInterventions, now: current,
+  });
 
   if (profile.setupComplete !== true) {
-    return validateInterventionDecision(noneDecision({ accountUid, now: current, reason: 'setup_incomplete', state, decisionId, context, baseline }));
+    return validateInterventionDecision(noneDecision({ accountUid, now: current, reason: 'setup_incomplete', state, decisionId, context, baseline, policy }));
   }
   if (!activeTasks.length) {
-    return validateInterventionDecision(noneDecision({ accountUid, now: current, reason: 'no_active_habits', state, decisionId, context, baseline }));
+    return validateInterventionDecision(noneDecision({ accountUid, now: current, reason: 'no_active_habits', state, decisionId, context, baseline, policy }));
   }
   if (!observedCount) {
-    return validateInterventionDecision(noneDecision({ accountUid, now: current, reason: 'insufficient_history', state, decisionId, context, baseline }));
+    return validateInterventionDecision(noneDecision({ accountUid, now: current, reason: 'insufficient_history', state, decisionId, context, baseline, policy }));
   }
   if (completionRate >= AUTONOMOUS_COMPLETION_THRESHOLD) {
-    return validateInterventionDecision(noneDecision({ accountUid, now: current, reason: 'autonomous_completion', state, decisionId, context, baseline }));
+    return validateInterventionDecision(noneDecision({ accountUid, now: current, reason: 'autonomous_completion', state, decisionId, context, baseline, policy }));
   }
 
-  const missed = observed.find((entry) => !isChecked(entry.checked));
-  const target = missed?.taskdescription || activeTasks[0].description || activeTasks[0].taskdescription || null;
-  state.target = target;
+  if (policy.selectedType === 'NONE') {
+    return validateInterventionDecision(noneDecision({ accountUid, now: current, reason: 'burden_or_low_utility', state, decisionId, context, baseline, policy }));
+  }
   return validateInterventionDecision({
     decisionId: decisionId || stableDecisionId(accountUid, current, state),
     accountUid,
@@ -105,6 +113,7 @@ export function evaluateIntervention({
     rationale: 'recent_completion_risk',
     context,
     baseline,
+    policy,
     validityWindowHours: 24,
     measurementWindowDays: 1,
     outcome: {
