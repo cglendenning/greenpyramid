@@ -2,12 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { isNotificationWindow, isEligibleForTailoredNotification, DAILY_SLOTS } from './notification_schedule.js';
 
-test('D-021: exactly three daily slots, matching the existing 9am/12pm/8pm '
+test('D-149: exactly three daily slots, matching the canonical 9am/2pm/7pm '
   + 'cadence', () => {
   assert.deepEqual(DAILY_SLOTS, [
     { hour: 9, minute: 0 },
-    { hour: 12, minute: 0 },
-    { hour: 20, minute: 0 },
+    { hour: 14, minute: 0 },
+    { hour: 19, minute: 0 },
   ]);
 });
 

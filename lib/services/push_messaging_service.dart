@@ -61,7 +61,7 @@ class PushMessagingService {
   final LocalNotificationService _local;
 
   static const _fallbackIds = {0: 100, 1: 101, 2: 102};
-  static const _fallbackSlots = [(9, 0), (12, 0), (20, 0)];
+  static const _fallbackSlots = [(9, 0), (14, 0), (19, 0)];
   static const _defaultFallbackBody =
       'The Council of Advisors is here whenever you\'re ready.';
 

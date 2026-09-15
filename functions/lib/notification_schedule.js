@@ -5,12 +5,11 @@
 // every timezone, including half-hour-offset ones (UTC+5:30 etc.), without
 // per-timezone cron entries.
 
-// D-021: same three-times-daily cadence as the existing local notification
-// times (settings.dart: 9am / 12pm / 8pm).
+// D-149/R-NOTIFICATIONS: canonical default local delivery times.
 export const DAILY_SLOTS = [
   { hour: 9, minute: 0 },
-  { hour: 12, minute: 0 },
-  { hour: 20, minute: 0 },
+  { hour: 14, minute: 0 },
+  { hour: 19, minute: 0 },
 ];
 
 export const SCHEDULE_INTERVAL_MINUTES = 15;
