@@ -1,10 +1,6 @@
 import 'dart:async' show unawaited;
-import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:path_provider/path_provider.dart';
 
 import 'package:life_ops/widgets/navbar.dart';
 import 'package:life_ops/widgets/crossfading_stock_images.dart';
@@ -21,10 +17,9 @@ import 'package:life_ops/screens/paywall_screen.dart';
 
 /// D-138: revamped per the owner's own request — "Re-vamp the profile
 /// screen to contain our standard multi-photo rotation of the 20 photos
-/// and to look beautiful," plus new fields for first name, a local
-/// photo, email, and phone ("any other info they want to store"),
-/// explicitly pure personal reference with no functional behavior
-/// (never used for verification, recovery, or notifications). The
+/// and to look beautiful." The profile page exposes only first name as
+/// editable personal information; provider email, phone, and personal
+/// photographs are not profile-page fields or controls. The
 /// background is now [CrossfadingStockImages] — the same rotating
 /// 20-photo treatment every other onboarding-family screen already
 /// uses — replacing this screen's own private 4-image rotation.
@@ -63,25 +58,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool isLoadingAnalysis = false;
   String? analysisError;
 
-  // D-138/D-141: personal info — pure reference fields, no functional
-  // behavior. Owner: "it was a little unclear whether or not I needed to
-  // hit save" — nothing here persists until the explicit Save button is
-  // tapped, including a picked/removed photo, which is held as pending
-  // state until then.
+  // D-138/D-141: first name is the only editable personal field on this
+  // screen. Nothing here persists until the explicit Save button is tapped.
   final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
-  String? photoPath;
-  File? _pendingPhotoFile;
-  bool _pendingPhotoRemoval = false;
   bool _loadingAccountInfo = true;
   bool _savingProfileInfo = false;
-
-  File? get _displayedPhotoFile {
-    if (_pendingPhotoRemoval) return null;
-    if (_pendingPhotoFile != null) return _pendingPhotoFile;
-    return photoPath != null ? File(photoPath!) : null;
-  }
 
   @override
   void initState() {
@@ -93,8 +74,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
     super.dispose();
   }
 
@@ -104,11 +83,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() {
       _nameController.text =
           account[DatabaseHelper.columnFirstName] as String? ?? '';
-      _emailController.text =
-          account[DatabaseHelper.columnEmail] as String? ?? '';
-      _phoneController.text =
-          account[DatabaseHelper.columnPhone] as String? ?? '';
-      photoPath = account[DatabaseHelper.columnProfilePhotoPath] as String?;
       _loadingAccountInfo = false;
     });
   }
@@ -120,64 +94,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  /// D-141: picking/removing a photo only ever changes pending, in-memory
-  /// state — the picked file itself is left in image_picker's own temp
-  /// location (rendered directly for preview) and copied into the app's
-  /// documents directory only once Save is actually tapped, matching the
-  /// three text fields' own deferred-until-Save behavior.
-  Future<void> _pickPhoto() async {
-    final picked = await ImagePicker().pickImage(
-        source: ImageSource.gallery, maxWidth: 1600, imageQuality: 85);
-    if (picked == null || !mounted) return;
-    setState(() {
-      _pendingPhotoFile = File(picked.path);
-      _pendingPhotoRemoval = false;
-    });
-  }
-
-  void _removePhoto() {
-    setState(() {
-      _pendingPhotoFile = null;
-      _pendingPhotoRemoval = true;
-    });
-  }
-
-  /// D-141: the one and only place any of this screen's personal-info
-  /// state is actually written — owner: "it was a little unclear whether
-  /// or not I needed to hit save... make sure that the photo and the
-  /// phone number and information gets persisted when save is clicked."
-  /// Name/email/phone sync to Firestore afterward (one background
-  /// syncAll(), not one per field); the photo is deliberately excluded
-  /// from that sync and stays local-only (see the note rendered on this
-  /// screen, just above the Save button, for why that's surfaced to the
-  /// user directly rather than left as a silent implementation detail).
+  /// D-141: the one and only place this screen's first-name state is written.
   Future<void> _saveProfileInfo() async {
     setState(() => _savingProfileInfo = true);
     await _db.setFirstName(_nameController.text.trim());
-    await _db.setEmail(_emailController.text.trim());
-    await _db.setPhone(_phoneController.text.trim());
-
-    if (_pendingPhotoFile != null) {
-      final dir = await getApplicationDocumentsDirectory();
-      final dest = File('${dir.path}/profile_photo.jpg');
-      await _pendingPhotoFile!.copy(dest.path);
-      await _db.setProfilePhotoPath(dest.path);
-      photoPath = dest.path;
-    } else if (_pendingPhotoRemoval) {
-      final old = photoPath;
-      await _db.setProfilePhotoPath(null);
-      if (old != null) {
-        final file = File(old);
-        if (await file.exists()) await file.delete();
-      }
-      photoPath = null;
-    }
 
     _syncInBackground();
     if (!mounted) return;
     setState(() {
-      _pendingPhotoFile = null;
-      _pendingPhotoRemoval = false;
       _savingProfileInfo = false;
     });
     ScaffoldMessenger.of(context)
@@ -389,44 +313,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _photoAvatar() {
-    final file = _displayedPhotoFile;
-    final hasPhoto = file != null;
-    return Center(
-      child: Column(
-        children: [
-          GestureDetector(
-            onTap: _pickPhoto,
-            child: CircleAvatar(
-              radius: 48,
-              backgroundColor: AppColors.surfaceHigh,
-              backgroundImage: hasPhoto ? FileImage(file) : null,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              TextButton(
-                onPressed: _pickPhoto,
-                child: Text(hasPhoto ? 'Change photo' : 'Add photo',
-                    style: const TextStyle(
-                        fontFamily: 'Exo2', color: AppColors.brandGreen)),
-              ),
-              if (hasPhoto)
-                TextButton(
-                  onPressed: _removePhoto,
-                  child: const Text('Remove',
-                      style: TextStyle(
-                          fontFamily: 'Exo2', color: AppColors.textSecondary)),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -465,42 +351,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           )
                         : Column(
                             children: [
-                              _photoAvatar(),
-                              const SizedBox(height: 20),
                               _infoField(
                                 label: 'FIRST NAME',
                                 controller: _nameController,
                                 capitalization: TextCapitalization.words,
-                              ),
-                              const SizedBox(height: 16),
-                              _infoField(
-                                label: 'EMAIL',
-                                controller: _emailController,
-                                keyboardType: TextInputType.emailAddress,
-                              ),
-                              const SizedBox(height: 16),
-                              _infoField(
-                                label: 'PHONE',
-                                controller: _phoneController,
-                                keyboardType: TextInputType.phone,
-                                inputFormatters: [_PhoneNumberFormatter()],
                               ),
                             ],
                           ),
                   ),
                   if (!_loadingAccountInfo) ...[
                     const SizedBox(height: 14),
-                    // D-141: owner — "it was a little unclear whether or
-                    // not I needed to hit save... if I remember correctly,
-                    // we only store this on the local device" — worth
-                    // stating exactly, since that's only true of the
-                    // photo; name/email/phone actually do sync to the
-                    // account (D-138), matching everything else in the
-                    // app that treats Firestore as the source of truth.
                     const Text(
-                      'Your first name, email, and phone are saved to your '
-                      'account and restored on a new device. Your photo '
-                      'stays on this device only.',
+                      'Your first name is saved to your account and restored '
+                      'on a new device.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                           fontFamily: 'Exo2',
@@ -642,32 +505,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ],
       ),
-    );
-  }
-}
-
-/// D-141: owner — "auto format the phone number into area code and then
-/// hyphenated digits." Formats up to 10 digits as `(XXX) XXX-XXXX` as the
-/// user types; the cursor is always pinned to the end, a deliberate
-/// simplification for a plain reference field with no functional
-/// behavior — mid-string editing isn't worth the added complexity here.
-class _PhoneNumberFormatter extends TextInputFormatter {
-  @override
-  TextEditingValue formatEditUpdate(
-      TextEditingValue oldValue, TextEditingValue newValue) {
-    final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
-    final limited = digits.length > 10 ? digits.substring(0, 10) : digits;
-    final buffer = StringBuffer();
-    for (var i = 0; i < limited.length; i++) {
-      if (i == 0) buffer.write('(');
-      buffer.write(limited[i]);
-      if (i == 2) buffer.write(') ');
-      if (i == 5) buffer.write('-');
-    }
-    final formatted = buffer.toString();
-    return TextEditingValue(
-      text: formatted,
-      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

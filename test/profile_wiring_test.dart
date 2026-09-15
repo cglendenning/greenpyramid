@@ -20,8 +20,7 @@ void main() {
     expect(source, isNot(contains('AiProxy.instance')));
   });
 
-  test('D-089: profile.dart routes both AI actions through ProfileService',
-      () {
+  test('D-089: profile.dart routes both AI actions through ProfileService', () {
     final source = File('lib/screens/profile.dart').readAsStringSync();
     expect(source, contains('ProfileService'));
     expect(source, contains('_profile.regenerateVisionStatement()'));
@@ -36,10 +35,12 @@ void main() {
       'private copy — found live during this same change that this '
       'screen had drifted into duplicating that exact function', () {
     final source = File('lib/screens/profile.dart').readAsStringSync();
-    expect(source, contains("import 'package:life_ops/services/entitlement_gate.dart';"));
+    expect(source,
+        contains("import 'package:life_ops/services/entitlement_gate.dart';"));
     expect(source, contains('PaywallScreen('));
     expect(source, isNot(contains('Future<bool> _ensureEntitled')),
-        reason: 'must use the shared ensureEntitled(), not a private duplicate');
+        reason:
+            'must use the shared ensureEntitled(), not a private duplicate');
     final regenIdx = source.indexOf('_regenerateVisionStatement()');
     final analysisIdx = source.indexOf('_generateProgressAnalysis()');
     final ensureIdx = source.indexOf('ensureEntitled(context');
@@ -56,8 +57,8 @@ void main() {
     final source = File('lib/screens/profile.dart').readAsStringSync();
     final initStateStart = source.indexOf('void initState()');
     final initStateEnd = source.indexOf('\n  }', initStateStart);
-    final initStateBody =
-        source.substring(initStateStart, initStateEnd == -1 ? source.length : initStateEnd);
+    final initStateBody = source.substring(
+        initStateStart, initStateEnd == -1 ? source.length : initStateEnd);
     expect(initStateBody, isNot(contains('_generateProgressAnalysis')));
     expect(initStateBody, isNot(contains('_loadProgressAnalysis')));
   });
@@ -77,23 +78,35 @@ void main() {
     expect(source, contains('pullFromServer'));
   });
 
-  group('D-138: the profile screen collects/edits personal info and uses '
+  group(
+      'D-138 / D-138-AC-04: the profile screen exposes only first name and '
+      'uses '
       'the app\'s standard rotating background', () {
     final source = File('lib/screens/profile.dart').readAsStringSync();
 
-    test('the background is CrossfadingStockImages — the same rotating '
+    test(
+        'D-138-AC-01: the background is CrossfadingStockImages — the same rotating '
         '20-photo treatment every other onboarding-family screen uses, '
-        'replacing this screen\'s own former private 4-image rotation',
-        () {
+        'replacing this screen\'s own former private 4-image rotation', () {
       expect(source, contains('CrossfadingStockImages()'));
       expect(source, isNot(contains('backdropImages')));
     });
 
-    test('first name, email, and phone are all editable, but nothing '
-        'persists outside the shared _saveProfileInfo save action', () {
+    test(
+        'D-138-AC-03: first name is editable, while provider contact fields and personal '
+        'photographs are absent from the profile page', () {
       expect(source, contains('controller: _nameController'));
-      expect(source, contains('controller: _emailController'));
-      expect(source, contains('controller: _phoneController'));
+      expect(source, isNot(contains('_emailController')));
+      expect(source, isNot(contains('_phoneController')));
+      expect(source, isNot(contains('_pickPhoto')));
+      expect(source, isNot(contains('_photoAvatar')));
+      expect(source, isNot(contains('Add photo')));
+      expect(source, isNot(contains('Change photo')));
+      expect(source, isNot(contains('Remove')));
+    });
+
+    test('D-141-AC-01/D-141-AC-02: only first name persists through the profile Save action', () {
+      expect(source, contains('controller: _nameController'));
       expect(source, isNot(contains('Future<void> _saveFirstName')));
       expect(source, isNot(contains('Future<void> _saveEmail')));
       expect(source, isNot(contains('Future<void> _savePhone')));
@@ -101,52 +114,15 @@ void main() {
       final saveEnd = source.indexOf('\n  }', saveStart);
       final saveBody = source.substring(saveStart, saveEnd);
       expect(saveBody, contains('_db.setFirstName'));
-      expect(saveBody, contains('_db.setEmail'));
-      expect(saveBody, contains('_db.setPhone'));
+      expect(saveBody, isNot(contains('_db.setEmail')));
+      expect(saveBody, isNot(contains('_db.setPhone')));
     });
 
-    test('D-141: the phone field auto-formats as (XXX) XXX-XXXX — owner: '
-        '"auto format the phone number into area code and then '
-        'hyphenated digits"', () {
-      expect(source, contains('_PhoneNumberFormatter'));
-      expect(source, contains('inputFormatters: [_PhoneNumberFormatter()]'));
-    });
-
-    test('a photo can be added, changed, and removed, stored as a local '
-        'file path only — never uploaded, matching the owner\'s own '
-        'choice to keep photo storage on-device for now', () {
-      expect(source, contains('_pickPhoto'));
-      expect(source, contains('_removePhoto'));
-      expect(source, contains('_db.setProfilePhotoPath'));
-      expect(source, isNot(contains('firebase_storage')));
-      expect(source, isNot(contains('FirebaseStorage')));
-    });
-
-    test('D-141: nothing is written to the database — not the text '
-        'fields, not the photo — until Save is explicitly tapped; '
-        'picking/removing a photo before that only changes pending, '
-        'in-memory state', () {
-      final pickStart = source.indexOf('Future<void> _pickPhoto');
-      final pickEnd = source.indexOf('\n  }', pickStart);
-      expect(source.substring(pickStart, pickEnd), isNot(contains('_db.set')));
-
-      final removeStart = source.indexOf('void _removePhoto');
-      final removeEnd = source.indexOf('\n  }', removeStart);
-      expect(source.substring(removeStart, removeEnd), isNot(contains('_db.set')));
-
-      final saveStart = source.indexOf('Future<void> _saveProfileInfo');
-      final saveEnd = source.indexOf('\n  }', saveStart);
-      expect(source.substring(saveStart, saveEnd), contains('_syncInBackground()'));
-    });
-
-    test('D-141: an explicit Save button exists, and the screen states '
-        'plainly which fields sync to the account versus stay local — '
-        'only the photo is local-only; name/email/phone do sync', () {
-      expect(source, contains("const Text('Save')"));
-      expect(source, contains('onPressed: _savingProfileInfo ? null : _saveProfileInfo'));
-      expect(source, contains('are saved to your'));
-      expect(source, contains('restored on a new device'));
-      expect(source, contains('stays on this device only'));
+    test('D-138-AC-04/D-141-AC-03: nothing personal besides first name is described as profile-editable',
+        () {
+      expect(source, contains('Your first name is saved to your account'));
+      expect(source, isNot(contains('Your first name, email, and phone')));
+      expect(source, isNot(contains('stays on this device only')));
     });
   });
 }
