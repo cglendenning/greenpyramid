@@ -22,6 +22,11 @@ test('D-149: a UTC user at 09:10 is still in the window (within the job '
   assert.ok(isNotificationWindow('UTC', now));
 });
 
+test('D-149-AC-02: a run before a slot never dispatches early', () => {
+  const now = new Date('2026-06-15T08:50:00Z');
+  assert.ok(!isNotificationWindow('UTC', now));
+});
+
 test('D-149: a UTC user at 09:20 has missed the window', () => {
   const now = new Date('2026-06-15T09:20:00Z');
   assert.ok(!isNotificationWindow('UTC', now));

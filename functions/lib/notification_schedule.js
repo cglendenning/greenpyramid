@@ -43,8 +43,10 @@ export function isNotificationWindow(timezone, now = new Date()) {
   const minutesOfDay = hour * 60 + minute;
   return DAILY_SLOTS.some((slot) => {
     const target = slot.hour * 60 + slot.minute;
-    const diff = Math.abs(minutesOfDay - target);
-    return diff < SCHEDULE_INTERVAL_MINUTES;
+    // The scheduler's tolerance is forward-looking. Using an absolute
+    // difference would incorrectly send at 08:50 for a 09:00 slot.
+    const elapsed = minutesOfDay - target;
+    return elapsed >= 0 && elapsed < SCHEDULE_INTERVAL_MINUTES;
   });
 }
 
