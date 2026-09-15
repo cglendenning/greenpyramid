@@ -74,6 +74,7 @@ test('D-054: a malformed event (missing type or app_user_id) is a no-op, '
   assert.equal(await applyRevenueCatEvent(null, store), null);
 });
 
+// D-146-AC-06
 test('D-135: replayed and out-of-order events do not overwrite newer state', async () => {
   const store = new FakeFirestore();
   assert.equal(await applyRevenueCatEvent({ id: 'new', type: 'INITIAL_PURCHASE', app_user_id: 'u1', event_timestamp_ms: 20 }, store), 'subscribed');

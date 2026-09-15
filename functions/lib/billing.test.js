@@ -111,6 +111,7 @@ test('D-146/D-061: committed spend plus outstanding reservations cannot exceed c
   await assert.rejects(() => reserveCost('u1', 'claude-opus-5', 1000, 1000, 'r1', store, jan), SpendLimitError);
 });
 
+// D-146-AC-05
 test('D-146: settlement commits actual usage and releases unused reservation exactly once', async () => {
   const store = new FakeFirestore();
   await reserveCost('u1', 'claude-haiku-4-5', 100_000, 1000, 'r1', store, jan);
