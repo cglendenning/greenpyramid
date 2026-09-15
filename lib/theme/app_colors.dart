@@ -20,4 +20,7 @@ class AppColors {
 
   static const Color textPrimary = Color(0xFFF2F2F5);
   static const Color textSecondary = Color(0xFFB4B4BE);
+  static const Color error = Color(0xFFFF8A8A);
+  static const Color borderSubtle = Color(0x332F323D);
+  static const Color scrim = Color(0x66000000);
 }
