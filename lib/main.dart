@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:life_ops/screens/batch_checkin_screen.dart';
+import 'package:life_ops/screens/paywall_screen.dart';
 import 'package:life_ops/screens/homescreen.dart';
 import 'package:life_ops/screens/database_recovery_screen.dart';
 import 'package:life_ops/services/notification.dart';
@@ -26,6 +27,7 @@ import 'package:life_ops/services/push_messaging_service.dart';
 import 'package:life_ops/services/subscription_service.dart';
 import 'package:life_ops/services/entitlement_service.dart';
 import 'package:life_ops/services/council_service.dart';
+import 'package:life_ops/services/council_client.dart';
 
 // Forces the App Check *debug* provider even in a release/OTA build, so a
 // sideloaded test build can authenticate with a registered debug token.
@@ -83,22 +85,61 @@ String? pushTapPayloadFrom(Map<String, dynamic> data) {
 /// duplicating that navigation here. A message of any other/unknown type
 /// is silently ignored.
 void handlePushTap(RemoteMessage message) {
+  final accountUid = message.data['accountUid'];
+  if (accountUid is! String || accountUid.isEmpty ||
+      FirebaseAuth.instance.currentUser?.uid != accountUid) {
+    // D-149-AC-04: a stale or cross-account payload must not open content.
+    return;
+  }
+  final messageKey = message.data['messageKey'];
+  if (messageKey is String) {
+    unawaited(CouncilClient.instance.markInboxRead(messageKey).catchError((_) => <String, dynamic>{}));
+  }
   switch (message.data['type']) {
     case 'batch_checkin':
-      final habitsJson = message.data['habits'];
-      if (habitsJson == null) return;
-      try {
-        final habits =
-            (jsonDecode(habitsJson) as List).cast<Map<String, dynamic>>();
-        navigatorKey.currentState?.push(MaterialPageRoute(
-            builder: (_) => BatchCheckinScreen(habits: habits)));
-      } catch (e, st) {
-        debugPrint('Failed to open BatchCheckinScreen from a push: $e\n$st');
-      }
+      unawaited(_openBatchCheckinFromPush(message.data));
       break;
     case 'tailored':
       LocalNotificationService().onNotificationClick.add('/');
       break;
+    case 'upgrade':
+      navigatorKey.currentState?.push(MaterialPageRoute(
+          builder: (_) => const PaywallScreen(reason: 'notification')));
+  }
+}
+
+Future<void> _openBatchCheckinFromPush(Map<String, dynamic> data) async {
+  final rawIds = data['habitIds'] as String?;
+  Set<String>? ids;
+  if (rawIds != null) {
+    try {
+      final decoded = jsonDecode(rawIds);
+      ids = decoded is List
+          ? decoded.map((id) => id.toString()).toSet()
+          : rawIds.split(',').where((id) => id.isNotEmpty).toSet();
+    } catch (_) {
+      ids = rawIds.split(',').where((id) => id.isNotEmpty).toSet();
+    }
+  }
+  final resolvedIds = ids;
+  if (resolvedIds == null || resolvedIds.isEmpty) return;
+  try {
+    final tasks = await DatabaseHelper.instance.queryAllTasks();
+    final habits = tasks.where((task) => resolvedIds.contains(task['id']?.toString())).map((task) => {
+          'id': task['id']?.toString() ?? '',
+          'category': task['category'],
+          'description': task['taskdescription'],
+          'scheduledtime': task['scheduledtime'],
+        }).toList();
+    if (habits.isEmpty) return; // deleted habits are harmless.
+    final occurrenceDate = DateTime.tryParse(data['occurrenceDate'] as String? ?? '');
+    navigatorKey.currentState?.push(MaterialPageRoute(
+        builder: (_) => BatchCheckinScreen(
+              habits: habits,
+              occurrenceDate: occurrenceDate,
+            )));
+  } catch (e, st) {
+    debugPrint('Failed to open BatchCheckinScreen from a push: $e\n$st');
   }
 }
 

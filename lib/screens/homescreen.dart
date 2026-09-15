@@ -16,6 +16,7 @@ import 'package:life_ops/screens/settings.dart';
 import 'package:life_ops/screens/welcome_screen.dart';
 import 'package:life_ops/screens/general_council_screen.dart';
 import 'package:life_ops/screens/newsfeed_screen.dart';
+import 'package:life_ops/screens/notification_inbox_screen.dart';
 import 'package:life_ops/screens/paywall_screen.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:life_ops/screens/feedback_screen.dart';
@@ -207,7 +208,7 @@ class _HomeScreen extends State<HomeScreenWidget> {
       // before belonged to the abandoned anonymous account.
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid != null) {
-        await SyncService.instance.restoreFromCloud(uid);
+        await SyncService.instance.replaceLocalCacheFromCloud(uid);
       }
     }
     if (!mounted) return;
@@ -436,6 +437,9 @@ class CustomAppBarState extends State<CustomAppBar> {
           case 'newsfeed':
             navigateToNewsfeed(context);
             break;
+          case 'inbox':
+            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationInboxScreen()));
+            break;
           case 'philosophy':
             navigateToPhilosophy(context);
             break;
@@ -476,6 +480,10 @@ class CustomAppBarState extends State<CustomAppBar> {
           const PopupMenuItem<String>(
             value: 'newsfeed',
             child: Text('Your Newsfeed'),
+          ),
+          const PopupMenuItem<String>(
+            value: 'inbox',
+            child: Text('Notification inbox'),
           ),
           const PopupMenuItem<String>(
             value: 'philosophy',

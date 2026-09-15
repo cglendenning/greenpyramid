@@ -49,8 +49,9 @@ class _HabitCheckin {
 /// of Green Pyramid's editing screens already work.
 class BatchCheckinScreen extends StatefulWidget {
   final List<Map<String, dynamic>> habits;
+  final DateTime? occurrenceDate;
 
-  const BatchCheckinScreen({required this.habits, super.key});
+  const BatchCheckinScreen({required this.habits, this.occurrenceDate, super.key});
 
   @override
   State<BatchCheckinScreen> createState() => _BatchCheckinScreenState();
@@ -84,7 +85,7 @@ class _BatchCheckinScreenState extends State<BatchCheckinScreen> {
     await _dbHelper.recordBatchCheckinResult(
       category: row.category,
       taskDescription: row.description,
-      taskDate: _dateFmt.format(DateTime.now()),
+      taskDate: _dateFmt.format(widget.occurrenceDate ?? DateTime.now()),
       checked: true,
     );
     if (!mounted) return;

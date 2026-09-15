@@ -33,7 +33,10 @@ service cloud.firestore {
         'additionalCapUsd', 'totalSpendUsd', 'spendMonthKey',
         'spendByMonth', 'spendReservations', 'deliveryState',
         'deliveryClaim', 'deliveryClaimedAt', 'deliveredAt',
-        'model', 'modelConfiguration'
+        'model', 'modelConfiguration', 'installationId', 'uid', 'token',
+        'enabled', 'timezone', 'revision', 'updatedAt', 'messageKey',
+        'type', 'occurrenceDate', 'habitIds', 'title', 'body', 'read',
+        'readAt', 'createdAt', 'claimedAt', 'state'
       ]) == false;
     }
 
@@ -46,7 +49,10 @@ service cloud.firestore {
           'additionalCapUsd', 'totalSpendUsd', 'spendMonthKey',
           'spendByMonth', 'spendReservations', 'deliveryState',
           'deliveryClaim', 'deliveryClaimedAt', 'deliveredAt',
-          'model', 'modelConfiguration'
+          'model', 'modelConfiguration', 'installationId', 'uid', 'token',
+          'enabled', 'timezone', 'revision', 'updatedAt', 'messageKey',
+          'type', 'occurrenceDate', 'habitIds', 'title', 'body', 'read',
+          'readAt', 'createdAt', 'claimedAt', 'state'
         ]) == false;
       allow update: if isOwner(uid) && changesOnlyUserOwnedFields();
     }

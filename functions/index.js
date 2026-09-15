@@ -26,7 +26,7 @@ import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatem
 import { buildProgressAnalysisPrompt } from './lib/progress_analysis.js';
 import { buildNewsfeedAnalysisPrompt, parseArticleReply } from './lib/newsfeed_analysis.js';
 import { isEligibleForTailoredNotification } from './lib/notification_schedule.js';
-import { batchCheckinOccurrence, shouldSendBatchCheckin } from './lib/batch_checkin_schedule.js';
+import { batchCheckinOccurrence, localDateParts, shouldSendBatchCheckin } from './lib/batch_checkin_schedule.js';
 import { buildNotificationPrompt, NOTIFICATION_TOOL } from './lib/notification_derivation.js';
 import { requireEntitlement, EntitlementRequiredError } from './lib/entitlement.js';
 import { grantTrialIfEligible, grantMigrationTrial, DeviceTrialError } from './lib/device_trial.js';
@@ -34,7 +34,7 @@ import { applyRevenueCatEvent, verifyWebhookAuth } from './lib/revenuecat_webhoo
 import { buildAdminMetrics } from './lib/admin_metrics.js';
 import { applySyncRequest, restoreAccount } from './lib/sync_operations.js';
 import { cleanupAnonymousAccounts } from './lib/anonymous_cleanup.js';
-import { claimNotificationDispatch, markInboxRead, notificationMessageKey, registerInstallation } from './lib/notification_delivery.js';
+import { claimNotificationDispatch, markInboxRead, notificationMessageKey, registerInstallation, upsertInboxItem } from './lib/notification_delivery.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -740,6 +740,9 @@ export const api = onRequest(
 // assemble it.
 async function sendTailoredNotification(uid, profileData) {
   const db = admin.firestore();
+  const now = new Date();
+  const local = localDateParts(profileData.timezone, now);
+  const slot = `${String(local.hour).padStart(2, '0')}:00`;
   const categories = (profileData.categories || []).map((c) => ({
     name: c.cat,
     tier: c.position <= 3 ? 1 : c.position <= 5 ? 2 : 3,
@@ -778,6 +781,10 @@ async function sendTailoredNotification(uid, profileData) {
   const toolUse = msg.content.find((b) => b.type === 'tool_use');
   if (!toolUse) throw new Error('no_tool_use_in_response');
   const { title, body } = toolUse.input;
+  const messageKey = notificationMessageKey({
+    type: 'tailored', occurrenceDate: local.dateString, slot,
+  });
+  if (!await claimNotificationDispatch(db, uid, messageKey, now)) return;
 
   recordCost(uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
       .catch((e) => console.error('recordCost error:', e.message));
@@ -790,23 +797,32 @@ async function sendTailoredNotification(uid, profileData) {
     lastNotificationAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
 
-  const fcmToken = profileData.fcmToken;
-  if (!fcmToken) {
-    console.log(`notificationJob: ${uid} has no fcmToken registered — relying on the client's local fallback.`);
+  await upsertInboxItem(db, uid, {
+    messageKey,
+    type: 'tailored',
+    occurrenceDate: local.dateString,
+    habitIds: [],
+    title,
+    body,
+  }, now);
+
+  const installationSnap = await db.collection('users').doc(uid)
+      .collection('installations').where('enabled', '==', true).get();
+  const installations = installationSnap.docs.map((doc) => doc.data())
+      .filter((installation) => installation.token);
+  if (installations.length === 0) {
+    console.log(`notificationJob: ${uid} has no enabled installation — inbox/local fallback remains available.`);
     return;
   }
 
   try {
-    // D-066 amendment / Phase 6 fix (2026-09-10): this send previously
-    // carried no `data` field at all — the reason a tap on a real
-    // tailored push had nothing to route on. `type: 'tailored'` is all a
-    // tap handler needs here; unlike batchCheckinJob's push there's no
-    // per-notification payload to carry, since every tailored
-    // notification's destination is the same (the pyramid tab).
-    await admin.messaging().send({
-      token: fcmToken,
+    await admin.messaging().sendEachForMulticast({
+      tokens: installations.map((installation) => installation.token),
       notification: { title, body },
-      data: { type: 'tailored' },
+      data: {
+        type: 'tailored', messageKey, accountUid: uid,
+        occurrenceDate: local.dateString, habitIds: '[]',
+      },
     });
   } catch (e) {
     // D-149: a delivery failure is logged and surfaced, never swallowed —
@@ -918,19 +934,31 @@ async function maybeSendBatchCheckin(uid, profileData, now) {
     lastBatchCheckinHabits: habits,
   }, { merge: true });
 
-  const fcmToken = profileData.fcmToken;
-  if (!fcmToken) {
-    console.log(`batchCheckinJob: ${uid} has no fcmToken registered — nothing to send.`);
-    return;
-  }
-
   const body = habits.length === 1
     ? `${habits[0].description} — how did it go?`
     : `${habits.length} habits scheduled today — how did they go?`;
 
+  await upsertInboxItem(db, uid, {
+    messageKey,
+    type: 'batch_checkin',
+    occurrenceDate: dateString,
+    habitIds: habits.map((habit) => String(habit.id)),
+    title: 'Did you do it?',
+    body,
+  }, now);
+
+  const installationSnap = await db.collection('users').doc(uid)
+      .collection('installations').where('enabled', '==', true).get();
+  const installations = installationSnap.docs.map((doc) => doc.data())
+      .filter((installation) => installation.token);
+  if (installations.length === 0) {
+    console.log(`batchCheckinJob: ${uid} has no enabled installation — inbox/local fallback remains available.`);
+    return;
+  }
+
   try {
-    await admin.messaging().send({
-      token: fcmToken,
+    await admin.messaging().sendEachForMulticast({
+      tokens: installations.map((installation) => installation.token),
       notification: { title: 'Did you do it?', body },
       // D-066's amendment noted real FCM pushes carry no `data` field at
       // all today — this is the first push that needs one, so it's added
