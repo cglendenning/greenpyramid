@@ -2,6 +2,9 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkSpendLimit, recordCost, reserveCost, settleCost, releaseCost, SpendLimitError, UnknownModelPricingError, DEFAULT_SPEND_CAP_USD, MODEL_RATES } from './billing.js';
 
+// D-149-AC-05: provider reservation settlement and safe release behavior
+// underpin article-generation failure handling.
+
 // Minimal in-memory Firestore fake — just enough surface for billing.js:
 // collection().doc().collection().doc(), get/set(merge), and runTransaction.
 class FakeDoc {

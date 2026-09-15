@@ -1,6 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/services/push_messaging_service.dart';
 
+// D-149-AC-01 and D-149-AC-04: fallback decisions and account-safe
+// notification delivery behavior are exercised below.
+
 void main() {
   group('D-149/D-149/D-021: notification fallback decision', () {
     test('D-021: a lapsed account always gets the static pool, even with '

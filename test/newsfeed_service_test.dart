@@ -5,6 +5,9 @@ import 'package:life_ops/services/ai_guard.dart';
 import 'package:life_ops/services/council_client.dart';
 import 'package:life_ops/services/db.dart';
 import 'package:life_ops/services/newsfeed_service.dart';
+
+// D-149-AC-05: article-generation failures remain visible/actionable for
+// on-demand requests while background failures do not interrupt tracking.
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:shared_preferences/shared_preferences.dart';
