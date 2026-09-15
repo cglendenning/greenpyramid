@@ -32,6 +32,7 @@ import { requireEntitlement, EntitlementRequiredError } from './lib/entitlement.
 import { grantTrialIfEligible, grantMigrationTrial, DeviceTrialError } from './lib/device_trial.js';
 import { applyRevenueCatEvent, verifyWebhookAuth } from './lib/revenuecat_webhook.js';
 import { buildAdminMetrics } from './lib/admin_metrics.js';
+import { applySyncRequest, restoreAccount } from './lib/sync_operations.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -101,7 +102,8 @@ async function requireAdmin(req, res, next) {
     if (decoded.admin !== true) return res.status(403).json({ error: 'admin_required' });
     req.uid = decoded.uid;
     next();
-  } catch {
+  } catch (error) {
+    console.error('admin auth verification failed:', error?.code, error?.message);
     res.status(401).json({ error: 'authentication_required' });
   }
 }
@@ -187,6 +189,30 @@ app.post('/revenuecatWebhook', async (req, res) => {
 });
 
 app.use(requireAppCheck);
+
+// D-147: all durable writes go through authenticated, transactional operation
+// processing.  The uid is taken from the verified token, never the payload.
+app.post('/syncOperations', requireFirebaseAuth, async (req, res) => {
+  try {
+    ensureAdmin();
+    res.json(await applySyncRequest(admin.firestore(), req.uid, req.body));
+  } catch (e) {
+    const status = /invalid|conflict/.test(e.message) ? 400 : 500;
+    console.error('syncOperations error:', e.message);
+    res.status(status).json({ error: e.message === 'operation_payload_conflict' ? e.message : status === 500 ? 'service_unavailable' : e.message });
+  }
+});
+
+app.post('/restoreAccount', requireFirebaseAuth, async (req, res) => {
+  try {
+    ensureAdmin();
+    res.json(await restoreAccount(admin.firestore(), req.uid, req.body));
+  } catch (e) {
+    const status = /invalid/.test(e.message) ? 400 : 500;
+    console.error('restoreAccount error:', e.message);
+    res.status(status).json({ error: status === 500 ? 'service_unavailable' : e.message });
+  }
+});
 
 // OpenAI-compatible chat-completions passthrough: the app sends the same body
 // it would send to OpenAI; we attach the real key here and forward.
