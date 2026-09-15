@@ -38,6 +38,7 @@ import { claimNotificationDispatch, completeNotificationDispatch, failNotificati
 import { evaluateIntervention } from './lib/intervention_engine.js';
 import { appendBehavioralEvents } from './lib/behavioral_event_store.js';
 import { revalidateIntervention } from './lib/intervention_lifecycle.js';
+import { renderIntervention } from './lib/intervention_renderer.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -255,6 +256,22 @@ app.post('/behavioralEvents', requireFirebaseAuth, async (req, res) => {
     const status = /invalid|duplicate|conflict/.test(e.message) ? 400 : 500;
     console.error('behavioralEvents error:', e.message);
     res.status(status).json({ error: status === 500 ? 'service_unavailable' : e.message });
+  }
+});
+
+// D-159: rendering is account-scoped and consumes a stored semantic decision;
+// request data can supply copy, but never a new intervention type or target.
+app.post('/renderIntervention', requireFirebaseAuth, async (req, res) => {
+  try {
+    ensureAdmin();
+    const ref = admin.firestore().collection('users').doc(req.uid)
+        .collection('interventionDecisions').doc(req.body?.decisionId);
+    const snap = await ref.get();
+    if (!snap.exists) return res.status(404).json({ error: 'decision_not_found' });
+    res.json(renderIntervention(snap.data(), { modelCopy: req.body?.modelCopy }));
+  } catch (e) {
+    console.error('renderIntervention error:', e.message);
+    res.status(400).json({ error: 'render_invalid' });
   }
 });
 
