@@ -383,7 +383,23 @@ class _SimulationScreenState extends State<SimulationScreen> {
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const Text('Sandbox only. No production data is read or written.'),
+          const Text(
+            'Sandbox only. No production data is read or written. The simulator '
+            'creates synthetic daily check-ins, runs the same intervention '
+            'policy used in production, and reports what the policy and delivery '
+            'layer would do over virtual time.',
+          ),
+          const SizedBox(height: 16),
+          const _ExplanationCard(
+            title: 'What this tests',
+            body:
+                'Each selected scenario supplies a different synthetic pattern '
+                'of completed and missed check-ins. Every virtual day is evaluated '
+                'by the intervention engine, which compares doing nothing with a '
+                'bounded reminder. This tests detection, deterministic policy '
+                'selection, delivery failures, and the resulting audit timeline; '
+                'it does not test real people, notifications, or production data.',
+          ),
           const SizedBox(height: 16),
           DropdownButtonFormField<int>(
             initialValue: months,
@@ -396,12 +412,20 @@ class _SimulationScreenState extends State<SimulationScreen> {
                 ? null
                 : (value) => setState(() => months = value ?? 6),
           ),
+          const Text(
+            'One virtual month is 30 simulated days. The limit is six months so '
+            'a run finishes quickly and remains easy to inspect.',
+          ),
           const SizedBox(height: 12),
           TextField(
             controller: seedController,
             enabled: !running,
             keyboardType: TextInputType.number,
             decoration: const InputDecoration(labelText: 'Deterministic seed'),
+          ),
+          const Text(
+            'The seed chooses the repeatable pseudo-random check-in pattern. '
+            'The same seed and settings produce the same report.',
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
@@ -423,8 +447,17 @@ class _SimulationScreenState extends State<SimulationScreen> {
                 ? null
                 : (value) => setState(() => failureMode = value ?? 'default'),
           ),
+          const Text(
+            'Default deterministic failures makes every 17th simulated delivery '
+            'fail. Disable delivery failures isolates policy decisions from the '
+            'delivery-failure path.',
+          ),
           const SizedBox(height: 16),
           const Text('Scenarios'),
+          const Text(
+            'Select the synthetic behavior patterns to compare. Each is a '
+            'controlled test case, not a diagnosis of a real user.',
+          ),
           Wrap(
             spacing: 8,
             children: requiredScenarios
@@ -443,6 +476,8 @@ class _SimulationScreenState extends State<SimulationScreen> {
                 )
                 .toList(),
           ),
+          const SizedBox(height: 8),
+          const _ScenarioGuide(),
           const SizedBox(height: 20),
           FilledButton.icon(
             onPressed: running ? null : run,
@@ -475,7 +510,21 @@ class _SimulationScreenState extends State<SimulationScreen> {
               ],
             ),
             Text(
-              '${report!['virtualMonths']} virtual months · ${report!['virtualDays']} days · sandbox',
+              '${report!['virtualMonths']} virtual months · ${report!['virtualDays']} days · '
+              'seed ${report!['seed']} · ${report!['failureMode']} · sandbox',
+            ),
+            const SizedBox(height: 8),
+            const _ExplanationCard(
+              title: 'How to read the results',
+              body:
+                  'Evaluations is the number of virtual days assessed. Delivered '
+                  'counts interventions whose delivery succeeded. Failed counts '
+                  'simulated delivery failures. NONE means the deterministic '
+                  'utility policy chose no intervention—usually because completion '
+                  'was already strong, there was not enough history, or recent '
+                  'interventions made the reminder burden too high. The JSON also '
+                  'includes the timeline, baseline, candidates, burden, safety '
+                  'bound, and selectionMode (deterministic_utility) for audit detail.',
             ),
             ...scenarios.map((scenario) {
               final metrics = scenario['metrics'] as Map<String, dynamic>;
@@ -483,9 +532,9 @@ class _SimulationScreenState extends State<SimulationScreen> {
                 child: ListTile(
                   title: Text(scenario['name'] as String),
                   subtitle: Text(
-                    '${metrics['evaluations']} evaluations · ${metrics['delivered']} delivered · ${metrics['failedDelivery']} failed',
+                    '${metrics['evaluations']} evaluations · ${metrics['delivered']} delivered · '
+                    '${metrics['failedDelivery']} failed deliveries · ${metrics['none']} NONE decisions',
                   ),
-                  trailing: Text('${metrics['none']} NONE'),
                 ),
               );
             }),
@@ -494,6 +543,54 @@ class _SimulationScreenState extends State<SimulationScreen> {
       ),
     );
   }
+}
+
+class _ExplanationCard extends StatelessWidget {
+  const _ExplanationCard({required this.title, required this.body});
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 6),
+          Text(body),
+        ],
+      ),
+    ),
+  );
+}
+
+class _ScenarioGuide extends StatelessWidget {
+  const _ScenarioGuide();
+
+  static const descriptions = <String, String>{
+    'autonomous': 'Always completes check-ins; tests the no-intervention path.',
+    'responsive': 'Improves after early misses; tests recovery and response.',
+    'fatigue':
+        'Becomes less consistent after day 45; tests declining adherence.',
+    'sequence': 'Misses every fourth day; tests a repeating pattern.',
+    'changing': 'Becomes harder after day 60; tests changing circumstances.',
+    'difficult': 'Usually misses check-ins; tests a difficult baseline.',
+    'mature': 'Improves after day 20; tests a maturing practice.',
+  };
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      for (final name in requiredScenarios)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 5),
+          child: Text('$name — ${descriptions[name]}'),
+        ),
+    ],
+  );
 }
 
 class SimulationException implements Exception {
