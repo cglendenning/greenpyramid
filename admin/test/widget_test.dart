@@ -10,5 +10,7 @@ void main() {
     expect(source, contains('Product pulse'));
     expect(source, contains('Screen utilization'));
     expect(source, contains('Top users by spend'));
+    expect(source, contains('RefreshIndicator'));
+    expect(source, contains('AlwaysScrollableScrollPhysics'));
   });
 }
