@@ -45,10 +45,22 @@ class _AdminGateState extends State<AdminGate> {
   Future<void> signIn() async {
     try {
       await FirebaseAuth.instance.signInWithProvider(AppleAuthProvider());
-      if (mounted) setState(() => error = null);
+      final token = await FirebaseAuth.instance.currentUser!.getIdToken(true);
+      if (token == null) throw StateError('missing_id_token');
+      if (mounted) {
+        setState(() {
+          error = null;
+          metricsFuture = _load();
+        });
+      }
     } catch (_) {
       if (mounted) setState(() => error = 'Sign in could not be completed.');
     }
+  }
+
+  Future<void> signOutAndRetry() async {
+    await FirebaseAuth.instance.signOut();
+    if (mounted) setState(() => error = null);
   }
 
   @override
@@ -74,8 +86,26 @@ class _AdminGateState extends State<AdminGate> {
       future: metricsFuture,
       builder: (context, snap) {
         if (snap.hasError) {
-          return const Scaffold(
-            body: Center(child: Text('Admin access is unavailable.')),
+          return Scaffold(
+            body: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Admin access is unavailable.'),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${snap.error}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  const SizedBox(height: 12),
+                  FilledButton(
+                    onPressed: signOutAndRetry,
+                    child: const Text('Sign out and sign in again'),
+                  ),
+                ],
+              ),
+            ),
           );
         }
         if (!snap.hasData) {
@@ -95,12 +125,15 @@ class _AdminGateState extends State<AdminGate> {
   }
 
   Future<Map<String, dynamic>> _load() async {
-    final token = await FirebaseAuth.instance.currentUser!.getIdToken();
+    final user = FirebaseAuth.instance.currentUser!;
+    final token = await user.getIdToken(true);
     final r = await http.get(
       Uri.parse('$apiBase/adminMetrics'),
       headers: {'Authorization': 'Bearer $token'},
     );
-    if (r.statusCode != 200) throw Exception('admin_metrics_${r.statusCode}');
+    if (r.statusCode != 200) {
+      throw Exception('admin_metrics_${r.statusCode} uid=${user.uid}');
+    }
     return jsonDecode(r.body) as Map<String, dynamic>;
   }
 }
