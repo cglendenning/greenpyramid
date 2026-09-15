@@ -45,6 +45,10 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Flutter/Gradle may also place native intermediates directly under the
+# Android project build directory. Nothing there is source-controlled.
+/android/build/
+
 /ios/build
 
 lib/services/secrets.dart
