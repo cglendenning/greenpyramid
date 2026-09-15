@@ -24,6 +24,25 @@ function inboxRef(store, uid, messageKey) {
   return store.collection('users').doc(uid).collection('inbox').doc(id);
 }
 
+function dispatchRef(store, uid, messageKey) {
+  const id = createHash('sha256').update(messageKey).digest('hex');
+  return store.collection('users').doc(uid).collection('notificationClaims').doc(id);
+}
+
+/** Atomically claims one logical notification. Retries return false. */
+export async function claimNotificationDispatch(store, uid, messageKey, now = new Date()) {
+  if (typeof messageKey !== 'string' || messageKey.length === 0 || messageKey.length > 256) {
+    throw new NotificationDeliveryError('message_key_invalid');
+  }
+  const ref = dispatchRef(store, uid, messageKey);
+  return store.runTransaction(async (tx) => {
+    const existing = await tx.get(ref);
+    if (existing.exists) return false;
+    tx.set(ref, { uid, messageKey, state: 'claimed', claimedAt: now });
+    return true;
+  });
+}
+
 export async function registerInstallation(store, uid, request, now = new Date()) {
   requireUuid(request?.requestId, 'request_id');
   requireUuid(request?.installationId, 'installation_id');

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { markInboxRead, notificationMessageKey, registerInstallation, upsertInboxItem } from './notification_delivery.js';
+import { claimNotificationDispatch, markInboxRead, notificationMessageKey, registerInstallation, upsertInboxItem } from './notification_delivery.js';
 
 class Ref {
   constructor(store, path) { this.store = store; this.path = path; }
@@ -57,4 +57,14 @@ test('D-149-AC-03: inbox upsert is idempotent by stable message key', async () =
 test('D-149-AC-01: marking an unknown inbox key still acknowledges safely', async () => {
   const store = new Store();
   assert.deepEqual(await markInboxRead(store, 'u', { requestId, messageKey: 'missing' }), { requestId, acknowledged: true });
+});
+
+test('D-149-AC-03: concurrent retries claim one logical dispatch', async () => {
+  const store = new Store();
+  const key = notificationMessageKey({ type: 'batch_checkin', occurrenceDate: '2026-09-15', habitIds: ['h1'] });
+  const claims = await Promise.all([
+    claimNotificationDispatch(store, 'u', key),
+    claimNotificationDispatch(store, 'u', key),
+  ]);
+  assert.deepEqual(claims.sort(), [false, true]);
 });

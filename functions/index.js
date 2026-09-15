@@ -34,7 +34,7 @@ import { applyRevenueCatEvent, verifyWebhookAuth } from './lib/revenuecat_webhoo
 import { buildAdminMetrics } from './lib/admin_metrics.js';
 import { applySyncRequest, restoreAccount } from './lib/sync_operations.js';
 import { cleanupAnonymousAccounts } from './lib/anonymous_cleanup.js';
-import { markInboxRead, registerInstallation } from './lib/notification_delivery.js';
+import { claimNotificationDispatch, markInboxRead, notificationMessageKey, registerInstallation } from './lib/notification_delivery.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -901,6 +901,14 @@ async function maybeSendBatchCheckin(uid, profileData, now) {
   const habits = todaysScheduledHabits(tasks, weekday);
   if (habits.length === 0) return; // defensive — shouldSendBatchCheckin already checked this.
 
+  const messageKey = notificationMessageKey({
+    type: 'batch_checkin',
+    occurrenceDate: dateString,
+    habitIds: habits.map((habit) => String(habit.id)),
+  });
+  const claimed = await claimNotificationDispatch(db, uid, messageKey, now);
+  if (!claimed) return;
+
   // D-099: the payload the batch check-in screen renders from, not a
   // fresh query — so what the user sees on tap matches what the push was
   // actually about even if the pyramid changes in between. Also the
@@ -929,8 +937,10 @@ async function maybeSendBatchCheckin(uid, profileData, now) {
       // here rather than for every push type at once.
       data: {
         type: 'batch_checkin',
-        date: dateString,
-        habits: JSON.stringify(habits),
+        messageKey,
+        accountUid: uid,
+        occurrenceDate: dateString,
+        habitIds: JSON.stringify(habits.map((habit) => String(habit.id))),
       },
     });
   } catch (e) {
