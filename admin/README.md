@@ -13,7 +13,21 @@ await admin.auth().setCustomUserClaims(uid, { admin: true });
 ```
 
 The backend rejects every authenticated user without that claim. The app reads
-only `/adminMetrics`; it cannot mutate product data.
+`/adminMetrics` and submits simulation parameters to `/adminSimulation`; it
+cannot mutate product data or select a project for simulation. The CLI uses the
+same `/adminSimulation` endpoint and request shape. To run it against the
+deployed service, provide an ID token for an account with the `admin: true`
+custom claim:
+
+```sh
+FIREBASE_ID_TOKEN="<fresh Firebase ID token>" \
+  node functions/bin/simulate-behavior.js \
+  --months=6 --seed=1 --scenarios=autonomous,fatigue --failure-mode=default
+```
+
+Use `--endpoint=http://127.0.0.1:5001/<project>/us-central1/api/adminSimulation`
+for a local Functions emulator. The endpoint always executes against the
+server-defined sandbox target.
 
 A new Flutter project.
 
