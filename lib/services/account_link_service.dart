@@ -11,6 +11,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'auth_service.dart';
 import 'sync_service.dart';
 import 'telemetry_service.dart';
+import 'push_messaging_service.dart';
 
 /// D-148: thin wrapper around the two native sign-in SDKs, kept separate
 /// from [AuthService] because AuthService is deliberately UI/SDK-agnostic
@@ -18,16 +19,21 @@ import 'telemetry_service.dart';
 /// `sign_in_with_apple` and `google_sign_in` directly.
 class AccountLinkService {
   AccountLinkService(
-      {FirebaseAuth? auth, AuthService? authService, SyncService? sync})
+      {FirebaseAuth? auth,
+      AuthService? authService,
+      SyncService? sync,
+      PushMessagingService? push})
       : _auth = auth ?? FirebaseAuth.instance,
         _authService = authService ?? AuthService.instance,
-        _syncOverride = sync;
+        _syncOverride = sync,
+        _pushOverride = push;
 
   static final AccountLinkService instance = AccountLinkService();
 
   final FirebaseAuth _auth;
   final AuthService _authService;
   final SyncService? _syncOverride;
+  final PushMessagingService? _pushOverride;
 
   // Resolved lazily, not in the constructor: SyncService.instance touches
   // FirebaseFirestore.instance immediately, which throws in a unit test
@@ -35,6 +41,8 @@ class AccountLinkService {
   // that resolution before signOut() actually needs it (and there, only
   // inside the try/catch that already tolerates the failure).
   SyncService get _sync => _syncOverride ?? SyncService.instance;
+  PushMessagingService get _push =>
+      _pushOverride ?? PushMessagingService.instance;
 
   // D-140: found live — "Continue with Google" threw a raw
   // PlatformException on iOS. google_sign_in 7.x's own doc comment on
@@ -168,6 +176,12 @@ class AccountLinkService {
       } catch (e, st) {
         debugPrint('AccountLinkService: pre-sign-out sync failed, '
             'proceeding with sign-out regardless: $e\n$st');
+      }
+      try {
+        await _push.unregisterCurrentInstallation();
+      } catch (e, st) {
+        debugPrint('AccountLinkService: installation unregister failed '
+            '(non-fatal): $e\n$st');
       }
     }
     try {

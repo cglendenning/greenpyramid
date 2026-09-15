@@ -42,3 +42,13 @@ test('D-146-AC-01: users cannot read or mutate another account or global config'
   await assertFails(deleteDoc(otherProfile));
   await assertFails(setDoc(doc(db, 'config/council'), { model: 'claude-haiku-4-5' }));
 });
+
+test('D-149-AC-01: clients cannot create installation or inbox delivery state', async () => {
+  const db = environment.authenticatedContext('owner').firestore();
+  await assertFails(setDoc(doc(db, 'users/owner/installations/i1'), {
+    installationId: 'i1', token: 'forged-token', enabled: true, revision: 1,
+  }));
+  await assertFails(setDoc(doc(db, 'users/owner/inbox/message1'), {
+    messageKey: 'message1', type: 'tailored', title: 'forged', read: false,
+  }));
+});

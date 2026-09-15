@@ -34,7 +34,7 @@ service cloud.firestore {
         'spendByMonth', 'spendReservations', 'deliveryState',
         'deliveryClaim', 'deliveryClaimedAt', 'deliveredAt',
         'model', 'modelConfiguration', 'installationId', 'uid', 'token',
-        'enabled', 'timezone', 'revision', 'updatedAt', 'messageKey',
+        'enabled', 'revision', 'messageKey',
         'type', 'occurrenceDate', 'habitIds', 'title', 'body', 'read',
         'readAt', 'createdAt', 'claimedAt', 'state'
       ]) == false;
@@ -50,7 +50,7 @@ service cloud.firestore {
           'spendByMonth', 'spendReservations', 'deliveryState',
           'deliveryClaim', 'deliveryClaimedAt', 'deliveredAt',
           'model', 'modelConfiguration', 'installationId', 'uid', 'token',
-          'enabled', 'timezone', 'revision', 'updatedAt', 'messageKey',
+          'enabled', 'revision', 'messageKey',
           'type', 'occurrenceDate', 'habitIds', 'title', 'body', 'read',
           'readAt', 'createdAt', 'claimedAt', 'state'
         ]) == false;

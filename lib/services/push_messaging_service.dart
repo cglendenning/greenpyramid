@@ -69,6 +69,7 @@ class PushMessagingService {
   static const _uuid = Uuid();
   static const _installationKey = 'd149.installation_id';
   static const _revisionKey = 'd149.installation_revision';
+  static const _tokenKey = 'd149.installation_token';
 
   static const _fallbackIds = {0: 100, 1: 101, 2: 102};
   static const _fallbackSlots = [(9, 0), (14, 0), (19, 0)];
@@ -109,6 +110,7 @@ class PushMessagingService {
             if (result['acknowledged'] == true) {
               await prefs.setInt(
                   _revisionKey, (prefs.getInt(_revisionKey) ?? 0) + 1);
+              await prefs.setString(_tokenKey, token);
             }
           } catch (e) {
             debugPrint(
@@ -143,6 +145,26 @@ class PushMessagingService {
           body: (data?['lastNotificationBody'] as String?) ??
               _defaultFallbackBody,
         );
+    }
+  }
+
+  /// D-149-AC-04: disable this installation before Firebase identity changes
+  /// so the outgoing account cannot receive future notifications.
+  Future<void> unregisterCurrentInstallation() async {
+    if (_auth.currentUser == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString(_tokenKey);
+    if (token == null) return;
+    try {
+      await _client.registerInstallation(
+        installationId: prefs.getString(_installationKey) ?? _uuid.v4(),
+        token: token,
+        enabled: false,
+        timezone: tz.local.name,
+        expectedRevision: prefs.getInt(_revisionKey) ?? 0,
+      );
+    } catch (e) {
+      debugPrint('PushMessagingService: installation unregister failed: $e');
     }
   }
 
