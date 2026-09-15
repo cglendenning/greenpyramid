@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { buildInterventionContext } from './intervention_context.js';
 import { estimateBaseline } from './baseline_estimator.js';
+import { validateInterventionDecision } from './intervention_taxonomy.js';
 
 const LOOKBACK_DAYS = 14;
 const AUTONOMOUS_COMPLETION_THRESHOLD = 0.8;
@@ -78,22 +79,22 @@ export function evaluateIntervention({
   const state = { observedCount, completedCount, completionRate, target: null };
 
   if (profile.setupComplete !== true) {
-    return noneDecision({ accountUid, now: current, reason: 'setup_incomplete', state, decisionId, context, baseline });
+    return validateInterventionDecision(noneDecision({ accountUid, now: current, reason: 'setup_incomplete', state, decisionId, context, baseline }));
   }
   if (!activeTasks.length) {
-    return noneDecision({ accountUid, now: current, reason: 'no_active_habits', state, decisionId, context, baseline });
+    return validateInterventionDecision(noneDecision({ accountUid, now: current, reason: 'no_active_habits', state, decisionId, context, baseline }));
   }
   if (!observedCount) {
-    return noneDecision({ accountUid, now: current, reason: 'insufficient_history', state, decisionId, context, baseline });
+    return validateInterventionDecision(noneDecision({ accountUid, now: current, reason: 'insufficient_history', state, decisionId, context, baseline }));
   }
   if (completionRate >= AUTONOMOUS_COMPLETION_THRESHOLD) {
-    return noneDecision({ accountUid, now: current, reason: 'autonomous_completion', state, decisionId, context, baseline });
+    return validateInterventionDecision(noneDecision({ accountUid, now: current, reason: 'autonomous_completion', state, decisionId, context, baseline }));
   }
 
   const missed = observed.find((entry) => !isChecked(entry.checked));
   const target = missed?.taskdescription || activeTasks[0].description || activeTasks[0].taskdescription || null;
   state.target = target;
-  return {
+  return validateInterventionDecision({
     decisionId: decisionId || stableDecisionId(accountUid, current, state),
     accountUid,
     evaluatedAt: current.toISOString(),
@@ -112,5 +113,5 @@ export function evaluateIntervention({
       completedCount,
       completionRate,
     },
-  };
+  });
 }
