@@ -39,6 +39,7 @@ import { evaluateIntervention } from './lib/intervention_engine.js';
 import { appendBehavioralEvents } from './lib/behavioral_event_store.js';
 import { revalidateIntervention } from './lib/intervention_lifecycle.js';
 import { renderIntervention } from './lib/intervention_renderer.js';
+import { applySafetyConstraints } from './lib/safety_constraints.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -268,7 +269,12 @@ app.post('/renderIntervention', requireFirebaseAuth, async (req, res) => {
         .collection('interventionDecisions').doc(req.body?.decisionId);
     const snap = await ref.get();
     if (!snap.exists) return res.status(404).json({ error: 'decision_not_found' });
-    res.json(renderIntervention(snap.data(), { modelCopy: req.body?.modelCopy }));
+    const constrained = applySafetyConstraints({
+      decision: snap.data(), decisionId: req.body?.decisionId,
+      triggers: snap.data()?.safetyTriggers || [],
+    });
+    if (!constrained.allowed) return res.json({ decision: constrained.decision, safety: constrained.audit, title: '', body: '' });
+    res.json(renderIntervention(constrained.decision, { modelCopy: req.body?.modelCopy }));
   } catch (e) {
     console.error('renderIntervention error:', e.message);
     res.status(400).json({ error: 'render_invalid' });
