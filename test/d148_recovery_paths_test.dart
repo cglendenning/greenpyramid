@@ -7,6 +7,52 @@ import 'package:flutter_test/flutter_test.dart';
 /// their focused unit tests.
 void main() {
   final source = File('lib/screens/setup_screen.dart').readAsStringSync();
+  final draftStore =
+      File('lib/services/setup_draft_store.dart').readAsStringSync();
+  final linkService =
+      File('lib/services/account_link_service.dart').readAsStringSync();
+  final completion =
+      File('functions/lib/setup_completion.js').readAsStringSync();
+  final trial =
+      File('lib/services/entitlement_service.dart').readAsStringSync();
+
+  test(
+      'D-148-AC-01: accepted setup state is persisted and model retries are keyed',
+      () {
+    expect(source, contains("'phase': _phase.name"));
+    expect(source, contains('_setup.drafts.save(uid, session, state)'));
+    expect(draftStore, contains('ConflictAlgorithm.replace'));
+    expect(File('functions/lib/setup_idempotency.js').readAsStringSync(),
+        contains("state: 'completed'"));
+  });
+
+  test('D-148-AC-02: explanation acceptance is user-controlled and neutral',
+      () {
+    final start = source.indexOf('Future<void> _acceptEssence(');
+    final end =
+        source.indexOf('Future<void> _askAboutCurrentFoundational', start);
+    expect(source.substring(start, end),
+        isNot(contains('ResonanceService.qualifies')));
+    expect(source, contains('accept it provisionally, or leave it empty'));
+  });
+
+  test(
+      'D-148-AC-04: provider linking preserves anonymous uid and switches explicitly',
+      () {
+    expect(linkService, contains('current == null || !current.isAnonymous'));
+    expect(linkService, contains('_auth.signInWithCredential(credential)'));
+    expect(source, contains('switchedToExistingAccount'));
+    expect(source, contains('restoreFromCloud(uid)'));
+  });
+
+  test(
+      'D-148-AC-05: completion is replay-safe and trial request follows completion',
+      () {
+    expect(completion, contains('setupCompletionId'));
+    expect(completion, contains('return response'));
+    expect(trial, contains('requestTrialAfterSetup'));
+    expect(source, contains('await _setup.acknowledgeCompletion(_session!)'));
+  });
 
   test(
       'D-148-AC-03: unavailable structured setup output offers recovery, not manual completion',
