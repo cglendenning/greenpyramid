@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../theme/app_colors.dart';
@@ -113,11 +114,19 @@ class _SigningInScreenState extends State<SigningInScreen> {
         Navigator.of(context).pop(const SignInOutcome.cancelled());
         return;
       }
+      if (error is GoogleSignInException &&
+          error.code == GoogleSignInExceptionCode.canceled) {
+        // D-140: dismissing Google's account chooser is also cancellation,
+        // not a provider failure that should show an error state.
+        Navigator.of(context).pop(const SignInOutcome.cancelled());
+        return;
+      }
       final errorCode = switch (error) {
         FirebaseAuthException e => e.code,
+        GoogleSignInException e => 'google.${e.code.name}',
         SignInWithAppleAuthorizationException e => 'apple.${e.code.name}',
-        SignInWithAppleException _ => 'apple.${error.runtimeType}',
-        _ => error.runtimeType.toString(),
+        SignInWithAppleException _ => 'apple.sdk_error',
+        _ => 'unknown_error',
       };
       unawaited(_analytics.logEvent(
         name: 'account_creation_failed',
@@ -137,6 +146,13 @@ class _SigningInScreenState extends State<SigningInScreen> {
           'That account is already connected. Try signing in again.',
         FirebaseAuthException e when e.code == 'invalid-credential' =>
           "Apple sign-in couldn't be completed. Please try again.",
+        GoogleSignInException e
+            when e.code ==
+                    GoogleSignInExceptionCode.providerConfigurationError ||
+                e.code == GoogleSignInExceptionCode.clientConfigurationError =>
+          'Google sign-in is not configured on this build. Please update and try again.',
+        GoogleSignInException _ =>
+          "We couldn't finish signing you in with Google. Please try again.",
         SignInWithAppleAuthorizationException e =>
           _appleAuthorizationMessage(e.code),
         FirebaseAuthException _ =>

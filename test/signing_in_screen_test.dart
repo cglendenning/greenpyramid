@@ -108,6 +108,17 @@ void main() {
     });
 
     test(
+        'D-140: Google cancellation is treated as cancellation and Google '
+        'provider/configuration failures use safe actionable diagnostics', () {
+      expect(source, contains('GoogleSignInExceptionCode.canceled'));
+      expect(source, contains(r"'google.${e.code.name}'"));
+      expect(
+          source, contains('Google sign-in is not configured on this build.'));
+      expect(source, contains("'unknown_error'"));
+      expect(source, isNot(contains('error.runtimeType.toString()')));
+    });
+
+    test(
         'D-130-AC-01: an existing real account stays on the restore path when provider '
         'authentication returns the same uid', () {
       expect(
