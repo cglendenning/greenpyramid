@@ -164,6 +164,22 @@ class EntitlementService {
       final data = doc.data();
       final entitlement = data?['entitlement'] as String?;
       if (entitlement == null) return false;
+      final local = await _db.getAccountState();
+      final localEntitlement = local[DatabaseHelper.columnEntitlement] as String?;
+      // D-142/D-054: a successful RevenueCat purchase is written locally
+      // before its webhook reaches Firestore. Do not let that in-flight
+      // webhook gap downgrade the confirmed paid state when a screen opens
+      // and refreshes the server copy. A later server lapsed state remains
+      // authoritative and is still applied below.
+      final preserveConfirmedSubscription =
+          localEntitlement == 'subscribed' &&
+              (entitlement == 'pre_trial' || entitlement == 'trialing');
+      if (preserveConfirmedSubscription) {
+        debugPrint(
+            'EntitlementService: preserving confirmed local subscription '
+            'while the RevenueCat webhook catches up.');
+        return true;
+      }
       await _db.setAccountEntitlement(
         entitlement: entitlement,
         trialStartedAt: (data?['trialStartedAt'] as Timestamp?)?.toDate().toIso8601String(),

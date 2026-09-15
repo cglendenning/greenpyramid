@@ -115,6 +115,34 @@ void main() {
     expect(await service.isEntitled(), isTrue);
   });
 
+  // D-142-AC-01: purchase/restore capability must survive the webhook gap.
+  test('D-142/D-054: a stale pre-trial server snapshot cannot overwrite a '
+      'confirmed local subscription while the RevenueCat webhook catches up',
+      () async {
+    final firestore = FakeFirebaseFirestore();
+    await seedProfile(firestore, {'entitlement': 'pre_trial'});
+    final service = EntitlementService(
+        db: db, firestore: firestore, auth: MockFirebaseAuth());
+    await db.setAccountEntitlement(entitlement: 'subscribed');
+
+    expect(await service.pullFromServer(uid), isTrue);
+    final account = await db.getAccountState();
+    expect(account[DatabaseHelper.columnEntitlement], 'subscribed');
+  });
+
+  test('D-142: a server lapsed snapshot still revokes a local subscription',
+      () async {
+    final firestore = FakeFirebaseFirestore();
+    await seedProfile(firestore, {'entitlement': 'lapsed'});
+    final service = EntitlementService(
+        db: db, firestore: firestore, auth: MockFirebaseAuth());
+    await db.setAccountEntitlement(entitlement: 'subscribed');
+
+    expect(await service.pullFromServer(uid), isTrue);
+    final account = await db.getAccountState();
+    expect(account[DatabaseHelper.columnEntitlement], 'lapsed');
+  });
+
   test('markSubscribedLocally sets the local cache to subscribed '
       'immediately, without touching Firestore', () async {
     final service = EntitlementService(
