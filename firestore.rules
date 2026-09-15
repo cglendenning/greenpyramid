@@ -27,27 +27,27 @@ service cloud.firestore {
     function changesOnlyUserOwnedFields() {
       return (resource == null
         ? request.resource.data.diff({}).affectedKeys()
-        : request.resource.data.diff(resource.data).affectedKeys()).hasNone([
+        : request.resource.data.diff(resource.data).affectedKeys()).hasAny([
         'entitlement', 'trialStartedAt', 'trialExpiresAt',
         'trialEligibility', 'spendCapUsd', 'baseCapUsd',
         'additionalCapUsd', 'totalSpendUsd', 'spendMonthKey',
         'spendByMonth', 'spendReservations', 'deliveryState',
         'deliveryClaim', 'deliveryClaimedAt', 'deliveredAt',
         'model', 'modelConfiguration'
-      ]);
+      ]) == false;
     }
 
     match /users/{uid}/{document=**} {
       allow read: if isOwner(uid);
       allow create: if isOwner(uid) &&
-        request.resource.data.diff({}).affectedKeys().hasNone([
+        request.resource.data.diff({}).affectedKeys().hasAny([
           'entitlement', 'trialStartedAt', 'trialExpiresAt',
           'trialEligibility', 'spendCapUsd', 'baseCapUsd',
           'additionalCapUsd', 'totalSpendUsd', 'spendMonthKey',
           'spendByMonth', 'spendReservations', 'deliveryState',
           'deliveryClaim', 'deliveryClaimedAt', 'deliveredAt',
           'model', 'modelConfiguration'
-        ]);
+        ]) == false;
       allow update: if isOwner(uid) && changesOnlyUserOwnedFields();
     }
 
