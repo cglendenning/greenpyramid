@@ -54,8 +54,16 @@ function db() {
 // (spendMonthKey mismatch) is never counted, even if totalSpendUsd itself
 // hasn't been zeroed out yet (that happens lazily, in recordCost).
 function effectiveSpend(data, now) {
-  if ((data.spendMonthKey ?? null) !== monthKey(now)) return 0;
-  return data.totalSpendUsd ?? 0;
+  const key = monthKey(now);
+  if (data.spendByMonth && typeof data.spendByMonth[key] === 'number') {
+    return data.spendByMonth[key];
+  }
+  if ((data.spendMonthKey ?? null) !== key) return 0;
+  return Number(data.totalSpendUsd) || 0;
+}
+
+function spendLedger(data) {
+  return { ...(data.spendByMonth ?? {}) };
 }
 
 // Throws SpendLimitError if the account has reached its cap. No-ops when
@@ -85,12 +93,13 @@ export async function recordCost(uid, model, inputTokens = 0, outputTokens = 0, 
   await _store.runTransaction(async (tx) => {
     const snap = await tx.get(ref);
     const data = snap.data() ?? {};
-    const carriedOver = (data.spendMonthKey ?? null) === currentMonth
-      ? (data.totalSpendUsd ?? 0)
-      : 0;
+    const ledger = spendLedger(data);
+    const carriedOver = effectiveSpend(data, _now);
+    ledger[currentMonth] = carriedOver + cost;
     tx.set(ref, {
-      totalSpendUsd: carriedOver + cost,
+      totalSpendUsd: ledger[currentMonth],
       spendMonthKey: currentMonth,
+      spendByMonth: ledger,
     }, { merge: true });
   });
 }
@@ -116,9 +125,12 @@ export async function reserveCost(uid, model, inputTokenBound, maxOutputTokens,
       ? (data.totalSpendUsd ?? 0) : 0;
     const existing = (data.spendReservations ?? {})[reservationId];
     if (existing) return;
-    const reservations = (data.spendMonthKey ?? null) === currentMonth
-      ? { ...(data.spendReservations ?? {}) } : {};
+    // Never delete reservations merely because the calendar month changed.
+    // An in-flight provider request may still become billable and must remain
+    // reconcilable against the month in which it was dispatched.
+    const reservations = { ...(data.spendReservations ?? {}) };
     const outstanding = Object.values(reservations)
+      .filter((item) => item.monthKey === currentMonth)
       .reduce((sum, item) => sum + (Number(item.amountUsd) || 0), 0);
     const cap = data.spendCapUsd ?? DEFAULT_SPEND_CAP_USD;
     if (carriedOver + outstanding + amountUsd > cap) {
@@ -151,11 +163,16 @@ export async function settleCost(uid, reservationId, model, inputTokens = 0,
     const reservation = reservations[reservationId];
     if (!reservation) return;
     delete reservations[reservationId];
-    const carriedOver = (data.spendMonthKey ?? null) === currentMonth
-      ? (data.totalSpendUsd ?? 0) : 0;
+    const ledger = spendLedger(data);
+    const reservationMonth = reservation.monthKey ?? currentMonth;
+    const reservationMonthDate = new Date(`${reservationMonth}-01T00:00:00Z`);
+    const committed = effectiveSpend(data, reservationMonthDate);
+    ledger[reservationMonth] = committed + actual;
     tx.set(ref, {
-      totalSpendUsd: carriedOver + actual,
+      totalSpendUsd: reservationMonth === currentMonth
+        ? ledger[reservationMonth] : effectiveSpend(data, _now),
       spendMonthKey: currentMonth,
+      spendByMonth: ledger,
       spendReservations: reservations,
     }, { merge: true });
   });

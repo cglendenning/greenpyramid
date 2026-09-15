@@ -14,8 +14,60 @@ rules_version = '2';
 // bypasses these rules the same way the notification generator does.
 service cloud.firestore {
   match /databases/{database}/documents {
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // These fields are written only by trusted Functions. A recursive
+    // owner-write rule must not turn account ownership into authority over
+    // billing, entitlement, trial eligibility, delivery claims, or model
+    // configuration (D-146). User content remains writable below, but these
+    // server-owned names are denied wherever a client attempts to add or
+    // change them.
+    function changesOnlyUserOwnedFields() {
+      return (resource == null
+        ? request.resource.data.diff({}).affectedKeys()
+        : request.resource.data.diff(resource.data).affectedKeys()).hasNone([
+        'entitlement', 'trialStartedAt', 'trialExpiresAt',
+        'trialEligibility', 'spendCapUsd', 'baseCapUsd',
+        'additionalCapUsd', 'totalSpendUsd', 'spendMonthKey',
+        'spendByMonth', 'spendReservations', 'deliveryState',
+        'deliveryClaim', 'deliveryClaimedAt', 'deliveredAt',
+        'model', 'modelConfiguration'
+      ]);
+    }
+
     match /users/{uid}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid) &&
+        request.resource.data.diff({}).affectedKeys().hasNone([
+          'entitlement', 'trialStartedAt', 'trialExpiresAt',
+          'trialEligibility', 'spendCapUsd', 'baseCapUsd',
+          'additionalCapUsd', 'totalSpendUsd', 'spendMonthKey',
+          'spendByMonth', 'spendReservations', 'deliveryState',
+          'deliveryClaim', 'deliveryClaimedAt', 'deliveredAt',
+          'model', 'modelConfiguration'
+        ]);
+      allow update: if isOwner(uid) && changesOnlyUserOwnedFields();
+    }
+
+    // Deletion is an explicit content operation, not a recursive account
+    // operation. Server-owned profile/session/notification documents cannot
+    // be removed by a client.
+    match /users/{uid}/tasks/{taskId} {
+      allow read: if isOwner(uid);
+      allow create, update, delete: if isOwner(uid) &&
+        (request.resource == null || changesOnlyUserOwnedFields());
+    }
+    match /users/{uid}/recentActivity/{activityId} {
+      allow read: if isOwner(uid);
+      allow create, update, delete: if isOwner(uid) &&
+        (request.resource == null || changesOnlyUserOwnedFields());
+    }
+    match /users/{uid}/essenceVersions/{versionId} {
+      allow read: if isOwner(uid);
+      allow create, update, delete: if isOwner(uid) &&
+        (request.resource == null || changesOnlyUserOwnedFields());
     }
   }
 }

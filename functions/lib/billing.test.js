@@ -130,3 +130,22 @@ test('D-146: provider rejection releases the reservation without charging', asyn
   assert.equal(store.data[profilePath('u1')].totalSpendUsd, undefined);
   assert.deepEqual(store.data[profilePath('u1')].spendReservations, {});
 });
+
+test('D-146-AC-04: a reservation survives month rollover and settles against its dispatch month', async () => {
+  const store = new FakeFirestore();
+  await reserveCost('u1', 'claude-haiku-4-5', 100_000, 1000, 'r-rollover', store, jan);
+  await reserveCost('u1', 'claude-haiku-4-5', 1000, 1000, 'r-february', store, feb);
+  const before = store.data[profilePath('u1')];
+  assert.equal(before.spendReservations['r-rollover'].monthKey, '2026-01');
+  assert.equal(before.spendReservations['r-february'].monthKey, '2026-02');
+
+  await settleCost('u1', 'r-rollover', 'claude-haiku-4-5', 10_000, 100, store,
+      feb);
+  const after = store.data[profilePath('u1')];
+  assert.equal(after.spendReservations['r-rollover'], undefined);
+  assert.ok(after.spendReservations['r-february']);
+  assert.equal(after.spendByMonth['2026-01'],
+      10_000 * MODEL_RATES['claude-haiku-4-5'].input +
+      100 * MODEL_RATES['claude-haiku-4-5'].output);
+  assert.equal(after.spendMonthKey, '2026-02');
+});
