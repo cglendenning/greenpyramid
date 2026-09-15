@@ -30,6 +30,9 @@ import 'package:life_ops/screens/visualizations.dart';
 import 'package:life_ops/theme/app_colors.dart';
 import 'package:life_ops/theme/app_theme.dart';
 import 'package:life_ops/services/telemetry_service.dart';
+import 'package:life_ops/services/push_messaging_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 int currentScreenIndex = 0;
 
@@ -123,6 +126,7 @@ class _HomeScreen extends State<HomeScreenWidget> {
   }
 
   late final LocalNotificationService service;
+  late final Future<void> _notificationInitialization;
 
   var _cat1Future,
       _cat2Future,
@@ -153,7 +157,7 @@ class _HomeScreen extends State<HomeScreenWidget> {
   @override
   void initState() {
     service = LocalNotificationService();
-    service.intialize();
+    _notificationInitialization = service.intialize();
 
     listenToNotification();
     if (populateGap) {
@@ -165,7 +169,10 @@ class _HomeScreen extends State<HomeScreenWidget> {
     // D-105: enforced once per app session, not once per tab switch —
     // this StatefulWidget is mounted once at launch; currentScreenIndex
     // changes are just an index swap, not a remount.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _enforceRealAccount());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _enforceRealAccount();
+      await _offerNotificationRecovery();
+    });
     super.initState();
   }
 
@@ -213,6 +220,59 @@ class _HomeScreen extends State<HomeScreenWidget> {
     }
     if (!mounted) return;
     setState(() => setFutures());
+  }
+
+  // D-144/D-149: a restored real account on a fresh install still needs an
+  // explicit, one-time opportunity to enable notifications. This is separate
+  // from setup's permission moment because setup has already completed.
+  Future<void> _offerNotificationRecovery() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || user.isAnonymous) return;
+
+    await _notificationInitialization;
+    final prefs = await SharedPreferences.getInstance();
+    final marker = 'd144.notification_recovery_offered.${user.uid}';
+    if (prefs.getBool(marker) == true) return;
+    if (await service.areNotificationsEnabled()) return;
+
+    await prefs.setBool(marker, true);
+    if (!mounted) return;
+    final enable = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Notifications are off'),
+        content: const Text(
+          'Green Pyramid cannot send Council guidance or reminders until '
+          'notifications are enabled.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Enable notifications'),
+          ),
+        ],
+      ),
+    );
+    if (enable != true || !mounted) return;
+
+    final granted = await service.requestPermissions();
+    if (granted) {
+      try {
+        await PushMessagingService.instance.syncNotificationState();
+      } catch (e, st) {
+        debugPrint('Failed to sync notification state after recovery: $e\n$st');
+      }
+      return;
+    }
+
+    final uri = Uri.parse('app-settings:');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
   }
 
   void _onDemoModeChanged() {

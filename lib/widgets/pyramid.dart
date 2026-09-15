@@ -132,19 +132,19 @@ class _Pyramid extends State<Pyramid> {
               segments: <ButtonSegment<Calendar>>[
                 ButtonSegment<Calendar>(
                     value: Calendar.day,
-                    label: Text('Day', style: timeScaleTextStyle),
+                    label: _timeScaleLabel('Day', timeScaleTextStyle),
                     icon: const Icon(Icons.calendar_view_day)),
                 ButtonSegment<Calendar>(
                     value: Calendar.week,
-                    label: Text('Week', style: timeScaleTextStyle),
+                    label: _timeScaleLabel('Week', timeScaleTextStyle),
                     icon: const Icon(Icons.calendar_view_week)),
                 ButtonSegment<Calendar>(
                     value: Calendar.month,
-                    label: Text('Month', style: timeScaleTextStyle),
+                    label: _timeScaleLabel('Month', timeScaleTextStyle),
                     icon: const Icon(Icons.calendar_view_month)),
                 ButtonSegment<Calendar>(
                     value: Calendar.year,
-                    label: Text('Year', style: timeScaleTextStyle),
+                    label: _timeScaleLabel('Year', timeScaleTextStyle),
                     icon: const Icon(Icons.calendar_today)),
               ],
               selected: <Calendar>{calendarView},
@@ -179,6 +179,10 @@ class _Pyramid extends State<Pyramid> {
               style: const ButtonStyle(
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 visualDensity: VisualDensity(horizontal: -3, vertical: -3),
+                padding: WidgetStatePropertyAll(
+                  EdgeInsets.symmetric(horizontal: 2),
+                ),
+                iconSize: WidgetStatePropertyAll(18),
               ),
             )),
         smallSpacer,
@@ -218,6 +222,19 @@ class _Pyramid extends State<Pyramid> {
               return display;
             }),
       ]),
+    );
+  }
+
+  Widget _timeScaleLabel(String label, TextStyle style) {
+    return FittedBox(
+      fit: BoxFit.scaleDown,
+      child: Text(
+        label,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.clip,
+        style: style,
+      ),
     );
   }
 

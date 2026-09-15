@@ -10,7 +10,10 @@
 MODE="${1:-ios}"
 BUNDLE_ID="com.cglendenning.lifeops"
 TITLE="Green Pyramid"
-PORT=8765
+PORT="${PORT:-8765}"
+LOG_SUFFIX="${PORT}"
+SERVER_LOG="/tmp/gp_ota_server_${LOG_SUFFIX}.log"
+TUNNEL_LOG="/tmp/gp_cloudflared_${LOG_SUFFIX}.log"
 
 case "$MODE" in
   ios)
@@ -37,23 +40,23 @@ ARTIFACT_NAME_ENC=$(python3 -c "import urllib.parse,sys; print(urllib.parse.quot
 
 # Kill any leftover server or tunnel from a previous run.
 lsof -ti:${PORT} | xargs kill -9 2>/dev/null || true
-pkill -f "cloudflared tunnel" 2>/dev/null || true
+pkill -f "cloudflared tunnel --url http://localhost:${PORT}" 2>/dev/null || true
 sleep 1
 
 # Start HTTP server and tunnel.
-python3 -m http.server ${PORT} --directory "${SERVE_DIR}" &>/tmp/gp_ota_server.log &
-cloudflared tunnel --url http://localhost:${PORT} --no-autoupdate &>/tmp/gp_cloudflared.log &
+python3 -m http.server ${PORT} --directory "${SERVE_DIR}" &>"${SERVER_LOG}" &
+cloudflared tunnel --url http://localhost:${PORT} --no-autoupdate &>"${TUNNEL_LOG}" &
 
 # Extract the tunnel URL as soon as it appears in the log.
 TUNNEL_URL=""
 for i in $(seq 60); do
-  TUNNEL_URL=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' /tmp/gp_cloudflared.log 2>/dev/null | head -1 || true)
+  TUNNEL_URL=$(grep -oE 'https://[a-z0-9-]+\.trycloudflare\.com' "${TUNNEL_LOG}" 2>/dev/null | head -1 || true)
   [ -n "$TUNNEL_URL" ] && break
   sleep 1
 done
 
 if [ -z "$TUNNEL_URL" ]; then
-  echo "ERROR: tunnel URL not found after 60 s — check /tmp/gp_cloudflared.log" >&2
+  echo "ERROR: tunnel URL not found after 60 s — check ${TUNNEL_LOG}" >&2
   exit 1
 fi
 

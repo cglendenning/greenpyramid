@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <image xlink:href="logo.png" width="1024" height="1024"/>
+  <image xlink:href="consumer_icon.png" width="1024" height="1024"/>
   <circle cx="858" cy="166" r="112" fill="#FF9F43" stroke="#0B0B0F" stroke-width="14"/>
   <text x="858" y="202" text-anchor="middle" font-family="Arial, sans-serif" font-size="126" font-weight="700" fill="#0B0B0F">A</text>
 </svg>
