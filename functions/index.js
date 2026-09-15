@@ -37,6 +37,7 @@ import { cleanupAnonymousAccounts } from './lib/anonymous_cleanup.js';
 import { claimNotificationDispatch, completeNotificationDispatch, failNotificationDispatch, markInboxRead, notificationMessageKey, registerInstallation, upsertInboxItem } from './lib/notification_delivery.js';
 import { evaluateIntervention } from './lib/intervention_engine.js';
 import { appendBehavioralEvents } from './lib/behavioral_event_store.js';
+import { revalidateIntervention } from './lib/intervention_lifecycle.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -228,6 +229,8 @@ app.post('/evaluateIntervention', requireFirebaseAuth, async (req, res) => {
       recentActivity: activitySnap.docs.map((doc) => doc.data()),
       priorInterventions: priorInterventionsSnap.docs.map((doc) => doc.data()),
     });
+    const lifecycle = revalidateIntervention(decision);
+    decision.lifecycle = lifecycle;
     await user.collection('interventionDecisions').doc(decision.decisionId).create({
       ...decision,
       evaluatedAt: admin.firestore.Timestamp.fromDate(new Date(decision.evaluatedAt)),
