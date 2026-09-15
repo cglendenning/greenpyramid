@@ -26,7 +26,7 @@ import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatem
 import { buildProgressAnalysisPrompt } from './lib/progress_analysis.js';
 import { buildNewsfeedAnalysisPrompt, parseArticleReply } from './lib/newsfeed_analysis.js';
 import { isEligibleForTailoredNotification } from './lib/notification_schedule.js';
-import { shouldSendBatchCheckin, todaysScheduledHabits, localDateParts } from './lib/batch_checkin_schedule.js';
+import { batchCheckinOccurrence, shouldSendBatchCheckin } from './lib/batch_checkin_schedule.js';
 import { buildNotificationPrompt, NOTIFICATION_TOOL } from './lib/notification_derivation.js';
 import { requireEntitlement, EntitlementRequiredError } from './lib/entitlement.js';
 import { grantTrialIfEligible, grantMigrationTrial, DeviceTrialError } from './lib/device_trial.js';
@@ -897,9 +897,9 @@ async function maybeSendBatchCheckin(uid, profileData, now) {
   });
   if (!shouldSend) return;
 
-  const { dateString, weekday } = localDateParts(timezone, now);
-  const habits = todaysScheduledHabits(tasks, weekday);
-  if (habits.length === 0) return; // defensive — shouldSendBatchCheckin already checked this.
+  const occurrence = batchCheckinOccurrence({ tasks, timezone, now });
+  if (!occurrence) return; // defensive — shouldSendBatchCheckin already checked this.
+  const { dateString, habits } = occurrence;
 
   const messageKey = notificationMessageKey({
     type: 'batch_checkin',

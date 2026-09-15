@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   latestScheduledMinutes,
+  batchCheckinOccurrence,
   todaysScheduledHabits,
   shouldSendBatchCheckin,
 } from './batch_checkin_schedule.js';
@@ -91,6 +92,16 @@ test('D-149-AC-02: a 21:00 habit lasting 60 minutes cannot trigger before 22:00'
   assert.equal(shouldSendBatchCheckin({
     tasks: [task], timezone: 'UTC', now: new Date('2026-06-15T22:00:00Z'), lastSentDate: null,
   }), true);
+});
+
+test('D-149-AC-02: an overnight habit keeps the prior local occurrence date', () => {
+  const task = { id: 'overnight', monday: 'true', scheduledtime: '23:30', scheduleddurationminutes: 120 };
+  const occurrence = batchCheckinOccurrence({
+    tasks: [task], timezone: 'UTC', now: new Date('2026-06-16T01:30:00Z'),
+  });
+  assert.equal(occurrence.dateString, '2026-06-15');
+  assert.equal(occurrence.weekday, 'monday');
+  assert.deepEqual(occurrence.habits.map((habit) => habit.id), ['overnight']);
 });
 
 test('D-099: an unset timezone never sends', () => {

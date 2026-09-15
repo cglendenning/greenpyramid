@@ -11,6 +11,11 @@ const DAY_FIELDS = [
   'sunday', 'monday', 'tuesday', 'wednesday',
   'thursday', 'friday', 'saturday',
 ];
+const PREVIOUS_WEEKDAY = {
+  sunday: 'saturday', monday: 'sunday', tuesday: 'monday',
+  wednesday: 'tuesday', thursday: 'wednesday', friday: 'thursday',
+  saturday: 'friday',
+};
 
 function isTruthyFlag(v) {
   return v != null && v !== '0' && v !== 'false' && v !== '';
@@ -94,6 +99,36 @@ export function todaysScheduledHabits(tasks, weekday) {
       }));
 }
 
+function previousDate(dateString) {
+  const date = new Date(`${dateString}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() - 1);
+  return date.toISOString().slice(0, 10);
+}
+
+/** Returns the occurrence whose end has passed, including an overnight end. */
+export function batchCheckinOccurrence({ tasks, timezone, now = new Date() }) {
+  if (!timezone) return null;
+  let local;
+  try { local = localDateParts(timezone, now); } catch { return null; }
+  const nowMinutes = local.hour * 60 + local.minute;
+  const today = todaysScheduledHabits(tasks, local.weekday);
+  const todayEnd = latestScheduledMinutes(tasks, local.weekday);
+  if (todayEnd != null && todayEnd <= 1440 && nowMinutes >= todayEnd) {
+    return { dateString: local.dateString, weekday: local.weekday, habits: today };
+  }
+
+  const previousWeekday = PREVIOUS_WEEKDAY[local.weekday];
+  const previousEnd = latestScheduledMinutes(tasks, previousWeekday);
+  if (previousEnd != null && previousEnd > 1440 && nowMinutes >= previousEnd - 1440) {
+    return {
+      dateString: previousDate(local.dateString),
+      weekday: previousWeekday,
+      habits: todaysScheduledHabits(tasks, previousWeekday),
+    };
+  }
+  return null;
+}
+
 // True exactly on the job run that should send today's batch check-in for
 // this account: at least one habit is scheduled and active today, local
 // "now" has reached or passed the latest such habit's time, and today's
@@ -107,16 +142,6 @@ export function shouldSendBatchCheckin({
   lastSentDate,
 }) {
   if (!timezone) return false;
-  let dateString, hour, minute, weekday;
-  try {
-    ({ dateString, hour, minute, weekday } = localDateParts(timezone, now));
-  } catch {
-    return false;
-  }
-  if (lastSentDate === dateString) return false;
-
-  const latest = latestScheduledMinutes(tasks, weekday);
-  if (latest == null) return false;
-
-  return hour * 60 + minute >= latest;
+  const occurrence = batchCheckinOccurrence({ tasks, timezone, now });
+  return occurrence != null && lastSentDate !== occurrence.dateString;
 }
