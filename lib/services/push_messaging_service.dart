@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -184,7 +185,12 @@ class PushMessagingService {
         body: body,
         hour: hour,
         minute: minute,
-        payload: '/',
+        payload: jsonEncode({
+          'type': 'tailored',
+          'accountUid': _auth.currentUser?.uid,
+          'messageKey': 'tailored:fallback:${entry.key}',
+          'occurrenceDate': DateTime.now().toIso8601String().substring(0, 10),
+        }),
       );
     }
   }
@@ -202,7 +208,12 @@ class PushMessagingService {
         body: body,
         hour: hour,
         minute: minute,
-        payload: '/paywall',
+        payload: jsonEncode({
+          'type': 'upgrade',
+          'accountUid': _auth.currentUser?.uid,
+          'messageKey': 'upgrade:lapsed:${entry.key}',
+          'occurrenceDate': DateTime.now().toIso8601String().substring(0, 10),
+        }),
       );
     }
   }

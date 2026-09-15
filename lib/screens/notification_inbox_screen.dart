@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/council_client.dart';
+import '../services/db.dart';
+import '../services/notification.dart';
 import '../theme/app_colors.dart';
 import 'batch_checkin_screen.dart';
 import 'paywall_screen.dart';
@@ -16,45 +18,82 @@ class NotificationInboxScreen extends StatelessWidget {
   CollectionReference<Map<String, dynamic>>? get _inbox {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return null;
-    return FirebaseFirestore.instance.collection('users').doc(uid).collection('inbox');
+    return FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('inbox');
   }
 
   Future<void> _open(BuildContext context, Map<String, dynamic> item) async {
     final key = item['messageKey'] as String?;
-    if (key != null) await CouncilClient.instance.markInboxRead(key).catchError((_) => <String, dynamic>{});
+    if (key != null)
+      await CouncilClient.instance
+          .markInboxRead(key)
+          .catchError((_) => <String, dynamic>{});
     if (!context.mounted) return;
     switch (item['type']) {
       case 'upgrade':
-        await Navigator.of(context).push(MaterialPageRoute(builder: (_) => const PaywallScreen(reason: 'notification')));
+        await Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => const PaywallScreen(reason: 'notification')));
       case 'batch_checkin':
-        final habits = (item['habits'] as List<dynamic>? ?? const [])
-            .whereType<Map<String, dynamic>>().toList();
+        final ids = (item['habitIds'] as List<dynamic>? ?? const [])
+            .map((id) => id.toString())
+            .toSet();
+        final tasks = await DatabaseHelper.instance.queryAllTasks();
+        final habits = tasks
+            .where((task) => ids.contains(task['id']?.toString()))
+            .map((task) => <String, dynamic>{
+                  'id': task['id']?.toString() ?? '',
+                  'category': task['category'],
+                  'description': task['taskdescription'],
+                  'scheduledtime': task['scheduledtime'],
+                })
+            .toList();
         if (habits.isNotEmpty) {
-          await Navigator.of(context).push(MaterialPageRoute(builder: (_) => BatchCheckinScreen(habits: habits)));
+          final date =
+              DateTime.tryParse(item['occurrenceDate'] as String? ?? '');
+          await Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => BatchCheckinScreen(
+                    habits: habits,
+                    occurrenceDate: date,
+                  )));
         }
+        break;
+      case 'tailored':
+        LocalNotificationService().onNotificationClick.add('/');
+        break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final inbox = _inbox;
-    if (inbox == null) return const Scaffold(body: Center(child: Text('Sign in to view notifications.')));
+    if (inbox == null)
+      return const Scaffold(
+          body: Center(child: Text('Sign in to view notifications.')));
     return Scaffold(
       appBar: AppBar(title: const Text('Notification inbox')),
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: inbox.orderBy('createdAt', descending: true).snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.hasError) return const Center(child: Text('Notifications are temporarily unavailable.'));
-          if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+          if (snapshot.hasError)
+            return const Center(
+                child: Text('Notifications are temporarily unavailable.'));
+          if (!snapshot.hasData)
+            return const Center(child: CircularProgressIndicator());
           final docs = snapshot.data!.docs;
-          if (docs.isEmpty) return const Center(child: Text('No notifications yet.'));
+          if (docs.isEmpty)
+            return const Center(child: Text('No notifications yet.'));
           return ListView.builder(
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final item = docs[index].data();
               final unread = item['read'] != true;
               return ListTile(
-                leading: Icon(unread ? Icons.notifications_active : Icons.notifications_none,
+                leading: Icon(
+                    unread
+                        ? Icons.notifications_active
+                        : Icons.notifications_none,
                     color: unread ? AppColors.brandGreen : null),
                 title: Text(item['title'] as String? ?? 'Green Pyramid'),
                 subtitle: Text(item['body'] as String? ?? ''),

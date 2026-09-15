@@ -58,17 +58,17 @@ bool interventionShown = false;
 /// off the push's own `data.type` — batch-checkin needs the full habit
 /// list re-encoded as the structured JSON payload
 /// `LocalNotificationService.onSelectNotification` recognizes; a
-/// tailored notification (D-149) needs only the same plain `/` payload
-/// every other "go to the pyramid tab" local notification already uses,
-/// since `onNotificationListener` (homescreen.dart) already handles that
-/// string correctly. Null for any other/unknown type — this is a
+/// tailored notifications retain their account and message identity so a
+/// foreground-shown notification gets the same ownership check and inbox
+/// acknowledgment as backgrounded and terminated pushes. Null for any
+/// other/unknown type — this is a
 /// deliberate allowlist, not a general-purpose passthrough.
 String? pushTapPayloadFrom(Map<String, dynamic> data) {
   switch (data['type']) {
     case 'batch_checkin':
       return jsonEncode(data);
     case 'tailored':
-      return '/';
+      return jsonEncode(data);
     default:
       return null;
   }
@@ -85,19 +85,29 @@ String? pushTapPayloadFrom(Map<String, dynamic> data) {
 /// duplicating that navigation here. A message of any other/unknown type
 /// is silently ignored.
 void handlePushTap(RemoteMessage message) {
-  final accountUid = message.data['accountUid'];
-  if (accountUid is! String || accountUid.isEmpty ||
+  handlePushDataTap(message.data);
+}
+
+/// Handles both FCM data and the equivalent structured local-notification
+/// payload. Every account-scoped notification enters here before it can
+/// navigate or mark an inbox item read.
+void handlePushDataTap(Map<String, dynamic> data) {
+  final accountUid = data['accountUid'];
+  if (accountUid is! String ||
+      accountUid.isEmpty ||
       FirebaseAuth.instance.currentUser?.uid != accountUid) {
     // D-149-AC-04: a stale or cross-account payload must not open content.
     return;
   }
-  final messageKey = message.data['messageKey'];
+  final messageKey = data['messageKey'];
   if (messageKey is String) {
-    unawaited(CouncilClient.instance.markInboxRead(messageKey).catchError((_) => <String, dynamic>{}));
+    unawaited(CouncilClient.instance
+        .markInboxRead(messageKey)
+        .catchError((_) => <String, dynamic>{}));
   }
-  switch (message.data['type']) {
+  switch (data['type']) {
     case 'batch_checkin':
-      unawaited(openBatchCheckinFromPayload(message.data));
+      unawaited(openBatchCheckinFromPayload(data));
       break;
     case 'tailored':
       LocalNotificationService().onNotificationClick.add('/');
@@ -125,14 +135,18 @@ Future<void> openBatchCheckinFromPayload(Map<String, dynamic> data) async {
   if (resolvedIds == null || resolvedIds.isEmpty) return;
   try {
     final tasks = await DatabaseHelper.instance.queryAllTasks();
-    final habits = tasks.where((task) => resolvedIds.contains(task['id']?.toString())).map((task) => {
-          'id': task['id']?.toString() ?? '',
-          'category': task['category'],
-          'description': task['taskdescription'],
-          'scheduledtime': task['scheduledtime'],
-        }).toList();
+    final habits = tasks
+        .where((task) => resolvedIds.contains(task['id']?.toString()))
+        .map((task) => {
+              'id': task['id']?.toString() ?? '',
+              'category': task['category'],
+              'description': task['taskdescription'],
+              'scheduledtime': task['scheduledtime'],
+            })
+        .toList();
     if (habits.isEmpty) return; // deleted habits are harmless.
-    final occurrenceDate = DateTime.tryParse(data['occurrenceDate'] as String? ?? '');
+    final occurrenceDate =
+        DateTime.tryParse(data['occurrenceDate'] as String? ?? '');
     navigatorKey.currentState?.push(MaterialPageRoute(
         builder: (_) => BatchCheckinScreen(
               habits: habits,

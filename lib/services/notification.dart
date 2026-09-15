@@ -66,8 +66,8 @@ List<HabitReminderSlot> buildHabitReminderSlots({
   final slots = <HabitReminderSlot>[];
   for (final weekday in activeWeekdays) {
     final anchorDate = _nextOrSameWeekday(reference, weekday);
-    final habitTime =
-        DateTime(anchorDate.year, anchorDate.month, anchorDate.day, hour, minute);
+    final habitTime = DateTime(
+        anchorDate.year, anchorDate.month, anchorDate.day, hour, minute);
     var fireTime = habitTime.subtract(Duration(minutes: leadMinutes));
     if (!fireTime.isAfter(reference)) {
       fireTime = fireTime.add(const Duration(days: 7));
@@ -364,7 +364,8 @@ class LocalNotificationService {
     }
     if (Platform.isIOS) {
       final options = await _localNotificationService
-          .resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>()
+          .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin>()
           ?.checkPermissions();
       return options?.isEnabled ?? false;
     }
@@ -718,6 +719,10 @@ class LocalNotificationService {
               (jsonDecode(habitsJson) as List).cast<Map<String, dynamic>>();
           navigatorKey.currentState?.push(MaterialPageRoute(
               builder: (_) => BatchCheckinScreen(habits: habits)));
+        case 'tailored':
+        case 'upgrade':
+          handlePushDataTap(data);
+          break;
         case 'newsfeed_item':
           // D-122: "when you tap the notification, it will go directly
           // to the newsfeed" — and, specifically, scrolled to and

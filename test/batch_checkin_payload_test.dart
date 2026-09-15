@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/main.dart';
 
@@ -7,7 +9,8 @@ import 'package:life_ops/main.dart';
 /// own payload, keyed off the push's `data.type`. Pure, so it's testable
 /// without a live FCM message or notification plugin.
 void main() {
-  test('D-099: a batch_checkin message re-encodes its data as the '
+  test(
+      'D-099: a batch_checkin message re-encodes its data as the '
       'structured payload', () {
     final result = pushTapPayloadFrom(
         {'type': 'batch_checkin', 'date': '2026-09-09', 'habits': '[]'});
@@ -16,13 +19,22 @@ void main() {
     expect(result, contains('"habits":"[]"'));
   });
 
-  test('D-066 amendment: a tailored message gets the plain "/" payload — '
-      'the same string every other "go to the pyramid tab" local '
+  test(
+      'D-149-AC-04: a tailored message keeps account and inbox identity '
+      'in its structured foreground payload — '
       'notification already uses', () {
-    expect(pushTapPayloadFrom({'type': 'tailored'}), '/');
+    final tailored = jsonDecode(pushTapPayloadFrom({
+      'type': 'tailored',
+      'accountUid': 'uid',
+      'messageKey': 'tailored:2026-09-15:09:00',
+    })!) as Map<String, dynamic>;
+    expect(tailored['type'], 'tailored');
+    expect(tailored['accountUid'], 'uid');
+    expect(tailored['messageKey'], 'tailored:2026-09-15:09:00');
   });
 
-  test('any other message type produces no payload — this is a '
+  test(
+      'any other message type produces no payload — this is a '
       'deliberate allowlist, not a general passthrough', () {
     expect(pushTapPayloadFrom({'type': 'something_else'}), isNull);
   });
