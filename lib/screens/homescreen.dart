@@ -28,6 +28,7 @@ import 'package:life_ops/screens/profile.dart';
 import 'package:life_ops/screens/visualizations.dart';
 import 'package:life_ops/theme/app_colors.dart';
 import 'package:life_ops/theme/app_theme.dart';
+import 'package:life_ops/services/telemetry_service.dart';
 
 int currentScreenIndex = 0;
 
@@ -42,6 +43,7 @@ class HomeScreen extends StatelessWidget {
       theme: AppTheme.dark(),
       initialRoute: routeToGo,
       onGenerateRoute: _generateRoute,
+      navigatorObservers: [TelemetryNavigatorObserver()],
       // D-110: Flutter's default initial-route generation
       // (Navigator.defaultGenerateInitialRoutes) unconditionally mounts
       // '/' *and* the requested initialRoute — found live: a fresh

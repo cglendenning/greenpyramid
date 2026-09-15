@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
@@ -9,6 +10,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import 'auth_service.dart';
 import 'sync_service.dart';
+import 'telemetry_service.dart';
 
 /// D-148: thin wrapper around the two native sign-in SDKs, kept separate
 /// from [AuthService] because AuthService is deliberately UI/SDK-agnostic
@@ -97,9 +99,13 @@ class AccountLinkService {
   Future<User?> authenticateOrLink(AuthCredential credential) async {
     final current = _auth.currentUser;
     if (current == null || !current.isAnonymous) {
-      return (await _auth.signInWithCredential(credential)).user;
+      final user = (await _auth.signInWithCredential(credential)).user;
+      unawaited(TelemetryService.instance.event('account_link'));
+      return user;
     }
-    return linkWithCredentialOrSwitch(credential);
+    final user = await linkWithCredentialOrSwitch(credential);
+    unawaited(TelemetryService.instance.event('account_link'));
+    return user;
   }
 
   /// D-148: if this exact credential is already linked to a *different*,

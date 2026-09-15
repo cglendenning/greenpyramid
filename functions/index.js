@@ -16,7 +16,7 @@ import cors from 'cors';
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
 import admin from 'firebase-admin';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
 import { applyPacingReassurance, buildAdvisorTurnPrompt, buildGeneralCouncilTurnPrompt, buildSetupAdvisorTurnPrompt, countMiraTurns, extractReplyText, hasAskedWrapUpQuestion, SETUP_TURN_TOOL, SETUP_WRAP_UP_QUESTION } from './lib/council.js';
 import { checkSpendLimit, recordCost, reserveCost, settleCost, releaseCost, SpendLimitError } from './lib/billing.js';
 import { getCouncilModel, getNotificationModel } from './lib/model_config.js';
@@ -30,6 +30,7 @@ import { buildNotificationPrompt, NOTIFICATION_TOOL } from './lib/notification_d
 import { requireEntitlement, EntitlementRequiredError } from './lib/entitlement.js';
 import { grantTrialIfEligible, grantMigrationTrial, DeviceTrialError } from './lib/device_trial.js';
 import { applyRevenueCatEvent, verifyWebhookAuth } from './lib/revenuecat_webhook.js';
+import { buildAdminMetrics } from './lib/admin_metrics.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -88,6 +89,22 @@ async function requireFirebaseAuth(req, res, next) {
   }
 }
 
+// D-165: the private admin app is authorized by a Firebase custom claim,
+// never by a client flag, route obscurity, or an email string in the request.
+async function requireAdmin(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header?.startsWith('Bearer ')) return res.status(401).json({ error: 'authentication_required' });
+  try {
+    ensureAdmin();
+    const decoded = await admin.auth().verifyIdToken(header.slice(7));
+    if (decoded.admin !== true) return res.status(403).json({ error: 'admin_required' });
+    req.uid = decoded.uid;
+    next();
+  } catch {
+    res.status(401).json({ error: 'authentication_required' });
+  }
+}
+
 // Server-side spend guardrails, enforced regardless of what the client sends:
 // only the app's cheap mini models are permitted, and output tokens are hard
 // capped. This is the backstop the client can't bypass.
@@ -103,6 +120,35 @@ app.use(cors());
 app.use(express.json({ limit: '256kb' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
+
+// D-165: read-only aggregate endpoint for the separate OTA admin app. It is
+// intentionally before the consumer App Check gate: the admin bundle has its
+// own distribution and relies on Firebase Auth plus the custom claim.
+app.get('/adminMetrics', requireAdmin, async (_req, res) => {
+  try {
+    const store = admin.firestore();
+    const profileSnap = await store.collectionGroup('profile').get();
+    const profiles = profileSnap.docs.map((doc) => {
+      const uid = doc.ref.path.split('/')[1];
+      return {
+        uidHash: createHash('sha256').update(uid).digest('hex'),
+        totalSpendUsd: doc.data()?.totalSpendUsd,
+        aiCalls: doc.data()?.aiCalls,
+        entitlement: doc.data()?.entitlement,
+        setupComplete: doc.data()?.setupComplete,
+      };
+    });
+    const telemetrySnap = await store.collectionGroup('telemetry').get();
+    const telemetry = telemetrySnap.docs.map((doc) => {
+      const data = doc.data() || {};
+      return { eventName: data.eventName, screenKey: data.screenKey, uidHash: data.uidHash };
+    });
+    res.json(buildAdminMetrics({ profiles, telemetry }));
+  } catch (e) {
+    console.error('adminMetrics error:', e.message);
+    res.status(500).json({ error: 'service_unavailable' });
+  }
+});
 
 // D-054: RevenueCat calls this directly from its own servers — never through
 // the app, so it carries no App Check token and must sit before that gate.
