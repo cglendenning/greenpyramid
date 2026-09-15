@@ -48,6 +48,14 @@ test('D-080/D-146: non-setup mode reserves server-priced spend before provider d
   assert.match(indexSource, /await settleReservedCost\(req, model, msg\.usage\)/);
 });
 
+test('D-146: ambiguous provider failures retain reservations for reconciliation, '
+  + 'while confirmed pre-billing 4xx rejections release them', () => {
+  assert.match(indexSource, /function isConfirmedPreBillingRejection\(error\)/);
+  assert.match(indexSource, /status !== 429/);
+  assert.match(indexSource, /if \(!isSetup && isConfirmedPreBillingRejection\(e\)\)/);
+  assert.match(indexSource, /if \(isConfirmedPreBillingRejection\(e\)\)/);
+});
+
 test('D-082: /boardAdvisorTurn computes nudgeConvergence from the general '
   + 'Council conversation\'s own turn count and passes it into the prompt '
   + 'builder — never a hardcoded true/false', () => {

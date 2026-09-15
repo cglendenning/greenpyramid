@@ -10,6 +10,15 @@ import admin from 'firebase-admin';
 // 2026-09-06): validate quality at the lowest cost before spending more.
 export const FALLBACK_MODEL = 'claude-haiku-4-5';
 
+// D-145: configuration may select only models that have both provider support
+// and published billing rates in billing.js. An unknown identifier must fail
+// closed rather than silently dispatching or being changed to another tier.
+export const SUPPORTED_MODELS = new Set([
+  'claude-opus-5',
+  'claude-sonnet-5',
+  'claude-haiku-4-5',
+]);
+
 // Read on every call but cached briefly — a global switch should take
 // effect for all users within roughly a minute, not require a redeploy,
 // but not every call needs its own Firestore round trip.
@@ -32,8 +41,19 @@ export function makeModelConfig(docId, fallback = FALLBACK_MODEL) {
       if (!_store) throw new Error('no Firestore instance available');
       const snap = await _store.collection('config').doc(docId).get();
       const model = snap.data()?.model;
-      cached = typeof model === 'string' && model.length > 0 ? model : fallback;
+      if (model == null || model === '') {
+        cached = fallback;
+      } else if (typeof model !== 'string' || !SUPPORTED_MODELS.has(model)) {
+        throw new Error(`unsupported_model_configuration:${String(model)}`);
+      } else {
+        cached = model;
+      }
     } catch (e) {
+      if (e.message?.startsWith('unsupported_model_configuration:')) {
+        cached = null;
+        cachedAt = 0;
+        throw e;
+      }
       console.error(`getModel(${docId}): falling back, could not read config/${docId}:`, e.message);
       cached = cached ?? fallback;
     }

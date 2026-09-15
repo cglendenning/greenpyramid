@@ -243,6 +243,14 @@ async function releaseReservedCost(req) {
   req.spendReservation = null;
 }
 
+// D-146: a timeout or provider 5xx does not prove that the provider rejected
+// the request before doing billable work. Keep that reservation for
+// reconciliation. Only an explicit non-rate-limit 4xx is safe to release.
+function isConfirmedPreBillingRejection(error) {
+  const status = Number(error?.status);
+  return Number.isInteger(status) && status >= 400 && status < 500 && status !== 429;
+}
+
 // D-148/D-045/D-055: called once, right at setup completion (or, for the
 // D-027 migration cohort, once at first launch of this build). Device-bound
 // for new users; account-bound and device-check-free for the migration
@@ -363,7 +371,9 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, (req, res, next) => req.body?
       usage: { inputTokens: msg.usage.input_tokens, outputTokens: msg.usage.output_tokens },
     });
   } catch (e) {
-    if (!isSetup) await releaseReservedCost(req).catch(() => {});
+    if (!isSetup && isConfirmedPreBillingRejection(e)) {
+      await releaseReservedCost(req).catch(() => {});
+    }
     console.error('boardAdvisorTurn error:', e.message, '— advisor:', advisor.name, '— model:', model);
     res.status(502).json({ error: e.message });
   }
@@ -534,7 +544,9 @@ app.post('/deriveVisionStatement', requireFirebaseAuth, (req, res, next) => req.
     if (!vision) return res.status(502).json({ error: 'empty_reply' });
     res.json({ vision });
   } catch (e) {
-    if (!isSetup) await releaseReservedCost(req).catch(() => {});
+    if (!isSetup && isConfirmedPreBillingRejection(e)) {
+      await releaseReservedCost(req).catch(() => {});
+    }
     console.error('deriveVisionStatement error:', e.message);
     res.status(502).json({ error: e.message });
   }
@@ -562,7 +574,9 @@ app.post('/deriveProgressAnalysis', requireFirebaseAuth, async (req, res) => {
     if (!analysis) return res.status(502).json({ error: 'empty_reply' });
     res.json({ analysis });
   } catch (e) {
-    await releaseReservedCost(req).catch(() => {});
+    if (isConfirmedPreBillingRejection(e)) {
+      await releaseReservedCost(req).catch(() => {});
+    }
     console.error('deriveProgressAnalysis error:', e.message);
     res.status(502).json({ error: e.message });
   }
@@ -592,7 +606,9 @@ app.post('/deriveNewsfeedArticle', requireFirebaseAuth, async (req, res) => {
     if (!raw) return res.status(502).json({ error: 'empty_reply' });
     res.json(parseArticleReply(raw));
   } catch (e) {
-    await releaseReservedCost(req).catch(() => {});
+    if (isConfirmedPreBillingRejection(e)) {
+      await releaseReservedCost(req).catch(() => {});
+    }
     console.error('deriveNewsfeedArticle error:', e.message);
     res.status(502).json({ error: e.message });
   }

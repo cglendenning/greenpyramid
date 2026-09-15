@@ -56,3 +56,13 @@ test('D-145: an unreachable Firestore falls back rather than throwing',
     const model = await getCouncilModel(null, Date.now());
     assert.equal(model, FALLBACK_MODEL);
   });
+
+test('D-145: an unsupported configured model fails safely instead of being '
+  + 'silently dispatched or replaced with another tier', async () => {
+    _resetModelCacheForTest();
+    const store = new FakeFirestore({ 'config/council': { model: 'not-a-real-model' } });
+    await assert.rejects(
+      () => getCouncilModel(store, Date.now()),
+      /unsupported_model_configuration:not-a-real-model/,
+    );
+  });
