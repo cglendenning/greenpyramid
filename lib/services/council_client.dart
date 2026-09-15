@@ -17,7 +17,7 @@ class CouncilClientException implements Exception {
   String toString() => message;
 }
 
-/// D-087: thrown when the account has reached its spend cap. Distinct from
+/// D-061: thrown when the account has reached its spend cap. Distinct from
 /// [CouncilClientException] so the screen can present "you've reached your
 /// limit" rather than a generic failure.
 class SpendLimitException implements Exception {
@@ -30,7 +30,7 @@ class SpendLimitException implements Exception {
       ' \$${spendCapUsd.toStringAsFixed(2)})';
 }
 
-/// D-188: thrown once a setup session hits its 40-model-call bound. Setup
+/// D-148: thrown once a setup session hits its 40-model-call bound. Setup
 /// is meant to close gracefully on approach, not hit this — reaching it is
 /// the backstop, not the expected path.
 class SetupCallLimitException implements Exception {
@@ -56,7 +56,7 @@ class AdvisorTurnResult {
   final String reply;
   final int inputTokens;
   final int outputTokens;
-  // D-090: only meaningful for a solo setup turn (isSetup: true) — false,
+  // D-074: only meaningful for a solo setup turn (isSetup: true) — false,
   // unused, for every other caller's free-text reply.
   final bool readyToBuild;
   const AdvisorTurnResult({
@@ -78,25 +78,11 @@ class CategoryProposal {
       {required this.position, required this.name, this.description});
 }
 
-/// D-036: one impediment surfaced during a category conversation, already
-/// classified into one of the four domains.
-class DomainFinding {
-  final String domain;
-  final String note;
-  // D-100: populated only when derived from the general Council's
-  // whole-pyramid pass (pyramidContext given) — the model names which
-  // category the finding concerns since, unlike the single-category path,
-  // the caller doesn't already know. Null for the existing category-scoped
-  // path, which never needed this.
-  final String? categoryName;
-  const DomainFinding({required this.domain, required this.note, this.categoryName});
-}
-
 /// D-030/D-037: the transport for every Council backend call. Calls Green
 /// Pyramid's own Cloud Function (not Kansei's), authenticated with both a
 /// Firebase App Check token (proves the genuine app binary — same as
-/// [AiProxy]) and a Firebase ID token (proves which account, so D-087's
-/// spend cap and D-188's setup call count charge the right one). D-185's
+/// [AiProxy]) and a Firebase ID token (proves which account, so D-061's
+/// spend cap and D-148's setup call count charge the right one). D-145's
 /// model identifier lives entirely on the backend; this client never names
 /// a model.
 class CouncilClient {
@@ -109,7 +95,11 @@ class CouncilClient {
       'https://us-central1-life-ops.cloudfunctions.net/api';
 
   Future<void> completeSetup(String sessionId) async {
-    await _post('completeSetup', {'requestId': sessionId, 'sessionId': sessionId, 'expectedRevision': 0});
+    await _post('completeSetup', {
+      'requestId': sessionId,
+      'sessionId': sessionId,
+      'expectedRevision': 0
+    });
   }
 
   Future<Map<String, String>> _headers() async {
@@ -143,8 +133,10 @@ class CouncilClient {
   }) async {
     final payload = Map<String, dynamic>.from(body);
     if (body['sessionId'] != null && path != 'completeSetup') {
-      final hash = sha256.convert(utf8.encode('$path:${jsonEncode(body)}')).toString();
-      payload['requestId'] = '${hash.substring(0,8)}-${hash.substring(8,12)}-${hash.substring(12,16)}-${hash.substring(16,20)}-${hash.substring(20,32)}';
+      final hash =
+          sha256.convert(utf8.encode('$path:${jsonEncode(body)}')).toString();
+      payload['requestId'] =
+          '${hash.substring(0, 8)}-${hash.substring(8, 12)}-${hash.substring(12, 16)}-${hash.substring(16, 20)}-${hash.substring(20, 32)}';
     }
     final headers = await _headers();
     http.Response resp;
@@ -189,26 +181,26 @@ class CouncilClient {
   }
 
   /// [advisorKey] is one of mira/kenji/noa/eli. [categoryContext] carries
-  /// the category's name, tier, and any prior essence (D-185) — the
+  /// the category's name, tier, and any prior essence (D-145) — the
   /// category-scoped replacement for Kansei's goal context. [sliderValue]
-  /// defaults to 0.5 and has no UI control yet (D-073). [isSetup]/
-  /// [sessionId] route this turn against D-188's free call-count bound
-  /// instead of D-087's spend cap (D-015) — billing only.
+  /// defaults to 0.5 and has no UI control yet (D-056). [isSetup]/
+  /// [sessionId] route this turn against D-148's free call-count bound
+  /// instead of D-061's spend cap (D-015) — billing only.
   ///
-  /// D-097: [soloSetup] is a separate signal from [isSetup] — it alone
-  /// selects D-090's solo-Mira forced-tool prompt on the backend. Found
+  /// D-080: [soloSetup] is a separate signal from [isSetup] — it alone
+  /// selects D-074's solo-Mira forced-tool prompt on the backend. Found
   /// live: these were the same flag until now, and every call within a
   /// setup-typed session (including essence-deepening's four-advisor
   /// rotation, D-007 step 3) is billed free — so `isSetup` was `true` for
   /// those calls too, silently routing them through the solo-Mira
   /// pyramid-building logic instead of the category-scoped one, ignoring
   /// whichever advisor was actually meant to speak.
-  /// D-093: [existingCategories], setup-only, switches Mira's turn from
+  /// D-077: [existingCategories], setup-only, switches Mira's turn from
   /// gathering material for a fresh pyramid to refining one already
   /// proposed — "not quite right" adjusts what's there, never discards it.
-  /// D-095: [pyramidContext], general-chat-only (D-091), grounds the
+  /// D-079: [pyramidContext], general-chat-only (D-075), grounds the
   /// advisors in the user's actual pyramid instead of a placeholder.
-  /// D-178: [firstName] is only ever real for a category-reclarification
+  /// D-138: [firstName] is only ever real for a category-reclarification
   /// or general-chat turn (both post-setup, once a name is on file) —
   /// setup-time essence-deepening calls this same method with none, and
   /// the backend prompts degrade gracefully either way.
@@ -246,7 +238,7 @@ class CouncilClient {
   }
 
   /// D-038: derives the six pyramid categories, already tiered by position,
-  /// from the setup transcript so far. D-093: [existingCategories], when
+  /// from the setup transcript so far. D-077: [existingCategories], when
   /// given, requests a refinement of that proposal instead of a fresh
   /// derivation.
   Future<List<CategoryProposal>> deriveCategories({
@@ -286,7 +278,7 @@ class CouncilClient {
     return categories;
   }
 
-  /// D-039/D-103: proposes 1 to [maxAllowed] habits for one category
+  /// D-039/D-068: proposes 1 to [maxAllowed] habits for one category
   /// (never more than 3), conditioned on its essence when one exists
   /// (D-008). [maxAllowed] is the caller's own cross-category budget —
   /// see `SetupScreen._loadAllHabits`, which reserves at least 1 slot per
@@ -317,44 +309,7 @@ class CouncilClient {
     return habits;
   }
 
-  /// D-036: derives domain findings from one category's conversation, at
-  /// the moment its essence is accepted. Runs from both setup (free,
-  /// [isSetup] true) and D-047's paid re-clarification — the backend gates
-  /// accordingly, same as [boardAdvisorTurn].
-  ///
-  /// D-100: the general Council conversation (D-091) spans the whole
-  /// pyramid rather than one category, so it passes [pyramidContext]
-  /// instead of [categoryName]/[essence] — exactly one of the two shapes
-  /// must be given; the backend branches on which arrived, same as
-  /// [boardAdvisorTurn] already does for pyramidContext.
-  Future<List<DomainFinding>> deriveDomainFindings({
-    required String sessionId,
-    String? categoryName,
-    String? essence,
-    required List<Map<String, String>> transcript,
-    bool isSetup = false,
-    List<Map<String, String?>>? pyramidContext,
-  }) async {
-    assert((categoryName != null) != (pyramidContext != null),
-        'pass exactly one of categoryName or pyramidContext, never both or neither');
-    final data = await _post('deriveDomainFindings', {
-      'sessionId': sessionId,
-      if (categoryName != null) 'categoryName': categoryName,
-      if (essence != null) 'essence': essence,
-      if (pyramidContext != null) 'pyramidContext': pyramidContext,
-      'transcript': transcript,
-      'isSetup': isSetup,
-    });
-    return (data['findings'] as List<dynamic>? ?? const [])
-        .map((f) => DomainFinding(
-              domain: f['domain'] as String,
-              note: f['note'] as String,
-              categoryName: f['categoryName'] as String?,
-            ))
-        .toList();
-  }
-
-  /// D-042/D-114: the closing synthesis, written once at the end of setup
+  /// D-042/D-089: the closing synthesis, written once at the end of setup
   /// ([isSetup] true, free, [sessionId]/[transcript] required); also the
   /// profile screen's regeneration, any time after ([isSetup] false, gated
   /// by D-014 like every other non-setup AI surface, no session or
@@ -374,7 +329,7 @@ class CouncilClient {
     return (data['vision'] as String? ?? '').trim();
   }
 
-  /// D-114: the profile screen's 30-day progress analysis — never free,
+  /// D-089: the profile screen's 30-day progress analysis — never free,
   /// gated by D-014 like every other non-setup AI surface.
   Future<String> deriveProgressAnalysis({
     required List<Map<String, String>> taskLogs,
@@ -387,9 +342,9 @@ class CouncilClient {
     return (data['analysis'] as String? ?? '').trim();
   }
 
-  /// D-150: the newsfeed's AI-written "news article" — a headline and
+  /// D-122: the newsfeed's AI-written "news article" — a headline and
   /// body analyzing consistency trends across the whole pyramid, never
-  /// free, gated by D-014/D-087 like every other non-setup AI surface.
+  /// free, gated by D-014/D-061 like every other non-setup AI surface.
   Future<({String headline, String body})> deriveNewsfeedArticle({
     required List<Map<String, dynamic>> categories,
     String? firstName,

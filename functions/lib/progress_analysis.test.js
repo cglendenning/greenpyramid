@@ -2,10 +2,10 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildProgressAnalysisPrompt } from './progress_analysis.js';
 
-/// D-114: the profile screen's 30-day progress analysis — migrated onto
+/// D-089: the profile screen's 30-day progress analysis — migrated onto
 /// Claude from day one (this AI surface never had a Claude equivalent; it
-/// was one of the legacy AI screens D-069/D-083's retirement missed).
-test('D-114: task-log rows reach the prompt as date | category | habit | '
+/// was one of the legacy AI screens D-053/D-066's retirement missed).
+test('D-089: task-log rows reach the prompt as date | category | habit | '
   + 'done-or-skipped lines', () => {
   const { user } = buildProgressAnalysisPrompt({
     taskLogs: [
@@ -17,40 +17,40 @@ test('D-114: task-log rows reach the prompt as date | category | habit | '
   assert.match(user, /2026-09-02 \| Health \| Walk 20 minutes \| skipped/);
 });
 
-test('D-114: an empty task-log window says so plainly, never invented '
+test('D-089: an empty task-log window says so plainly, never invented '
   + 'data', () => {
   const { user } = buildProgressAnalysisPrompt({ taskLogs: [] });
   assert.match(user, /no check-offs logged/);
 });
 
-test('D-114: the prompt explicitly forbids inventing a pattern when '
-  + 'there\'s too little data — the same D-188 discipline domain-finding '
+test('D-089: the prompt explicitly forbids inventing a pattern when '
+  + 'there\'s too little data — the same D-148 discipline domain-finding '
   + 'derivation already follows for an empty result', () => {
   const { system } = buildProgressAnalysisPrompt({ taskLogs: [] });
   assert.match(system, /too little data/);
   assert.match(system, /instead of inventing a pattern/);
 });
 
-test('D-114: the prompt forbids a bulleted list — short, warm prose, '
+test('D-089: the prompt forbids a bulleted list — short, warm prose, '
   + 'matching the rest of the Council\'s voice', () => {
   const { system } = buildProgressAnalysisPrompt({ taskLogs: [] });
   assert.match(system, /never a bulleted list/i);
 });
 
-test('D-178: with a first name, the prompt instructs the advisor to '
+test('D-138: with a first name, the prompt instructs the advisor to '
   + 'open by addressing the reader by name', () => {
   const { system } = buildProgressAnalysisPrompt({ taskLogs: [], firstName: 'Craig' });
   assert.match(system, /reader's name is Craig/);
   assert.match(system, /"Craig, \.\.\."/);
 });
 
-test('D-178: with no first name, the prompt reads exactly as it did '
-  + 'before D-178', () => {
+test('D-138: with no first name, the prompt reads exactly as it did '
+  + 'before D-138', () => {
   const { system } = buildProgressAnalysisPrompt({ taskLogs: [] });
   assert.doesNotMatch(system, /reader's name is/);
 });
 
-test('D-178: injection characters in a first name cannot break out of '
+test('D-138: injection characters in a first name cannot break out of '
   + 'the prompt framing', () => {
   const { system } = buildProgressAnalysisPrompt({
     taskLogs: [],

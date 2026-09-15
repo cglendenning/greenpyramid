@@ -9,7 +9,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:life_ops/services/feedback_service.dart';
 import 'package:life_ops/theme/app_colors.dart';
 
-/// D-129: replaces the old mailto-based feedback screen. Frictionless by
+/// D-124: replaces the old mailto-based feedback screen. Frictionless by
 /// design — pick a category (required, one tap), optionally add up to
 /// [FeedbackService.maxCommentLength] characters of specifics, send. No
 /// open-ended "subject"/"body" freeform pair.

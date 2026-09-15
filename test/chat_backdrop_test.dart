@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/widgets/chat_backdrop.dart';
 
-/// D-031/D-185: regression test for owner feedback that the Council chat
+/// D-031/D-145: regression test for owner feedback that the Council chat
 /// screens were "all dark and dreary" with no imagery or glow, unlike the
 /// spinning pyramid on the home screen. ChatBackdrop owns no service
 /// dependency, so — like WelcomeScreen — it's genuinely widget-testable.

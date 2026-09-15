@@ -2,13 +2,13 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-067: Mira's opening line is fixed, hand-written copy — not generated.
+/// D-052: Mira's opening line is fixed, hand-written copy — not generated.
 /// Structural (source-text) test, matching this repo's convention for
 /// literal required copy, since SetupScreen itself depends on live
 /// singletons (SetupService.instance) the same way CouncilScreen does and
 /// isn't widget-tested directly.
 void main() {
-  test('D-067: the opening line is the exact fixed copy, word for word', () {
+  test('D-052: the opening line is the exact fixed copy, word for word', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
     // The Dart source may wrap the literal across adjacent string
     // concatenation, so compare against source with line-break whitespace
@@ -30,7 +30,7 @@ void main() {
   });
 
   test(
-      'D-188: no review, confirmation, or "does this look right?" step '
+      'D-148: no review, confirmation, or "does this look right?" step '
       'exists anywhere in the setup path', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
     for (final phrase in [
@@ -39,7 +39,7 @@ void main() {
       'Review your'
     ]) {
       expect(source, isNot(contains(phrase)),
-          reason: '"$phrase" would be a review step, forbidden by D-188');
+          reason: '"$phrase" would be a review step, forbidden by D-148');
     }
     // Essences remain editable *later*, from the category detail screen
     // (D-035) — never inside setup itself.
@@ -89,7 +89,7 @@ void main() {
   });
 
   test(
-      'D-031/D-067: Mira\'s opening line always renders in the openingRound '
+      'D-031/D-052: Mira\'s opening line always renders in the openingRound '
       'phase, not only when a session is brand new — regression test for a '
       'defect found live: Mira\'s line is client-only copy, never persisted '
       'to Firestore, so a session resumed after an earlier launch failed '
@@ -115,7 +115,7 @@ void main() {
   });
 
   test(
-      'D-067/D-093: Mira\'s opening line always renders in the refining '
+      'D-052/D-077: Mira\'s opening line always renders in the refining '
       'phase too — regression test for a defect found live: tapping "Not '
       'quite right" and returning to the chat silently dropped the very '
       'first message, because refining renders the conversation from its '
@@ -137,7 +137,7 @@ void main() {
   });
 
   test(
-      'D-090: a pause follows Mira\'s closing line before the categories '
+      'D-074: a pause follows Mira\'s closing line before the categories '
       'phase replaces the transcript — same pacing discipline D-031 '
       'established for the old multi-advisor round, kept for the solo one', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
@@ -155,7 +155,7 @@ void main() {
   });
 
   test(
-      'D-090: setup is a solo conversation with Mira — no rotation over the '
+      'D-074: setup is a solo conversation with Mira — no rotation over the '
       'other three advisors happens inside the opening round anymore', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
     final roundStart = source.indexOf('Future<void> _runMiraTurn()');
@@ -231,7 +231,7 @@ void main() {
   });
 
   test(
-      'D-093: the categories screen offers "Not quite right" alongside '
+      'D-077: the categories screen offers "Not quite right" alongside '
       '"This feels right" — the owner needed a way to keep working on the '
       'list, not just confirm or abandon it', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
@@ -245,7 +245,7 @@ void main() {
   });
 
   test(
-      'D-093: "Not quite right" re-enters the conversation and refines the '
+      'D-077: "Not quite right" re-enters the conversation and refines the '
       'existing categories — it must never discard them and start over', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
 
@@ -264,7 +264,7 @@ void main() {
 
     // The re-derivation after a refinement round must be handed the prior
     // proposal, never called with nothing — that would be indistinguishable
-    // from throwing the old categories away. D-118 extracted the actual
+    // from throwing the old categories away. D-093 extracted the actual
     // "existingCategories: priorCategories" call into a shared
     // _proceedFromReadyToBuild helper (also used by the fresh, non-
     // refining path) — this scan now covers both, since that's where the
@@ -285,7 +285,7 @@ void main() {
   });
 
   test(
-      'D-093: the refining phase shows the text input and dispatches '
+      'D-077: the refining phase shows the text input and dispatches '
       'replies the same way the opening round does', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
     final buildStart = source.indexOf('Widget build(BuildContext context)');
@@ -317,12 +317,12 @@ void main() {
   });
 
   test(
-      'D-007/D-105: the "save this" essence button only considers messages '
+      'D-007/D-070: the "save this" essence button only considers messages '
       'sent after this category\'s own question was asked — regression '
       'test for a defect found live: it only ever checked "does any user '
       'message exist," so the button appeared immediately using whatever '
       'the user last said earlier in setup, unrelated to this category. '
-      'D-105 replaced the original timestamp-based check '
+      'D-070 replaced the original timestamp-based check '
       '(_essenceQuestionAskedAt/isAfter) with message-index scoping '
       '(_essenceStepStartIndex/stepMessages), which also fixed a second '
       'live defect this same mechanism enables: the whole transcript view '

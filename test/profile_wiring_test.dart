@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-114: profile.dart's vision-statement regeneration and 30-day
+/// D-089: profile.dart's vision-statement regeneration and 30-day
 /// progress analysis are Claude-backed via ProfileService, gated by
 /// D-014's entitlement check like every other non-setup AI surface —
 /// structural, matching this repo's convention for screens built on live
@@ -10,17 +10,17 @@ import 'package:flutter_test/flutter_test.dart';
 /// directly widget-tested elsewhere either).
 void main() {
   test(
-      'D-114: profile.dart no longer imports the legacy OpenAI transport — '
+      'D-089: profile.dart no longer imports the legacy OpenAI transport — '
       'regression test for the root cause found live via Cloud Run logs: '
       'this screen was still calling a defunct OpenAI account with zero '
-      'credits, the one AI surface D-069/D-083\'s retirement of the legacy '
+      'credits, the one AI surface D-053/D-066\'s retirement of the legacy '
       'AI screens missed', () {
     final source = File('lib/screens/profile.dart').readAsStringSync();
     expect(source, isNot(contains('ai_proxy_client.dart')));
     expect(source, isNot(contains('AiProxy.instance')));
   });
 
-  test('D-114: profile.dart routes both AI actions through ProfileService',
+  test('D-089: profile.dart routes both AI actions through ProfileService',
       () {
     final source = File('lib/screens/profile.dart').readAsStringSync();
     expect(source, contains('ProfileService'));
@@ -29,7 +29,7 @@ void main() {
   });
 
   test(
-      'D-114/D-014: both AI actions are gated by the shared ensureEntitled '
+      'D-089/D-014: both AI actions are gated by the shared ensureEntitled '
       'gate before the call, routing an unentitled account to the paywall '
       'first — the same pattern every other non-setup AI surface uses. '
       'Uses the shared entitlement_gate.dart helper rather than its own '
@@ -49,7 +49,7 @@ void main() {
   });
 
   test(
-      'D-114: the 30-day progress analysis is an explicit button tap, not '
+      'D-089: the 30-day progress analysis is an explicit button tap, not '
       'an automatic call fired on screen open — the legacy version fired '
       'two unconditional AI calls in initState() every time this screen '
       'opened, before any entitlement or cost check ran', () {
@@ -63,7 +63,7 @@ void main() {
   });
 
   test(
-      'D-114: a server-side entitlement refusal (EntitlementRequiredException) '
+      'D-089: a server-side entitlement refusal (EntitlementRequiredException) '
       'is caught explicitly on both AI actions and sent to the paywall, not '
       'left to fall into the generic catch-all — regression test for a '
       'defect found live: this screen\'s local entitlement cache said '
@@ -77,7 +77,7 @@ void main() {
     expect(source, contains('pullFromServer'));
   });
 
-  group('D-178: the profile screen collects/edits personal info and uses '
+  group('D-138: the profile screen collects/edits personal info and uses '
       'the app\'s standard rotating background', () {
     final source = File('lib/screens/profile.dart').readAsStringSync();
 
@@ -105,7 +105,7 @@ void main() {
       expect(saveBody, contains('_db.setPhone'));
     });
 
-    test('D-181: the phone field auto-formats as (XXX) XXX-XXXX — owner: '
+    test('D-141: the phone field auto-formats as (XXX) XXX-XXXX — owner: '
         '"auto format the phone number into area code and then '
         'hyphenated digits"', () {
       expect(source, contains('_PhoneNumberFormatter'));
@@ -122,7 +122,7 @@ void main() {
       expect(source, isNot(contains('FirebaseStorage')));
     });
 
-    test('D-181: nothing is written to the database — not the text '
+    test('D-141: nothing is written to the database — not the text '
         'fields, not the photo — until Save is explicitly tapped; '
         'picking/removing a photo before that only changes pending, '
         'in-memory state', () {
@@ -139,7 +139,7 @@ void main() {
       expect(source.substring(saveStart, saveEnd), contains('_syncInBackground()'));
     });
 
-    test('D-181: an explicit Save button exists, and the screen states '
+    test('D-141: an explicit Save button exists, and the screen states '
         'plainly which fields sync to the account versus stay local — '
         'only the photo is local-only; name/email/phone do sync', () {
       expect(source, contains("const Text('Save')"));

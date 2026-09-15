@@ -3,7 +3,7 @@ import 'package:firebase_auth_mocks/firebase_auth_mocks.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/services/feedback_service.dart';
 
-/// D-129: app feedback is a structured, category-first write to the user's
+/// D-124: app feedback is a structured, category-first write to the user's
 /// own Firestore tree — never a freeform mailto form, and never readable by
 /// anyone but the account itself (client-side) or the Admin SDK (Craig, via
 /// the Firebase console). Tested against a fake Firestore and a mocked
@@ -20,7 +20,7 @@ void main() {
   }
 
   test(
-      'D-129: submitting with only a category selected (no comment) writes '
+      'D-124: submitting with only a category selected (no comment) writes '
       'a document — a category alone is a complete, valid submission',
       () async {
     final firestore = FakeFirebaseFirestore();
@@ -44,7 +44,7 @@ void main() {
   });
 
   test(
-      'D-129: category is always written as one of the fixed wire values, '
+      'D-124: category is always written as one of the fixed wire values, '
       'never arbitrary text — regression for "isn\'t freeform text either"',
       () async {
     final firestore = FakeFirebaseFirestore();
@@ -65,7 +65,7 @@ void main() {
   });
 
   test(
-      'D-129: a comment past the 140-character cap is rejected even if a '
+      'D-124: a comment past the 140-character cap is rejected even if a '
       'caller bypasses the TextField\'s own client-side limit', () async {
     final firestore = FakeFirebaseFirestore();
     final svc = buildService(firestore);
@@ -85,7 +85,7 @@ void main() {
   });
 
   test(
-      'D-129: a submission writes only into the signed-in user\'s own tree '
+      'D-124: a submission writes only into the signed-in user\'s own tree '
       '(users/{uid}/feedback), never a shared top-level collection',
       () async {
     final firestore = FakeFirebaseFirestore();

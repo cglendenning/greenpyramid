@@ -1,4 +1,4 @@
-// D-189/D-028: the scheduled cloud job's generation logic — a tailored
+// D-149/D-028: the scheduled cloud job's generation logic — a tailored
 // push notification synthesized from exactly the enumerated context D-028
 // permits, nothing else.
 import { sanitize } from './council.js';
@@ -16,22 +16,18 @@ export const NOTIFICATION_TOOL = {
   },
 };
 
-// D-028 (amended for R9 to add domainFindings/calendarContext — D-036's own
-// text always said findings feed notification generation, but D-028's
-// enumerated context never listed them until now; amended again for
-// D-178 to add firstName): exactly this context, nothing else.
+// D-028 (amended for D-138 to add firstName): exactly this context, nothing else.
 // [categories] is [{name, tier, essence}] (essence null for cat4-cat6
 // without one, D-008). [recentActivity] is the bounded task_log window
-// already synced (D-187). [domainFindings] is [{domain, note}].
+// already synced (D-147).
 // [calendarContext] is a short pre-summarized string, present only when the
-// user granted calendar access (D-185 step 7) — absent entirely otherwise,
+// user granted calendar access (D-145 step 7) — absent entirely otherwise,
 // never a placeholder. [firstName] lets a notification address the reader
 // by name instead of writing only in the abstract second person.
 export function buildNotificationPrompt({
   categories = [],
   visionStatement,
   recentActivity = [],
-  domainFindings = [],
   calendarContext,
   firstName,
 }) {
@@ -62,14 +58,10 @@ export function buildNotificationPrompt({
         `"Nice work, ${name}"), not forced into every notification.`
       : '');
 
-  const findingLines = domainFindings.slice(0, 50).map((f) =>
-    `- ${sanitize(f.domain, 20)}: ${sanitize(f.note, 200)}`).join('\n');
-
   const user =
     `CATEGORIES:\n${categoryLines}\n\n` +
     (visionStatement ? `THEIR VISION: "${sanitize(visionStatement, 500)}"\n\n` : '') +
     `RECENT ACTIVITY:\n${recentLines || '(none yet)'}` +
-    (findingLines ? `\n\nDOMAIN FINDINGS (impediments named in past Council sessions):\n${findingLines}` : '') +
     (calendarContext ? `\n\nTODAY'S CALENDAR: ${sanitize(calendarContext, 500)}` : '');
 
   return { system, user };

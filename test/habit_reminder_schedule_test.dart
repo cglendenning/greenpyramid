@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/services/notification.dart';
 
-/// D-124 Phase 3: the "starting soon" reminder scheduling math — pure,
+/// D-099 Phase 3: the "starting soon" reminder scheduling math — pure,
 /// so it's testable without a live notification plugin, the same
 /// pattern this codebase already uses for `CalendarService.anchorFor`.
 void main() {
-  group('D-124: habitReminderId — stable, collision-free per habit+day', () {
+  group('D-099: habitReminderId — stable, collision-free per habit+day', () {
     test('distinct ids for distinct weekdays of the same habit', () {
       final ids = {
         for (var d = DateTime.monday; d <= DateTime.sunday; d++)
@@ -25,7 +25,7 @@ void main() {
     });
   });
 
-  group('D-124: buildHabitReminderSlots', () {
+  group('D-099: buildHabitReminderSlots', () {
     test('empty activeWeekdays produces no slots', () {
       final slots = buildHabitReminderSlots(
         habitId: 1,

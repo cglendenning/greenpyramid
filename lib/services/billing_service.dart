@@ -9,7 +9,7 @@ class BillingStatus {
   bool get atLimit => totalSpendUsd >= spendCapUsd;
 }
 
-/// D-087: read-only visibility into what an account has spent this month —
+/// D-061: read-only visibility into what an account has spent this month —
 /// "the app needs to have the ability to see what has been spent for a
 /// given user." The backend (functions/lib/billing.js) is the enforcement
 /// authority; this is informational display only, read directly from the
@@ -24,7 +24,7 @@ class BillingService {
   final FirebaseFirestore _db;
   final FirebaseAuth _auth;
 
-  // Must match DEFAULT_SPEND_CAP_USD in functions/lib/billing.js (D-087) —
+  // Must match DEFAULT_SPEND_CAP_USD in functions/lib/billing.js (D-061) —
   // the two can't share a literal constant across Dart and JS.
   static const double defaultSpendCapUsd = 5.0;
 

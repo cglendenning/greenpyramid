@@ -42,7 +42,7 @@ test('D-038: the prompt instructs one or two words for the name and a '
   assert.match(system, /DESCRIPTION/);
 });
 
-test('D-094: the prompt gently biases the foundational tier toward body, '
+test('D-078: the prompt gently biases the foundational tier toward body, '
   + 'mind, and spirit — but explicitly as a soft, non-overriding nudge',
   () => {
   const { system } = buildDeriveCategoriesPrompt([]);
@@ -53,14 +53,14 @@ test('D-094: the prompt gently biases the foundational tier toward body, '
   assert.match(system, /never invent a foundational category/i);
 });
 
-test('D-093: with no existingCategories, the prompt is a fresh derivation '
+test('D-077: with no existingCategories, the prompt is a fresh derivation '
   + '— no refinement framing appears', () => {
   const { system } = buildDeriveCategoriesPrompt([]);
   assert.doesNotMatch(system, /REFINE/);
   assert.doesNotMatch(system, /wasn't.*quite right/i);
 });
 
-test('D-093: with existingCategories, the prompt switches to refinement — '
+test('D-077: with existingCategories, the prompt switches to refinement — '
   + 'names the prior proposal and instructs revising, not reinventing',
   () => {
   const { system } = buildDeriveCategoriesPrompt([], {
@@ -77,12 +77,12 @@ test('D-093: with existingCategories, the prompt switches to refinement — '
 
 // Amended 2026-09-07: found live that 3-5 habits at up to 120 chars each
 // was too many and too verbose. See Decision Log for the defect.
-// Amended 2026-09-08 (D-103): the fixed 2-3 became a variable 1 to
+// Amended 2026-09-08 (D-068): the fixed 2-3 became a variable 1 to
 // maxAllowed (never more than 3) — a single well-chosen habit can be all
 // a category needs, and the owner wants a 10-habit ceiling across all six
 // categories, which requires a per-call budget the model is offered, not
 // a constant every category shares.
-test('D-103: habitsTool(maxAllowed) requires 1 to maxAllowed short (max '
+test('D-068: habitsTool(maxAllowed) requires 1 to maxAllowed short (max '
   + '40 char) habits, and never offers more than 3 regardless of the '
   + 'requested ceiling', () => {
   const three = habitsTool(3);
@@ -98,7 +98,7 @@ test('D-103: habitsTool(maxAllowed) requires 1 to maxAllowed short (max '
     'a per-category budget can never exceed 3, no matter what the caller passes');
 });
 
-test('D-103: habitsTool defaults to a ceiling of 3 for a missing, falsy, '
+test('D-068: habitsTool defaults to a ceiling of 3 for a missing, falsy, '
   + 'or invalid maxAllowed — never zero, which would make a category '
   + 'proposal impossible', () => {
   assert.equal(habitsTool(undefined).input_schema.properties.habits.maxItems, 3);
@@ -109,7 +109,7 @@ test('D-103: habitsTool defaults to a ceiling of 3 for a missing, falsy, '
   assert.equal(habitsTool('not a number').input_schema.properties.habits.maxItems, 3);
 });
 
-test('D-103: the habit prompt names the actual per-call ceiling and asks '
+test('D-068: the habit prompt names the actual per-call ceiling and asks '
   + 'for only as many as genuinely earn a place, not padding to a fixed '
   + 'count', () => {
   const { system: two } = buildDeriveHabitsPrompt({ categoryName: 'Health', essence: null, maxAllowed: 2 });
@@ -120,7 +120,7 @@ test('D-103: the habit prompt names the actual per-call ceiling and asks '
   assert.match(three, /1 to 3 habits/);
 });
 
-test('D-122: the habit prompt states a hard 40-character limit in prose, '
+test('D-097: the habit prompt states a hard 40-character limit in prose, '
   + 'not just the tool schema — found live: the schema\'s own maxLength '
   + 'was not reliably respected, and several generated habits ran past '
   + 'it, hard-clipped mid-word by the chip UI with no ellipsis', () => {
@@ -128,7 +128,7 @@ test('D-122: the habit prompt states a hard 40-character limit in prose, '
   assert.match(system, /hard limit of 40 characters/);
 });
 
-test('D-122: the habit prompt forbids a range and forbids bundling '
+test('D-097: the habit prompt forbids a range and forbids bundling '
   + 'several conditions into one checkbox — found live: "Add 2-3 '
   + 'high-intensity interval sprints" (a range) and "Clear desk, phone '
   + 'silent, distractions removed" (three conditions in one checkbox) are '
@@ -138,7 +138,7 @@ test('D-122: the habit prompt forbids a range and forbids bundling '
   assert.match(system, /Never several conditions strung together/);
 });
 
-test('D-122: the habit prompt requires the habits within one call to be '
+test('D-097: the habit prompt requires the habits within one call to be '
   + 'genuinely distinct from each other, not restatements of the same '
   + 'action — found live: three "Physical Health" habits were all '
   + 'variations of "do a hard workout," and three "Growth Mindset" '
@@ -180,7 +180,7 @@ test('injection characters in category context cannot break out of the '
   assert.doesNotMatch(user, /"/);
 });
 
-test('D-118: the vision-statement prompt now requires the fixed opener '
+test('D-093: the vision-statement prompt now requires the fixed opener '
   + '"I\'m the kind of person that" — reverses D-042\'s original "no fixed '
   + 'template opener" call, per the owner\'s explicit instruction',
   () => {
@@ -198,7 +198,7 @@ test('D-042: essences and the full transcript both reach the prompt', () => {
   assert.match(user, /a specific memory about running/);
 });
 
-test('D-114: an empty or missing transcript states plainly that this is a '
+test('D-089: an empty or missing transcript states plainly that this is a '
   + 'regeneration, not a live conversation — profile.dart\'s regeneration '
   + 'has no transcript at all, only the pyramid\'s current essences', () => {
   const { user: withEmpty } = buildVisionStatementPrompt({
@@ -214,7 +214,7 @@ test('D-114: an empty or missing transcript states plainly that this is a '
   assert.match(withMissing, /regeneration from their current pyramid/);
 });
 
-test('D-118: an empty or missing essences list states plainly that none '
+test('D-093: an empty or missing essences list states plainly that none '
   + 'have been captured yet — the new opening-conversation vision '
   + 'statement (right after the resonance conversation, before any '
   + 'category essence exists) has no essences at all, only a transcript',

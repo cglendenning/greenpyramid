@@ -34,7 +34,7 @@ class _TaskListState extends State<TaskList> {
 
   final dbHelper = DatabaseHelper.instance;
 
-  // D-134: modernized to the app's established dark visual language
+  // D-107: modernized to the app's established dark visual language
   // (AppColors, Exo2) — found live: "I don't like the aesthetics of the
   // links and the functionality within that screen." Previously unstyled
   // (default Material colors), which read as visually inconsistent with
@@ -105,7 +105,7 @@ class _TaskListState extends State<TaskList> {
     return (categoryId, essence);
   }
 
-  // D-113: name and description together, in the same shared sheet
+  // D-088: name and description together, in the same shared sheet
   // editpyramid.dart uses — this used to be "essence" (P-12's internal
   // spec term, never meant for user-facing copy) with no way to touch
   // the category name from here at all. Found live: "wherever I can
@@ -123,7 +123,7 @@ class _TaskListState extends State<TaskList> {
       await dbHelper.renameCategoryCascading(
           categoryid: categoryId, newName: result.name);
     }
-    // D-127: compare against what was actually loaded, not against
+    // D-102: compare against what was actually loaded, not against
     // null/empty — an intentionally-cleared description is itself a
     // change and must be persisted, not skipped because it's blank.
     if (result.description != (currentEssence ?? '')) {
@@ -161,7 +161,7 @@ class _TaskListState extends State<TaskList> {
                     future: _essenceContext,
                     builder: (context, snapshot) {
                       final data = snapshot.data;
-                      // D-113: a category with no description yet still
+                      // D-088: a category with no description yet still
                       // gets the Edit action — previously the whole block
                       // (name-editing included) was hidden whenever no
                       // essence existed, D-003/D-008's normal state for
@@ -208,7 +208,7 @@ class _TaskListState extends State<TaskList> {
                           return _card(
                             padding: EdgeInsets.zero,
                             child: SizedBox(
-                              // D-145: a fixed height, not just a max —
+                              // D-117: a fixed height, not just a max —
                               // found live, a jarring layout shift: with
                               // shrinkWrap the card (and everything below
                               // it, including the buttons) sized itself to
@@ -221,7 +221,7 @@ class _TaskListState extends State<TaskList> {
                               // with too few tasks to fill it just leaves
                               // empty space in the card instead.
                               //
-                              // D-147: that fixed height was one third of
+                              // D-119: that fixed height was one third of
                               // the *screen* — found live, this pushed the
                               // calendar (which sits below the buttons,
                               // further down this same column) off the
@@ -231,8 +231,8 @@ class _TaskListState extends State<TaskList> {
                               // handling any overflow, and leaves the
                               // calendar visible without scrolling.
                               //
-                              // D-153: trimmed further, 220 -> 180 —
-                              // found live again: even the D-147 constant
+                              // D-126: trimmed further, 220 -> 180 —
+                              // found live again: even the D-119 constant
                               // still left the calendar requiring a
                               // scroll on typical phone screens once the
                               // essence card and both buttons were
@@ -240,7 +240,7 @@ class _TaskListState extends State<TaskList> {
                               // 2-3 tasks with the scrollbar taking any
                               // overflow beyond that.
                               height: 180,
-                              // D-153: an always-visible thumb, not just
+                              // D-126: an always-visible thumb, not just
                               // one that appears while actively dragging
                               // — "the card ... should display a scroll
                               // bar, if the tasks scroll beyond the
@@ -280,7 +280,7 @@ class _TaskListState extends State<TaskList> {
                                                   checked: value ?? false,
                                                 );
                                               });
-                                              // D-187: found live — a check-off was
+                                              // D-147: found live — a check-off was
                                               // purely a local SQLite write with no
                                               // sync trigger of its own; the only
                                               // syncAll() call sites in the whole app
@@ -307,7 +307,7 @@ class _TaskListState extends State<TaskList> {
                         }
                       }),
                   const SizedBox(height: 16),
-                  // D-153: side by side, not stacked — found live: "you
+                  // D-126: side by side, not stacked — found live: "you
                   // could probably take the two buttons and rather than
                   // having them stack on top of each other vertically,
                   // they could align on a single row horizontally that
@@ -325,7 +325,7 @@ class _TaskListState extends State<TaskList> {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      // D-123: schedule a habit's recurring time — a
+                      // D-098: schedule a habit's recurring time — a
                       // separate screen since it works across every
                       // category's habits at once, not just this one.
                       Expanded(
@@ -379,7 +379,7 @@ class _TaskListState extends State<TaskList> {
                         if (!snapshot.hasData) {
                           return const Center(child: Text(''));
                         } else {
-                          // D-183: -1 means no tasks defined at all; -2
+                          // D-143: -1 means no tasks defined at all; -2
                           // means tasks exist but none were due in this
                           // 7-day window — neither is a real percentage
                           // to print.
@@ -407,7 +407,7 @@ class _TaskListState extends State<TaskList> {
                                   'Tap "Edit Task List" to add tasks.',
                                   style: TextStyle(color: AppColors.textSecondary)));
                         } else {
-                          // D-183: -1 means no tasks defined at all; -2
+                          // D-143: -1 means no tasks defined at all; -2
                           // means tasks exist but none were due in this
                           // 30-day window — neither is a real percentage
                           // to print.

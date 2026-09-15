@@ -138,7 +138,7 @@ class _EditTaskListState extends State<EditTaskList> {
       child: const Text("Delete!"),
       onPressed: () async {
         final nav = Navigator.of(context);
-        // D-123/D-124: deleting a habit tears down everything scheduling
+        // D-098/D-099: deleting a habit tears down everything scheduling
         // ever attached to it — found live, deleteTaskAndLog only ever
         // removed the task/tasklog rows, leaving a scheduled habit's
         // calendar event AND its recurring local "starting soon"
@@ -254,7 +254,7 @@ class EditTask {
   String category = '';
   String taskdescription = '';
   String createDate = '';
-  // D-123: the habit's native calendar event id, if it currently has one
+  // D-098: the habit's native calendar event id, if it currently has one
   // scheduled — null otherwise. Lets the delete flow clean up the
   // calendar event along with the habit itself.
   String? scheduledEventId;

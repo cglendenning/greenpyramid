@@ -23,7 +23,6 @@ import { guardAndCountSetupCall, SetupCallLimitError } from './lib/setup_guard.j
 import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, CATEGORIES_TOOL, habitsTool } from './lib/setup_derivation.js';
 import { buildProgressAnalysisPrompt } from './lib/progress_analysis.js';
 import { buildNewsfeedAnalysisPrompt, parseArticleReply } from './lib/newsfeed_analysis.js';
-import { buildDeriveDomainFindingsPrompt, buildDeriveGeneralDomainFindingsPrompt, DOMAIN_FINDING_TOOL, GENERAL_DOMAIN_FINDING_TOOL } from './lib/domain_finding_derivation.js';
 import { isEligibleForTailoredNotification } from './lib/notification_schedule.js';
 import { shouldSendBatchCheckin, todaysScheduledHabits, localDateParts } from './lib/batch_checkin_schedule.js';
 import { buildNotificationPrompt, NOTIFICATION_TOOL } from './lib/notification_derivation.js';
@@ -33,11 +32,11 @@ import { applyRevenueCatEvent, verifyWebhookAuth } from './lib/revenuecat_webhoo
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
-// legacy coach/commentary surfaces until D-083 (R6) retires them; Anthropic
+// legacy coach/commentary surfaces until D-066 (R6) retires them; Anthropic
 // backs the Council (D-030, D-037).
 const sOpenAI = defineSecret('OPENAI_API_KEY');
 const sAnthropic = defineSecret('ANTHROPIC_API_KEY');
-// D-045: Apple DeviceCheck signing key (.p8, PEM). D-070: RevenueCat's
+// D-045: Apple DeviceCheck signing key (.p8, PEM). D-054: RevenueCat's
 // webhook shared-secret string, configured identically in the RevenueCat
 // dashboard's webhook "Authorization header" field.
 const sDeviceCheckKey = defineSecret('DEVICECHECK_PRIVATE_KEY');
@@ -69,7 +68,7 @@ async function requireAppCheck(req, res, next) {
   }
 }
 
-// D-087: verifies a Firebase ID token passed as "Authorization: Bearer
+// D-061: verifies a Firebase ID token passed as "Authorization: Bearer
 // <token>" and sets req.uid. Separate from App Check (which proves the
 // binary, not the account) — the spend cap is per-account, so the backend
 // needs to know which account to charge before it can enforce one.
@@ -104,7 +103,7 @@ app.use(express.json({ limit: '256kb' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
-// D-070: RevenueCat calls this directly from its own servers — never through
+// D-054: RevenueCat calls this directly from its own servers — never through
 // the app, so it carries no App Check token and must sit before that gate.
 // Auth is the shared-secret header check above, not App Check or Firebase
 // Auth. Always responds quickly so RevenueCat doesn't retry-storm on a slow
@@ -117,7 +116,7 @@ app.post('/revenuecatWebhook', async (req, res) => {
     ensureAdmin();
     const event = req.body?.event;
     const applied = await applyRevenueCatEvent(event, admin.firestore());
-    // D-175: the only visibility into which entitlement transition (or
+    // D-135: the only visibility into which entitlement transition (or
     // none) a given webhook call actually produced — found live, the
     // hard way, while diagnosing a report of the generate-analysis
     // button failing right after a subscribe: three webhook calls all
@@ -127,7 +126,7 @@ app.post('/revenuecatWebhook', async (req, res) => {
     console.log('revenuecatWebhook applied:', event?.type, '->', applied);
     res.json({ ok: true });
   } catch (e) {
-    // D-175: found live — this used to still respond 200 on a genuine
+    // D-135: found live — this used to still respond 200 on a genuine
     // Firestore write failure, which tells RevenueCat "handled" and it
     // never retries — a failed entitlement update was silently invisible,
     // discoverable only by grepping this log line, which nobody was
@@ -167,7 +166,7 @@ app.post('/v1/chat/completions', async (req, res) => {
   }
 });
 
-// ── The Council of Advisors (D-022/D-185/D-030/D-037) ──────────────────────
+// ── The Council of Advisors (D-022/D-145/D-030/D-037) ──────────────────────
 // Prompt-building logic lives in lib/council.js so it's testable without
 // spinning up Express or Firebase Admin (node --test lib/*.test.js).
 
@@ -177,8 +176,8 @@ function claude() {
   return anthropicClient;
 }
 
-// D-015/D-188: setup is free — bounded by a 40-model-call count per
-// session, never by the D-087 dollar cap. Every other Council use (D-014)
+// D-015/D-148: setup is free — bounded by a 40-model-call count per
+// session, never by the D-061 dollar cap. Every other Council use (D-014)
 // is gated by spend instead. Shared by every setup-conversation route
 // (turns and the two derivation endpoints below) so the bound is uniform
 // regardless of which kind of call it is.
@@ -223,7 +222,7 @@ async function guardCouncilCall(req, res, { isSetup, sessionId }) {
   }
 }
 
-// D-188/D-045/D-071: called once, right at setup completion (or, for the
+// D-148/D-045/D-055: called once, right at setup completion (or, for the
 // D-027 migration cohort, once at first launch of this build). Device-bound
 // for new users; account-bound and device-check-free for the migration
 // grant, per D-045's explicit carve-out.
@@ -265,28 +264,28 @@ app.post('/requestTrial', requireFirebaseAuth, async (req, res) => {
 });
 
 app.post('/boardAdvisorTurn', requireFirebaseAuth, (req, res, next) => req.body?.isSetup ? setupIdempotency(() => admin.firestore())(req, res, next) : next(), async (req, res) => {
-  // D-090/D-097: soloSetup — not isSetup — is a solo conversation with
+  // D-074/D-080: soloSetup — not isSetup — is a solo conversation with
   // Mira, forced through a tool call so her readiness to build the pyramid
   // comes back as data, not free text. isSetup only ever meant "billed
   // free" (D-015); every call inside a setup-typed session sets it,
   // including essence-deepening's four-advisor rotation (D-007 step 3),
   // which must NOT be routed through the solo-Mira path — found live,
   // conflating the two silently broke essence-deepening (always Mira,
-  // wrong framing, D-092's pacing suffix leaking into a conversation it
+  // wrong framing, D-076's pacing suffix leaking into a conversation it
   // was never meant to touch). Every non-solo-setup caller (category
-  // re-clarification, essence-deepening, D-091's general Council chat)
+  // re-clarification, essence-deepening, D-075's general Council chat)
   // keeps the original four-advisor free-text path.
   const { isSetup, soloSetup, sessionId, sliderValue, conversationHistory, existingCategories, pyramidContext } = req.body || {};
   if (soloSetup) return handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conversationHistory, existingCategories });
 
-  // D-095: pyramidContext, present only from GeneralCouncilScreen (D-091),
+  // D-079: pyramidContext, present only from GeneralCouncilScreen (D-075),
   // switches this from the category-scoped clarification framing to the
   // pyramid-grounded "help them live out values they've already defined"
   // framing — real context instead of the "their life" placeholder that
   // produced disconnected, non-sequitur replies.
-  // D-100: nudgeConvergence fires once the general Council conversation has
+  // D-082: nudgeConvergence fires once the general Council conversation has
   // run two full four-advisor rounds without converging — enough room for
-  // real diagnosis (D-090's "not so many it drags" ethos) before pushing
+  // real diagnosis (D-074's "not so many it drags" ethos) before pushing
   // toward a concrete next step. Never applies to the category-scoped or
   // solo-setup paths, which have their own convergence signals already
   // (essence acceptance; readyToBuild).
@@ -301,7 +300,7 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, (req, res, next) => req.body?
   if (!built) return res.status(400).json({ error: 'Invalid advisorKey' });
   const { advisor, systemText, userMessage } = built;
 
-  // D-087/D-188: refused before the model is ever called — the guard
+  // D-061/D-148: refused before the model is ever called — the guard
   // protects against cost/overuse, not against a request that already
   // spent money.
   if (!(await guardCouncilCall(req, res, { isSetup, sessionId }))) return;
@@ -317,14 +316,14 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, (req, res, next) => req.body?
       // reply — a live one/two-sentence chat line gets nothing from
       // reasoning that's worth either cost.
       thinking: { type: 'disabled' },
-      // D-185: this block is the stable prefix — constant per advisor while
-      // the intensity slider stays at its default (D-073) — so it carries
+      // D-145: this block is the stable prefix — constant per advisor while
+      // the intensity slider stays at its default (D-056) — so it carries
       // the cache breakpoint. Nothing user-derived is in this block.
       system: [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: userMessage }],
     });
-    // D-015: setup is free — its cost is never recorded against the D-087
-    // dollar ledger, only counted against D-188's call limit (already done
+    // D-015: setup is free — its cost is never recorded against the D-061
+    // dollar ledger, only counted against D-148's call limit (already done
     // above, before the model call).
     if (!isSetup) {
       recordCost(req.uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
@@ -345,9 +344,9 @@ app.post('/boardAdvisorTurn', requireFirebaseAuth, (req, res, next) => req.body?
   }
 });
 
-// D-090: the solo-Mira half of /boardAdvisorTurn, split out so the
+// D-074: the solo-Mira half of /boardAdvisorTurn, split out so the
 // four-advisor free-text path above stays exactly as it was for its other
-// two callers (category re-clarification, D-091's general Council chat).
+// two callers (category re-clarification, D-075's general Council chat).
 async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conversationHistory, existingCategories }) {
   if (!(await guardCouncilCall(req, res, { isSetup: true, sessionId }))) return;
 
@@ -358,7 +357,7 @@ async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conver
       model,
       max_tokens: 150,
       thinking: { type: 'disabled' },
-      // D-185: stable prefix, same cache treatment as the group-chat path.
+      // D-145: stable prefix, same cache treatment as the group-chat path.
       system: [{ type: 'text', text: systemText, cache_control: { type: 'ephemeral' } }],
       messages: [{ role: 'user', content: userMessage }],
       tools: [SETUP_TURN_TOOL],
@@ -373,27 +372,27 @@ async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conver
     let reply = toolUse.input.reply;
     const wrapUpAlreadyAsked = !existingCategories && hasAskedWrapUpQuestion(conversationHistory);
     const turnsSoFar = countMiraTurns(conversationHistory);
-    // D-120: once D-092's pacing reassurance has already fired once (at
+    // D-095: once D-076's pacing reassurance has already fired once (at
     // turnsSoFar == 2), only one more question is allowed — found live:
     // several "almost there"/"not much further to go" reassurances in a
     // row, across multiple turns the model kept deciding weren't ready
     // yet, read as being dragged along rather than reassured. Forced the
-    // same deterministic way as D-119, never left to the model's own
+    // same deterministic way as D-094, never left to the model's own
     // per-turn judgment.
     const mustWrapUpNow = !existingCategories && !wrapUpAlreadyAsked && turnsSoFar >= 3;
-    // D-119: once the wrap-up question has already been asked (and just
+    // D-094: once the wrap-up question has already been asked (and just
     // answered), the very next turn is the real close — forced
     // deterministically, regardless of what the model itself returned for
     // readyToBuild this turn. Found live: leaving this to the model's own
     // per-turn judgment let it ask yet another follow-up question instead
     // of closing, exactly the defect this guarantees can't happen —
-    // matching D-092's own lesson that a soft, once-per-conversation
+    // matching D-076's own lesson that a soft, once-per-conversation
     // instruction is not something to trust the model to reliably follow
     // on its own.
     if (wrapUpAlreadyAsked) {
       readyToBuild = true;
     } else if (!existingCategories && (readyToBuild || mustWrapUpNow)) {
-      // D-118: the first time Mira decides she's ready (or D-120: the
+      // D-093: the first time Mira decides she's ready (or D-095: the
       // conversation has hit its post-reassurance cap regardless of what
       // she decided) — the initial (non-refining) conversation only,
       // never the refinement loop — this is intercepted: instead of
@@ -403,13 +402,13 @@ async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conver
       reply = `${(reply || '').trim()} ${SETUP_WRAP_UP_QUESTION}`;
       readyToBuild = false;
     } else {
-      // D-092: applied server-side, deterministically — found live that
+      // D-076: applied server-side, deterministically — found live that
       // asking the model to weave this into its own reply wasn't reliably
       // followed several turns into a real conversation.
       reply = applyPacingReassurance(reply, { turnsSoFar, readyToBuild });
     }
-    // D-015: setup is free — never charged against D-087's dollar ledger,
-    // only counted against D-188's call limit (already done above).
+    // D-015: setup is free — never charged against D-061's dollar ledger,
+    // only counted against D-148's call limit (already done above).
     res.json({
       reply,
       readyToBuild,
@@ -422,8 +421,8 @@ async function handleSetupAdvisorTurn(req, res, { sessionId, sliderValue, conver
 }
 
 // ── Setup derivation (D-038/D-039/D-042) ────────────────────────────────────
-// All three are setup-only: always free (D-015), always bounded by D-188's
-// call count, never by D-087's spend cap.
+// All three are setup-only: always free (D-015), always bounded by D-148's
+// call count, never by D-061's spend cap.
 
 app.post('/deriveCategories', requireFirebaseAuth, setupIdempotency(() => admin.firestore()), async (req, res) => {
   const { sessionId, transcript, existingCategories } = req.body || {};
@@ -454,7 +453,7 @@ app.post('/deriveHabits', requireFirebaseAuth, setupIdempotency(() => admin.fire
   const { sessionId, categoryName, essence, existingHabits, maxAllowed } = req.body || {};
   if (!(await guardCouncilCall(req, res, { isSetup: true, sessionId }))) return;
 
-  // D-103: maxAllowed is setup_screen.dart's own reservation across all
+  // D-068: maxAllowed is setup_screen.dart's own reservation across all
   // six categories (never more than 10 habits total, never less than 1
   // per category) — the tool schema's maxItems is generated per call, not
   // a fixed constant, so the model is never even offered more room than
@@ -483,51 +482,7 @@ app.post('/deriveHabits', requireFirebaseAuth, setupIdempotency(() => admin.fire
   }
 });
 
-// D-036: derives domain findings from one category's conversation, at the
-// moment its essence is accepted. Unlike the three setup-only derivations
-// above, this runs from both setup (free, D-188-bounded) and D-047's paid
-// re-clarification — so, like boardAdvisorTurn, it takes a dynamic isSetup
-// and goes through the full guardCouncilCall gate rather than being
-// hardcoded free.
-app.post('/deriveDomainFindings', requireFirebaseAuth, (req, res, next) => req.body?.isSetup ? setupIdempotency(() => admin.firestore())(req, res, next) : next(), async (req, res) => {
-  const { sessionId, categoryName, essence, transcript, isSetup, pyramidContext } = req.body || {};
-  if (!(await guardCouncilCall(req, res, { isSetup, sessionId }))) return;
-
-  // D-100: the general Council conversation (D-091) sends pyramidContext
-  // instead of a single categoryName/essence — findings need attributing
-  // to whichever category they actually concern, so this branches to a
-  // distinct prompt/tool pair rather than forcing one category framing to
-  // serve both callers.
-  const general = Array.isArray(pyramidContext);
-  const { system, user } = general
-    ? buildDeriveGeneralDomainFindingsPrompt({ pyramidContext, transcript })
-    : buildDeriveDomainFindingsPrompt({ categoryName, essence, transcript });
-  const tool = general ? GENERAL_DOMAIN_FINDING_TOOL : DOMAIN_FINDING_TOOL;
-  const model = await getCouncilModel();
-  try {
-    const msg = await claude().messages.create({
-      model,
-      max_tokens: 300,
-      thinking: { type: 'disabled' },
-      system: [{ type: 'text', text: system }],
-      messages: [{ role: 'user', content: user }],
-      tools: [tool],
-      tool_choice: { type: 'tool', name: tool.name },
-    });
-    if (!isSetup) {
-      recordCost(req.uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
-        .catch((e) => console.error('recordCost error:', e.message));
-    }
-    const toolUse = msg.content.find((b) => b.type === 'tool_use');
-    if (!toolUse) return res.status(502).json({ error: 'no_tool_use_in_response' });
-    res.json({ findings: toolUse.input.findings });
-  } catch (e) {
-    console.error('deriveDomainFindings error:', e.message);
-    res.status(502).json({ error: e.message });
-  }
-});
-
-// D-114: isSetup now comes from the caller instead of being hardcoded
+// D-089: isSetup now comes from the caller instead of being hardcoded
 // true — setup's own closing synthesis (D-042) still passes true and
 // stays free (D-015); profile.dart's regeneration, outside any setup
 // session, passes false and goes through D-014's entitlement gate like
@@ -560,7 +515,7 @@ app.post('/deriveVisionStatement', requireFirebaseAuth, (req, res, next) => req.
   }
 });
 
-// D-114: the profile screen's 30-day progress analysis — a new AI
+// D-089: the profile screen's 30-day progress analysis — a new AI
 // surface, never gated by anything but D-014's standard entitlement
 // check (never free, since it isn't setup).
 app.post('/deriveProgressAnalysis', requireFirebaseAuth, async (req, res) => {
@@ -588,7 +543,7 @@ app.post('/deriveProgressAnalysis', requireFirebaseAuth, async (req, res) => {
   }
 });
 
-// D-150: the newsfeed's AI-written analysis article — gated by entitlement
+// D-122: the newsfeed's AI-written analysis article — gated by entitlement
 // and the spend cap exactly like every other non-setup AI surface
 // (guardCouncilCall's isSetup: false branch). Never called more than once
 // a day per NewsfeedService's own dedupeKey, but that throttling lives
@@ -628,7 +583,7 @@ export const api = onRequest(
   app,
 );
 
-// ── Notifications (D-189/D-028/D-189) ───────────────────────────────────────
+// ── Notifications (D-149/D-028/D-149) ───────────────────────────────────────
 //
 // D-028: exactly this context, read from profile/main — the array already
 // synced by the client (SyncService), never a separate model call to
@@ -645,13 +600,7 @@ async function sendTailoredNotification(uid, profileData) {
       .collection('users').doc(uid).collection('recentActivity').get();
   const recentActivity = recentSnap.docs.map((d) => d.data());
 
-  // D-036/D-028 (amended): findings live in their own subcollection (IV-D),
-  // synced in full — unbounded, unlike recentActivity's 250-row cap, since
-  // findings are sparse by nature (D-188).
-  const findingsSnap = await db
-      .collection('users').doc(uid).collection('domainFindings').get();
-  const domainFindings = findingsSnap.docs.map((d) => d.data());
-  // D-185 step 7: present only when the user granted calendar access —
+  // D-145 step 7: present only when the user granted calendar access —
   // absent entirely otherwise (buildNotificationPrompt already omits the
   // section when this is undefined).
   const calendarContext = profileData.calendarContext;
@@ -660,9 +609,8 @@ async function sendTailoredNotification(uid, profileData) {
     categories,
     visionStatement: profileData.visionStatement,
     recentActivity,
-    domainFindings,
     calendarContext,
-    // D-178: already present on profileData — synced by the client's
+    // D-138: already present on profileData — synced by the client's
     // SyncService the same way every other profile/main field is.
     firstName: profileData.firstName,
   });
@@ -684,7 +632,7 @@ async function sendTailoredNotification(uid, profileData) {
   recordCost(uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
       .catch((e) => console.error('recordCost error:', e.message));
 
-  // D-189: cached so the client's local fallback has the most recent
+  // D-149: cached so the client's local fallback has the most recent
   // server-generated content if push was never granted or delivery fails.
   await db.collection('users').doc(uid).collection('profile').doc('main').set({
     lastNotificationTitle: title,
@@ -699,7 +647,7 @@ async function sendTailoredNotification(uid, profileData) {
   }
 
   try {
-    // D-083 amendment / Phase 6 fix (2026-09-10): this send previously
+    // D-066 amendment / Phase 6 fix (2026-09-10): this send previously
     // carried no `data` field at all — the reason a tap on a real
     // tailored push had nothing to route on. `type: 'tailored'` is all a
     // tap handler needs here; unlike batchCheckinJob's push there's no
@@ -711,14 +659,14 @@ async function sendTailoredNotification(uid, profileData) {
       data: { type: 'tailored' },
     });
   } catch (e) {
-    // D-189: a delivery failure is logged and surfaced, never swallowed —
+    // D-149: a delivery failure is logged and surfaced, never swallowed —
     // lastNotificationTitle/Body above is what lets the client recover.
     console.error(`notificationJob: FCM send failed for ${uid}:`, e.message);
   }
 }
 
-// D-189: runs every 15 minutes (D-189's timezone-bucketing granularity,
-// notification_schedule.js); D-189's exclusion of lapsed accounts is
+// D-149: runs every 15 minutes (D-149's timezone-bucketing granularity,
+// notification_schedule.js); D-149's exclusion of lapsed accounts is
 // enforced in isEligibleForTailoredNotification, which also implements
 // R7's "every account is entitled until R8" carve-out. A full
 // collectionGroup scan every 15 minutes is the simplest correct
@@ -752,19 +700,19 @@ export const notificationJob = onSchedule(
   },
 );
 
-// D-124: once per account per day, after the *latest* scheduled habit
-// (D-123) of that day has passed in the account's own local time (D-189),
+// D-099: once per account per day, after the *latest* scheduled habit
+// (D-098) of that day has passed in the account's own local time (D-149),
 // sends a single push naming every one of that day's scheduled, active
 // habits — replacing Kansei's per-session "Did you do it?" with one
 // batched push, per the owner's explicit choice that Green Pyramid's
 // higher daily habit volume makes a per-habit notification the wrong
 // design here. batch_checkin_schedule.js's shouldSendBatchCheckin decides
-// the "when" (data-dependent, unlike D-189's fixed clock slots) and its
+// the "when" (data-dependent, unlike D-149's fixed clock slots) and its
 // own "already sent today" field is the once-per-day guard.
 //
 // Unlike notificationJob, this calls no model and costs nothing to run —
 // so it is NOT restricted to non-lapsed accounts, matching D-013's
-// tracker-is-free-forever and D-123's own "scheduling is available
+// tracker-is-free-forever and D-098's own "scheduling is available
 // regardless of entitlement."
 async function maybeSendBatchCheckin(uid, profileData, now) {
   const db = admin.firestore();
@@ -786,7 +734,7 @@ async function maybeSendBatchCheckin(uid, profileData, now) {
   const habits = todaysScheduledHabits(tasks, weekday);
   if (habits.length === 0) return; // defensive — shouldSendBatchCheckin already checked this.
 
-  // D-124: the payload the batch check-in screen renders from, not a
+  // D-099: the payload the batch check-in screen renders from, not a
   // fresh query — so what the user sees on tap matches what the push was
   // actually about even if the pyramid changes in between. Also the
   // once-per-day guard for every later run today.
@@ -809,7 +757,7 @@ async function maybeSendBatchCheckin(uid, profileData, now) {
     await admin.messaging().send({
       token: fcmToken,
       notification: { title: 'Did you do it?', body },
-      // D-083's amendment noted real FCM pushes carry no `data` field at
+      // D-066's amendment noted real FCM pushes carry no `data` field at
       // all today — this is the first push that needs one, so it's added
       // here rather than for every push type at once.
       data: {

@@ -45,7 +45,7 @@ dependencies:
   flutter_svg: ^2.1.0
   flutter_timezone: ^4.1.0
   intl: ^0.20.2
-  # D-129: app version/build number attached to submitted feedback, so a
+  # D-124: app version/build number attached to submitted feedback, so a
   # bug report can be triaged against the build that produced it.
   package_info_plus: ^8.3.0
   path: 1.9.1
@@ -67,24 +67,24 @@ dependencies:
   uuid: ^4.6.0
   firebase_auth: ^6.6.1
   sign_in_with_apple: ^8.1.0
-  # D-188: account creation before the pyramid reveal (Apple + Google
+  # D-148: account creation before the pyramid reveal (Apple + Google
   # one-tap only). Same version goal-executor uses.
   google_sign_in: ^7.2.0
-  # D-070: RevenueCat, ported from Kansei. Pinned to the same major version
-  # Kansei's already-tested integration uses (D-070's acceptance criterion),
+  # D-054: RevenueCat, ported from Kansei. Pinned to the same major version
+  # Kansei's already-tested integration uses (D-054's acceptance criterion),
   # not the latest — 10.x carries breaking API changes not yet verified here.
   purchases_flutter: ^9.0.0
-  # D-059: iOS DeviceCheck token generation (DCDevice.generateToken()).
+  # D-045: iOS DeviceCheck token generation (DCDevice.generateToken()).
   device_check: ^1.0.0
-  # D-059: Android's per-app-signing-key device identifier, hashed before
+  # D-045: Android's per-app-signing-key device identifier, hashed before
   # it ever leaves the device.
   android_id: ^0.5.2+1
   crypto: ^3.0.0
-  # D-185 step 7: calendar context feeding P-8. D-123 (2026-09-09) added
+  # D-145 step 7: calendar context feeding P-8. D-098 (2026-09-09) added
   # real writes for scheduled habits — full access was already requested
   # for reading, so no permission-level change was needed.
   device_calendar_plus: ^0.8.0
-  # D-124 Phase 5: the OS's own native speech recognition (Apple's Speech
+  # D-099 Phase 5: the OS's own native speech recognition (Apple's Speech
   # framework / Android's SpeechRecognizer) for the batch check-in's
   # voice-recorded miss reason — not a separate paid transcription
   # service, so this does not require the standing "no new paid cloud
@@ -103,7 +103,7 @@ dev_dependencies:
   sqflite_common_ffi: ^2.3.0
   fake_cloud_firestore: ^4.2.0
   firebase_auth_mocks: ^0.15.2
-  # D-188: firebase_auth_mocks' own exception-stubbing mechanism
+  # D-148: firebase_auth_mocks' own exception-stubbing mechanism
   # (whenCalling/maybeThrowException) — already a transitive dependency,
   # declared directly since account_link_service_test.dart imports it.
   mock_exceptions: ^0.8.2

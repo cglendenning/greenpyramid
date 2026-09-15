@@ -7,7 +7,7 @@ import '../widgets/onboarding_backdrop.dart';
 /// D-050: triggers the OS push-notification permission dialog. One screen,
 /// one action — no skip path, no second button.
 ///
-/// D-099: shares [OnboardingBackdrop]/[OnboardingStyles] with WelcomeScreen.
+/// D-081: shares [OnboardingBackdrop]/[OnboardingStyles] with WelcomeScreen.
 /// Copy rewritten so the screen's actual function — requesting permission
 /// to send push notifications — is unambiguous, rather than reading as a
 /// generic "the Council reaches you" statement with no visible connection
@@ -21,7 +21,7 @@ class PushPermissionScreen extends StatelessWidget {
       await LocalNotificationService().requestPermissions();
       await PushMessagingService.instance.syncNotificationState();
     } catch (_) {
-      // D-189: a failure here degrades nothing — proceed regardless.
+      // D-149: a failure here degrades nothing — proceed regardless.
     }
     onDone();
   }

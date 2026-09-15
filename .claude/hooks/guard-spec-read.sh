@@ -2,7 +2,7 @@
 # PreToolUse guard: block whole-file reads of the Green Pyramid specification.
 #
 # The specification is ~33,500 tokens. Loading it wholesale burns context that
-# belongs to the task. D-081 requires reading SPEC_INDEX.md (~1,800 tokens) and
+# belongs to the task. D-065 requires reading SPEC_INDEX.md (~1,800 tokens) and
 # then only the directives needed (~280 tokens each).
 #
 # Targeted reads stay allowed: sed -n ranges, grep, awk, head, tail, wc.
@@ -38,14 +38,14 @@ case "$tool" in
   Read)
     path=$(printf '%s' "$payload" | jq -r '.tool_input.file_path // ""')
     if printf '%s' "$path" | grep -Eq "$SPEC_NAME"; then
-      deny "The Read tool loads the whole specification (~33,500 tokens). D-081 forbids this.
+      deny "The Read tool loads the whole specification (~33,500 tokens). D-065 forbids this.
 ${ADVICE}"
     fi
     ;;
   Bash)
     cmd=$(printf '%s' "$payload" | jq -r '.tool_input.command // ""')
     if printf '%s' "$cmd" | grep -Eq "$WHOLE_FILE_READ"; then
-      deny "That reads the whole specification (~33,500 tokens). D-081 forbids it.
+      deny "That reads the whole specification (~33,500 tokens). D-065 forbids it.
 ${ADVICE}"
     fi
     ;;

@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-102/D-103/D-104/D-105/D-106: structural checks on setup_screen.dart's
+/// D-067/D-068/D-069/D-070/D-071: structural checks on setup_screen.dart's
 /// phase flow between confirming categories and reaching the completion
 /// screen — SetupScreen owns live service singletons (SetupService.instance)
 /// the same way CouncilScreen does and isn't widget-tested directly, matching
@@ -10,7 +10,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final source = File('lib/screens/setup_screen.dart').readAsStringSync();
 
-  test('D-102: confirming categories stops on a handoff screen rather '
+  test('D-067: confirming categories stops on a handoff screen rather '
       'than dropping straight back into the essence-deepening chat — '
       'found live: "This feels right" leading straight into an '
       'identical-looking chat read as being "tossed back into chat"', () {
@@ -26,7 +26,7 @@ void main() {
             'commit');
   });
 
-  test('D-102: the handoff screen\'s own action is what actually starts '
+  test('D-067: the handoff screen\'s own action is what actually starts '
       'essence-deepening', () {
     final start = source.indexOf('Future<void> _beginEssenceDeepening()');
     expect(start, greaterThan(-1));
@@ -37,7 +37,7 @@ void main() {
     expect(body, contains('_askAboutCurrentFoundational()'));
   });
 
-  test('D-102: the handoff screen uses the shared OnboardingStyles type '
+  test('D-067: the handoff screen uses the shared OnboardingStyles type '
       'scale, matching the welcome screen\'s "vibe" — not a bespoke text '
       'style reintroducing visual drift', () {
     final start = source.indexOf('Widget _buildEssenceIntro()');
@@ -51,7 +51,7 @@ void main() {
     expect(body, contains('_beginEssenceDeepening'));
   });
 
-  test('D-103: habit proposals reserve at least one slot per remaining '
+  test('D-068: habit proposals reserve at least one slot per remaining '
       'category and never request more than 2, keeping the pyramid\'s '
       'total at or under 10 across all six categories', () {
     final start = source.indexOf('Future<void> _loadAllHabits()');
@@ -65,12 +65,12 @@ void main() {
     expect(body, contains('maxAllowed: maxAllowed'));
   });
 
-  test('D-103: the total habit ceiling is exactly 10, the owner\'s '
+  test('D-068: the total habit ceiling is exactly 10, the owner\'s '
       'explicit number', () {
     expect(source, contains('_maxTotalHabits = 10'));
   });
 
-  test('D-104: the pre-completion habit screen states plainly that tasks '
+  test('D-069: the pre-completion habit screen states plainly that tasks '
       'are daily by default and editable after setup — found live, '
       'neither fact was ever said in words, only implied by the chips\' '
       'own affordances', () {
@@ -91,7 +91,7 @@ void main() {
     expect(source, contains('_reviewExplanation('));
   });
 
-  test('D-105: sending an essence reply scrolls the new message (and, '
+  test('D-070: sending an essence reply scrolls the new message (and, '
       'once it qualifies, the button) into view rather than leaving it '
       'below the fold', () {
     final start = source.indexOf('Future<void> _sendEssenceReply()');
@@ -102,8 +102,8 @@ void main() {
     expect(body, contains('_scrollToBottom()'));
   });
 
-  test('D-106: the opening conversation (openingRound/refining) still '
-      'always speaks as Mira — D-109 only reverses D-106 for '
+  test('D-071: the opening conversation (openingRound/refining) still '
+      'always speaks as Mira — D-084 only reverses D-071 for '
       'essence-deepening specifically, not the opening conversation', () {
     final start = source.indexOf('Future<void> _sendOpeningReply()');
     expect(start, greaterThan(-1));
@@ -111,10 +111,10 @@ void main() {
     expect(source.substring(start, end), contains('_runMiraTurn()'));
   });
 
-  test('D-109: essence-deepening rotates through session.rotationOrder — '
+  test('D-084: essence-deepening rotates through session.rotationOrder — '
       'one advisor per category, varying across the three — reversing '
-      'D-106\'s "always Mira" for this specific case. The owner\'s '
-      'follow-up call, once D-105/D-108 fixed the actual context-leak '
+      'D-071\'s "always Mira" for this specific case. The owner\'s '
+      'follow-up call, once D-070/D-073 fixed the actual context-leak '
       'that made advisor variety look disjointed: "I would like to '
       'randomize the council members that answer the various '
       'questions... it gives this idea that there\'s different '
@@ -126,10 +126,10 @@ void main() {
 
     expect(body, contains('session.rotationOrder[_essenceIndex'));
     expect(body, isNot(contains("advisorKey: 'mira'")),
-        reason: 'D-106\'s hardcoded Mira must not reappear here');
+        reason: 'D-071\'s hardcoded Mira must not reappear here');
   });
 
-  test('D-109: the essence-phase typing indicator matches the rotation '
+  test('D-084: the essence-phase typing indicator matches the rotation '
       'pick, not a hardcoded Mira', () {
     final start = source.indexOf('Widget _buildEssences()');
     final end = source.indexOf('\n  void _editHabit', start);
@@ -138,7 +138,7 @@ void main() {
     expect(body, contains('rotationOrder[_essenceIndex'));
   });
 
-  test('D-108: essence-deepening\'s kickoff call passes an explicit '
+  test('D-073: essence-deepening\'s kickoff call passes an explicit '
       'empty conversationHistoryOverride — found live: without this, '
       'a category\'s kickoff call inherited the whole session\'s '
       'history (D-032, one continuous session), so "respond to what '
@@ -152,7 +152,7 @@ void main() {
     expect(body, contains('conversationHistoryOverride: const []'));
   });
 
-  test('D-110: a fixed acknowledgment is appended once a reply qualifies, '
+  test('D-085: a fixed acknowledgment is appended once a reply qualifies, '
       'before the "save this" button — found live: the button appearing '
       'with no acknowledgment at all was a hard, jarring cut straight '
       'from "you typed something" to "here\'s a button"', () {
@@ -166,7 +166,7 @@ void main() {
     expect(body, contains('appendAdvisorMessage('));
   });
 
-  test('D-110: the acknowledgment fires at most once per category — reset '
+  test('D-085: the acknowledgment fires at most once per category — reset '
       'alongside _essenceStepStartIndex, which is captured fresh at the '
       'start of every category\'s own exchange', () {
     final start = source.indexOf('Future<void> _askAboutCurrentFoundational()');
@@ -176,16 +176,16 @@ void main() {
     expect(body, contains('_essenceAcknowledged = false'));
   });
 
-  test('D-110: the acknowledgment text is fixed, zero-cost copy — no new '
+  test('D-085: the acknowledgment text is fixed, zero-cost copy — no new '
       'model call for a purely transitional line', () {
     expect(source, contains('_essenceAcknowledgment ='));
   });
 
-  test('D-112: SetupAlreadyCompleteException shows an explanatory dialog '
+  test('D-087: SetupAlreadyCompleteException shows an explanatory dialog '
       'before leaving setup — regression test for a defect found live: '
       '"I click begin it just flashes the chat screen and drops me right '
       'back into the main screen" — a silent pop with zero explanation, '
-      'not the D-188 enforcement itself, which is correct', () {
+      'not the D-148 enforcement itself, which is correct', () {
     final start = source.indexOf('on SetupAlreadyCompleteException');
     expect(start, greaterThan(-1));
     final end = source.indexOf('} catch (e, st) {', start);

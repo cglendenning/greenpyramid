@@ -72,7 +72,7 @@ void main() {
       expect(await db.getCompletionPercentage('Nothing', 7), -1);
     });
 
-    test('D-183: returns -2 (not 0) when tasks exist but none are due in '
+    test('D-143: returns -2 (not 0) when tasks exist but none are due in '
         'range — found live: this used to return 0, indistinguishable '
         'from a genuine 0%-complete day, dragging getTotalPercentage\'s '
         'average down for a category with nothing to check off. Owner: '
@@ -130,7 +130,7 @@ void main() {
       expect(await db.getTotalPercentage(7), '0');
     });
 
-    test('D-183: a category with tasks defined but none due in range is '
+    test('D-143: a category with tasks defined but none due in range is '
         'skipped from the average too, the same as one with no tasks at '
         'all — the owner\'s exact repro: every other category fully '
         'checked off should read 100%, not dragged down by a category '

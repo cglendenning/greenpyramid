@@ -3,10 +3,10 @@ import 'package:life_ops/widgets/navbar.dart';
 import 'package:life_ops/theme/app_colors.dart';
 import 'package:firebase_analytics/firebase_analytics.dart';
 
-/// D-160: rewritten to match the app as it's actually built today, not the
+/// D-128: rewritten to match the app as it's actually built today, not the
 /// pre-Council, pre-accounts, pre-Newsfeed version it originally shipped
 /// for. Found stale during a direct read-through: "Coach" was retired for
-/// the Council of Advisors (D-069); setup described a manual multi-step
+/// the Council of Advisors (D-053); setup described a manual multi-step
 /// wizard with day-of-week scheduling, but setup is now a conversation
 /// with Mira and day-of-week scheduling moved out of it entirely (D-041);
 /// the color legend was missing blue (no tasks defined) and stated 3

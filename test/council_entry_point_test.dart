@@ -15,9 +15,9 @@ void main() {
     expect(source, contains('CouncilCategoryPicker'));
   });
 
-  test('D-014/D-182: choosing a category checks entitlement before '
+  test('D-014/D-142: choosing a category checks entitlement before '
       'opening a Council session, via the shared ensureEntitled gate — '
-      'not a private duplicate of its check (D-182: a duplicate here '
+      'not a private duplicate of its check (D-142: a duplicate here '
       'meant this screen never benefited from ensureEntitled\'s own '
       'server-freshness fix)', () {
     final source =

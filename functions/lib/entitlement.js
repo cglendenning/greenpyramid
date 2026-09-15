@@ -45,7 +45,7 @@ export async function resolveEntitlement(uid, _store = db(), _now = new Date()) 
 
 // Throws EntitlementRequiredError unless the account is trialing or
 // subscribed. Setup's own free exchange never calls this — it is bounded by
-// D-188's call count instead, applied earlier in guardCouncilCall.
+// D-148's call count instead, applied earlier in guardCouncilCall.
 export async function requireEntitlement(uid, _store = db(), _now = new Date()) {
   const entitlement = await resolveEntitlement(uid, _store, _now);
   if (!ENTITLED_STATES.has(entitlement)) throw new EntitlementRequiredError(entitlement);

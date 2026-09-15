@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 /// Absence tests for R1's deletions.
 ///
-/// D-079 requires that pure-deletion directives be verified by a test
+/// D-058 requires that pure-deletion directives be verified by a test
 /// asserting absence. These are the regression guard preventing advertising
 /// or the ad-funded ledger from quietly returning.
 void main() {

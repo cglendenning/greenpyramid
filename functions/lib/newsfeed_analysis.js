@@ -1,4 +1,4 @@
-// D-150: the newsfeed's AI-written "news article" — a Claude-authored
+// D-122: the newsfeed's AI-written "news article" — a Claude-authored
 // analysis of consistency trends across the whole pyramid, framed exactly
 // like a real news article (headline + body), not a chat reply. Modeled
 // directly on progress_analysis.js's own prompt-builder shape; the two
@@ -7,14 +7,14 @@
 // separate headline and body rather than one paragraph.
 import { sanitize } from './council.js';
 
-// D-178: [firstName], when present, replaces the old impersonal "one
+// D-138: [firstName], when present, replaces the old impersonal "one
 // person's"/"their" framing that produced generic "this person"-style
 // text — owner: "I also do not want to use language like 'this
 // person's' and instead... throughout everything in the app, we need to
 // be using the user's first name." Sanitized like every other
-// user-supplied string reaching a prompt (D-036's own discipline);
+// user-supplied string reaching a prompt;
 // falls back to the original generic framing for an account that
-// somehow has none (predates D-178, or the field is blank).
+// somehow has none (predates D-138, or the field is blank).
 export function buildNewsfeedAnalysisPrompt({ categories = [], firstName = null }) {
   const lines = (categories || [])
     .map((c) => {
@@ -65,11 +65,11 @@ export function buildNewsfeedAnalysisPrompt({ categories = [], firstName = null 
   return { system, user };
 }
 
-// D-150: Claude sometimes wraps its JSON reply in a markdown code fence
+// D-122: Claude sometimes wraps its JSON reply in a markdown code fence
 // despite being told not to — found live, the very first real article a
 // subscribed account generated came back as ```json ... ``` and fell
 // through to the generic "Your Pyramid, Analyzed" fallback with the raw
-// fenced JSON dumped into the body. The same lesson D-092 already
+// fenced JSON dumped into the body. The same lesson D-076 already
 // learned for Mira's pacing reassurance applies here too: never rely on
 // a soft prompt instruction alone when a deterministic fix is possible.
 // Strips a single leading/trailing ``` or ```json fence, if present,

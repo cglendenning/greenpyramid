@@ -7,7 +7,7 @@ import '../theme/app_colors.dart';
 /// D-034/D-051: the confetti burst at setup completion — the single
 /// sanctioned exception to the standing no-decoration rule, bounded to
 /// exactly one occurrence in the app's lifetime by its caller (the
-/// completion screen only ever shows once, D-188's one-setup-session
+/// completion screen only ever shows once, D-148's one-setup-session
 /// guarantee). A particle animation in the app's own palette — no emoji,
 /// no icon, no clip art (D-051).
 class ConfettiOverlay extends StatefulWidget {

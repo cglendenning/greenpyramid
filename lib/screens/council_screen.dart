@@ -15,9 +15,9 @@ import '../services/resonance_service.dart';
 import '../services/sync_service.dart';
 import '../theme/app_colors.dart';
 
-/// D-185: a Council session scoped to one category. R5 ships the mechanism
+/// D-145: a Council session scoped to one category. R5 ships the mechanism
 /// — rotation, resume, an essence accepted once it meets P-12's quality bar
-/// (scored by ResonanceService, D-188) — not the richer Council-driven
+/// (scored by ResonanceService, D-148) — not the richer Council-driven
 /// convergence D-038/D-042 define for setup; that lands in R6, built on
 /// this same [CouncilService].
 ///
@@ -62,7 +62,7 @@ class _CouncilScreenState extends State<CouncilScreen> {
     super.dispose();
   }
 
-  // D-148: found live — "the screen does not scroll automatically down to
+  // D-120: found live — "the screen does not scroll automatically down to
   // the bottom to show the latest response so the response is sitting
   // there below the visible screen." Scheduled a frame after every state
   // change that can add a message or the typing indicator, since the new
@@ -123,7 +123,7 @@ class _CouncilScreenState extends State<CouncilScreen> {
     } on AiBudgetException catch (e) {
       if (mounted) setState(() => _error = e.message);
     } on SpendLimitException catch (e) {
-      // D-087/D-088: the purchase flow itself waits on R8's store products
+      // D-061/D-062: the purchase flow itself waits on R8's store products
       // — for now this names the limit plainly rather than pretending it's
       // a generic failure.
       if (mounted) {
@@ -170,17 +170,7 @@ class _CouncilScreenState extends State<CouncilScreen> {
     );
     await _council.endSession(session.sessionId);
 
-    // D-036: advisory, never required (D-188) — a failure here must never
-    // block closing the session, whose essence is already committed above.
-    unawaited(_council.recordDomainFindings(
-      session: session,
-      isSetup: false,
-      categoryId: widget.categoryId,
-      categoryName: widget.categoryName,
-      essence: sanitizedEssence,
-    ));
-
-    // Push the new essence version to Firestore (D-187) same as any other
+    // Push the new essence version to Firestore (D-147) same as any other
     // profile change; the account bootstrap in main.dart already ensures a
     // signed-in uid exists by the time this screen is reachable.
     final uid = AuthService.instance.currentUid;
@@ -216,10 +206,9 @@ class _CouncilScreenState extends State<CouncilScreen> {
                       messages: session.messages,
                       scrollController: _scrollController,
                       onAcceptEssence: _acceptAsEssence,
-                      // D-101: session.nextAdvisorKey is the real next
+                      // D-083: session.nextAdvisorKey is the real next
                       // speaker for this category-scoped rotation.
-                      typingAdvisorKey:
-                          _busy ? session.nextAdvisorKey : null,
+                      typingAdvisorKey: _busy ? session.nextAdvisorKey : null,
                     ),
             ),
             ChatInputBar(

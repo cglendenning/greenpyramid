@@ -19,7 +19,7 @@ class _TempPathProvider extends PathProviderPlatform
   Future<String?> getApplicationDocumentsPath() async => dir;
 }
 
-/// D-150: a fake standing in for the real network call — same
+/// D-122: a fake standing in for the real network call — same
 /// implements-plus-noSuchMethod pattern account_link_service_test.dart's
 /// own fakes already use in this codebase.
 class _FakeCouncilClient implements CouncilClient {
@@ -47,7 +47,7 @@ class _FakeCouncilClient implements CouncilClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-/// D-150: a personal newsfeed generated entirely from data already on the
+/// D-122: a personal newsfeed generated entirely from data already on the
 /// device — found live, owner: "create a newsfeed that is generated from
 /// the users own personal information ... they can scroll back as far as
 /// they want in their newsfeed and see previous items that have cropped
@@ -90,7 +90,7 @@ void main() {
     });
   }
 
-  group('D-150: the newsfeed_item table', () {
+  group('D-122: the newsfeed_item table', () {
     test('exists with its documented columns', () async {
       final d = await db.database;
       final info = await d.rawQuery(
@@ -139,7 +139,7 @@ void main() {
     });
   });
 
-  group('D-150: getCurrentStreak — the still-active run of consecutive '
+  group('D-122: getCurrentStreak — the still-active run of consecutive '
       'checked days, ending on the most recent day with any activity', () {
     test('an unbroken run of checked days counts fully', () async {
       await logDay('Craft', '2026-09-01', checked: true);
@@ -162,7 +162,7 @@ void main() {
     });
   });
 
-  group('D-170: seedSampleCardsIfNeeded never produces streak or essence '
+  group('D-132: seedSampleCardsIfNeeded never produces streak or essence '
       'cards — owner: "I only want #3 and #4. Get rid of both #1 and #2," '
       '#1/#2 being streak-milestone and essence-change cards', () {
     test('a category with streak/essence-worthy history still produces '
@@ -193,7 +193,7 @@ void main() {
     });
   });
 
-  group('D-150: NewsfeedService.getFeed', () {
+  group('D-122: NewsfeedService.getFeed', () {
     test('pages newest-first, and offset moves back through history — the '
         "owner's own ask, to scroll back as far as it exists", () async {
       for (var i = 0; i < 5; i++) {
@@ -209,8 +209,8 @@ void main() {
     });
   });
 
-  group('D-150: the five sample cards seed once, at "now," with no '
-      'artificial backdating — replaces D-150\'s welcome-card spacing '
+  group('D-122: the five sample cards seed once, at "now," with no '
+      'artificial backdating — replaces D-122\'s welcome-card spacing '
       'mechanism entirely, since these carry a subscribe pitch and '
       "should age naturally alongside real content rather than being "
       'deliberately buried', () {
@@ -225,7 +225,7 @@ void main() {
     });
 
     test('after a targeted wipe of only type=welcome rows (the retired '
-        "D-150/D-150 card type, deleted by D-150's own migration), the "
+        "D-122/D-122 card type, deleted by D-122's own migration), the "
         'sample cards seed correctly on an account that already has '
         'plenty of real content — not just on a genuinely empty table',
         () async {
@@ -233,7 +233,7 @@ void main() {
       await db.insertCategoryEssence(categoryId: 1, essence: 'One.');
       await db.insertCategoryEssence(categoryId: 1, essence: 'Two.');
       // Simulate an account that still had old welcome rows before the
-      // D-150 migration ran.
+      // D-122 migration ran.
       await db.insertNewsfeedItem(
           type: 'welcome', title: 'old', body: 'old', dedupeKey: 'welcome-1');
       await service.seedSampleCardsIfNeeded();
@@ -251,7 +251,7 @@ void main() {
     });
   });
 
-  group('D-150: no emoji anywhere in generated copy — found live: "do not '
+  group('D-122: no emoji anywhere in generated copy — found live: "do not '
       'use emojis" in the copy used for each new item', () {
     bool containsEmoji(String s) =>
         s.runes.any((r) => r >= 0x1F300 && r <= 0x1FAFF);
@@ -267,7 +267,7 @@ void main() {
     });
   });
 
-  group('D-150: getItemPosition — how far back a specific item sits in '
+  group('D-122: getItemPosition — how far back a specific item sits in '
       "the feed's own order, so a notification tap can load exactly that "
       'far without paging through unrelated history first', () {
     test('the newest item is at position 0; each older one increments',
@@ -290,7 +290,7 @@ void main() {
     });
   });
 
-  group('D-150: the AI-written newsfeed article — owner: "I want you to '
+  group('D-122: the AI-written newsfeed article — owner: "I want you to '
       'produce something through AI that maps to the headline and make '
       'it like an analysis shaped as a news article"', () {
     late _FakeCouncilClient fakeClient;
@@ -385,7 +385,7 @@ void main() {
       expect(sent.first['streak'], 3);
     });
 
-    test('D-178: passes the account\'s first name through to the article '
+    test('D-138: passes the account\'s first name through to the article '
         'request when one is on file, and null when there is none', () async {
       await makeEntitled();
       await seedCategory(1, 'Craft');
@@ -397,7 +397,7 @@ void main() {
     });
   });
 
-  group('D-150: on-demand article generation — owner: "I also want '
+  group('D-122: on-demand article generation — owner: "I also want '
       'subscribed users to be able to generate a new news item on '
       'demand in addition to the news item that gets generated '
       'automatically once per day"', () {

@@ -4,7 +4,7 @@ import '../widgets/onboarding_backdrop.dart';
 
 /// D-012: discloses trial terms before the Council becomes billable.
 ///
-/// D-099: shares [OnboardingBackdrop]/[OnboardingStyles] with WelcomeScreen
+/// D-081: shares [OnboardingBackdrop]/[OnboardingStyles] with WelcomeScreen
 /// so this screen carries the same rotating-photograph, Raleway-typeset
 /// identity rather than its own plain background.
 class TrialDisclosureScreen extends StatelessWidget {

@@ -46,7 +46,7 @@ export const CATEGORIES_TOOL = {
   },
 };
 
-// D-093: [existingCategories], when given, switches this from a fresh
+// D-077: [existingCategories], when given, switches this from a fresh
 // derivation to a refinement of a pyramid already proposed — the owner
 // explicitly wants "not quite right" to adjust what's there, not discard it.
 export function buildDeriveCategoriesPrompt(transcript, { existingCategories } = {}) {
@@ -71,7 +71,7 @@ export function buildDeriveCategoriesPrompt(transcript, { existingCategories } =
     'words or tone from the conversation, that captures why it matters to them specifically — resonant, ' +
     'not a dictionary definition of the name, and not the full essence (a much deeper exchange happens ' +
     'later for that; this is one line that would make them nod, not an interview). ' +
-    // D-094: a soft, disclosed bias toward body/mind/spirit in the
+    // D-078: a soft, disclosed bias toward body/mind/spirit in the
     // foundational tier — never a hard requirement, and explicitly
     // forbidden from inventing or displacing anything the person didn't
     // actually give real material for.
@@ -93,19 +93,19 @@ export function buildDeriveCategoriesPrompt(transcript, { existingCategories } =
   return { system, user };
 }
 
-// D-103: 1 to [maxAllowed] habits for one category (maxAllowed itself
+// D-068: 1 to [maxAllowed] habits for one category (maxAllowed itself
 // never exceeds 3), conditioned on its essence when one exists (D-008:
 // cat4-cat6 leave setup without one — falls back to name-only, degrading
 // without a placeholder). A fixed schema can't express "as many as
 // actually earn a place, up to a per-call ceiling" — habitsTool()
 // generates the schema per call so minItems/maxItems reflect the budget
-// setup_screen.dart computed for this specific category (see D-103's
+// setup_screen.dart computed for this specific category (see D-068's
 // cross-category reservation, which is what keeps a 6-category pyramid
 // at 10 habits total even though each category alone could ask for 3).
 // D-039: found live 2026-09-07 — 3-5 habits at up to 120 chars each read
 // as too many, too long. Tightened to at most 3, ~5 words apiece
 // (maxLength 40 is roomy for that without permitting a full sentence to
-// sneak through) — D-103 then made the floor 1, not a fixed 2, since a
+// sneak through) — D-068 then made the floor 1, not a fixed 2, since a
 // single well-chosen habit can be all a category actually needs.
 export function habitsTool(maxAllowed) {
   const max = Math.min(3, Math.max(1, Number(maxAllowed) || 3));
@@ -129,7 +129,7 @@ export function habitsTool(maxAllowed) {
   };
 }
 
-// D-122: strengthened after a live quality review found real, systematic
+// D-097: strengthened after a live quality review found real, systematic
 // problems in generated habit sets — see the Decision Log for the
 // specific example. Three issues, all addressed below: (1) the three
 // habits for one category were often three phrasings of the *same*
@@ -170,10 +170,10 @@ export function buildDeriveHabitsPrompt({ categoryName, essence, existingHabits 
   return { system, user };
 }
 
-// D-042/D-118: the vision statement — written by the Council collectively
+// D-042/D-093: the vision statement — written by the Council collectively
 // (not any one advisor's persona), from whatever essences exist and, when
 // given, the conversation transcript, in the person's own specifics.
-// D-118 reverses D-042's original "no fixed template opener" call: the
+// D-093 reverses D-042's original "no fixed template opener" call: the
 // owner's explicit instruction this round was "it ought to start with
 // 'I'm the kind of person that' and then it goes on like that." D-042's
 // own rationale for forbidding a fixed opener (P-4's anti-rote-formula
@@ -181,13 +181,13 @@ export function buildDeriveHabitsPrompt({ categoryName, essence, existingHabits 
 // still has real force, and is recorded here rather than silently
 // discarded; the owner's explicit, repeated instruction is what overrides
 // it. THE OUTPUT now always opens with that exact phrase.
-// D-114: essences are optional — a caller with none yet (D-118's own new
+// D-089: essences are optional — a caller with none yet (D-093's own new
 // early call, right after the opening conversation, before any category
 // essence exists) still gets a real vision statement, drawn from the
 // transcript alone. When either essences or transcript is genuinely
 // empty, the user message says so plainly rather than rendering an empty
 // "REFERENCE" section with nothing after the colon — the same explicit-
-// framing discipline D-108 established for an empty conversationHistory.
+// framing discipline D-073 established for an empty conversationHistory.
 export function buildVisionStatementPrompt({ essences, transcript }) {
   const essenceLines = (essences || [])
     .map((e) => `- ${sanitize(e.categoryName, 60)}: "${sanitize(e.essence, 400)}"`)

@@ -1,11 +1,11 @@
-// D-114: the profile screen's 30-day progress analysis — a new AI surface,
+// D-089: the profile screen's 30-day progress analysis — a new AI surface,
 // migrated onto Claude from day one (it never had a Claude equivalent; the
 // legacy version this replaces called OpenAI directly through profile.dart,
-// the one AI surface D-069/D-083's retirement of the legacy AI screens
+// the one AI surface D-053/D-066's retirement of the legacy AI screens
 // missed).
 import { sanitize } from './council.js';
 
-// D-178: [firstName] lets the analysis open with or include the reader's
+// D-138: [firstName] lets the analysis open with or include the reader's
 // actual name instead of only ever writing generically in the second
 // person — sanitized like every other user-supplied string reaching a
 // prompt.

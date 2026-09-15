@@ -10,7 +10,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../theme/app_colors.dart';
 
-/// D-143/D-162: the outcome of a sign-in attempt that failed or was
+/// D-115/D-130: the outcome of a sign-in attempt that failed or was
 /// cancelled, handed back to [AccountCreationScreen] via [Navigator.pop]
 /// so it can show an error or simply do nothing. A successful sign-in no
 /// longer produces one of these — see [SigningInScreen]'s own doc comment
@@ -25,7 +25,7 @@ class SignInOutcome {
   final bool cancelled;
 }
 
-/// D-143: owner — "as it's signing you in, rather than dropping you back
+/// D-115: owner — "as it's signing you in, rather than dropping you back
 /// to the sign in screen with text on the screen indicating that it is
 /// signing you in, it should go to a new screen with a small slow
 /// spinning, glowing green pyramid and just says signing in… And then it
@@ -35,7 +35,7 @@ class SignInOutcome {
 /// 2-second `Future.delayed` that used to live directly on
 /// [AccountCreationScreen].
 ///
-/// D-162: on success this screen now calls [onDone] directly instead of
+/// D-130: on success this screen now calls [onDone] directly instead of
 /// popping back to [AccountCreationScreen] and leaving that screen's own
 /// caller to navigate onward. Found live — owner: "when I click sign in
 /// with Apple it presents me with my account and I click sign in and the
@@ -109,7 +109,7 @@ class _SigningInScreenState extends State<SigningInScreen> {
       if (!mounted) return;
       if (error is SignInWithAppleAuthorizationException &&
           error.code == AuthorizationErrorCode.canceled) {
-        // The user dismissed Apple's own sheet — not a failure (D-139).
+        // The user dismissed Apple's own sheet — not a failure (D-111).
         Navigator.of(context).pop(const SignInOutcome.cancelled());
         return;
       }
@@ -123,7 +123,7 @@ class _SigningInScreenState extends State<SigningInScreen> {
         name: 'account_creation_failed',
         parameters: {'provider': widget.provider, 'error_code': errorCode},
       ));
-      // D-180: found live — a raw internal exception type name
+      // D-140: found live — a raw internal exception type name
       // ("PlatformException") leaked straight into this user-facing
       // message, meaningless to anyone reading it. The full errorCode
       // (including the bare runtimeType fallback) still reaches

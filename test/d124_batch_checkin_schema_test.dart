@@ -14,7 +14,7 @@ class _TempPathProvider extends PathProviderPlatform
   Future<String?> getApplicationDocumentsPath() async => dir;
 }
 
-/// D-124: a tasklog row's optional voice-transcribed miss reason —
+/// D-099: a tasklog row's optional voice-transcribed miss reason —
 /// schema-shape checks on a fresh install, matching this repo's
 /// established convention (`d123_scheduled_habit_schema_test.dart`)
 /// rather than simulating a literal version-N-to-N+1 upgrade.
@@ -41,12 +41,12 @@ void main() {
     return info.map((c) => c['name'] as String).toSet();
   }
 
-  test('D-124: tasklog gains missreason', () async {
+  test('D-099: tasklog gains missreason', () async {
     final cols = await columnsOf(DatabaseHelper.taskLogTable);
     expect(cols, contains(DatabaseHelper.columnTLMissReason));
   });
 
-  test('D-124: recordBatchCheckinResult creates a row when none exists yet '
+  test('D-099: recordBatchCheckinResult creates a row when none exists yet '
       'for today — the push may have arrived on a device that never '
       'opened the task list today', () async {
     await db.recordBatchCheckinResult(
@@ -61,7 +61,7 @@ void main() {
     expect(rows.single[DatabaseHelper.columnTLMissReason], isNull);
   });
 
-  test('D-124: a "No" answer records checked=false plus the '
+  test('D-099: a "No" answer records checked=false plus the '
       'voice-transcribed reason', () async {
     await db.recordBatchCheckinResult(
       category: 'Health',
@@ -76,7 +76,7 @@ void main() {
         'Got caught up in a meeting.');
   });
 
-  test('D-124: recordBatchCheckinResult updates an already-existing row '
+  test('D-099: recordBatchCheckinResult updates an already-existing row '
       'for today rather than creating a duplicate (the UNIQUE constraint '
       'on category+description+date)', () async {
     await db.insertTaskLog({

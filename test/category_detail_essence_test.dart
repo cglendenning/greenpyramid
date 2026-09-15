@@ -74,7 +74,7 @@ void main() {
     });
   });
 
-  group('D-150: insertCategoryEssence is a no-op when the text is '
+  group('D-122: insertCategoryEssence is a no-op when the text is '
       'identical to the category\'s current latest version — found live, '
       "on the owner's own account: SyncService.restoreFromCloud called "
       "this unconditionally on every restore, manufacturing a brand-new "
@@ -137,7 +137,7 @@ void main() {
     });
   });
 
-  group('D-150: a database-level trigger backstops the same invariant, '
+  group('D-122: a database-level trigger backstops the same invariant, '
       'so even a raw insert that bypasses insertCategoryEssence entirely '
       "cannot create a consecutive duplicate — owner: \"ensure that "
       'there are guard rails in place to prevent this data condition '
@@ -183,8 +183,8 @@ void main() {
     });
   });
 
-  group('D-127: clearing a category description actually saves the clear', () {
-    test('D-127: insertCategoryEssence with an empty string persists an '
+  group('D-102: clearing a category description actually saves the clear', () {
+    test('D-102: insertCategoryEssence with an empty string persists an '
         'empty latest essence, not null — the DB layer already supports '
         'this, so the defect was purely in the two screens deciding '
         'whether to call it', () async {
@@ -199,7 +199,7 @@ void main() {
               'skipped and leave the old text as latest');
     });
 
-    test('D-127: neither editpyramid.dart nor tasklist.dart gate the '
+    test('D-102: neither editpyramid.dart nor tasklist.dart gate the '
         'essence write on result.description being non-null anymore — '
         'that was the exact bug (an empty save was silently skipped)', () {
       final editPyramidSource =

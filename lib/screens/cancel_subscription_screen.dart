@@ -5,7 +5,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 
 import '../theme/app_colors.dart';
 
-/// D-070: cancellation itself always happens in the platform's own
+/// D-054: cancellation itself always happens in the platform's own
 /// subscription-management UI (Apple/Google require this) — this screen's
 /// only job is retention framing and pointing the user there, mirroring
 /// Kansei's cancel_subscription_screen.dart adapted to Green Pyramid's copy.

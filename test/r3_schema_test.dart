@@ -16,7 +16,7 @@ class _TempPathProvider extends PathProviderPlatform
   Future<String?> getApplicationDocumentsPath() async => dir;
 }
 
-/// R3: the Part IV schema and the D-084 rename cascade.
+/// R3: the Part IV schema and the D-059 rename cascade.
 ///
 /// This is the highest data-risk release in the sequence, so the migration is
 /// tested for idempotence and for leaving existing data intact, not just for
@@ -48,30 +48,24 @@ void main() {
   group('Part IV: the v7 schema exists', () {
     test('Part IV: category gains position and created', () async {
       final cols = await columnsOf(DatabaseHelper.categoryTable);
-      expect(cols, containsAll([
-        DatabaseHelper.columnPosition,
-        DatabaseHelper.columnCategoryCreated,
-      ]));
+      expect(
+          cols,
+          containsAll([
+            DatabaseHelper.columnPosition,
+            DatabaseHelper.columnCategoryCreated,
+          ]));
     });
 
     test('Part IV: category_essence has its documented columns', () async {
       final cols = await columnsOf(DatabaseHelper.categoryEssenceTable);
-      expect(cols, containsAll([
-        DatabaseHelper.columnEssenceCategoryId,
-        DatabaseHelper.columnEssenceText,
-        DatabaseHelper.columnEssenceCreated,
-        DatabaseHelper.columnEssenceSourceSession,
-      ]));
-    });
-
-    test('Part IV: domain_finding has its documented columns', () async {
-      final cols = await columnsOf(DatabaseHelper.domainFindingTable);
-      expect(cols, containsAll([
-        DatabaseHelper.columnFindingCategoryId,
-        DatabaseHelper.columnFindingDomain,
-        DatabaseHelper.columnFindingNote,
-        DatabaseHelper.columnFindingCreated,
-      ]));
+      expect(
+          cols,
+          containsAll([
+            DatabaseHelper.columnEssenceCategoryId,
+            DatabaseHelper.columnEssenceText,
+            DatabaseHelper.columnEssenceCreated,
+            DatabaseHelper.columnEssenceSourceSession,
+          ]));
     });
 
     test('Part IV: account_state is seeded with exactly one row', () async {
@@ -115,7 +109,7 @@ void main() {
     });
   });
 
-  group('D-084: renaming a category cascades', () {
+  group('D-059: renaming a category cascades', () {
     Future<void> seed(String category) async {
       await db.insertCategory({
         DatabaseHelper.columnCategoryId: 1,
@@ -134,7 +128,7 @@ void main() {
       });
     }
 
-    test('D-084: habits follow the category to its new name', () async {
+    test('D-059: habits follow the category to its new name', () async {
       await seed('Health');
       await db.renameCategoryCascading(categoryid: 1, newName: 'Vitality');
       final d = await db.database;
@@ -148,7 +142,7 @@ void main() {
       expect(orphans, isEmpty);
     });
 
-    test('D-084: log history follows the rename too', () async {
+    test('D-059: log history follows the rename too', () async {
       await seed('Health');
       await db.renameCategoryCascading(categoryid: 1, newName: 'Vitality');
       final d = await db.database;
@@ -158,7 +152,7 @@ void main() {
       expect(logs.length, 1);
     });
 
-    test('D-084: a name with an apostrophe does not break the rename',
+    test('D-059: a name with an apostrophe does not break the rename',
         () async {
       // Previously this was interpolated into SQL and would have broken the
       // statement outright (D-024, R2).
@@ -172,7 +166,7 @@ void main() {
       expect(tasks.length, 1);
     });
 
-    test('D-084: renaming to the same name is a no-op', () async {
+    test('D-059: renaming to the same name is a no-op', () async {
       await seed('Health');
       await db.renameCategoryCascading(categoryid: 1, newName: 'Health');
       final d = await db.database;
@@ -181,13 +175,13 @@ void main() {
     });
   });
 
-  group('D-187: migration is best-effort, failure is surfaced', () {
-    test('D-187: a healthy open leaves no recorded failure', () async {
+  group('D-147: migration is best-effort, failure is surfaced', () {
+    test('D-147: a healthy open leaves no recorded failure', () async {
       await db.database;
       expect(DatabaseHelper.openFailure, isNull);
     });
 
-    test('D-187: the recovery screen tells the user what to do', () {
+    test('D-147: the recovery screen tells the user what to do', () {
       final src =
           File('lib/screens/database_recovery_screen.dart').readAsStringSync();
       // It must say what happened, what to do, and must not promise recovery.
@@ -197,7 +191,7 @@ void main() {
           reason: 'state the situation, do not apologise');
     });
 
-    test('D-187: startup routes to recovery instead of crashing', () {
+    test('D-147: startup routes to recovery instead of crashing', () {
       final main = File('lib/main.dart').readAsStringSync();
       expect(main.contains('DatabaseRecoveryScreen'), isTrue);
       expect(main.contains('catch'), isTrue,

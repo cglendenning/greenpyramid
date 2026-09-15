@@ -11,7 +11,7 @@ import 'account_creation_screen.dart';
 import 'setup_screen.dart';
 import 'terms_screen.dart';
 
-/// D-089: a single screen, shown once per entry into setup, that tells the
+/// D-063: a single screen, shown once per entry into setup, that tells the
 /// user what is about to happen before Mira's opening line (D-031) puts
 /// them straight into a conversation with no warning. Deliberately NOT a
 /// second version of the old eighteen-screen wizard (D-001) or a feature
@@ -21,24 +21,24 @@ import 'terms_screen.dart';
 /// setup_screen_opening_line_test.dart's own comment on why that screen
 /// isn't).
 ///
-/// D-090: the background is now [OnboardingBackdrop]'s rotating photograph
+/// D-074: the background is now [OnboardingBackdrop]'s rotating photograph
 /// (ported from Kansei), rather than the single static
 /// `welcome_candle.jpg` this screen used before — the same slow rotation
 /// Kansei uses on its own setup-analog screen (`igniter_screen.dart`).
 ///
-/// D-099: the background, typography, and button styling live in
+/// D-081: the background, typography, and button styling live in
 /// [OnboardingBackdrop]/[OnboardingStyles] — this screen originated the
 /// look, but no longer owns a private copy of it, so `TrialDisclosureScreen`
 /// and `PushPermissionScreen` render with the exact same visual identity.
 ///
-/// D-111: a back affordance, shown only when there's somewhere to go back
+/// D-086: a back affordance, shown only when there's somewhere to go back
 /// to (`Navigator.canPop`) — true for the Settings-menu re-entry point
 /// (pushed on top of the home screen), false for a fresh install's
 /// `/setup` route (this is the very first screen; there is nothing before
 /// it to return to). Nothing has been created or committed at this point
 /// in either case, so backing out here is always safe.
 ///
-/// D-136 (supersedes D-132/D-133/D-136's flag-based approach): this
+/// D-108 (supersedes D-105/D-106/D-108's flag-based approach): this
 /// screen is now a pure function of nothing at all — it looks and behaves
 /// identically every single time, whether reached by a genuine fresh
 /// install or by signing out. No persisted flag, no "resetup mode," no
@@ -58,7 +58,7 @@ import 'terms_screen.dart';
 /// pyramid — never touches this screen at all; see
 /// `CustomAppBarState.navigateToSetup` (`homescreen.dart`) for that
 /// flow's own explicit confirmation.
-/// D-141: shown as [AccountCreationScreen]'s subhead on the "Welcome
+/// D-113: shown as [AccountCreationScreen]'s subhead on the "Welcome
 /// back." sign-in screen — owner: "'Sign up with the account you set up
 /// before' is not a phrase that I like. I want a phrase to be inspiring
 /// ... short and inspiring and related to living a life aligned with
@@ -66,7 +66,7 @@ import 'terms_screen.dart';
 /// screen is shown, rather than a single fixed line, so it stays fresh
 /// across repeat sign-ins.
 ///
-/// D-146: the original 20 leaned heavily on "your data wasn't lost"
+/// D-118: the original 20 leaned heavily on "your data wasn't lost"
 /// reassurance ("Nothing here was lost while you were away.", "still
 /// here", "right where you left it") — owner: "I do not like this
 /// phrase ... make any phrases that are like this more inspirational and
@@ -202,7 +202,7 @@ class WelcomeScreen extends StatelessWidget {
                       child: TextButton(
                         style: TextButton.styleFrom(padding: EdgeInsets.zero),
                         onPressed: () => _signIn(context),
-                        // D-161: found live — "Sign in" rendered the same
+                        // D-124: found live — "Sign in" rendered the same
                         // plain white as the question in front of it, with
                         // nothing marking it as tappable. Split into two
                         // spans so only "Sign in" itself carries the
@@ -232,7 +232,7 @@ class WelcomeScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // D-149: "ensure that you have a terms and conditions
+                  // D-121: "ensure that you have a terms and conditions
                   // link that indicates that this is not medical advice"
                   // — accessible from this, the first screen.
                   Padding(

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/screens/philosophy_screen.dart';
 
-/// D-159: owner supplied the philosophy copy verbatim and asked for it to
+/// D-127: owner supplied the philosophy copy verbatim and asked for it to
 /// be expanded into subsections "interwoven" with stock imagery, reachable
 /// from the hamburger menu — "I want you to be an expert editor to create
 /// a beautiful philosophy page ... The screen you generate will be static
@@ -10,7 +10,7 @@ import 'package:life_ops/screens/philosophy_screen.dart';
 /// is created." Purely static, so — like TermsScreen — it's directly
 /// pumpWidget-testable with no Firebase/DB singleton involved.
 void main() {
-  testWidgets('D-159: renders the hero title and every subsection heading',
+  testWidgets('D-127: renders the hero title and every subsection heading',
       (tester) async {
     await tester.pumpWidget(const MaterialApp(home: PhilosophyScreen()));
     await tester.pump();
@@ -26,7 +26,7 @@ void main() {
   });
 
   testWidgets(
-      'D-159: preserves the owner\'s own core ideas — six values, the '
+      'D-127: preserves the owner\'s own core ideas — six values, the '
       'three-tier hierarchy, unequal habit weighting, and the infinite '
       'game', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: PhilosophyScreen()));
@@ -43,7 +43,7 @@ void main() {
     expect(texts, contains('infinite game'));
   });
 
-  testWidgets('D-159: interweaves stock photography between subsections',
+  testWidgets('D-127: interweaves stock photography between subsections',
       (tester) async {
     await tester.pumpWidget(const MaterialApp(home: PhilosophyScreen()));
     await tester.pump();
@@ -53,7 +53,7 @@ void main() {
     expect(find.byType(Image), findsNWidgets(6));
   });
 
-  testWidgets('D-159: has a back affordance and no other interactive chrome '
+  testWidgets('D-127: has a back affordance and no other interactive chrome '
       '— purely static content, nothing to tap through', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: PhilosophyScreen()));
     await tester.pump();

@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 
 // Shared canvas-painting helpers for the pyramid's six wall segments
 // (Pyramid3D, pyramid_3d.dart), so the glow/panel/label technique lives in
-// one place instead of being copy-pasted six times. D-151: the flat 2D
+// one place instead of being copy-pasted six times. D-123: the flat 2D
 // DrawCat1..DrawCat6 CustomPainters this comment used to describe were the
 // pyramid edit screen's own separate, legacy rendering pipeline — deleted
 // once EditPyramid was migrated onto the same Pyramid3D/PyramidStack the
@@ -208,7 +208,7 @@ class PyramidPainting {
         letterSpacing: 0.2,
       );
 
-  // D-126: labels wrap at word boundaries only — never inside a word, no
+  // D-101: labels wrap at word boundaries only — never inside a word, no
   // hyphenation — and every line of a given label shares one font size,
   // never a larger size for a short line just because it has room. Found
   // live, twice: first, forcing a label onto one line and shrinking it
@@ -253,7 +253,7 @@ class PyramidPainting {
   // never a line containing a mid-word break — the instant a single word
   // doesn't fit even alone on its own line, since no arrangement of
   // whole words at this font size can accommodate it. Public (but
-  // annotated, not part of the real API) so D-126's actual wrapping rule
+  // annotated, not part of the real API) so D-101's actual wrapping rule
   // — the thing most worth getting right here — is directly testable.
   @visibleForTesting
   static List<String>? wrapWords(
@@ -321,7 +321,7 @@ class PyramidPainting {
     return (minFontSize, lines);
   }
 
-  // Draws [text] centered on [anchor], word-wrapped (D-126: never inside
+  // Draws [text] centered on [anchor], word-wrapped (D-101: never inside
   // a word) within a box up to [maxWidth] wide and [maxHeight] tall, with
   // a small padding inset from that box's own edges — a dark stroked
   // backing then a light fill on top, so labels stay legible over the
@@ -330,8 +330,8 @@ class PyramidPainting {
   // size truncates at its own block's boundary rather than bleeding into
   // whatever is drawn next to it.
   /// [underline] draws a thin rule beneath each line of the label — the
-  /// pyramid edit screen's signal that a block is editable (D-152: found
-  /// live, the owner recalled this from before D-151's unification:
+  /// pyramid edit screen's signal that a block is editable (D-125: found
+  /// live, the owner recalled this from before D-123's unification:
   /// "I think I used to have underlines ... some indication on the edit
   /// screen that each of the categories are editable"). The main
   /// (non-edit) screen never sets this, so its labels are unchanged.

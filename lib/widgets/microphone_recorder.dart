@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:life_ops/services/speech_service.dart';
 import 'package:life_ops/theme/app_colors.dart';
 
-/// D-124 Phase 5: a near-verbatim port of Kansei's own
+/// D-099 Phase 5: a near-verbatim port of Kansei's own
 /// `MicrophoneRecorder` (`goal-executor/lib/widgets/microphone_recorder.dart`)
 /// — tap to start/stop, a pulsing ring while listening, and a running
 /// elapsed-time label — restyled onto Green Pyramid's own palette.

@@ -1,4 +1,4 @@
-/// D-115: pure decision logic for the settings screen's subscription
+/// D-090: pure decision logic for the settings screen's subscription
 /// panel, factored out so it's testable without touching the
 /// (unmockable) RevenueCat plugin — the same pattern
 /// `push_messaging_service.dart`'s `decideNotificationFallback` already
@@ -26,7 +26,7 @@ enum SubscriptionPanelState {
 }
 
 /// [isActive]/[willRenew] come from RevenueCat's own `CustomerInfo` —
-/// the authoritative record of whether a real purchase exists (D-070).
+/// the authoritative record of whether a real purchase exists (D-054).
 /// `null` for [isActive] means the info hasn't loaded yet.
 SubscriptionPanelState decideSubscriptionPanelState({
   required bool? isActive,

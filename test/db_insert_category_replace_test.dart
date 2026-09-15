@@ -14,7 +14,7 @@ class _TempPathProvider extends PathProviderPlatform
   Future<String?> getApplicationDocumentsPath() async => dir;
 }
 
-/// D-038/D-084: regression test for a defect found live — a real setup
+/// D-038/D-059: regression test for a defect found live — a real setup
 /// completed, essences and all, but every category synced to Firestore
 /// still literally named "Empty1".."Empty6" (populateCategory()'s seed
 /// values), each stuck at position 0. Root cause: category.categoryid is

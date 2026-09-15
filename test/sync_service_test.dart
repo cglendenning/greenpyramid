@@ -26,7 +26,7 @@ class _FakeCalendarService extends CalendarService {
   Future<String?> summarizeToday({DateTime? now}) async => summary;
 }
 
-/// R4: D-027's silent migration and D-187's enumerated ongoing sync, tested
+/// R4: D-027's silent migration and D-147's enumerated ongoing sync, tested
 /// against a real (temp, ffi-backed) SQLite database and a fake Firestore —
 /// no live Firebase project involved. Collection names and shapes follow
 /// IV-D's Firestore layout exactly.
@@ -59,7 +59,7 @@ void main() {
   }
 
   test(
-      'IV-D/D-187: categories, tiers, and each category\'s active essence '
+      'IV-D/D-147: categories, tiers, and each category\'s active essence '
       'sync into profile/main', () async {
     await db.insertCategory({
       DatabaseHelper.columnCategoryId: 1,
@@ -112,7 +112,7 @@ void main() {
   });
 
   test(
-      'D-187: every version of essence syncs to essenceVersions, not just '
+      'D-147: every version of essence syncs to essenceVersions, not just '
       'the active one', () async {
     final d = await db.database;
     await d.insert(DatabaseHelper.categoryEssenceTable, {
@@ -137,23 +137,8 @@ void main() {
     expect(versions.docs.length, 2);
   });
 
-  test(
-      'D-187: domain findings sync to domainFindings; empty tables sync '
-      'without error', () async {
-    final firestore = FakeFirebaseFirestore();
-    await SyncService(firestore: firestore, db: db)
-        .syncAll(uid, setupComplete: true);
-
-    final findings = await firestore
-        .collection('users')
-        .doc(uid)
-        .collection('domainFindings')
-        .get();
-    expect(findings.docs, isEmpty);
-  });
-
   // D-002-AC-01: retained account content survives cloud restore.
-  test('D-187: vision statement and timezone sync into profile/main', () async {
+  test('D-147: vision statement and timezone sync into profile/main', () async {
     await db
         .insertVisionStatement('My body carries me through every challenge.');
     await db.setAccountTimezone('America/Los_Angeles');
@@ -168,7 +153,7 @@ void main() {
   });
 
   test(
-      'D-187: startup sync never deletes cloud data when local cache is '
+      'D-147: startup sync never deletes cloud data when local cache is '
       'empty or placeholder-only', () async {
     final firestore = FakeFirebaseFirestore();
     final user = firestore.collection('users').doc(uid);
@@ -201,7 +186,7 @@ void main() {
   });
 
   test(
-      'D-178: first name/email/phone sync into profile/main and restore '
+      'D-138: first name/email/phone sync into profile/main and restore '
       'back down onto a fresh local database — the profile photo is '
       'deliberately excluded, since it stays local-only', () async {
     await db.insertCategory({
@@ -242,7 +227,7 @@ void main() {
   });
 
   test(
-      'D-185 step 7: calendar context syncs into profile/main only when '
+      'D-145 step 7: calendar context syncs into profile/main only when '
       'CalendarService has a summary; absent (deleted) otherwise, never a '
       'placeholder', () async {
     final firestore = FakeFirebaseFirestore();
@@ -288,7 +273,7 @@ void main() {
   });
 
   test(
-      'D-187: every task_log row syncs to recentActivity, not a bounded '
+      'D-147: every task_log row syncs to recentActivity, not a bounded '
       'window — a full reinstall must be able to restore all of it', () async {
     final d = await db.database;
     final rowCount = AiGuard.maxTaskLogRows + 10;
@@ -318,7 +303,7 @@ void main() {
   });
 
   test(
-      'D-187: a task_log row deleted locally is removed remotely on the '
+      'D-147: a task_log row deleted locally is removed remotely on the '
       'next sync, not left to accumulate', () async {
     final d = await db.database;
     final id1 = await d.insert(DatabaseHelper.taskLogTable, {
@@ -351,7 +336,7 @@ void main() {
   });
 
   test(
-      'D-187: an anonymous account that has not finished setup gets a '
+      'D-147: an anonymous account that has not finished setup gets a '
       'ttlAt 30 days out, on users/{uid} itself', () async {
     final firestore = FakeFirebaseFirestore();
     await SyncService(firestore: firestore, db: db)
@@ -361,7 +346,7 @@ void main() {
     expect(userDoc.data()?['ttlAt'], isNotNull);
   });
 
-  test('D-187: ttlAt is anchored at creation, not renewed on every sync',
+  test('D-147: ttlAt is anchored at creation, not renewed on every sync',
       () async {
     final firestore = FakeFirebaseFirestore();
     final sync = SyncService(firestore: firestore, db: db);
@@ -377,7 +362,7 @@ void main() {
   });
 
   test(
-      'D-187: finishing setup clears ttlAt — a completed account is never '
+      'D-147: finishing setup clears ttlAt — a completed account is never '
       'pruned', () async {
     final firestore = FakeFirebaseFirestore();
     final sync = SyncService(firestore: firestore, db: db);
@@ -394,7 +379,7 @@ void main() {
   });
 
   test(
-      'D-187: an account that has ever held a subscription is never '
+      'D-147: an account that has ever held a subscription is never '
       'marked prune-eligible, even before setup is recorded complete',
       () async {
     final d = await db.database;
@@ -409,7 +394,7 @@ void main() {
     expect(userDoc.data()?['ttlAt'], isNull);
   });
 
-  test('D-187: a lapsed account gets ttlAt set 12 months out', () async {
+  test('D-147: a lapsed account gets ttlAt set 12 months out', () async {
     final d = await db.database;
     await d.update(DatabaseHelper.accountStateTable,
         {DatabaseHelper.columnEntitlement: 'lapsed'},
@@ -423,7 +408,7 @@ void main() {
   });
 
   test(
-      'D-187: ttlAt for a lapsed account is anchored at first lapse, not renewed on every '
+      'D-147: ttlAt for a lapsed account is anchored at first lapse, not renewed on every '
       'sync', () async {
     final d = await db.database;
     await d.update(DatabaseHelper.accountStateTable,
@@ -443,7 +428,7 @@ void main() {
   });
 
   test(
-      'D-187/D-187: an account that returns from lapsed has ttlAt '
+      'D-147/D-147: an account that returns from lapsed has ttlAt '
       'cleared — a returning user is never purged', () async {
     final d = await db.database;
     await d.update(DatabaseHelper.accountStateTable,
@@ -466,7 +451,7 @@ void main() {
         isNull);
   });
 
-  test('D-187: a non-lapsed, setup-complete account never gets a ttlAt',
+  test('D-147: a non-lapsed, setup-complete account never gets a ttlAt',
       () async {
     final firestore = FakeFirebaseFirestore();
     await SyncService(firestore: firestore, db: db)
@@ -498,8 +483,8 @@ void main() {
     expect(versions.docs.length, 1);
   });
 
-  group('D-187: tasks sync (push) and cloud restore (pull)', () {
-    test('IV-D/D-187: every habit/task syncs into the tasks collection',
+  group('D-147: tasks sync (push) and cloud restore (pull)', () {
+    test('IV-D/D-147: every habit/task syncs into the tasks collection',
         () async {
       await db.insertTask({
         DatabaseHelper.columnCategory: 'Health',
@@ -526,7 +511,7 @@ void main() {
     });
 
     test(
-        'IV-D/D-187: a task deleted locally is removed from Firestore on '
+        'IV-D/D-147: a task deleted locally is removed from Firestore on '
         'the next sync — same reconcile pattern as recentActivity', () async {
       final id = await db.insertTask({
         DatabaseHelper.columnCategory: 'Health',
@@ -558,7 +543,7 @@ void main() {
     });
 
     test(
-        'D-187: restoreFromCloud returns false, and writes nothing, when '
+        'D-147: restoreFromCloud returns false, and writes nothing, when '
         'the cloud profile has no real categories (a genuinely new '
         'account)', () async {
       final firestore = FakeFirebaseFirestore();
@@ -568,7 +553,7 @@ void main() {
     });
 
     test(
-        'D-187: restoreFromCloud brings back categories, each category\'s '
+        'D-147: restoreFromCloud brings back categories, each category\'s '
         'current essence, the vision statement, and every habit — '
         'regression test for owner feedback: reinstalling the app lost '
         'the whole pyramid because nothing ever pulled Firestore data '
@@ -630,7 +615,7 @@ void main() {
     });
 
     test(
-        'D-187: restoreFromCloud brings back check-off activity too — '
+        'D-147: restoreFromCloud brings back check-off activity too — '
         'regression test for owner feedback: "I uninstall the app and '
         'all of my check marks boxes are now gone when I signed back '
         'in." Streaks, essence-redefinition timing, and every '
@@ -678,7 +663,7 @@ void main() {
     });
 
     test(
-        'D-187: a cloud profile whose categories are still the Empty% '
+        'D-147: a cloud profile whose categories are still the Empty% '
         'placeholder seed is treated as no real data — restoreFromCloud '
         'returns false rather than restoring placeholders', () async {
       final firestore = FakeFirebaseFirestore();

@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/screens/signing_in_screen.dart'
     show isExistingAccountResult;
 
-/// D-143: structural regression tests, not a full widget pump — this
+/// D-115: structural regression tests, not a full widget pump — this
 /// screen calls FirebaseAnalytics.instance and FirebaseAuth.instance
 /// directly, neither mocked in this suite (same reasoning
 /// account_creation_screen_test.dart already documents for its own
@@ -21,7 +21,7 @@ void main() {
   final source = File('lib/screens/signing_in_screen.dart').readAsStringSync();
 
   group(
-      'D-143: a dedicated screen owns the actual sign-in wait, instead '
+      'D-115: a dedicated screen owns the actual sign-in wait, instead '
       'of a fixed-duration message on the button screen', () {
     test(
         'shows a small, continuously and slowly rotating pyramid — not '
@@ -67,7 +67,7 @@ void main() {
     });
 
     test(
-        'D-162: found live — popping back to AccountCreationScreen on '
+        'D-130: found live — popping back to AccountCreationScreen on '
         'success genuinely re-revealed it (including its own reveal '
         'transition) for the entire duration of whatever async work the '
         'caller\'s onDone still had left (a real Firestore round trip for '
@@ -82,21 +82,21 @@ void main() {
     });
 
     test(
-        'D-139 carried over: a canceled Apple sheet is not treated as '
+        'D-111 carried over: a canceled Apple sheet is not treated as '
         'an error', () {
       expect(source, contains('AuthorizationErrorCode.canceled'));
       expect(source, contains('SignInOutcome.cancelled()'));
     });
 
     test(
-        'D-139 carried over: the real error code is always logged via '
+        'D-111 carried over: the real error code is always logged via '
         'analytics, regardless of whether it\'s shown to the user', () {
       expect(source, contains("name: 'account_creation_failed'"));
       expect(source, contains("'error_code': errorCode"));
     });
 
     test(
-        'D-180: found live — a raw internal exception type name '
+        'D-140: found live — a raw internal exception type name '
         '("PlatformException") used to leak straight into the user-facing '
         'message; only a genuinely legible named error code (Firebase\'s '
         'or Apple\'s own) is shown, and the bare-runtimeType fallback '
@@ -108,7 +108,7 @@ void main() {
     });
 
     test(
-        'D-162-AC-01: an existing real account stays on the restore path when provider '
+        'D-130-AC-01: an existing real account stays on the restore path when provider '
         'authentication returns the same uid', () {
       expect(
           isExistingAccountResult(

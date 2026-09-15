@@ -21,8 +21,8 @@ class _TempPathProvider extends PathProviderPlatform
   Future<String?> getApplicationDocumentsPath() async => dir;
 }
 
-/// D-188: AccountLinkService.linkWithCredentialOrSwitch is the one piece
-/// of D-188 testable without a live device (the actual Apple/Google SDK
+/// D-148: AccountLinkService.linkWithCredentialOrSwitch is the one piece
+/// of D-148 testable without a live device (the actual Apple/Google SDK
 /// calls in signInWithApple/signInWithGoogle can't run in a unit test).
 /// Tested against firebase_auth_mocks, not a live project — same pattern
 /// as account_reset_service_test.dart and auth_service_test.dart.
@@ -36,7 +36,7 @@ class _TempPathProvider extends PathProviderPlatform
 void main() {
   // D-002-AC-03: local check-off remains available through linking failure.
   test(
-      'D-188: linking succeeds normally — same uid preserved, no account '
+      'D-148: linking succeeds normally — same uid preserved, no account '
       'switch', () async {
     // firebase_auth_mocks 0.15.2's MockUser.linkWithCredential hardcodes
     // isAnonymous: false into an internal assertion that requires it match
@@ -56,9 +56,9 @@ void main() {
   });
 
   test(
-      'D-188: credential-already-in-use signs into the existing account '
+      'D-148: credential-already-in-use signs into the existing account '
       'instead of throwing past the caller — the "welcome back" path, same '
-      'treatment D-187 gives a reinstall', () async {
+      'treatment D-147 gives a reinstall', () async {
     final anonUser =
         MockUser(uid: 'anon-uid-already-in-use', isAnonymous: true);
     final authForLinking = MockFirebaseAuth(signedIn: true, mockUser: anonUser);
@@ -86,7 +86,7 @@ void main() {
   });
 
   test(
-      'D-140: credential-already-in-use uses the exception\'s own '
+      'D-112: credential-already-in-use uses the exception\'s own '
       '[credential] for the fallback sign-in, not the original — Apple\'s '
       '(idToken, nonce) pair is single-use against Firebase\'s servers, '
       'so resubmitting the already-consumed original credential always '
@@ -120,7 +120,7 @@ void main() {
   });
 
   test(
-      'D-132: signOut clears the Firebase session even when the native '
+      'D-105: signOut clears the Firebase session even when the native '
       'Google sign-out call fails — Google sign-out is best-effort, '
       'Firebase sign-out is what actually matters for Firestore access',
       () async {
@@ -140,7 +140,7 @@ void main() {
   });
 
   group(
-      'D-187: signOut flushes pending local changes before switching identity',
+      'D-147: signOut flushes pending local changes before switching identity',
       () {
     final db = DatabaseHelper.instance;
     late Directory tempDir;
@@ -194,7 +194,7 @@ void main() {
   });
 
   test(
-      'D-188: a FirebaseAuthException other than credential-already-in-use '
+      'D-148: a FirebaseAuthException other than credential-already-in-use '
       'is rethrown, not swallowed', () async {
     final anonUser = MockUser(uid: 'anon-uid-other-error', isAnonymous: true);
     final auth = MockFirebaseAuth(signedIn: true, mockUser: anonUser);
@@ -213,12 +213,12 @@ void main() {
     );
   });
 
-  // D-180: structural, matching this file's own established convention for
+  // D-140: structural, matching this file's own established convention for
   // the live Apple/Google SDK calls that can't run in a unit test (see the
   // file-level doc comment) — GoogleSignIn.instance.initialize() has no
   // injectable seam of its own to mock against.
   test(
-      'D-180: found live — "Continue with Google" threw a raw '
+      'D-140: found live — "Continue with Google" threw a raw '
       'PlatformException on iOS because GoogleSignIn.instance.initialize() '
       'was never called; google_sign_in 7.x\'s own doc comment requires it '
       'exactly once before any other method on that instance', () {
@@ -238,7 +238,7 @@ void main() {
   });
 
   test(
-      'D-188-AC-04: provider authentication signs in directly when Firebase restored a '
+      'D-148-AC-04: provider authentication signs in directly when Firebase restored a '
       'real account instead of attempting anonymous linking', () async {
     final auth = _FakeAuthWithCurrentUser(
         MockUser(uid: 'restored-real-uid', isAnonymous: false));
@@ -252,7 +252,7 @@ void main() {
   });
 
   test(
-      'D-188-AC-04: provider authentication signs in directly when anonymous bootstrap '
+      'D-148-AC-04: provider authentication signs in directly when anonymous bootstrap '
       'left no current Firebase user', () async {
     final auth = MockFirebaseAuth(signedIn: false);
     final service =
@@ -295,7 +295,7 @@ class _FakeUserCredential implements UserCredential {
 
 /// Wraps a real [MockFirebaseAuth] to record which [AuthCredential] was
 /// actually passed to [signInWithCredential] — MockFirebaseAuth itself
-/// doesn't expose this, and it's the entire point of the D-140 regression
+/// doesn't expose this, and it's the entire point of the D-112 regression
 /// test above (that the *fresh* credential from the exception is used,
 /// not the stale original). AccountLinkService.linkWithCredentialOrSwitch
 /// only ever calls signInWithCredential on this field, never anything

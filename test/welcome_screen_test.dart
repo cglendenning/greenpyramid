@@ -5,12 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/screens/welcome_screen.dart';
 import 'package:life_ops/theme/app_colors.dart';
 
-/// D-089: a single welcome screen precedes Mira's opening line, telling
+/// D-063: a single welcome screen precedes Mira's opening line, telling
 /// the user a short guided conversation is coming before dropping them
 /// into it — added after the owner found the previous behavior (straight
 /// into a chat bubble with zero framing) jarring on a real first run.
 ///
-/// D-136 (supersedes D-132/D-133/D-136): this screen no longer checks
+/// D-108 (supersedes D-105/D-106/D-108): this screen no longer checks
 /// auth state, a flag, or local data at all — it is now a pure, static
 /// screen with exactly one appearance, reached only while genuinely
 /// signed out (a fresh install or right after sign-out are, structurally,
@@ -19,7 +19,7 @@ import 'package:life_ops/theme/app_colors.dart';
 /// logged out you're in the logged out state, PERIOD." Owns no service
 /// dependency at all now — even simpler to widget-test than before.
 void main() {
-  testWidgets('D-089/D-136: shows the welcome photograph, headline, a '
+  testWidgets('D-063/D-108: shows the welcome photograph, headline, a '
       'single "Begin" action, and the "Sign in" link — identically every '
       'time, whether a fresh install or right after sign-out',
       (tester) async {
@@ -31,7 +31,7 @@ void main() {
         findsOneWidget);
     expect(find.widgetWithText(ElevatedButton, 'Begin'), findsOneWidget);
     expect(find.byType(ElevatedButton), findsOneWidget);
-    // D-161: split into two RichText spans (plain question + a
+    // D-124: split into two RichText spans (plain question + a
     // brand-green, underlined "Sign in" link), so it's no longer a
     // single plain Text findable by widgetWithText.
     expect(
@@ -44,7 +44,7 @@ void main() {
         findsOneWidget);
   });
 
-  testWidgets('D-089: does not explain the pyramid mechanic — no tier '
+  testWidgets('D-063: does not explain the pyramid mechanic — no tier '
       'or category vocabulary appears on this screen', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: WelcomeScreen()));
     await tester.pump();
@@ -61,7 +61,7 @@ void main() {
     }
   });
 
-  testWidgets('D-111: no back button when there is nowhere to go back to '
+  testWidgets('D-086: no back button when there is nowhere to go back to '
       '— the fresh-install "/setup" route, where WelcomeScreen is the '
       'very first screen', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: WelcomeScreen()));
@@ -70,7 +70,7 @@ void main() {
     expect(find.byIcon(Icons.arrow_back), findsNothing);
   });
 
-  testWidgets('D-111: a back button appears, and works, when WelcomeScreen '
+  testWidgets('D-086: a back button appears, and works, when WelcomeScreen '
       'is reached by pushing on top of another screen. Found live: '
       'tapping Setup by accident had no way out.', (tester) async {
     await tester.pumpWidget(MaterialApp(
@@ -98,7 +98,7 @@ void main() {
     expect(find.byType(WelcomeScreen), findsNothing);
   });
 
-  test('D-089/D-136: the "/setup" route (fresh install and a relaunch '
+  test('D-063/D-108: the "/setup" route (fresh install and a relaunch '
       'right after sign-out) goes through WelcomeScreen — but the '
       'hamburger menu\'s "Set up again" (an already signed-in user '
       'rebuilding their real pyramid) deliberately does not, since that '
@@ -121,7 +121,7 @@ void main() {
     expect(navigateToSetupBody, contains("title: const Text('Set up again?'"));
   });
 
-  group('D-141: the "Welcome back." sign-in screen shows a random '
+  group('D-113: the "Welcome back." sign-in screen shows a random '
       'inspiring tagline instead of a fixed, disliked phrase — owner: '
       '"\'Sign up with the account you set up before\' is not a phrase '
       'that I like."', () {
@@ -149,7 +149,7 @@ void main() {
     });
   });
 
-  group('D-146: no tagline frames itself around data/values not being '
+  group('D-118: no tagline frames itself around data/values not being '
       'lost — found live, the owner disliked one specific entry ("Nothing '
       'here was lost while you were away.") and asked for the whole list '
       'to be audited: "do a better job at making any phrases that are '
@@ -182,7 +182,7 @@ void main() {
     });
   });
 
-  group('D-149: a "Terms and Conditions" link is reachable from the first '
+  group('D-121: a "Terms and Conditions" link is reachable from the first '
       'screen — owner: "ensure that you have a terms and conditions link '
       'that indicates that this is not medical advice ... accessible from '
       'a link from the first screen."', () {
@@ -199,7 +199,7 @@ void main() {
     });
   });
 
-  group('D-161: the "Sign in" link and Terms and Conditions link are '
+  group('D-124: the "Sign in" link and Terms and Conditions link are '
       'centered, and "Sign in" itself is visually marked as tappable — '
       'owner: "the already have an account line to be centered and I also '
       'want the terms and conditions to be centered and also the sign in '

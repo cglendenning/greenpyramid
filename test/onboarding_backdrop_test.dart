@@ -5,12 +5,12 @@ import 'package:life_ops/screens/trial_disclosure_screen.dart';
 import 'package:life_ops/screens/welcome_screen.dart';
 import 'package:life_ops/widgets/crossfading_stock_images.dart';
 
-/// D-099: welcome, trial-disclosure, and push-permission screens share one
+/// D-081: welcome, trial-disclosure, and push-permission screens share one
 /// rotating-photograph background and Raleway type scale (OnboardingBackdrop
 /// / OnboardingStyles) rather than each screen carrying its own
 /// reimplementation of the look the owner singled out as exactly right.
 void main() {
-  testWidgets('D-099: TrialDisclosureScreen renders the shared rotating '
+  testWidgets('D-081: TrialDisclosureScreen renders the shared rotating '
       'backdrop and preserves its existing copy', (tester) async {
     await tester.pumpWidget(MaterialApp(
       home: TrialDisclosureScreen(onDone: () {}),
@@ -22,7 +22,7 @@ void main() {
     expect(find.widgetWithText(ElevatedButton, 'Got it'), findsOneWidget);
   });
 
-  testWidgets('D-099: TrialDisclosureScreen keeps the lapsed-entitlement '
+  testWidgets('D-081: TrialDisclosureScreen keeps the lapsed-entitlement '
       'copy unchanged', (tester) async {
     await tester.pumpWidget(MaterialApp(
       home: TrialDisclosureScreen(onDone: () {}, entitlement: 'lapsed'),
@@ -32,7 +32,7 @@ void main() {
     expect(find.text('Your pyramid is ready.'), findsOneWidget);
   });
 
-  testWidgets('D-099/D-050: PushPermissionScreen renders the shared '
+  testWidgets('D-081/D-050: PushPermissionScreen renders the shared '
       'rotating backdrop and its copy is unambiguous about requesting '
       'push notification permission', (tester) async {
     await tester.pumpWidget(MaterialApp(
@@ -55,7 +55,7 @@ void main() {
     expect(find.byType(TextButton), findsNothing);
   });
 
-  testWidgets('D-099: WelcomeScreen still renders the shared backdrop after '
+  testWidgets('D-081: WelcomeScreen still renders the shared backdrop after '
       'being refactored onto OnboardingBackdrop', (tester) async {
     await tester.pumpWidget(const MaterialApp(home: WelcomeScreen()));
     await tester.pump();

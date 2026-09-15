@@ -10,7 +10,7 @@ import 'package:life_ops/widgets/category_edit_sheet.dart';
 import 'package:life_ops/widgets/onboarding_backdrop.dart';
 import 'package:life_ops/widgets/pyramid_stack.dart';
 
-/// D-151: this screen used to render six flat, static, old CustomPainters
+/// D-123: this screen used to render six flat, static, old CustomPainters
 /// (`DrawCat1`..`DrawCat6`) — a separate rendering pipeline nobody
 /// migrated when the main pyramid screen (`lib/widgets/pyramid.dart`) was
 /// rebuilt on the real 3D `Pyramid3D` widget, so this screen looked
@@ -31,7 +31,7 @@ class EditPyramid extends StatefulWidget {
   final Future cat5Future;
   final Future cat6Future;
 
-  // D-151: after a rename/essence edit, the underlying category futures
+  // D-123: after a rename/essence edit, the underlying category futures
   // must actually be refreshed for the new name to appear — both here and
   // on the main pyramid screen, since both now render from the exact same
   // futures. Mirrors Pyramid's own onReturnFromTaskList refresh pattern.
@@ -62,7 +62,7 @@ class _EditPyramid extends State<EditPyramid> {
         fontFamily: 'Exo2',
         color: AppColors.textPrimary);
 
-    // D-152: found live — a bare Column here (unlike the main screen's,
+    // D-125: found live — a bare Column here (unlike the main screen's,
     // which sits inside a SingleChildScrollView matching the full
     // viewport width) sizes itself to its widest child instead of the
     // screen's width, and nothing then centers that narrower column
@@ -99,7 +99,7 @@ class _EditPyramid extends State<EditPyramid> {
     );
   }
 
-  // D-113: name and description together, in one shared, styled sheet —
+  // D-088: name and description together, in one shared, styled sheet —
   // replacing the old plain AlertDialog that only ever touched the name.
   Future<void> showEditDialog(
       BuildContext context, int categoryid, String category) async {
@@ -112,13 +112,13 @@ class _EditPyramid extends State<EditPyramid> {
     );
     if (result == null) return;
 
-    // D-113: found live — renaming a category used to call
+    // D-088: found live — renaming a category used to call
     // deleteCategoryContents(category) *before* renameCategoryCascading,
     // wiping every task and task-log row for the old name first. The
-    // cascade that followed then had nothing left to move — D-084's fix
+    // cascade that followed then had nothing left to move — D-059's fix
     // for exactly this ("renaming without cascading orphans every habit
     // and log row") was being silently defeated by a leftover call to the
-    // pre-D-084 destructive path. Renaming a category to fix a typo was
+    // pre-D-059 destructive path. Renaming a category to fix a typo was
     // permanently deleting its entire habit history. Removed — the
     // cascade alone is correct and sufficient.
     if (result.name != category) {
@@ -127,7 +127,7 @@ class _EditPyramid extends State<EditPyramid> {
         newName: result.name,
       );
     }
-    // D-127: compare against what was actually loaded, not against
+    // D-102: compare against what was actually loaded, not against
     // null/empty — an intentionally-cleared description is itself a
     // change and must be persisted, not skipped because it's blank.
     if (result.description != (currentEssence ?? '')) {
@@ -139,7 +139,7 @@ class _EditPyramid extends State<EditPyramid> {
 
     widget.onCategoryEdited?.call();
 
-    // D-187: same gap as tasklist.dart's check-off handler — a rename or
+    // D-147: same gap as tasklist.dart's check-off handler — a rename or
     // essence edit was purely a local write with no sync trigger of its
     // own, so it could sit unsynced until the next app launch, Council
     // conversation, or setup completion (whichever came first).

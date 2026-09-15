@@ -36,8 +36,8 @@ class _HabitCheckin {
       );
 }
 
-/// D-124 Phase 5: one Yes/No row per scheduled habit named in a batch
-/// check-in push (D-124's replacement for Kansei's per-session "Did you
+/// D-099 Phase 5: one Yes/No row per scheduled habit named in a batch
+/// check-in push (D-099's replacement for Kansei's per-session "Did you
 /// do it?"). Yes writes a `task_log` completion immediately — the
 /// notification's answer *is* the completion action, per the owner's
 /// explicit choice, not just a reminder to go check something off

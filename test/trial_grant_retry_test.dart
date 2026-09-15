@@ -2,14 +2,14 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-116: a completed account with no real server entitlement gets its
+/// D-091: a completed account with no real server entitlement gets its
 /// trial grant retried on every launch, using pullFromServer's own return
 /// value rather than the local cache — structural, matching this repo's
 /// convention for main.dart's bootstrap (not directly unit-testable: it
 /// drives live Firebase singletons with no injection point).
 void main() {
   test(
-      'D-116: the bootstrap retries a trial grant keyed off '
+      'D-091: the bootstrap retries a trial grant keyed off '
       'pullFromServer\'s return value, not the local entitlement cache — '
       'regression test for a defect found live: a device whose original '
       'requestTrialAfterSetup() call failed kept a stale local '
@@ -25,10 +25,10 @@ void main() {
   });
 
   test(
-      'D-116: which grant is retried depends on hasEverCreatedSetupSession '
-      '— a real Council setup gets D-188\'s normal grant retried, an '
+      'D-091: which grant is retried depends on hasEverCreatedSetupSession '
+      '— a real Council setup gets D-148\'s normal grant retried, an '
       'account with no Council setup (the D-027 migration cohort) still '
-      'gets D-071\'s one-time 30-day grant', () {
+      'gets D-055\'s one-time 30-day grant', () {
     final source = File('lib/main.dart').readAsStringSync();
     expect(source, contains('CouncilService.instance.hasEverCreatedSetupSession()'));
     final wentThroughIdx = source.indexOf('wentThroughCouncilSetup');

@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-117: a pyramid-tier explainer screen shown once before the derived
+/// D-092: a pyramid-tier explainer screen shown once before the derived
 /// categories, and in-place name+description editing on the categories
 /// screen itself, which collapses the confirm/refine buttons to a single
 /// "Next" once any edit is made — structural, matching this repo's
@@ -12,7 +12,7 @@ void main() {
   final source = File('lib/screens/setup_screen.dart').readAsStringSync();
 
   test(
-      'D-117: Mira\'s readyToBuild routes through _Phase.tierIntro the '
+      'D-092: Mira\'s readyToBuild routes through _Phase.tierIntro the '
       'first time, or straight to _Phase.categories once the explainer '
       'has already been shown this setup session', () {
     final start = source.indexOf('Future<void> _runMiraTurn()');
@@ -28,7 +28,7 @@ void main() {
   });
 
   test(
-      'D-117: the tier-intro explainer\'s own Next button is what marks '
+      'D-092: the tier-intro explainer\'s own Next button is what marks '
       'it seen and advances to the real categories screen', () {
     final start = source.indexOf('Widget _buildTierIntro()');
     expect(start, greaterThan(-1));
@@ -41,8 +41,8 @@ void main() {
   });
 
   test(
-      'D-117: the tier-intro screen uses the shared OnboardingStyles type '
-      'scale, matching D-102\'s essence-intro precedent, not a bespoke '
+      'D-092: the tier-intro screen uses the shared OnboardingStyles type '
+      'scale, matching D-067\'s essence-intro precedent, not a bespoke '
       'style reintroducing visual drift', () {
     final start = source.indexOf('Widget _buildTierIntro()');
     final end = source.indexOf('\n  Widget _buildCategories', start);
@@ -54,7 +54,7 @@ void main() {
   });
 
   test(
-      'D-117: the tier-intro screen names all three tiers by their '
+      'D-092: the tier-intro screen names all three tiers by their '
       'established terms — foundational, essential, peak (P-6/D-038), '
       'never invented labels', () {
     final start = source.indexOf('Widget _buildTierIntro()');
@@ -67,9 +67,9 @@ void main() {
   });
 
   test(
-      'D-117: editing a category on the categories screen covers both '
+      'D-092: editing a category on the categories screen covers both '
       'name and description together, in one place — extends D-038\'s '
-      '"adjust by tapping" and matches D-113\'s "wherever you can edit '
+      '"adjust by tapping" and matches D-088\'s "wherever you can edit '
       'the category, you can edit the description too" principle', () {
     final start = source.indexOf('Future<void> _editCategory(int index)');
     expect(start, greaterThan(-1));
@@ -86,7 +86,7 @@ void main() {
   });
 
   test(
-      'D-117: an edit only flips _categoriesEdited when the name or '
+      'D-092: an edit only flips _categoriesEdited when the name or '
       'description actually changed — reopening Edit and saving without '
       'changing anything must not collapse the buttons', () {
     final start = source.indexOf('Future<void> _editCategory(int index)');
@@ -98,7 +98,7 @@ void main() {
   });
 
   test(
-      'D-117: the bare tap-to-rename interaction (_renameCategory, name '
+      'D-092: the bare tap-to-rename interaction (_renameCategory, name '
       'only) is gone, replaced entirely by the combined name+description '
       'editor — having both would let the name be edited two '
       'inconsistent ways', () {
@@ -107,7 +107,7 @@ void main() {
   });
 
   test(
-      'D-117: each category card exposes an explicit Edit control, not '
+      'D-092: each category card exposes an explicit Edit control, not '
       'only an implicit whole-card tap', () {
     final start = source.indexOf('Widget tierSection(');
     expect(start, greaterThan(-1));
@@ -120,7 +120,7 @@ void main() {
   });
 
   test(
-      'D-117: the bottom row collapses to a single Next once any card has '
+      'D-092: the bottom row collapses to a single Next once any card has '
       'been edited — regression test for the owner\'s explicit '
       'instruction: "if they actually make an edit to either a single '
       'category or description than the only option that will exist at '
@@ -146,7 +146,7 @@ void main() {
   });
 
   test(
-      'D-117: _categoriesEdited resets whenever a fresh or refined '
+      'D-092: _categoriesEdited resets whenever a fresh or refined '
       'proposal is derived — an edit from a discarded earlier proposal '
       'must not carry over and suppress the buttons on a new one', () {
     final start = source.indexOf('Future<void> _runMiraTurn()');

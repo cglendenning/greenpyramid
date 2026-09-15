@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart';
 
 import 'ai_guard.dart';
 
-/// D-185 step 7 / D-123: a wrapper around the device calendar, feeding
-/// P-8's context-sensitivity (D-028) and, since D-123, writing real
+/// D-145 step 7 / D-098: a wrapper around the device calendar, feeding
+/// P-8's context-sensitivity (D-028) and, since D-098, writing real
 /// events for scheduled habits — reversing this class's original
 /// read-only design, ported from Kansei's own `calendar_service.dart`
 /// (`goal-executor/lib/services/calendar_service.dart`) and adapted to
@@ -24,7 +24,7 @@ class CalendarService {
 
   final dc.DeviceCalendar _calendar;
 
-  /// D-123: the fixed prefix every native event this class writes
+  /// D-098: the fixed prefix every native event this class writes
   /// carries, so it can be found and identified later — the same
   /// identification convention Kansei's own `[GOAL]` prefix establishes.
   static const String eventTitlePrefix = '[Green Pyramid]';
@@ -32,7 +32,7 @@ class CalendarService {
   static String eventTitleFor(String habitDescription) =>
       '$eventTitlePrefix $habitDescription';
 
-  /// D-123 Phase 2: keeps only events worth showing on the scheduling
+  /// D-098 Phase 2: keeps only events worth showing on the scheduling
   /// grid and worth colliding against — drops this app's own
   /// scheduled-habit events (rendered separately, straight from each
   /// habit's own row) and, matching Kansei's own
@@ -53,7 +53,7 @@ class CalendarService {
         .toList();
   }
 
-  /// D-123: pure mapping from the task table's own Sunday-Saturday
+  /// D-098: pure mapping from the task table's own Sunday-Saturday
   /// string flags to the plugin's day-of-week enum — factored out so
   /// it's testable without touching the (unmockable) calendar plugin at
   /// all, the same pattern this codebase already uses for other
@@ -88,7 +88,7 @@ class CalendarService {
     DateTime.sunday: dc.DayOfWeek.sunday,
   };
 
-  /// D-123: the first valid anchor date/time for a new (or moved)
+  /// D-098: the first valid anchor date/time for a new (or moved)
   /// recurring series — today at [hour]:[minute] if today's weekday is
   /// one of [daysOfWeek] and that time is still in the future, otherwise
   /// the next matching day within the coming week. A recurring series'
@@ -136,7 +136,7 @@ class CalendarService {
   }
 
   /// Requesting `.full` covers both reading (D-028's context) and writing
-  /// (D-123's scheduled events) — the plugin's gentler `.writeOnly` tier
+  /// (D-098's scheduled events) — the plugin's gentler `.writeOnly` tier
   /// would leave reading unavailable. Called only from an explicit user
   /// action (a Settings toggle), never automatically.
   Future<bool> requestPermission() async {
@@ -174,7 +174,7 @@ class CalendarService {
     }
   }
 
-  /// D-123 Phase 2: the set of writable calendar ids — matching Kansei's
+  /// D-098 Phase 2: the set of writable calendar ids — matching Kansei's
   /// own `getWritableCalendarIds()`/`filterSchedulable` split. Events
   /// from a read-only calendar (iOS Holidays, a subscribed sports
   /// schedule, a shared read-only calendar) are excluded from scheduling
@@ -193,7 +193,7 @@ class CalendarService {
     }
   }
 
-  /// D-123 Phase 2: the day's calendar events, for the scheduling screen's
+  /// D-098 Phase 2: the day's calendar events, for the scheduling screen's
   /// grid — both as visual context (busy blocks from the user's other
   /// calendars) and as collision-detection input. Excludes this class's
   /// own scheduled-habit events (identified by [eventTitlePrefix]) and
@@ -219,7 +219,7 @@ class CalendarService {
     }
   }
 
-  /// D-123: writes a new recurring event for a just-scheduled habit —
+  /// D-098: writes a new recurring event for a just-scheduled habit —
   /// recurs indefinitely (no end date) on exactly [daysOfWeek], the same
   /// days the habit is already active on. Returns the created event's id
   /// (to store on the task row via `columnScheduledCalendarEventId`), or
@@ -257,7 +257,7 @@ class CalendarService {
     }
   }
 
-  /// D-123: moves an already-scheduled habit's whole recurring series to
+  /// D-098: moves an already-scheduled habit's whole recurring series to
   /// a new time and/or set of days — [EventSpan.allEvents] plus an
   /// explicit [recurrenceRule] together (never just a moved `start`),
   /// since `updateRecurring`'s own contract treats moving an explicitly-
@@ -294,7 +294,7 @@ class CalendarService {
     }
   }
 
-  /// D-123: removes a scheduled habit's native event entirely — called
+  /// D-098: removes a scheduled habit's native event entirely — called
   /// when the user unschedules it. Never throws.
   Future<bool> deleteHabitEvent(String eventId) async {
     if (!await hasPermission()) return false;
@@ -307,7 +307,7 @@ class CalendarService {
     }
   }
 
-  /// D-163: whether a habit's own scheduled native event still exists —
+  /// D-131: whether a habit's own scheduled native event still exists —
   /// found live: deleting the event directly from the native calendar app
   /// (not through Green Pyramid) left it stuck showing the habit as
   /// scheduled forever, since nothing ever re-checked the calendar's own
@@ -328,7 +328,7 @@ class CalendarService {
     }
   }
 
-  /// D-123: the first non-read-only calendar, preferring the device's
+  /// D-098: the first non-read-only calendar, preferring the device's
   /// primary — matching Kansei's own selection order (excluding calendars
   /// like iOS Holidays or a subscribed feed, which the plugin reports as
   /// read-only). Null if nothing is writable.

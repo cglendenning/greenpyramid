@@ -1,8 +1,8 @@
-// D-185 (amended): each surface's model is a single global Firestore
+// D-145 (amended): each surface's model is a single global Firestore
 // document, not a hardcoded constant — editable by hand to move between
 // Anthropic model tiers without a redeploy. `config/<surface>` is separate
 // per surface (config/council, config/notifications, ...), preserving
-// D-185's "one configuration location per surface" rule rather than
+// D-145's "one configuration location per surface" rule rather than
 // collapsing every surface into one shared blob.
 import admin from 'firebase-admin';
 
@@ -49,12 +49,12 @@ export function makeModelConfig(docId, fallback = FALLBACK_MODEL) {
   return { getModel, _resetCacheForTest };
 }
 
-// D-037/D-185: the Council's model.
+// D-037/D-145: the Council's model.
 const council = makeModelConfig('council');
 export const getCouncilModel = council.getModel;
 export const _resetModelCacheForTest = council._resetCacheForTest;
 
-// D-189/D-028: the notification generator's model — its own configuration
+// D-149/D-028: the notification generator's model — its own configuration
 // location, independently switchable from the Council's.
 const notifications = makeModelConfig('notifications');
 export const getNotificationModel = notifications.getModel;

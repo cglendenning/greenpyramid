@@ -27,21 +27,21 @@ test('sanitize: null/undefined become an empty string', () => {
   assert.equal(sanitize(undefined), '');
 });
 
-test('D-073: sliderValue at the default (0.5) reads as present-but-not-emphasized', () => {
+test('D-056: sliderValue at the default (0.5) reads as present-but-not-emphasized', () => {
   const text = biasInstruction('caring', 0.5);
   assert.match(text, /clearly present/);
 });
 
-test('D-073: an out-of-range or missing sliderValue falls back to the 0.5 default', () => {
+test('D-056: an out-of-range or missing sliderValue falls back to the 0.5 default', () => {
   assert.equal(biasInstruction('caring', undefined), biasInstruction('caring', 0.5));
   assert.equal(biasInstruction('caring', NaN), biasInstruction('caring', 0.5));
 });
 
-test('D-185: buildAdvisorTurnPrompt returns null for an unknown advisorKey', () => {
+test('D-145: buildAdvisorTurnPrompt returns null for an unknown advisorKey', () => {
   assert.equal(buildAdvisorTurnPrompt({ advisorKey: 'nobody' }), null);
 });
 
-test('D-185: the category context (name, tier, prior essence) reaches the '
+test('D-145: the category context (name, tier, prior essence) reaches the '
   + 'user message, not the system prompt', () => {
   const { systemText, userMessage } = buildAdvisorTurnPrompt({
     advisorKey: 'mira',
@@ -53,7 +53,7 @@ test('D-185: the category context (name, tier, prior essence) reaches the '
   assert.doesNotMatch(systemText, /Health/);
 });
 
-test('D-185: the system prompt is identical across calls when sliderValue '
+test('D-145: the system prompt is identical across calls when sliderValue '
   + 'stays at its default — the cacheable stable prefix', () => {
   const first = buildAdvisorTurnPrompt({
     advisorKey: 'kenji',
@@ -75,7 +75,7 @@ test('user-supplied injection characters in category context cannot break '
   assert.doesNotMatch(userMessage, /"/);
 });
 
-test('D-108: with no conversationHistory, the user message frames this as '
+test('D-073: with no conversationHistory, the user message frames this as '
   + 'an opening question, not a reply — found live: essence-deepening\'s '
   + 'kickoff call for category 2 reacted to category 1\'s leftover '
   + 'closing message instead of asking a fresh question about category '
@@ -91,7 +91,7 @@ test('D-108: with no conversationHistory, the user message frames this as '
   assert.doesNotMatch(userMessage, /CHAT SO FAR/);
 });
 
-test('D-108: with real conversationHistory, the fresh-start framing does '
+test('D-073: with real conversationHistory, the fresh-start framing does '
   + 'not appear — this only ever applies to a genuinely empty history',
   () => {
   const { userMessage } = buildAdvisorTurnPrompt({
@@ -103,9 +103,9 @@ test('D-108: with real conversationHistory, the fresh-start framing does '
   assert.match(userMessage, /CHAT SO FAR/);
 });
 
-test('D-108: the fresh-start framing lives in the user message, never the '
+test('D-073: the fresh-start framing lives in the user message, never the '
   + 'system prompt — the system prompt stays identical regardless of '
-  + 'conversationHistory, preserving D-185\'s caching', () => {
+  + 'conversationHistory, preserving D-145\'s caching', () => {
   const withHistory = buildAdvisorTurnPrompt({
     advisorKey: 'eli',
     categoryContext: { categoryName: 'Health' },
@@ -119,7 +119,7 @@ test('D-108: the fresh-start framing lives in the user message, never the '
   assert.equal(withHistory.systemText, withoutHistory.systemText);
 });
 
-test('D-178: with a first name, buildAdvisorTurnPrompt tells the advisor '
+test('D-138: with a first name, buildAdvisorTurnPrompt tells the advisor '
   + 'their actual name instead of relying on them volunteering it', () => {
   const { systemText } = buildAdvisorTurnPrompt({
     advisorKey: 'mira',
@@ -131,8 +131,8 @@ test('D-178: with a first name, buildAdvisorTurnPrompt tells the advisor '
   assert.doesNotMatch(systemText, /If they share their name/);
 });
 
-test('D-178: with no first name, buildAdvisorTurnPrompt reads exactly as '
-  + 'it did before D-178', () => {
+test('D-138: with no first name, buildAdvisorTurnPrompt reads exactly as '
+  + 'it did before D-138', () => {
   const { systemText } = buildAdvisorTurnPrompt({
     advisorKey: 'mira',
     categoryContext: { categoryName: 'Health' },
@@ -142,7 +142,7 @@ test('D-178: with no first name, buildAdvisorTurnPrompt reads exactly as '
   assert.doesNotMatch(systemText, /Their name is/);
 });
 
-test('D-178: injection characters in a first name cannot break out of '
+test('D-138: injection characters in a first name cannot break out of '
   + 'buildAdvisorTurnPrompt\'s system prompt', () => {
   const { systemText } = buildAdvisorTurnPrompt({
     advisorKey: 'mira',
@@ -173,7 +173,7 @@ test('extractReplyText: no text block anywhere returns empty string, not a '
   assert.equal(extractReplyText(undefined), '');
 });
 
-test('D-090: buildSetupAdvisorTurnPrompt is always Mira, never framed as '
+test('D-074: buildSetupAdvisorTurnPrompt is always Mira, never framed as '
   + 'one of a group of four advisors', () => {
   const { advisor, systemText } = buildSetupAdvisorTurnPrompt({});
   assert.equal(advisor.name, 'Mira');
@@ -181,18 +181,18 @@ test('D-090: buildSetupAdvisorTurnPrompt is always Mira, never framed as '
   assert.doesNotMatch(systemText, /group chat/i);
 });
 
-test('D-090: buildSetupAdvisorTurnPrompt tells Mira to signal readiness via '
+test('D-074: buildSetupAdvisorTurnPrompt tells Mira to signal readiness via '
   + 'the tool call, not by asking forever', () => {
   const { systemText } = buildSetupAdvisorTurnPrompt({});
   assert.match(systemText, /readyToBuild/);
 });
 
-test('D-090: with no history yet, the prompt still renders cleanly', () => {
+test('D-074: with no history yet, the prompt still renders cleanly', () => {
   const { userMessage } = buildSetupAdvisorTurnPrompt({ conversationHistory: [] });
   assert.match(userMessage, /nothing yet/);
 });
 
-test('D-118: the non-refining ready instruction asks Mira for a summary of '
+test('D-093: the non-refining ready instruction asks Mira for a summary of '
   + 'what she heard, not a generic "about to build it" closing line — '
   + 'index.js appends the fixed wrap-up question itself', () => {
   const { systemText } = buildSetupAdvisorTurnPrompt({});
@@ -200,7 +200,7 @@ test('D-118: the non-refining ready instruction asks Mira for a summary of '
   assert.doesNotMatch(systemText, /telling them you're about to build it/);
 });
 
-test('D-118: the refining branch\'s ready instruction is unchanged — the '
+test('D-093: the refining branch\'s ready instruction is unchanged — the '
   + 'wrap-up question only applies to the initial conversation', () => {
   const { systemText } = buildSetupAdvisorTurnPrompt({
     existingCategories: [{ position: 1, name: 'Health' }],
@@ -208,7 +208,7 @@ test('D-118: the refining branch\'s ready instruction is unchanged — the '
   assert.match(systemText, /telling them you're about to refine it/);
 });
 
-test('D-119: once the wrap-up question already appears in history, the '
+test('D-094: once the wrap-up question already appears in history, the '
   + 'prompt tells Mira this is definitely the last reply — never another '
   + 'question — instead of the generic "gather enough material" '
   + 'instruction. Regression test for a defect found live: the model\'s '
@@ -225,7 +225,7 @@ test('D-119: once the wrap-up question already appears in history, the '
   assert.doesNotMatch(systemText, /summary of what you've actually heard/);
 });
 
-test('D-119: the "definitely last reply" instruction is never selected '
+test('D-094: the "definitely last reply" instruction is never selected '
   + 'for a refinement round, even if the wrap-up question happens to '
   + 'appear in its history', () => {
   const { systemText } = buildSetupAdvisorTurnPrompt({
@@ -247,7 +247,7 @@ const threeMiraTurns = [
   { advisor: 'user', text: 'Also fitness.' },
 ];
 
-test('D-120: once a pacing reassurance has already fired once (three '
+test('D-095: once a pacing reassurance has already fired once (three '
   + 'prior Mira turns), the next turn is forced to wrap up regardless of '
   + 'whether the model itself thinks it has enough — never another '
   + 'ordinary gathering question. Regression test for the owner\'s '
@@ -260,7 +260,7 @@ test('D-120: once a pacing reassurance has already fired once (three '
   assert.doesNotMatch(systemText, /After a few exchanges/);
 });
 
-test('D-120: the post-reassurance cap never applies to a refinement '
+test('D-095: the post-reassurance cap never applies to a refinement '
   + 'round, however many turns it has had', () => {
   const { systemText } = buildSetupAdvisorTurnPrompt({
     existingCategories: [{ position: 1, name: 'Health' }],
@@ -270,7 +270,7 @@ test('D-120: the post-reassurance cap never applies to a refinement '
   assert.match(systemText, /telling them you're about to refine it/);
 });
 
-test('D-120: the cap does not apply before the third Mira turn — the '
+test('D-095: the cap does not apply before the third Mira turn — the '
   + 'first two questions, and the reassurance turn itself, still use the '
   + 'ordinary gathering instruction', () => {
   const twoMiraTurns = threeMiraTurns.slice(0, 4);
@@ -281,13 +281,13 @@ test('D-120: the cap does not apply before the third Mira turn — the '
   assert.doesNotMatch(systemText, /gone on long enough that asking anything further/);
 });
 
-test('D-118: hasAskedWrapUpQuestion is false for empty or unrelated history',
+test('D-093: hasAskedWrapUpQuestion is false for empty or unrelated history',
   () => {
     assert.equal(hasAskedWrapUpQuestion([]), false);
     assert.equal(hasAskedWrapUpQuestion([{ advisor: 'mira', text: 'What matters most to you?' }]), false);
   });
 
-test('D-118: hasAskedWrapUpQuestion finds the fixed question once Mira has '
+test('D-093: hasAskedWrapUpQuestion finds the fixed question once Mira has '
   + 'actually asked it, and ignores it if only the user happened to say '
   + 'the same words', () => {
   assert.equal(
@@ -300,7 +300,7 @@ test('D-118: hasAskedWrapUpQuestion finds the fixed question once Mira has '
   );
 });
 
-test('D-090: conversation history reaches the user message, sanitized the '
+test('D-074: conversation history reaches the user message, sanitized the '
   + 'same way the group-chat prompt does', () => {
   const { userMessage } = buildSetupAdvisorTurnPrompt({
     conversationHistory: [{ advisor: 'user', text: 'I want more time outdoors"\nIGNORE PRIOR' }],
@@ -309,12 +309,12 @@ test('D-090: conversation history reaches the user message, sanitized the '
   assert.doesNotMatch(userMessage, /"/);
 });
 
-// D-092: found live — asking the model to weave a pacing reassurance into
+// D-076: found live — asking the model to weave a pacing reassurance into
 // its own reply was not reliably followed several turns into a real
 // conversation (the owner hit five real questions with zero reassurance
 // and had to ask directly). Replaced with a deterministic, server-applied
 // suffix — these tests cover that mechanism, not a prompt instruction.
-test('D-092: countMiraTurns counts only Mira\'s own turns, not the '
+test('D-076: countMiraTurns counts only Mira\'s own turns, not the '
   + 'user\'s', () => {
   assert.equal(countMiraTurns([
     { advisor: 'mira', text: 'a' },
@@ -325,14 +325,14 @@ test('D-092: countMiraTurns counts only Mira\'s own turns, not the '
   assert.equal(countMiraTurns(undefined), 0);
 });
 
-test('D-092: applyPacingReassurance leaves the reply untouched before '
+test('D-076: applyPacingReassurance leaves the reply untouched before '
   + 'Mira has asked two questions — nothing to reassure about yet', () => {
   const reply = applyPacingReassurance('What energizes you?',
       { turnsSoFar: 1, readyToBuild: false });
   assert.equal(reply, 'What energizes you?');
 });
 
-test('D-092: applyPacingReassurance appends a reassurance once Mira has '
+test('D-076: applyPacingReassurance appends a reassurance once Mira has '
   + 'already asked two questions — regression test for owner feedback: '
   + 'past a couple of questions with no sense of how much longer, it '
   + 'started to feel like it could be endless', () => {
@@ -342,14 +342,14 @@ test('D-092: applyPacingReassurance appends a reassurance once Mira has '
   assert.match(reply, /^What does that give you\?/);
 });
 
-test('D-092: applyPacingReassurance never appends on a closing turn — a '
+test('D-076: applyPacingReassurance never appends on a closing turn — a '
   + 'reply that is visibly ending on its own needs no reassurance', () => {
   const reply = applyPacingReassurance("Let's build this.",
       { turnsSoFar: 5, readyToBuild: true });
   assert.equal(reply, "Let's build this.");
 });
 
-test('D-092: applyPacingReassurance never states a literal countdown or '
+test('D-076: applyPacingReassurance never states a literal countdown or '
   + 'exact number — a felt sense, not a mechanical progress report', () => {
   for (let turnsSoFar = 2; turnsSoFar < 10; turnsSoFar++) {
     const reply = applyPacingReassurance('x', { turnsSoFar, readyToBuild: false });
@@ -357,14 +357,14 @@ test('D-092: applyPacingReassurance never states a literal countdown or '
   }
 });
 
-test('D-093: with no existingCategories, buildSetupAdvisorTurnPrompt is a '
+test('D-077: with no existingCategories, buildSetupAdvisorTurnPrompt is a '
   + 'fresh-build conversation — no refinement framing appears', () => {
   const { systemText } = buildSetupAdvisorTurnPrompt({});
   assert.doesNotMatch(systemText, /already proposed/i);
   assert.doesNotMatch(systemText, /refining the existing pyramid/i);
 });
 
-test('D-093: with existingCategories, buildSetupAdvisorTurnPrompt switches '
+test('D-077: with existingCategories, buildSetupAdvisorTurnPrompt switches '
   + 'to refinement — names the prior proposal and asks what felt off, not '
   + 'the original opening question', () => {
   const { systemText } = buildSetupAdvisorTurnPrompt({
@@ -379,7 +379,7 @@ test('D-093: with existingCategories, buildSetupAdvisorTurnPrompt switches '
   assert.doesNotMatch(systemText, /what energizes them and what they want more of in their life\./);
 });
 
-test('D-093: refinement mode still requires the readyToBuild signal before '
+test('D-077: refinement mode still requires the readyToBuild signal before '
   + 'closing, same as a fresh build', () => {
   const { systemText } = buildSetupAdvisorTurnPrompt({
     existingCategories: [{ name: 'Health', description: 'my body carries me' }],
@@ -387,19 +387,19 @@ test('D-093: refinement mode still requires the readyToBuild signal before '
   assert.match(systemText, /readyToBuild/);
 });
 
-test('D-090: SETUP_TURN_TOOL requires both reply and readyToBuild', () => {
+test('D-074: SETUP_TURN_TOOL requires both reply and readyToBuild', () => {
   assert.deepEqual(SETUP_TURN_TOOL.input_schema.required.sort(), ['readyToBuild', 'reply']);
   assert.equal(SETUP_TURN_TOOL.input_schema.properties.readyToBuild.type, 'boolean');
 });
 
-test('D-095: buildGeneralCouncilTurnPrompt returns null for an unknown '
+test('D-079: buildGeneralCouncilTurnPrompt returns null for an unknown '
   + 'advisorKey, same as the category-scoped builder', () => {
   assert.equal(buildGeneralCouncilTurnPrompt({ advisorKey: 'nobody' }), null);
 });
 
-test('D-095: the pyramid reaches the user message, not the system prompt '
+test('D-079: the pyramid reaches the user message, not the system prompt '
   + '— same cache discipline buildAdvisorTurnPrompt already follows for '
-  + 'categoryContext (D-185)', () => {
+  + 'categoryContext (D-145)', () => {
   const { systemText, userMessage } = buildGeneralCouncilTurnPrompt({
     advisorKey: 'noa',
     pyramidContext: [{ name: 'Health', tier: 'foundational', essence: 'my body carries me' }],
@@ -409,7 +409,7 @@ test('D-095: the pyramid reaches the user message, not the system prompt '
   assert.doesNotMatch(systemText, /Health/);
 });
 
-test('D-095: the system prompt is identical across calls regardless of '
+test('D-079: the system prompt is identical across calls regardless of '
   + 'pyramidContext — the cacheable stable prefix carries no user data',
   () => {
   const first = buildGeneralCouncilTurnPrompt({
@@ -423,13 +423,13 @@ test('D-095: the system prompt is identical across calls regardless of '
   assert.equal(first.systemText, second.systemText);
 });
 
-test('D-095: with no pyramidContext, the user message says so plainly '
+test('D-079: with no pyramidContext, the user message says so plainly '
   + 'rather than rendering an empty section', () => {
   const { userMessage } = buildGeneralCouncilTurnPrompt({ advisorKey: 'eli' });
   assert.match(userMessage, /no pyramid yet/);
 });
 
-test('D-095: user-supplied injection characters in the pyramid cannot '
+test('D-079: user-supplied injection characters in the pyramid cannot '
   + 'break out of the prompt framing', () => {
   const { userMessage } = buildGeneralCouncilTurnPrompt({
     advisorKey: 'mira',
@@ -438,14 +438,14 @@ test('D-095: user-supplied injection characters in the pyramid cannot '
   assert.doesNotMatch(userMessage, /"/);
 });
 
-test('D-095: the prompt frames living out existing values, not '
+test('D-079: the prompt frames living out existing values, not '
   + 'discovering new ones — distinct from the category-scoped '
   + 'clarification framing', () => {
   const { systemText } = buildGeneralCouncilTurnPrompt({ advisorKey: 'noa' });
   assert.match(systemText, /already defined/i);
 });
 
-test('D-178: with a first name, buildGeneralCouncilTurnPrompt tells the '
+test('D-138: with a first name, buildGeneralCouncilTurnPrompt tells the '
   + 'advisor the reader\'s actual name — this path only ever runs '
   + 'post-setup, so a name is always available in practice', () => {
   const { systemText } = buildGeneralCouncilTurnPrompt({
@@ -455,13 +455,13 @@ test('D-178: with a first name, buildGeneralCouncilTurnPrompt tells the '
   assert.match(systemText, /Their name is Craig/);
 });
 
-test('D-178: with no first name, buildGeneralCouncilTurnPrompt reads '
-  + 'exactly as it did before D-178', () => {
+test('D-138: with no first name, buildGeneralCouncilTurnPrompt reads '
+  + 'exactly as it did before D-138', () => {
   const { systemText } = buildGeneralCouncilTurnPrompt({ advisorKey: 'mira' });
   assert.doesNotMatch(systemText, /Their name is/);
 });
 
-test('D-178: injection characters in a first name cannot break out of '
+test('D-138: injection characters in a first name cannot break out of '
   + 'buildGeneralCouncilTurnPrompt\'s system prompt', () => {
   const { systemText } = buildGeneralCouncilTurnPrompt({
     advisorKey: 'mira',
@@ -470,7 +470,7 @@ test('D-178: injection characters in a first name cannot break out of '
   assert.doesNotMatch(systemText, /Craig"/);
 });
 
-test('D-100: the general Council prompt instructs answering a direct '
+test('D-082: the general Council prompt instructs answering a direct '
   + 'question about the Council itself before continuing the diagnostic '
   + 'thread — found live, a direct meta-question got sidestepped', () => {
   const { systemText } = buildGeneralCouncilTurnPrompt({ advisorKey: 'mira' });
@@ -478,7 +478,7 @@ test('D-100: the general Council prompt instructs answering a direct '
   assert.match(systemText, /before continuing/i);
 });
 
-test('D-100: the general Council prompt instructs confident, unhedged '
+test('D-082: the general Council prompt instructs confident, unhedged '
   + 'language when connecting to something the person actually said — '
   + 'found live, a real essence-backed connection was hedged as a guess',
   () => {
@@ -487,9 +487,9 @@ test('D-100: the general Council prompt instructs confident, unhedged '
   assert.match(systemText, /probably/i);
 });
 
-test('D-100: nudgeConvergence adds a convergence line to the user message, '
+test('D-082: nudgeConvergence adds a convergence line to the user message, '
   + 'never the system prompt — a system-prompt change there would defeat '
-  + "D-185's caching every time the gate flips", () => {
+  + "D-145's caching every time the gate flips", () => {
   const withNudge = buildGeneralCouncilTurnPrompt({ advisorKey: 'noa', nudgeConvergence: true });
   const withoutNudge = buildGeneralCouncilTurnPrompt({ advisorKey: 'noa', nudgeConvergence: false });
   assert.match(withNudge.userMessage, /gone on a while/i);
@@ -497,14 +497,14 @@ test('D-100: nudgeConvergence adds a convergence line to the user message, '
   assert.equal(withNudge.systemText, withoutNudge.systemText);
 });
 
-test('D-100: the system prompt is identical regardless of nudgeConvergence '
-  + '— same cache discipline as D-095\'s own pyramidContext test', () => {
+test('D-082: the system prompt is identical regardless of nudgeConvergence '
+  + '— same cache discipline as D-079\'s own pyramidContext test', () => {
   const first = buildGeneralCouncilTurnPrompt({ advisorKey: 'eli', nudgeConvergence: false });
   const second = buildGeneralCouncilTurnPrompt({ advisorKey: 'eli', nudgeConvergence: true });
   assert.equal(first.systemText, second.systemText);
 });
 
-test('D-125: the category-scoped Council prompt instructs that a first-turn '
+test('D-100: the category-scoped Council prompt instructs that a first-turn '
   + 'self-introduction never replaces responding to what was just said — '
   + 'found live, a new advisor\'s first turn ignored a long, personal '
   + 'message in favor of a formulaic introduction', () => {
@@ -516,14 +516,14 @@ test('D-125: the category-scoped Council prompt instructs that a first-turn '
   assert.match(systemText, /must never come at the expense of responding/i);
 });
 
-test('D-125: the general Council prompt carries the same first-turn '
+test('D-100: the general Council prompt carries the same first-turn '
   + 'instruction', () => {
   const { systemText } = buildGeneralCouncilTurnPrompt({ advisorKey: 'kenji' });
   assert.match(systemText, /first time you're speaking/i);
   assert.match(systemText, /must never come at the expense of responding/i);
 });
 
-test('D-185: conversation history is capped to the most recent 30 turns', () => {
+test('D-145: conversation history is capped to the most recent 30 turns', () => {
   const history = Array.from({ length: 40 }, (_, i) => ({ advisor: 'user', text: `turn ${i}` }));
   const { userMessage } = buildAdvisorTurnPrompt({
     advisorKey: 'eli',

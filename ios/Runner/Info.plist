@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
   <dict>
-    <!-- D-132: required for google_sign_in's iOS redirect to complete —
+    <!-- D-105: required for google_sign_in's iOS redirect to complete —
          the reversed client ID from GoogleService-Info.plist (regenerated
          once Google was enabled as a Firebase Auth provider). -->
     <key>CFBundleURLTypes</key>
@@ -16,7 +16,7 @@
         </array>
       </dict>
     </array>
-    <!-- D-180: found live — "Continue with Google" threw a raw
+    <!-- D-140: found live — "Continue with Google" threw a raw
          PlatformException on iOS. google_sign_in 7.x requires either an
          explicit GoogleSignIn.instance.initialize() call (added in
          account_link_service.dart) or this key so the native iOS SDK can

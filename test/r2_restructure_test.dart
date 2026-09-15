@@ -16,7 +16,7 @@ void main() {
           .where((f) => f.path.endsWith('.dart'))
       : const <File>[];
 
-  // Screens deleted by D-069/D-083 in R6 are exempt: restructuring code that
+  // Screens deleted by D-053/D-066 in R6 are exempt: restructuring code that
   // is about to be removed is wasted work.
   const doomed = [
     'coach.dart', 'morning.dart', 'afternoon.dart', 'evening.dart',

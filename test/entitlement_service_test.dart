@@ -80,7 +80,7 @@ void main() {
   });
 
   test(
-      'D-116: pullFromServer returns false whether the profile doc is '
+      'D-091: pullFromServer returns false whether the profile doc is '
       'missing entirely or just missing the entitlement field — '
       'main.dart\'s bootstrap uses this return value, not the local cache, '
       'to decide whether a trial grant needs retrying. Regression test '
@@ -102,7 +102,7 @@ void main() {
       'the RevenueCat webhook) into the local cache', () async {
     final firestore = FakeFirebaseFirestore();
     await seedProfile(firestore, {'entitlement': 'subscribed'});
-    // D-182: signed out for this service instance deliberately — this
+    // D-142: signed out for this service instance deliberately — this
     // test is specifically about the explicit pullFromServer(uid) call
     // below, not isEntitled()'s own new auto-pull (covered separately);
     // isEntitled() here just reads back what that explicit call already
@@ -143,7 +143,7 @@ void main() {
     expect(await service.isEntitled(), isTrue);
   });
 
-  test('D-182: isEntitled pulls from the server before trusting the '
+  test('D-142: isEntitled pulls from the server before trusting the '
       'local cache — found live: local account_state.entitlement can sit '
       'stale (a purchase whose optimistic local write never landed) '
       'while Firestore already has the true value, and nothing but a '
@@ -166,7 +166,7 @@ void main() {
         reason: 'the pull should also have corrected the local cache in place');
   });
 
-  test('D-182: a signed-out account (no current user) skips the server '
+  test('D-142: a signed-out account (no current user) skips the server '
       'pull and falls back to whatever the local cache holds, rather '
       'than throwing', () async {
     final service = EntitlementService(

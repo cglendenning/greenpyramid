@@ -2,12 +2,12 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildNewsfeedAnalysisPrompt, parseArticleReply } from './newsfeed_analysis.js';
 
-/// D-150: the newsfeed's AI-written "news article" — owner: "I want you to
+/// D-122: the newsfeed's AI-written "news article" — owner: "I want you to
 /// produce something through AI that maps to the headline and make it like
 /// an analysis shaped as a news article ... if there is a trend that has
 /// emerged where one particular domain is very consistent than maybe the
 /// headline is something like increased consistency drives growth."
-test('D-150: each category reaches the prompt with its 7/30-day '
+test('D-122: each category reaches the prompt with its 7/30-day '
   + 'completion percentage, streak, and essence', () => {
   const { user } = buildNewsfeedAnalysisPrompt({
     categories: [
@@ -17,7 +17,7 @@ test('D-150: each category reaches the prompt with its 7/30-day '
   assert.match(user, /Craft: last 7 days 90% complete, last 30 days 60% complete, current streak 5 day\(s\), essence: "Made by hand\."/);
 });
 
-test('D-150: a category with no tasks tracked says so plainly, not a '
+test('D-122: a category with no tasks tracked says so plainly, not a '
   + 'fabricated 0%', () => {
   const { user } = buildNewsfeedAnalysisPrompt({
     categories: [{ name: 'Faith', pct7: -1, pct30: -1, streak: 0, essence: null }],
@@ -25,12 +25,12 @@ test('D-150: a category with no tasks tracked says so plainly, not a '
   assert.match(user, /Faith: no tasks tracked, current streak 0 day\(s\)/);
 });
 
-test('D-150: an empty pyramid says so plainly, never invented data', () => {
+test('D-122: an empty pyramid says so plainly, never invented data', () => {
   const { user } = buildNewsfeedAnalysisPrompt({ categories: [] });
   assert.match(user, /no categories with any task history yet/);
 });
 
-test('D-150: the prompt asks for a headline under 12 words and a '
+test('D-122: the prompt asks for a headline under 12 words and a '
   + 'strongest/lagging-category comparison, matching the owner\'s own '
   + '"increased consistency drives growth" example shape', () => {
   const { system } = buildNewsfeedAnalysisPrompt({ categories: [] });
@@ -39,21 +39,21 @@ test('D-150: the prompt asks for a headline under 12 words and a '
   assert.match(system, /honorable mention/i);
 });
 
-test('D-150: the prompt forbids inventing a trend the data does not '
-  + 'support — the same D-188 discipline domain-finding derivation and '
-  + 'D-114\'s progress analysis both already follow', () => {
+test('D-122: the prompt forbids inventing a trend the data does not '
+  + 'support — the same D-148 discipline domain-finding derivation and '
+  + 'D-089\'s progress analysis both already follow', () => {
   const { system } = buildNewsfeedAnalysisPrompt({ categories: [] });
   assert.match(system, /never invent a trend the data does not support/i);
 });
 
-test('D-150: the prompt explicitly forbids emoji — owner: "in the copy '
+test('D-122: the prompt explicitly forbids emoji — owner: "in the copy '
   + 'that is used for each new item do not use emojis"', () => {
   const { system } = buildNewsfeedAnalysisPrompt({ categories: [] });
   assert.match(system, /never use\s+emoji/i);
 });
 
-test('D-150: the prompt requires strict JSON with a headline and body '
-  + 'field, not a single flat paragraph like D-114\'s progress analysis',
+test('D-122: the prompt requires strict JSON with a headline and body '
+  + 'field, not a single flat paragraph like D-089\'s progress analysis',
   () => {
     const { system } = buildNewsfeedAnalysisPrompt({ categories: [] });
     assert.match(system, /strict JSON/i);
@@ -78,10 +78,10 @@ test('injection characters in a category name or essence cannot break '
   assert.doesNotMatch(user, /Made"/);
 });
 
-/// D-178: owner — "I also do not want to use language like 'this
+/// D-138: owner — "I also do not want to use language like 'this
 /// person's'... throughout everything in the app, we need to be using
 /// the user's first name." Named example: the newsfeed article.
-test('D-178: with a first name, the prompt addresses the reader by name '
+test('D-138: with a first name, the prompt addresses the reader by name '
   + 'and drops the generic "one person\'s" framing', () => {
   const { system, user } = buildNewsfeedAnalysisPrompt({
     categories: [],
@@ -93,15 +93,15 @@ test('D-178: with a first name, the prompt addresses the reader by name '
   assert.match(user, /^CRAIG'S PYRAMID/);
 });
 
-test('D-178: with no first name, the prompt reads exactly as it did '
-  + 'before D-178', () => {
+test('D-138: with no first name, the prompt reads exactly as it did '
+  + 'before D-138', () => {
   const { system, user } = buildNewsfeedAnalysisPrompt({ categories: [] });
   assert.match(system, /one person's own life-tracking/);
   assert.doesNotMatch(system, /reader's name is/);
   assert.match(user, /^THEIR PYRAMID/);
 });
 
-test('D-178: injection characters in a first name cannot break out of '
+test('D-138: injection characters in a first name cannot break out of '
   + 'the prompt framing — sanitize() applies to it the same as every '
   + 'other user-supplied string', () => {
   const { system } = buildNewsfeedAnalysisPrompt({
@@ -111,17 +111,17 @@ test('D-178: injection characters in a first name cannot break out of '
   assert.doesNotMatch(system, /Craig"/);
 });
 
-/// D-150: found live — the very first real article a subscribed account
+/// D-122: found live — the very first real article a subscribed account
 /// generated came back wrapped in a ```json code fence despite the
 /// prompt's own "no markdown and no code fences" instruction, and fell
 /// through to the generic fallback headline with the raw fenced text
 /// dumped into the body.
-test('D-150: plain JSON (no fence) parses normally', () => {
+test('D-122: plain JSON (no fence) parses normally', () => {
   const result = parseArticleReply('{"headline": "H", "body": "B"}');
   assert.deepEqual(result, { headline: 'H', body: 'B' });
 });
 
-test('D-150: a ```json ... ``` fence is stripped before parsing — the '
+test('D-122: a ```json ... ``` fence is stripped before parsing — the '
   + 'exact failure mode found live', () => {
   const raw = '```json\n{"headline": "Money Category Maintains Perfect Streak", "body": "Money is the only category..."}\n```';
   const result = parseArticleReply(raw);
@@ -129,28 +129,28 @@ test('D-150: a ```json ... ``` fence is stripped before parsing — the '
   assert.match(result.body, /^Money is the only category/);
 });
 
-test('D-150: a bare ``` fence with no "json" language tag is also '
+test('D-122: a bare ``` fence with no "json" language tag is also '
   + 'stripped', () => {
   const raw = '```\n{"headline": "H", "body": "B"}\n```';
   const result = parseArticleReply(raw);
   assert.deepEqual(result, { headline: 'H', body: 'B' });
 });
 
-test('D-150: leading/trailing whitespace around a fence does not defeat '
+test('D-122: leading/trailing whitespace around a fence does not defeat '
   + 'stripping', () => {
   const raw = '  \n```json\n{"headline": "H", "body": "B"}\n```\n  ';
   const result = parseArticleReply(raw);
   assert.deepEqual(result, { headline: 'H', body: 'B' });
 });
 
-test('D-150: genuinely malformed JSON (not just fenced) still falls back '
+test('D-122: genuinely malformed JSON (not just fenced) still falls back '
   + 'to a generic headline rather than throwing', () => {
   const result = parseArticleReply('not json at all');
   assert.equal(result.headline, 'Your Pyramid, Analyzed');
   assert.equal(result.body, 'not json at all');
 });
 
-test('D-150: an empty reply falls back gracefully too', () => {
+test('D-122: an empty reply falls back gracefully too', () => {
   const result = parseArticleReply('');
   assert.equal(result.headline, 'Your Pyramid, Analyzed');
 });

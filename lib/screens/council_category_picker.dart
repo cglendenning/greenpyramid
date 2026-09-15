@@ -7,7 +7,7 @@ import 'council_screen.dart';
 
 /// D-047: Settings' "Revisit a category with the Council" entry point.
 /// Lists the six categories; choosing one opens a Council session scoped to
-/// it (D-185), gated behind D-014's entitlement check.
+/// it (D-145), gated behind D-014's entitlement check.
 ///
 /// D-011: this is the app's first value-triggered paywall placement — the
 /// user has already named the exact next step (deepen this category with
@@ -34,11 +34,11 @@ class _CouncilCategoryPickerState extends State<CouncilCategoryPicker> {
     return 3;
   }
 
-  /// D-182 (amended): now the shared `ensureEntitled` gate instead of a
+  /// D-142 (amended): now the shared `ensureEntitled` gate instead of a
   /// private duplicate of its check — found live, this screen's own
   /// inline copy meant it never benefited from `ensureEntitled`'s
   /// server-freshness fix, and duplicating it here was already exactly
-  /// the drift D-114's own tests elsewhere in this app guard against.
+  /// the drift D-089's own tests elsewhere in this app guard against.
   Future<void> _open(int categoryId, String categoryName, int tier) async {
     if (!await ensureEntitled(context,
         reason: 'Revisit $categoryName with the Council of Advisors')) {

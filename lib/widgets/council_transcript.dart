@@ -6,7 +6,7 @@ import '../theme/app_colors.dart';
 import 'advisor.dart';
 import 'typing_indicator.dart';
 
-/// D-091: the message-bubble transcript rendering shared by every screen
+/// D-075: the message-bubble transcript rendering shared by every screen
 /// the Council appears on (setup, category re-clarification, and the
 /// general Council chat) — extracted here rather than left duplicated a
 /// third time across `setup_screen.dart` and `council_screen.dart`.
@@ -15,7 +15,7 @@ import 'typing_indicator.dart';
 /// under the user's own messages — only `council_screen.dart`'s
 /// category-scoped conversation uses this; every other caller omits it.
 ///
-/// D-101: [typingAdvisorKey], when non-null, renders a [TypingIndicator]
+/// D-083: [typingAdvisorKey], when non-null, renders a [TypingIndicator]
 /// as the trailing item — every caller passes it only while genuinely
 /// awaiting that advisor's reply, never for an unrelated busy state (a
 /// data write, a habit commit), so the screen never goes visually dead
@@ -50,7 +50,7 @@ class CouncilTranscript extends StatelessWidget {
         final isUser = m.advisorKey == 'user';
         final advisor = isUser ? null : AdvisorConfig.forKey(m.advisorKey);
         final bubble = GestureDetector(
-          // D-148 (from the same owner report as the auto-scroll fix):
+          // D-120 (from the same owner report as the auto-scroll fix):
           // "the ability to long press one of the responses from the
           // council and copy it" — the same affordance goal-executor's
           // board_advisors_screen already has.

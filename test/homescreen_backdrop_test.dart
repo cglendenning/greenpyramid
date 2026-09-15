@@ -2,12 +2,12 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-131: structural regression tests, not a full widget pump — this
+/// D-104: structural regression tests, not a full widget pump — this
 /// screen composition calls FirebaseAnalytics.instance the same way every
 /// other analytics-logging screen in this codebase does, none of which
 /// are pumped in a widget test here either (Firebase Core isn't mocked
 /// anywhere in this suite). Same source-text-assertion pattern
-/// schedule_habits_screen_test.dart already uses for its D-128 group.
+/// schedule_habits_screen_test.dart already uses for its D-103 group.
 ///
 /// The toolbar's own look was revised twice already, live, in the same
 /// session: the first pass (rounded corners, a flat translucent
@@ -20,7 +20,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// blur"). The tests below assert the *current*, corrected shape: a
 /// translucent gradient, no blur, no rounded corners.
 void main() {
-  group('D-131: main-screen background is full-bleed, toolbar is a '
+  group('D-104: main-screen background is full-bleed, toolbar is a '
       'translucent (not blurred) version of the original gradient', () {
     final pyramidSource = File('lib/widgets/pyramid.dart').readAsStringSync();
     final homescreenSource = File('lib/screens/homescreen.dart').readAsStringSync();

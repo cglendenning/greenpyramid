@@ -2,7 +2,7 @@ import 'package:sqflite/sqflite.dart';
 
 import 'db.dart';
 
-/// D-132: the one genuinely destructive piece of "sign out, then start
+/// D-105: the one genuinely destructive piece of "sign out, then start
 /// fresh" — wipes this device's local pyramid so `SetupScreen` runs
 /// against a genuinely empty database, the state it's actually built for.
 ///
@@ -38,12 +38,11 @@ class LocalPyramidResetService {
     await db.delete(DatabaseHelper.taskTable);
     await db.delete(DatabaseHelper.taskLogTable);
     await db.delete(DatabaseHelper.categoryEssenceTable);
-    await db.delete(DatabaseHelper.domainFindingTable);
     await db.delete(DatabaseHelper.chatTable);
     await db.delete(DatabaseHelper.visionStatementTable);
     await db.delete(DatabaseHelper.commentaryCountdownTable);
     await db.delete(DatabaseHelper.accountStateTable);
-    // D-179: found live — deleting this row without ever re-inserting it
+    // D-139: found live — deleting this row without ever re-inserting it
     // left account_state permanently empty, so the very next
     // getAccountState() call anywhere in the app (first reached, in
     // practice, by requestTrialAfterSetup's own entitlement read at the
@@ -54,8 +53,8 @@ class LocalPyramidResetService {
     // applyV7Schema's own INSERT OR IGNORE establishes this same
     // single-row invariant for a fresh install; this restores it after a
     // wipe the identical way.
-    await db.insert(DatabaseHelper.accountStateTable,
-        {DatabaseHelper.columnAccountId: 1},
+    await db.insert(
+        DatabaseHelper.accountStateTable, {DatabaseHelper.columnAccountId: 1},
         conflictAlgorithm: ConflictAlgorithm.ignore);
     await db.delete(DatabaseHelper.categoryTable);
     await _dbHelper.populateCategory();

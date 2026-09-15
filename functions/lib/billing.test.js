@@ -32,31 +32,31 @@ const profilePath = (uid) => `users/${uid}/profile/main`;
 const jan = new Date('2026-01-15T00:00:00Z');
 const feb = new Date('2026-02-01T00:00:00Z');
 
-test('D-087: checkSpendLimit no-ops without a uid or a store', async () => {
+test('D-061: checkSpendLimit no-ops without a uid or a store', async () => {
   await checkSpendLimit(null, new FakeFirestore());
   await checkSpendLimit('u1', null);
 });
 
-test('D-087: an account under its cap passes', async () => {
+test('D-061: an account under its cap passes', async () => {
   const store = new FakeFirestore({ [profilePath('u1')]: { totalSpendUsd: 1, spendMonthKey: '2026-01' } });
   await checkSpendLimit('u1', store, jan);
 });
 
-test('D-087: an account at or over its cap is refused', async () => {
+test('D-061: an account at or over its cap is refused', async () => {
   const store = new FakeFirestore({
     [profilePath('u1')]: { totalSpendUsd: DEFAULT_SPEND_CAP_USD, spendMonthKey: '2026-01' },
   });
   await assert.rejects(() => checkSpendLimit('u1', store, jan), SpendLimitError);
 });
 
-test('D-087: a per-account spendCapUsd override is honored', async () => {
+test('D-061: a per-account spendCapUsd override is honored', async () => {
   const store = new FakeFirestore({
     [profilePath('u1')]: { totalSpendUsd: 8, spendCapUsd: 10, spendMonthKey: '2026-01' },
   });
   await checkSpendLimit('u1', store, jan); // under the raised cap
 });
 
-test('D-087: spend recorded in a prior month does not count toward the '
+test('D-061: spend recorded in a prior month does not count toward the '
   + 'current month\'s cap', async () => {
   const store = new FakeFirestore({
     [profilePath('u1')]: { totalSpendUsd: DEFAULT_SPEND_CAP_USD, spendMonthKey: '2026-01' },
@@ -64,7 +64,7 @@ test('D-087: spend recorded in a prior month does not count toward the '
   await checkSpendLimit('u1', store, feb); // February — January's spend is stale
 });
 
-test('D-185: all three Anthropic tiers are priced, cheapest to costliest '
+test('D-145: all three Anthropic tiers are priced, cheapest to costliest '
   + 'matching the published table', () => {
   const tiers = ['claude-haiku-4-5', 'claude-sonnet-5', 'claude-opus-5'];
   for (const tier of tiers) assert.ok(MODEL_RATES[tier], `missing rate for ${tier}`);
@@ -72,13 +72,13 @@ test('D-185: all three Anthropic tiers are priced, cheapest to costliest '
   assert.ok(MODEL_RATES['claude-sonnet-5'].input < MODEL_RATES['claude-opus-5'].input);
 });
 
-test('D-185/D-087: recordCost computes real cost from Opus 5 token rates', async () => {
+test('D-145/D-061: recordCost computes real cost from Opus 5 token rates', async () => {
   const store = new FakeFirestore();
   await recordCost('u1', 'claude-opus-5', 1_000_000, 0, store, jan);
   assert.equal(store.data[profilePath('u1')].totalSpendUsd, MODEL_RATES['claude-opus-5'].input * 1_000_000);
 });
 
-test('D-087: recordCost accumulates within the same month', async () => {
+test('D-061: recordCost accumulates within the same month', async () => {
   const store = new FakeFirestore();
   await recordCost('u1', 'claude-opus-5', 100_000, 0, store, jan);
   await recordCost('u1', 'claude-opus-5', 100_000, 0, store, jan);
@@ -86,7 +86,7 @@ test('D-087: recordCost accumulates within the same month', async () => {
   assert.ok(Math.abs(store.data[profilePath('u1')].totalSpendUsd - expected) < 1e-9);
 });
 
-test('D-087: recordCost resets the running total on a month rollover', async () => {
+test('D-061: recordCost resets the running total on a month rollover', async () => {
   const store = new FakeFirestore({
     [profilePath('u1')]: { totalSpendUsd: 4.99, spendMonthKey: '2026-01' },
   });

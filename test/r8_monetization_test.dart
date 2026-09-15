@@ -2,14 +2,14 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-011/D-012/D-014/D-070: structural checks for R8's monetization wiring,
+/// D-011/D-012/D-014/D-054: structural checks for R8's monetization wiring,
 /// matching this repo's convention for screens gated behind a live account
 /// (council_entry_point_test.dart, r7_coach_retirement_test.dart) — the
 /// screens themselves need Firebase/RevenueCat to exercise meaningfully, so
 /// these confirm the wiring in source rather than via widget tests.
 void main() {
   test(
-      'D-011/D-014/D-182: an unentitled account revisiting a category is '
+      'D-011/D-014/D-142: an unentitled account revisiting a category is '
       'routed to the paywall, not a dead-end dialog — via the shared '
       'ensureEntitled gate (which itself pushes PaywallScreen), not a '
       'private duplicate of that push', () {
@@ -20,7 +20,7 @@ void main() {
   });
 
   test(
-      'D-091/D-014/D-182: an unentitled account opening the general '
+      'D-075/D-014/D-142: an unentitled account opening the general '
       'Council is routed to the paywall before GeneralCouncilScreen is '
       'ever pushed, not a dead-end "could not open" error — via the '
       'shared ensureEntitled gate, same as CouncilCategoryPicker', () {
@@ -39,7 +39,7 @@ void main() {
   });
 
   test(
-      'D-070: the paywall fetches the live store product rather than '
+      'D-054: the paywall fetches the live store product rather than '
       'hardcoding a price, and reports a confirmed purchase back to the '
       'caller', () {
     final source = File('lib/screens/paywall_screen.dart').readAsStringSync();
@@ -48,7 +48,7 @@ void main() {
   });
 
   test(
-      'D-188/D-012: setup completion requests the device-bound trial and '
+      'D-148/D-012: setup completion requests the device-bound trial and '
       'shows the one-time disclosure before push permission, in that order',
       () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
@@ -69,7 +69,7 @@ void main() {
     expect(source, contains("entitlement == 'lapsed'"));
   });
 
-  test('D-070: Settings carries a subscription-management entry point', () {
+  test('D-054: Settings carries a subscription-management entry point', () {
     final source = File('lib/screens/settings.dart').readAsStringSync();
     expect(source, contains('Manage subscription'));
     expect(source, contains('CancelSubscriptionScreen'));
@@ -137,13 +137,13 @@ void main() {
   test(
       'D-013: habit tracking and the pyramid never check entitlement — a '
       'lapsed account keeps the tracker forever, with no paywall on it', () {
-    // homescreen.dart added for D-091: navigateToCouncil() gates the
+    // homescreen.dart added for D-075: navigateToCouncil() gates the
     // general Council entry point the same way council_category_picker.dart
     // already gates category re-clarification — a second legitimate D-014
     // gate site, not habit tracking or the pyramid gating on entitlement.
-    // newsfeed_screen.dart added for D-150: gates visibility of the
+    // newsfeed_screen.dart added for D-122: gates visibility of the
     // "Generate new analysis" on-demand control — the base newsfeed
-    // itself remains ungated (D-150), only this one AI-costing control
+    // itself remains ungated (D-122), only this one AI-costing control
     // checks entitlement, the same "one legitimate gate site per real AI
     // feature" pattern the other two entries already establish.
     final gatedScreens = [
@@ -166,7 +166,7 @@ void main() {
 
   test(
       'D-015: setup\'s free AI exchange is bounded by call count '
-      '(D-188), never by the D-087 spend cap — the two are mutually '
+      '(D-148), never by the D-061 spend cap — the two are mutually '
       'exclusive branches', () {
     final source = File('functions/index.js').readAsStringSync();
     final guardIdx = source.indexOf('async function guardCouncilCall');

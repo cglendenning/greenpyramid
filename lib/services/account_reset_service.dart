@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
-/// D-188: whenever local storage shows no real pyramid but this
+/// D-148: whenever local storage shows no real pyramid but this
 /// (Keychain-persisted) anonymous account already has *any* prior
 /// server-side data, that combination can only follow a genuine app
 /// deletion and reinstall — local storage is wiped by the OS on deletion,
@@ -19,7 +19,7 @@ import 'package:flutter/foundation.dart';
 /// UID. Owns its own anonymous-only safety check internally (never
 /// trusts a caller to have already verified this) — a linked (non-
 /// anonymous) account must never be touched by this, ever; those restore
-/// instead (D-187).
+/// instead (D-147).
 class AccountResetService {
   AccountResetService({FirebaseFirestore? firestore, FirebaseAuth? auth})
       : _firestore = firestore ?? FirebaseFirestore.instance,
@@ -30,14 +30,13 @@ class AccountResetService {
   final FirebaseFirestore _firestore;
   final FirebaseAuth _auth;
 
-  // IV-D's enumerated subcollections (D-187/D-187) — kept in sync with
+  // IV-D's enumerated subcollections (D-147/D-147) — kept in sync with
   // what SyncService actually writes, since this must delete everything
   // that exists, not everything that theoretically could.
   static const _subcollections = [
     'profile',
     'councilSessions',
     'essenceVersions',
-    'domainFindings',
     'recentActivity',
     'tasks',
   ];

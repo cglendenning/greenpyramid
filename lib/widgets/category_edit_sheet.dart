@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 
-/// D-113: one shared editor for a category's name and description —
+/// D-088: one shared editor for a category's name and description —
 /// reachable both from the pyramid's own edit mode (`editpyramid.dart`)
 /// and the category detail screen (`tasklist.dart`), which previously had
 /// two separate, inconsistent dialogs that only ever let the person
@@ -21,7 +21,7 @@ import '../theme/app_colors.dart';
 /// make category editing "more beautiful."
 class CategoryEditResult {
   final String name;
-  // D-127: always the field's final text, empty string included — never
+  // D-102: always the field's final text, empty string included — never
   // collapsed to null. Null here used to mean "field was empty," which a
   // caller couldn't tell apart from "field was left untouched," so
   // clearing a description to blank and saving silently did nothing.

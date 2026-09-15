@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../utils/stock_images.dart';
 
-/// D-090: the welcome screen's rotating background, ported verbatim
+/// D-074: the welcome screen's rotating background, ported verbatim
 /// (behavior and timing) from Kansei's `CrossfadingStockImages`
 /// (goal-executor/lib/widgets/crossfading_stock_images.dart), which uses
 /// this exact rhythm on its own setup-analog screen (igniter_screen.dart).

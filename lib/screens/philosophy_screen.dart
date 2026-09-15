@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import '../utils/stock_images.dart';
 
-/// D-159: a static, editorial screen explaining the philosophy behind
+/// D-127: a static, editorial screen explaining the philosophy behind
 /// Green Pyramid — reachable from the hamburger menu. Owner supplied the
 /// source copy verbatim and asked for it to be expanded into subsections
 /// "interwoven" with imagery drawn from the same 20-photo stock pool used

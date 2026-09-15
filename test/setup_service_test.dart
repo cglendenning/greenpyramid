@@ -36,19 +36,6 @@ class _FakeCouncilClient extends CouncilClient {
   ];
   List<String> habits = const ['Walk 20 minutes', 'Drink water', 'Stretch'];
   String vision = 'I am someone who shows up fully for the people I love.';
-  List<DomainFinding> findings = const [];
-
-  @override
-  Future<List<DomainFinding>> deriveDomainFindings({
-    required String sessionId,
-    String? categoryName,
-    String? essence,
-    required List<Map<String, String>> transcript,
-    bool isSetup = false,
-    List<Map<String, String?>>? pyramidContext,
-  }) async =>
-      findings;
-
   List<CategoryProposal>? lastExistingCategories;
 
   @override
@@ -89,21 +76,8 @@ class _FakeCouncilClient extends CouncilClient {
   }
 }
 
-class _ThrowingCouncilClient extends _FakeCouncilClient {
-  @override
-  Future<List<DomainFinding>> deriveDomainFindings({
-    required String sessionId,
-    String? categoryName,
-    String? essence,
-    required List<Map<String, String>> transcript,
-    bool isSetup = false,
-    List<Map<String, String?>>? pyramidContext,
-  }) async =>
-      throw CouncilClientException('backend unavailable');
-}
-
 /// R6: SetupService orchestrates the single continuous setup conversation
-/// (D-032/D-188) — tested against a real temp SQLite database and a fake
+/// (D-032/D-148) — tested against a real temp SQLite database and a fake
 /// Council backend, no live Firebase project.
 void main() {
   final db = DatabaseHelper.instance;
@@ -129,13 +103,8 @@ void main() {
         signedIn: true, mockUser: MockUser(uid: 'u1', isAnonymous: true));
     final fakeFirestore = firestore ?? FakeFirebaseFirestore();
     final sharedClient = client ?? _FakeCouncilClient();
-    // D-100: recordDomainFindings now delegates to CouncilService's own
-    // implementation — council's client must be the SAME fake the caller
-    // configured, or the delegated call silently falls through to
-    // CouncilClient.instance (the real network client) instead of the
-    // fake this test just set up. Found exactly this way, fixing this file
-    // for the refactor.
-    final council = CouncilService(firestore: fakeFirestore, auth: auth, client: sharedClient);
+    final council = CouncilService(
+        firestore: fakeFirestore, auth: auth, client: sharedClient);
     return SetupService(
       council: council,
       drafts: SetupDraftStore(db: db, cloud: fakeFirestore),
@@ -147,8 +116,8 @@ void main() {
     );
   }
 
-  group('D-188: exactly one setup session, resumed not duplicated', () {
-    test('D-188: startOrResumeSetup creates the setup session on first call',
+  group('D-148: exactly one setup session, resumed not duplicated', () {
+    test('D-148: startOrResumeSetup creates the setup session on first call',
         () async {
       final svc = buildService();
       final session = await svc.startOrResumeSetup();
@@ -156,8 +125,8 @@ void main() {
     });
 
     test(
-        'D-188/D-188: a second call resumes the same session — regression '
-        'test for a defect found live in D-188\'s own first implementation: '
+        'D-148/D-148: a second call resumes the same session — regression '
+        'test for a defect found live in D-148\'s own first implementation: '
         'the reinstall-wipe check ran on every call while local had no '
         'real pyramid, which is also true for the entire rest of a '
         'genuinely ongoing setup conversation (before categories are '
@@ -171,14 +140,15 @@ void main() {
     });
 
     test(
-        'D-188: startOrResumeSetup refuses a second session once this '
+        'D-148: startOrResumeSetup refuses a second session once this '
         'device already has a real local pyramid and the account already '
         'completed one — regression test for owner feedback: repeated '
         'reinstalls accumulated four Firestore setup sessions because only '
         'an *active* session was ever checked, never whether one had ever '
         'been created at all', () async {
       final auth = MockFirebaseAuth(
-          signedIn: true, mockUser: MockUser(uid: 'u-real-pyramid', isAnonymous: true));
+          signedIn: true,
+          mockUser: MockUser(uid: 'u-real-pyramid', isAnonymous: true));
       final firestore = FakeFirebaseFirestore();
       final council = CouncilService(firestore: firestore, auth: auth);
       final svc = SetupService(
@@ -206,28 +176,45 @@ void main() {
           throwsA(isA<SetupAlreadyCompleteException>()));
     });
 
-    test('D-001-AC-01: missing local state preserves anonymous cloud content and identity', () async {
+    test(
+        'D-001-AC-01: missing local state preserves anonymous cloud content and identity',
+        () async {
       final firestore = FakeFirebaseFirestore();
       final svc = buildService(firestore: firestore);
       final first = await svc.startOrResumeSetup();
-      await firestore.collection('users').doc('u1').collection('profile').doc('main').set({'note':'retained'});
+      await firestore
+          .collection('users')
+          .doc('u1')
+          .collection('profile')
+          .doc('main')
+          .set({'note': 'retained'});
       final second = await svc.startOrResumeSetup();
       expect(second.sessionId, first.sessionId);
       expect(svc.auth.currentUid, 'u1');
-      expect((await firestore.collection('users').doc('u1').collection('profile').doc('main').get()).data()?['note'], 'retained');
+      expect(
+          (await firestore
+                  .collection('users')
+                  .doc('u1')
+                  .collection('profile')
+                  .doc('main')
+                  .get())
+              .data()?['note'],
+          'retained');
     });
 
     test(
-        'D-187: a non-anonymous (linked) account still restores on '
-        'reinstall — D-188\'s wipe is a safe no-op for it, by '
+        'D-147: a non-anonymous (linked) account still restores on '
+        'reinstall — D-148\'s wipe is a safe no-op for it, by '
         'AccountResetService\'s own internal check', () async {
       final auth = MockFirebaseAuth(
-          signedIn: true, mockUser: MockUser(uid: 'u-linked', isAnonymous: false));
+          signedIn: true,
+          mockUser: MockUser(uid: 'u-linked', isAnonymous: false));
       final firestore = FakeFirebaseFirestore();
       final council = CouncilService(firestore: firestore, auth: auth);
       final sync = SyncService(firestore: firestore, db: db);
       final authSvc = AuthService(auth: auth);
-      final accountReset = AccountResetService(firestore: firestore, auth: auth);
+      final accountReset =
+          AccountResetService(firestore: firestore, auth: auth);
 
       final svc1 = SetupService(
           council: council,
@@ -240,7 +227,8 @@ void main() {
       final first = await svc1.startOrResumeSetup();
       await council.endSession(first.sessionId);
       await svc1.commitCategories(const [
-        CategoryProposal(position: 1, name: 'Health', description: 'my body carries me'),
+        CategoryProposal(
+            position: 1, name: 'Health', description: 'my body carries me'),
         CategoryProposal(position: 2, name: 'Craft'),
         CategoryProposal(position: 3, name: 'Family'),
         CategoryProposal(position: 4, name: 'Money'),
@@ -248,11 +236,14 @@ void main() {
         CategoryProposal(position: 6, name: 'Legacy'),
       ]);
       await svc1.commitEssence(
-          categoryId: 1, essence: 'my body carries me', sessionId: first.sessionId);
+          categoryId: 1,
+          essence: 'my body carries me',
+          sessionId: first.sessionId);
       await svc1.commitHabits('Health', const ['Walk 20 minutes']);
       await sync.syncAll('u-linked', setupComplete: true);
 
-      final freshDir = await Directory.systemTemp.createTemp('gp_setup_test_linked_restore');
+      final freshDir =
+          await Directory.systemTemp.createTemp('gp_setup_test_linked_restore');
       addTearDown(() {
         if (freshDir.existsSync()) freshDir.deleteSync(recursive: true);
       });
@@ -271,14 +262,19 @@ void main() {
           throwsA(isA<SetupAlreadyCompleteException>()));
 
       final restoredCategories = await db.queryCategories();
-      expect(restoredCategories.any((c) => c[DatabaseHelper.columnCat] == 'Health'), isTrue);
+      expect(
+          restoredCategories
+              .any((c) => c[DatabaseHelper.columnCat] == 'Health'),
+          isTrue);
       final restoredTasks = await db.queryAllTasks();
-      expect(restoredTasks.any((t) => t[DatabaseHelper.columnTaskDescription] == 'Walk 20 minutes'),
+      expect(
+          restoredTasks.any((t) =>
+              t[DatabaseHelper.columnTaskDescription] == 'Walk 20 minutes'),
           isTrue);
     });
 
     test(
-        'D-187: a device with no real local pyramid, and no real cloud '
+        'D-147: a device with no real local pyramid, and no real cloud '
         'data either (a genuinely new account), starts a fresh setup '
         'session as normal — restore finds nothing and gets out of the '
         'way', () async {
@@ -288,9 +284,11 @@ void main() {
     });
   });
 
-  group('D-038: category proposals are committed at their proposed '
+  group(
+      'D-038: category proposals are committed at their proposed '
       'position', () {
-    test('D-038: commitCategories writes categoryid = position for a fresh '
+    test(
+        'D-038: commitCategories writes categoryid = position for a fresh '
         'pyramid', () async {
       final svc = buildService();
       const categories = [
@@ -300,7 +298,8 @@ void main() {
       await svc.commitCategories(categories);
 
       final rows = await db.queryCategories();
-      final health = rows.firstWhere((r) => r[DatabaseHelper.columnCat] == 'Health');
+      final health =
+          rows.firstWhere((r) => r[DatabaseHelper.columnCat] == 'Health');
       expect(health[DatabaseHelper.columnCategoryId], 1);
       expect(health[DatabaseHelper.columnPosition], 1);
     });
@@ -315,13 +314,15 @@ void main() {
       expect(proposed.first.name, 'Being present with my kids');
     });
 
-    test('D-093: proposeCategories passes existingCategories through to the '
+    test(
+        'D-077: proposeCategories passes existingCategories through to the '
         'client as a refinement request', () async {
       final client = _FakeCouncilClient();
       final svc = buildService(client: client);
       final session = await svc.startOrResumeSetup();
       const priorCategories = [
-        CategoryProposal(position: 1, name: 'Health', description: 'my body carries me'),
+        CategoryProposal(
+            position: 1, name: 'Health', description: 'my body carries me'),
       ];
 
       await svc.proposeCategories(session, existingCategories: priorCategories);
@@ -329,7 +330,8 @@ void main() {
       expect(client.lastExistingCategories, priorCategories);
     });
 
-    test('D-093: proposeCategories with no existingCategories passes null '
+    test(
+        'D-077: proposeCategories with no existingCategories passes null '
         'through — a fresh derivation, not a refinement', () async {
       final client = _FakeCouncilClient();
       final svc = buildService(client: client);
@@ -341,7 +343,8 @@ void main() {
   });
 
   group('D-039/D-041: habits are committed scheduled every day', () {
-    test('D-041: commitHabits writes every day column true, no '
+    test(
+        'D-041: commitHabits writes every day column true, no '
         'day-of-week selection', () async {
       final svc = buildService();
       await svc.commitHabits('Health', ['Walk 20 minutes']);
@@ -370,24 +373,28 @@ void main() {
       expect(habits, ['Walk 20 minutes', 'Drink water', 'Stretch']);
     });
 
-    test('D-103: proposeHabits passes maxAllowed through to the client, '
+    test(
+        'D-068: proposeHabits passes maxAllowed through to the client, '
         'defaulting to 3 when the caller doesn\'t specify one', () async {
       final client = _FakeCouncilClient();
       final svc = buildService(client: client);
       final session = await svc.startOrResumeSetup();
 
-      await svc.proposeHabits(session: session, categoryName: 'Health', essence: null);
+      await svc.proposeHabits(
+          session: session, categoryName: 'Health', essence: null);
       expect(client.lastMaxAllowedByCategory.last, 2);
 
       await svc.proposeHabits(
-          session: session, categoryName: 'Craft', essence: null, maxAllowed: 1);
+          session: session,
+          categoryName: 'Craft',
+          essence: null,
+          maxAllowed: 1);
       expect(client.lastMaxAllowedByCategory.last, 1);
     });
   });
 
-  group('D-007/D-185: essence commitment', () {
-    test('commitEssence writes a versioned essence for the category',
-        () async {
+  group('D-007/D-145: essence commitment', () {
+    test('commitEssence writes a versioned essence for the category', () async {
       final svc = buildService();
       await svc.commitEssence(
           categoryId: 1, essence: 'my body carries me', sessionId: 's1');
@@ -396,70 +403,11 @@ void main() {
     });
   });
 
-  group('D-036: domain finding derivation', () {
-    test('recordDomainFindings commits every finding the backend returns',
-        () async {
-      final client = _FakeCouncilClient()
-        ..findings = const [
-          DomainFinding(domain: 'biological', note: 'too tired most evenings'),
-          DomainFinding(domain: 'relational', note: 'partner feels distant'),
-        ];
-      final svc = buildService(client: client);
-      final session = await svc.startOrResumeSetup();
-
-      await svc.recordDomainFindings(
-        session: session,
-        categoryId: 1,
-        categoryName: 'Health',
-        essence: 'my body carries me',
-        isSetup: true,
-      );
-
-      final saved = await db.queryAllDomainFindings();
-      expect(saved.length, 2);
-      expect(saved.map((f) => f[DatabaseHelper.columnFindingDomain]),
-          containsAll(['biological', 'relational']));
-    });
-
-    test('D-188: a session with no impediment named commits nothing — '
-        'valid, not an error', () async {
-      final svc = buildService();
-      final session = await svc.startOrResumeSetup();
-
-      await svc.recordDomainFindings(
-        session: session,
-        categoryId: 1,
-        categoryName: 'Health',
-        essence: 'my body carries me',
-        isSetup: true,
-      );
-
-      expect(await db.queryAllDomainFindings(), isEmpty);
-    });
-
-    test('a backend failure is swallowed — never blocks setup progression',
-        () async {
-      final client = _ThrowingCouncilClient();
-      final svc = buildService(client: client);
-      final session = await svc.startOrResumeSetup();
-
-      await svc.recordDomainFindings(
-        session: session,
-        categoryId: 1,
-        categoryName: 'Health',
-        essence: 'my body carries me',
-        isSetup: true,
-      );
-
-      expect(await db.queryAllDomainFindings(), isEmpty);
-    });
-  });
-
   group(
-      'D-118: the vision statement is written once, right after the '
+      'D-093: the vision statement is written once, right after the '
       'opening conversation, and persisted locally', () {
     test(
-        'D-118: deriveOpeningVisionStatement persists the vision statement, '
+        'D-093: deriveOpeningVisionStatement persists the vision statement, '
         'sends no essences (none exist yet at this point in setup), and '
         'does not end the session — categories/essences/habits still '
         'follow on the same session', () async {
@@ -478,7 +426,8 @@ void main() {
       expect(resumed.sessionId, session.sessionId);
     });
 
-    test('D-118: the fixed opener requirement lives in the backend prompt, '
+    test(
+        'D-093: the fixed opener requirement lives in the backend prompt, '
         'not this layer — whatever the backend returns is stored verbatim',
         () async {
       final client = _FakeCouncilClient()

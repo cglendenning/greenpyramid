@@ -19,7 +19,7 @@ test('D-037: the Council route imports Anthropic directly, not through a '
   assert.match(indexSource, /from ['"]@anthropic-ai\/sdk['"]/);
 });
 
-test('D-097: /boardAdvisorTurn routes to the solo-Mira handler on '
+test('D-080: /boardAdvisorTurn routes to the solo-Mira handler on '
   + 'soloSetup, never on isSetup — regression test for a defect found '
   + 'live: isSetup means "billed free" (D-015) and is true for every '
   + 'call inside a setup-typed session, including essence-deepening\'s '
@@ -38,7 +38,7 @@ test('D-097: /boardAdvisorTurn routes to the solo-Mira handler on '
       'must not route to the solo-Mira handler on isSetup — that flag only means "billed free"');
 });
 
-test('D-100: /boardAdvisorTurn computes nudgeConvergence from the general '
+test('D-082: /boardAdvisorTurn computes nudgeConvergence from the general '
   + 'Council conversation\'s own turn count and passes it into the prompt '
   + 'builder — never a hardcoded true/false', () => {
   const routeStart = indexSource.indexOf("app.post('/boardAdvisorTurn'");
@@ -48,22 +48,7 @@ test('D-100: /boardAdvisorTurn computes nudgeConvergence from the general '
   assert.match(route, /nudgeConvergence:\s*countMiraTurns\(conversationHistory\)\s*>=/);
 });
 
-test('D-100: /deriveDomainFindings branches to the general (whole-pyramid) '
-  + 'prompt and tool only when pyramidContext is present, leaving the '
-  + 'existing single-category path untouched', () => {
-  const routeStart = indexSource.indexOf("app.post('/deriveDomainFindings'");
-  assert.ok(routeStart > -1, 'expected the /deriveDomainFindings route to exist');
-  const routeEnd = indexSource.indexOf('\napp.post(', routeStart + 1);
-  const route = indexSource.substring(routeStart, routeEnd);
-
-  assert.match(route, /Array\.isArray\(pyramidContext\)/);
-  assert.match(route, /buildDeriveGeneralDomainFindingsPrompt/);
-  assert.match(route, /GENERAL_DOMAIN_FINDING_TOOL/);
-  assert.match(route, /buildDeriveDomainFindingsPrompt/);
-  assert.match(route, /DOMAIN_FINDING_TOOL/);
-});
-
-test('D-114: /deriveVisionStatement reads isSetup from the caller instead '
+test('D-089: /deriveVisionStatement reads isSetup from the caller instead '
   + 'of hardcoding true — profile.dart\'s regeneration must go through '
   + 'D-014\'s entitlement gate like every other non-setup AI surface, '
   + 'not setup\'s free/bounded one', () => {
@@ -77,7 +62,7 @@ test('D-114: /deriveVisionStatement reads isSetup from the caller instead '
   assert.match(route, /isSetup:\s*!!isSetup/);
 });
 
-test('D-114: /deriveProgressAnalysis exists, is gated the same way every '
+test('D-089: /deriveProgressAnalysis exists, is gated the same way every '
   + 'other non-setup AI surface is (D-014), and records its cost — it is '
   + 'never free, since it is never setup', () => {
   const routeStart = indexSource.indexOf("app.post('/deriveProgressAnalysis'");
@@ -92,7 +77,7 @@ test('D-114: /deriveProgressAnalysis exists, is gated the same way every '
   assert.match(route, /recordCost\(/);
 });
 
-test('D-118/D-119: handleSetupAdvisorTurn appends the wrap-up question '
+test('D-093/D-094: handleSetupAdvisorTurn appends the wrap-up question '
   + 'only for the non-refining conversation, the first time it becomes '
   + 'ready — the refinement loop must never be intercepted', () => {
     const start = indexSource.indexOf('async function handleSetupAdvisorTurn');
@@ -105,7 +90,7 @@ test('D-118/D-119: handleSetupAdvisorTurn appends the wrap-up question '
     assert.match(body, /readyToBuild\s*=\s*false/);
   });
 
-test('D-119: once the wrap-up question already appears in history, the '
+test('D-094: once the wrap-up question already appears in history, the '
   + 'very next turn forces readyToBuild true deterministically — never '
   + 'left to the model\'s own judgment that turn. Regression test for a '
   + 'defect found live: "when I responded, then Mira dropped straight '
@@ -125,7 +110,7 @@ test('D-119: once the wrap-up question already appears in history, the '
     'readyToBuild = true must be forced immediately inside the wrapUpAlreadyAsked branch');
 });
 
-test('D-120: mustWrapUpNow is computed from turnsSoFar >= 3 and forces '
+test('D-095: mustWrapUpNow is computed from turnsSoFar >= 3 and forces '
   + 'the wrap-up append the same way an already-ready model decision '
   + 'does — regression test for the owner\'s report that multiple '
   + '"almost there"/"not much further to go" reassurances in a row felt '

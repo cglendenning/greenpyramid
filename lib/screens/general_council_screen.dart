@@ -14,14 +14,14 @@ import '../widgets/chat_backdrop.dart';
 import '../widgets/chat_input_bar.dart';
 import '../widgets/council_transcript.dart';
 
-/// D-091: a free-form conversation with the whole Council, not scoped to
+/// D-075: a free-form conversation with the whole Council, not scoped to
 /// any one category — reachable any time from the home screen, mirroring
 /// Kansei's own "talk to the Council" entry point rather than confining
 /// Council access to setup and per-category re-clarification.
 ///
 /// This is where the four-advisor, one-turn-per-message round-robin that
 /// used to run during setup now lives — moved here, not deleted, when
-/// D-090 made setup a solo conversation with Mira alone.
+/// D-074 made setup a solo conversation with Mira alone.
 class GeneralCouncilScreen extends StatefulWidget {
   const GeneralCouncilScreen({super.key});
 
@@ -37,7 +37,7 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
   bool _busy = false;
   String? _error;
 
-  // D-095: real grounding for the advisors' advice — replaces the
+  // D-079: real grounding for the advisors' advice — replaces the
   // "their life" placeholder that produced disconnected, sometimes
   // non-sequitur replies (found live: Kenji replied to a message about
   // Crossfit consistency with a generic "what's on your mind?").
@@ -57,7 +57,7 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
     super.dispose();
   }
 
-  // D-148: found live — "the screen does not scroll automatically down to
+  // D-120: found live — "the screen does not scroll automatically down to
   // the bottom to show the latest response so the response is sitting
   // there below the visible screen." Scheduled a frame after every state
   // change that can add a message or the typing indicator, since the new
@@ -81,13 +81,14 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
       // fixed for — main.dart's account bootstrap is fire-and-forget so
       // it never gates the first frame, so a screen that touches
       // Firestore before sign-in resolves can lose that race on a fresh
-      // launch (a fresh install/reinstall, or D-188's wipe, both leave no
+      // launch (a fresh install/reinstall, or D-148's wipe, both leave no
       // cached session). GeneralCouncilScreen was added after that fix
       // and never got it. signInSilently() is a no-op once already
       // signed in, so awaiting it here is always cheap.
       await AuthService.instance.signInSilently();
       _pyramidContext = await DatabaseHelper.instance.queryPyramidSummary();
-      var session = await _council.getActiveSession(type: BoardSessionType.general);
+      var session =
+          await _council.getActiveSession(type: BoardSessionType.general);
       session ??= await _council.createSession(type: BoardSessionType.general);
       setState(() => _session = session);
       _scrollToBottom();
@@ -120,21 +121,6 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
       if (mounted) {
         setState(() => _session = refreshed ?? session);
         _scrollToBottom();
-      }
-
-      // D-100: once per completed round (all four advisors have spoken),
-      // not every message — same checkpoint discipline D-036 already uses
-      // elsewhere (once per essence acceptance), applied to the moment
-      // that actually exists in a conversation with no such acceptance
-      // event of its own. Advisory, never required (D-188); never blocks
-      // the chat.
-      final pyramid = _pyramidContext;
-      if (pyramid != null && (refreshed ?? session).isRoundComplete) {
-        unawaited(_council.recordDomainFindings(
-          session: refreshed ?? session,
-          isSetup: false,
-          pyramidContext: pyramid,
-        ));
       }
     } on AiBudgetException catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -187,12 +173,11 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
                   : CouncilTranscript(
                       messages: session.messages,
                       scrollController: _scrollController,
-                      // D-101: the real next speaker (session.nextAdvisorKey
+                      // D-083: the real next speaker (session.nextAdvisorKey
                       // is meaningful here, unlike setup's solo-Mira turns —
                       // this is a genuine four-advisor rotation) while
                       // genuinely awaiting their reply.
-                      typingAdvisorKey:
-                          _busy ? session.nextAdvisorKey : null,
+                      typingAdvisorKey: _busy ? session.nextAdvisorKey : null,
                     ),
             ),
             ChatInputBar(

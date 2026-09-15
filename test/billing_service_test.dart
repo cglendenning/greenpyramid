@@ -10,9 +10,9 @@ void main() {
     return BillingService(firestore: firestore, auth: auth);
   }
 
-  group('D-087: spend status is read from the same document the backend '
+  group('D-061: spend status is read from the same document the backend '
       'writes to', () {
-    test('D-087: no profile doc yet — reports zero spend at the default cap',
+    test('D-061: no profile doc yet — reports zero spend at the default cap',
         () async {
       final svc = buildService(FakeFirebaseFirestore());
       final status = await svc.getSpendStatus(now: DateTime(2026, 3, 1));
@@ -21,7 +21,7 @@ void main() {
       expect(status?.atLimit, isFalse);
     });
 
-    test('D-087: reflects the current month\'s recorded spend', () async {
+    test('D-061: reflects the current month\'s recorded spend', () async {
       final firestore = FakeFirebaseFirestore();
       await firestore
           .collection('users')
@@ -35,7 +35,7 @@ void main() {
       expect(status?.totalSpendUsd, 3.5);
     });
 
-    test('D-087: a prior month\'s spend is treated as stale, not carried '
+    test('D-061: a prior month\'s spend is treated as stale, not carried '
         'forward', () async {
       final firestore = FakeFirebaseFirestore();
       await firestore
@@ -50,7 +50,7 @@ void main() {
       expect(status?.totalSpendUsd, 0);
     });
 
-    test('D-087: a per-account spendCapUsd override is reflected', () async {
+    test('D-061: a per-account spendCapUsd override is reflected', () async {
       final firestore = FakeFirebaseFirestore();
       await firestore
           .collection('users')
@@ -65,7 +65,7 @@ void main() {
       expect(status?.atLimit, isFalse);
     });
 
-    test('D-087: atLimit is true once spend reaches the cap', () async {
+    test('D-061: atLimit is true once spend reaches the cap', () async {
       final firestore = FakeFirebaseFirestore();
       await firestore
           .collection('users')

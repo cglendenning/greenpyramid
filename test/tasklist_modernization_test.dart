@@ -2,17 +2,17 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-134: structural regression tests, not a full widget pump — this
+/// D-107: structural regression tests, not a full widget pump — this
 /// screen owns live DatabaseHelper/FirebaseAnalytics singletons the same
 /// way editpyramid.dart and setup_screen.dart do, and isn't widget-tested
 /// directly anywhere in this suite either (see profile_wiring_test.dart's
 /// own comment on this class of screen). Same source-text-assertion
-/// pattern schedule_habits_screen_test.dart already uses for its D-128
+/// pattern schedule_habits_screen_test.dart already uses for its D-103
 /// group.
 void main() {
   final source = File('lib/screens/tasklist.dart').readAsStringSync();
 
-  group('D-134: the category detail screen uses the app\'s established '
+  group('D-107: the category detail screen uses the app\'s established '
       'dark visual language — found live: "I don\'t like the aesthetics '
       'of the links and the functionality within that screen"', () {
     test('the category name and essence text carry explicit AppColors, '
@@ -56,7 +56,7 @@ void main() {
       expect(source, contains('SingleChildScrollView('));
     });
 
-    test('D-113/D-035 structural invariants survive the redesign — exact '
+    test('D-088/D-035 structural invariants survive the redesign — exact '
         'literal Text/FutureBuilder/CheckboxListTile forms other tests '
         'depend on', () {
       expect(source, contains('Text(category, style: _categoryNameStyle)'));
@@ -66,7 +66,7 @@ void main() {
     });
   });
 
-  group('D-145: the task-list card has a fixed height, not just a max — '
+  group('D-117: the task-list card has a fixed height, not just a max — '
       'found live: "The two buttons should remain in exactly the same '
       'spot when the calendar is changed to a date that has a different '
       'number of tasks... when I switched from the 11th to the 10th the '
@@ -74,7 +74,7 @@ void main() {
     test('the task-list card uses a fixed SizedBox height, not a '
         'ConstrainedBox(maxHeight:) that lets it shrink to content', () {
       expect(source, contains('height: 180'),
-          reason: 'D-153 trimmed the constant from D-147\'s 220 down to '
+          reason: 'D-126 trimmed the constant from D-119\'s 220 down to '
               '180 to help fit the calendar above the fold — the fixed-'
               'height mechanism itself is unchanged');
       expect(source, isNot(contains('BoxConstraints(')));
@@ -88,7 +88,7 @@ void main() {
     });
   });
 
-  group('D-147: the fixed task-list height is a small constant, not a '
+  group('D-119: the fixed task-list height is a small constant, not a '
       'fraction of screen height — found live: "the recent modification '
       'to ensure that the buttons stay in the same location, pushed the '
       'calendar off the screen below"', () {
@@ -99,7 +99,7 @@ void main() {
     });
   });
 
-  group('D-153: "Edit Task List" and "Schedule Habits" sit side by side, '
+  group('D-126: "Edit Task List" and "Schedule Habits" sit side by side, '
       'not stacked — found live: "you could probably take the two '
       'buttons and rather than having them stack on top of each other '
       'vertically, they could align on a single row horizontally that '
@@ -119,11 +119,11 @@ void main() {
     });
   });
 
-  group('D-153: the calendar fits above the fold on a typical device — '
+  group('D-126: the calendar fits above the fold on a typical device — '
       'found live: "when tapping a category from the main screen ... the '
       'calendar picker the date picker is visible on the screen so right '
       'now it has scrolled off the screen"', () {
-    test('the task-list card height was trimmed further, from D-147\'s '
+    test('the task-list card height was trimmed further, from D-119\'s '
         '220 down to 180, to reclaim vertical space for the calendar',
         () {
       expect(source, contains('height: 180'));

@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-091: a general Council conversation, not scoped to any category, is
+/// D-075: a general Council conversation, not scoped to any category, is
 /// reachable any time from the home screen — mirroring Kansei's own
 /// "talk to the Council" entry point rather than confining Council access
 /// to setup and per-category re-clarification. GeneralCouncilScreen owns
@@ -10,7 +10,8 @@ import 'package:flutter_test/flutter_test.dart';
 /// SetupScreen and CouncilScreen do, so — same as those — this is a
 /// source-structure test, not a widget test.
 void main() {
-  test('D-091: the home screen menu has a "Talk to the Council" entry that '
+  test(
+      'D-075: the home screen menu has a "Talk to the Council" entry that '
       'routes to GeneralCouncilScreen', () {
     final source = File('lib/screens/homescreen.dart').readAsStringSync();
 
@@ -20,10 +21,12 @@ void main() {
     final navStart = source.indexOf('navigateToCouncil(BuildContext');
     expect(navStart, greaterThan(-1));
     final navEnd = source.indexOf('\n  }', navStart);
-    expect(source.substring(navStart, navEnd), contains('GeneralCouncilScreen'));
+    expect(
+        source.substring(navStart, navEnd), contains('GeneralCouncilScreen'));
   });
 
-  test('D-091: GeneralCouncilScreen opens a general-typed session, not a '
+  test(
+      'D-075: GeneralCouncilScreen opens a general-typed session, not a '
       'category-scoped one', () {
     final source =
         File('lib/screens/general_council_screen.dart').readAsStringSync();
@@ -34,7 +37,7 @@ void main() {
   test(
       'D-029: _load() awaits sign-in before touching the Council session — '
       'regression test for a defect found live: "Could not open this '
-      'conversation" on a fresh launch (a reinstall, or D-188\'s wipe). '
+      'conversation" on a fresh launch (a reinstall, or D-148\'s wipe). '
       'main.dart fires anonymous sign-in unawaited so it never gates the '
       'first frame — SetupScreen was already fixed for this exact race; '
       'GeneralCouncilScreen was added afterward and never got it.', () {
@@ -42,11 +45,13 @@ void main() {
         File('lib/screens/general_council_screen.dart').readAsStringSync();
     final loadStart = source.indexOf('Future<void> _load()');
     expect(loadStart, greaterThan(-1), reason: '_load() must exist');
-    final loadEnd = source.indexOf('\n  Future<void> _runAdvisorTurn', loadStart);
+    final loadEnd =
+        source.indexOf('\n  Future<void> _runAdvisorTurn', loadStart);
     expect(loadEnd, greaterThan(loadStart));
     final loadBody = source.substring(loadStart, loadEnd);
 
-    final signInIndex = loadBody.indexOf('AuthService.instance.signInSilently()');
+    final signInIndex =
+        loadBody.indexOf('AuthService.instance.signInSilently()');
     final sessionIndex = loadBody.indexOf('_council.getActiveSession(');
     expect(signInIndex, greaterThan(-1),
         reason: '_load() must await AuthService.instance.signInSilently() '
@@ -58,51 +63,36 @@ void main() {
   });
 
   test(
-      'D-091: _load()\'s catch clause logs the actual failure — '
+      'D-075: _load()\'s catch clause logs the actual failure — '
       'regression test for a defect found live: it was a silent catch, no '
-      'log at all, so a real failure was undiagnosable without guessing',
-      () {
+      'log at all, so a real failure was undiagnosable without guessing', () {
     final source =
         File('lib/screens/general_council_screen.dart').readAsStringSync();
     final loadStart = source.indexOf('Future<void> _load()');
-    final loadEnd = source.indexOf('\n  Future<void> _runAdvisorTurn', loadStart);
+    final loadEnd =
+        source.indexOf('\n  Future<void> _runAdvisorTurn', loadStart);
     final loadBody = source.substring(loadStart, loadEnd);
     expect(loadBody, contains('debugPrint('));
   });
 
-  test(
-      'D-100: domain findings are captured once a round completes, '
-      'passing pyramidContext (never categoryId — this screen is never '
-      'category-scoped)', () {
-    final source =
-        File('lib/screens/general_council_screen.dart').readAsStringSync();
-    final turnStart = source.indexOf('Future<void> _runAdvisorTurn');
-    expect(turnStart, greaterThan(-1));
-    final turnEnd = source.indexOf('\n  Future<void> _sendUserMessage', turnStart);
-    expect(turnEnd, greaterThan(turnStart));
-    final turnBody = source.substring(turnStart, turnEnd);
-
-    expect(turnBody, contains('isRoundComplete'));
-    expect(turnBody, contains('_council.recordDomainFindings('));
-    expect(turnBody, contains('pyramidContext: pyramid'));
-    expect(turnBody, isNot(contains('categoryId')));
-  });
-
-  group('D-148: the transcript scrolls to the latest message automatically '
+  group(
+      'D-120: the transcript scrolls to the latest message automatically '
       '— found live: "the screen does not scroll automatically down to the '
       'bottom to show the latest response so the response is sitting there '
       'below the visible screen"', () {
     final source =
         File('lib/screens/general_council_screen.dart').readAsStringSync();
 
-    test('a ScrollController is created, disposed, and passed to '
+    test(
+        'a ScrollController is created, disposed, and passed to '
         'CouncilTranscript', () {
       expect(source, contains('final _scrollController = ScrollController();'));
       expect(source, contains('_scrollController.dispose();'));
       expect(source, contains('scrollController: _scrollController,'));
     });
 
-    test('_scrollToBottom animates to maxScrollExtent after a frame, and is '
+    test(
+        '_scrollToBottom animates to maxScrollExtent after a frame, and is '
         'called whenever the session (messages or typing indicator) changes',
         () {
       expect(source, contains('void _scrollToBottom()'));
@@ -111,8 +101,8 @@ void main() {
       // Called after the initial session load and after every advisor turn
       // refresh, not just once — otherwise later replies would still be
       // missed.
-      expect(
-          '_scrollToBottom();'.allMatches(source).length, greaterThanOrEqualTo(2));
+      expect('_scrollToBottom();'.allMatches(source).length,
+          greaterThanOrEqualTo(2));
     });
   });
 }

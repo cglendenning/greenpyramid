@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/widgets/pyramid_painting.dart';
 
-/// D-126: category labels wrap at word boundaries only — never inside a
+/// D-101: category labels wrap at word boundaries only — never inside a
 /// word, no hyphenation — and every line of a given label shares one
 /// font size, never a bigger size for a short line just because it has
 /// room. Found live twice: first a fixed single-line shrink either went
@@ -27,7 +27,7 @@ void main() {
   final combinedWidth =
       PyramidPainting.measureLabelWidth('Squaring Away', fontSize);
 
-  group('D-126: wrapWords — greedy word-boundary wrapping', () {
+  group('D-101: wrapWords — greedy word-boundary wrapping', () {
     test('a single word that fits stays on one line', () {
       final lines = PyramidPainting.wrapWords(
           ['Squaring'], squaringWidth + 1, fontSize);
@@ -78,7 +78,7 @@ void main() {
     });
   });
 
-  group('D-126: fitWrappedLabel — shrinks only as far as fitting '
+  group('D-101: fitWrappedLabel — shrinks only as far as fitting '
       'requires, and applies one size to the whole label', () {
     test('a label that already fits at the starting size keeps that '
         'size, unshrunk', () {

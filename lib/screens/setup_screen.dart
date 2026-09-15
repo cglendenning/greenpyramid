@@ -24,10 +24,10 @@ import 'trial_disclosure_screen.dart';
 import 'welcome_screen.dart';
 
 /// D-031/D-032: the app's first screen and setup in full — one continuous
-/// Council conversation (D-188's `setup`-typed session), never a
+/// Council conversation (D-148's `setup`-typed session), never a
 /// step-by-step wizard. D-038 (categories) and D-039 (habits) appear as
 /// tappable elements inline in the same scrolling conversation, not
-/// separate screens; D-188 means no review step exists anywhere in this
+/// separate screens; D-148 means no review step exists anywhere in this
 /// file.
 ///
 /// Simplification, disclosed in the spec: D-038 mentions dragging to
@@ -53,12 +53,12 @@ class SetupScreen extends StatefulWidget {
 enum _Phase {
   opening,
   openingRound,
-  // D-118: right after the opening conversation concludes for real (the
+  // D-093: right after the opening conversation concludes for real (the
   // fixed wrap-up question has been asked and answered) — generates and
   // shows the vision statement, before categories, essences, or habits
   // exist. Precedes tierIntro.
   openingVision,
-  // D-117: a brief, explicit explainer of the pyramid's three tiers —
+  // D-092: a brief, explicit explainer of the pyramid's three tiers —
   // foundational, essential, peak — shown once before the first time the
   // derived categories themselves are shown, and again after each
   // refinement round only if it hasn't been shown yet this setup session
@@ -66,7 +66,7 @@ enum _Phase {
   tierIntro,
   categories,
   refining,
-  // D-102: a brief, explicit handoff between confirming categories and
+  // D-067: a brief, explicit handoff between confirming categories and
   // being dropped back into chat for essence-deepening — found live: with
   // no signposting, "This feels right" leading straight back into an
   // identical-looking chat interface read as being "tossed back into
@@ -90,9 +90,9 @@ class _FoundationalStep {
 class _SetupScreenState extends State<SetupScreen> {
   static const _openingLine =
       "Hi! Let me know what energizes you. What are things that you want "
-      "more of in your life?"; // D-067: fixed, not generated.
+      "more of in your life?"; // D-052: fixed, not generated.
 
-  // D-093: fixed, same rationale as D-067's opening line — a simple,
+  // D-077: fixed, same rationale as D-052's opening line — a simple,
   // reliable question that doesn't need a model call to ask well. Unlike
   // the opening line, this one IS persisted (see appendAdvisorMessage's
   // doc comment): the next model call needs it in the real history to
@@ -100,7 +100,7 @@ class _SetupScreenState extends State<SetupScreen> {
   static const _refinementPrompt =
       "What didn't feel right about this? Tell me more, and I'll refine it.";
 
-  // D-110: fixed, zero-cost — no model call, same rationale as
+  // D-085: fixed, zero-cost — no model call, same rationale as
   // _refinementPrompt above. Appended once a reply actually qualifies
   // (ResonanceService.qualifies), before the "save this" button appears
   // — found live: the button appearing with no acknowledgment at all
@@ -130,16 +130,16 @@ class _SetupScreenState extends State<SetupScreen> {
   BoardSession? _session;
   bool _busy = false;
   String? _error;
-  // D-093: true while re-entering the conversation from "Not quite
+  // D-077: true while re-entering the conversation from "Not quite
   // right" — routes both the Mira turn and the eventual re-derivation
   // through the refine-not-replace path.
   bool _refining = false;
 
-  // D-117: the tier explainer is shown once per setup session, not on
+  // D-092: the tier explainer is shown once per setup session, not on
   // every refinement round.
   bool _tierIntroShown = false;
 
-  // D-117: once the user hand-edits any category's name or description
+  // D-092: once the user hand-edits any category's name or description
   // on the categories screen, that edit itself is the confirmation —
   // "Not quite right" (re-enter chat) and "This feels right" (a separate
   // confirm tap) both stop making sense, so the bottom row collapses to
@@ -147,7 +147,7 @@ class _SetupScreenState extends State<SetupScreen> {
   // already performs.
   bool _categoriesEdited = false;
 
-  // D-118: set once the opening conversation's vision statement has been
+  // D-093: set once the opening conversation's vision statement has been
   // generated — null while _buildOpeningVision is still waiting on it.
   String? _visionStatement;
 
@@ -160,13 +160,13 @@ class _SetupScreenState extends State<SetupScreen> {
   List<CategoryProposal> _categories = const [];
   int _essenceIndex = 0;
   List<_FoundationalStep> _foundational = const [];
-  // D-105: the index into _session.messages where this category's own
+  // D-070: the index into _session.messages where this category's own
   // essence-deepening exchange begins — captured right before
   // _askAboutCurrentFoundational asks the question, so _buildEssences can
   // show only this category's Q&A rather than the whole session (see its
   // own doc comment for what that used to leak into view).
   int? _essenceStepStartIndex;
-  // D-110: whether this category's fixed acknowledgment has already been
+  // D-085: whether this category's fixed acknowledgment has already been
   // appended — reset per category (_askAboutCurrentFoundational) so it
   // fires at most once, the first time a reply qualifies, not on every
   // subsequent message the person sends.
@@ -321,29 +321,6 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
-  Future<void> _manualCompletion() async {
-    setState(() {
-      _manual = true;
-      _busy = false;
-      _error = null;
-      _refining = false;
-      if (_phase == _Phase.opening ||
-          _phase == _Phase.openingRound ||
-          _phase == _Phase.refining ||
-          _phase == _Phase.openingVision ||
-          _phase == _Phase.tierIntro) {
-        _phase = _Phase.openingVision;
-        _visionStatement ??= '';
-      } else if (_phase == _Phase.categories && _categories.isEmpty) {
-        _categories = List.generate(
-            6,
-            (i) =>
-                CategoryProposal(position: i + 1, name: '', description: ''));
-      }
-    });
-    await _saveDraft();
-  }
-
   @override
   void initState() {
     super.initState();
@@ -390,13 +367,13 @@ class _SetupScreenState extends State<SetupScreen> {
       }
       if ((_phase == _Phase.openingVision && _visionStatement == null) ||
           (_phase == _Phase.categories && _categories.isEmpty)) {
-        _error = 'Setup was interrupted. Retry or complete manually.';
+        _error = 'Setup was interrupted. Retry to continue.';
       }
       if (_phase == _Phase.reveal || _phase == _Phase.permission) {
         await _showCompletion();
         return;
       }
-      // D-090: resuming mid-round only needs a fresh Mira turn if the
+      // D-074: resuming mid-round only needs a fresh Mira turn if the
       // session was interrupted right after the user's own message —
       // otherwise she has already replied and it's the user's turn next,
       // so there is nothing to run and the text input just waits for them.
@@ -407,9 +384,9 @@ class _SetupScreenState extends State<SetupScreen> {
         await _runMiraTurn();
       }
     } on SetupAlreadyCompleteException {
-      // D-188: this account already has a real local pyramid and already
+      // D-148: this account already has a real local pyramid and already
       // completed a setup session — nothing here to resume or redo.
-      // D-112: found live — this silently bounced straight back to the
+      // D-087: found live — this silently bounced straight back to the
       // home screen with zero explanation, which read as "Begin flashes
       // the chat screen and drops me back to the main screen" — a real
       // defect, not the enforcement itself. A brief dialog explains why
@@ -459,9 +436,9 @@ class _SetupScreenState extends State<SetupScreen> {
     });
   }
 
-  // ── Opening (D-031/D-067/D-090): a solo, back-and-forth conversation ───
+  // ── Opening (D-031/D-052/D-074): a solo, back-and-forth conversation ───
   // with Mira alone — not the four-advisor pile-on this used to be. That
-  // mechanic moved to the general Council chat (D-091); setup is now one
+  // mechanic moved to the general Council chat (D-075); setup is now one
   // advisor, a few real exchanges, until she signals she has enough.
 
   Future<void> _sendOpeningReply() async {
@@ -476,7 +453,7 @@ class _SetupScreenState extends State<SetupScreen> {
           await _setup.council.getActiveSession(type: BoardSessionType.setup);
       setState(() {
         _session = refreshed ?? session;
-        // D-093: a reply sent while refining stays in the refining phase
+        // D-077: a reply sent while refining stays in the refining phase
         // — only the very first reply (not yet refining) advances into
         // the shared openingRound phase.
         _phase = _refining ? _Phase.refining : _Phase.openingRound;
@@ -493,7 +470,7 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
-  // ── Refinement (D-093): "Not quite right" re-enters the conversation ───
+  // ── Refinement (D-077): "Not quite right" re-enters the conversation ───
   // instead of only offering to accept the proposal — Mira asks what felt
   // off, then refines the existing six categories rather than discarding
   // them and starting over.
@@ -554,7 +531,7 @@ class _SetupScreenState extends State<SetupScreen> {
     } on SpendLimitException catch (e) {
       setState(() => _error = e.toString());
     } on SetupCallLimitException {
-      // D-188: approaching the bound — close gracefully rather than fail.
+      // D-148: approaching the bound — close gracefully rather than fail.
       final priorCategories = _refinementContext;
       await _proceedFromReadyToBuild(priorCategories);
     } on CouncilClientException catch (e) {
@@ -570,9 +547,9 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
-  // ── Opening vision statement (D-118) ────────────────────────────────────
+  // ── Opening vision statement (D-093) ────────────────────────────────────
 
-  // D-118: routes the opening conversation's real conclusion — never a
+  // D-093: routes the opening conversation's real conclusion — never a
   // refinement round's — through the new vision-statement moment before
   // the tier explainer/categories. [priorCategories] is null exactly when
   // this is the very first, non-refining conclusion (see _runMiraTurn's
@@ -623,11 +600,11 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
-  // D-118: the vision statement's own "Next" — fires the (background)
+  // D-093: the vision statement's own "Next" — fires the (background)
   // category derivation the same way tierIntro's transition already did
   // before this screen existed, then advances into the tier explainer
   // (or straight to categories if it's already been shown this session,
-  // matching D-117's own once-per-session rule).
+  // matching D-092's own once-per-session rule).
   Future<void> _proceedFromOpeningVision() async {
     if (_manual) await _setup.saveManualVision(_visionStatement ?? '');
     setState(() {
@@ -674,9 +651,9 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
-  // D-117: name and description are edited together, in one place —
+  // D-092: name and description are edited together, in one place —
   // extends D-038 step 4's "adjust by tapping" to cover the description
-  // too, matching D-113's principle that wherever a category can be
+  // too, matching D-088's principle that wherever a category can be
   // renamed, its description must be editable there as well. Any actual
   // change to either field sets [_categoriesEdited], which collapses
   // _buildCategories' bottom row to a single "Next" (see its own
@@ -872,7 +849,7 @@ class _SetupScreenState extends State<SetupScreen> {
               _FoundationalStep(categoryId: c.position, categoryName: c.name))
           .toList()
         ..sort((a, b) => a.categoryId.compareTo(b.categoryId));
-      // D-102: stop here, on a plain handoff screen, rather than dropping
+      // D-067: stop here, on a plain handoff screen, rather than dropping
       // straight back into chat with no signal a new phase has begun —
       // found live: "This feels right" leading straight into what looks
       // like the identical chat interface read as being "tossed back into
@@ -886,7 +863,7 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
-  // D-102: the actual start of essence-deepening, moved out of
+  // D-067: the actual start of essence-deepening, moved out of
   // _confirmCategories — now triggered by the person tapping through the
   // handoff screen, not fired automatically the instant categories commit.
   // _askAboutCurrentFoundational manages its own _busy toggle, so this
@@ -905,7 +882,7 @@ class _SetupScreenState extends State<SetupScreen> {
     if (!_manual) await _askAboutCurrentFoundational();
   }
 
-  // ── Essences for the three foundational categories (D-007/D-185) ───────
+  // ── Essences for the three foundational categories (D-007/D-145) ───────
 
   Future<void> _acceptEssence(String text) async {
     final session = _session;
@@ -930,18 +907,18 @@ class _SetupScreenState extends State<SetupScreen> {
     final step = _foundational[_essenceIndex];
     setState(() => _busy = true);
     try {
-      // D-105: captured before the question is appended — the index this
+      // D-070: captured before the question is appended — the index this
       // category's own exchange starts at, so _buildEssences can scope
       // the visible transcript to just this Q&A.
       _essenceStepStartIndex = session.messages.length;
-      // D-110: reset per category — see the field's own doc comment.
+      // D-085: reset per category — see the field's own doc comment.
       _essenceAcknowledged = false;
-      // D-109: reverses D-106 — one advisor per category, varying across
+      // D-084: reverses D-071 — one advisor per category, varying across
       // the three (session.rotationOrder, already shuffled per session,
-      // D-185), not always Mira. D-106's "always Mira" treated advisor
+      // D-145), not always Mira. D-071's "always Mira" treated advisor
       // variety itself as the source of confusion; the owner's live
-      // experience of D-105's fix (each category now a clean, bounded
-      // exchange) showed the real cause was D-108's context-leak — a
+      // experience of D-070's fix (each category now a clean, bounded
+      // exchange) showed the real cause was D-073's context-leak — a
       // different advisor's reply, sitting right after another advisor's
       // leftover closing line from a different category, read as a
       // random interjection mid-thread. With that fixed, a different
@@ -953,7 +930,7 @@ class _SetupScreenState extends State<SetupScreen> {
         advisorKey:
             session.rotationOrder[_essenceIndex % session.rotationOrder.length],
         categoryName: step.categoryName,
-        // D-108: no cross-category context — see runAdvisorTurn's own
+        // D-073: no cross-category context — see runAdvisorTurn's own
         // doc comment for why session.messages (the default) was wrong
         // for this specific call.
         conversationHistoryOverride: const [],
@@ -978,7 +955,7 @@ class _SetupScreenState extends State<SetupScreen> {
     setState(() => _busy = true);
     try {
       await _setup.council.appendUserMessage(session.sessionId, text);
-      // D-110: a fixed, zero-cost acknowledgment — never a new model
+      // D-085: a fixed, zero-cost acknowledgment — never a new model
       // call — once the reply actually qualifies, before the "save
       // this" button appears. Found live: the button appearing with no
       // acknowledgment at all was a hard cut from "you typed something"
@@ -995,7 +972,7 @@ class _SetupScreenState extends State<SetupScreen> {
       final refreshed =
           await _setup.council.getActiveSession(type: BoardSessionType.setup);
       setState(() => _session = refreshed ?? session);
-      // D-105: found live — the "Save this" button (once it earns
+      // D-070: found live — the "Save this" button (once it earns
       // showing, per _buildEssences' resonance gate above) could land
       // below the fold with nothing scrolling it into view.
       _scrollToBottom();
@@ -1007,9 +984,9 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
-  // ── Habits (D-039/D-041/D-103) ──────────────────────────────────────────
+  // ── Habits (D-039/D-041/D-068) ──────────────────────────────────────────
 
-  // D-103: the owner's explicit ceiling — never more than this many daily
+  // D-068: the owner's explicit ceiling — never more than this many daily
   // habits across the whole pyramid, regardless of category count.
   static const _maxTotalHabits = 10;
 
@@ -1029,7 +1006,7 @@ class _SetupScreenState extends State<SetupScreen> {
           .where((f) => f.categoryName == c.name)
           .map((f) => f.capturedEssence)
           .firstOrNull;
-      // D-103: reserve at least 1 slot for every category still to come,
+      // D-068: reserve at least 1 slot for every category still to come,
       // so an early category greedily using its full allowance can never
       // leave a later one with nothing — the running total this produces
       // can undershoot 10 (a category is free to propose fewer than its
@@ -1067,13 +1044,13 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
-  /// D-178: gates "Build my pyramid" on having a first name on file —
+  /// D-138: gates "Build my pyramid" on having a first name on file —
   /// collected once, right before the pyramid is built, never re-asked
   /// on a resumed setup session that already has one. Deliberately does
   /// NOT pop FirstNameScreen before calling [_confirmHabitsAndClose]:
   /// that method's own final `pushReplacement` then replaces
   /// FirstNameScreen directly with [SetupCompletionScreen], the same
-  /// flash-avoidance D-162 already established elsewhere in this exact
+  /// flash-avoidance D-130 already established elsewhere in this exact
   /// screen chain (pop-then-push-again visibly re-shows the popped-to
   /// screen for however long the intervening work takes).
   Future<void> _onBuildMyPyramidTapped() async {
@@ -1353,7 +1330,7 @@ class _SetupScreenState extends State<SetupScreen> {
         return _buildTranscript([_openingMessage],
             typingAdvisorKey: _busy ? 'mira' : null);
       case _Phase.openingRound:
-        // D-067/D-031: Mira's opening line is never persisted to Firestore
+        // D-052/D-031: Mira's opening line is never persisted to Firestore
         // (it's fixed, client-only copy) — only the user's reply and each
         // advisor's turn are. A session resumed after an earlier launch
         // failed mid-round (e.g. a backend call that errored before any
@@ -1371,7 +1348,7 @@ class _SetupScreenState extends State<SetupScreen> {
       case _Phase.categories:
         return _buildCategories();
       case _Phase.refining:
-        // D-067/D-093: found live — refining renders the conversation from
+        // D-052/D-077: found live — refining renders the conversation from
         // its start, but Mira's opening line is never persisted (it's
         // fixed, client-only copy, same as the openingRound case above),
         // so without prepending it here it silently vanished the moment a
@@ -1402,8 +1379,8 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
-  // D-101: every caller of this in opening/openingRound/refining is a
-  // solo-Mira conversation (D-090) — 'mira' is always correct, unlike
+  // D-083: every caller of this in opening/openingRound/refining is a
+  // solo-Mira conversation (D-074) — 'mira' is always correct, unlike
   // session.nextAdvisorKey, which reflects a shuffled four-advisor
   // rotationOrder that setup sessions carry but never actually use for
   // these turns.
@@ -1416,7 +1393,7 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  // D-102: the explicit handoff between confirming categories and being
+  // D-067: the explicit handoff between confirming categories and being
   // dropped back into chat for essence-deepening — plain typography over
   // the existing ChatBackdrop (this phase's content, like every other
   // phase's, renders inside SetupScreen's own ChatBackdrop already; a
@@ -1424,12 +1401,12 @@ class _SetupScreenState extends State<SetupScreen> {
   // fight rather than match). OnboardingStyles gives it the same type
   // scale as the welcome screen without introducing a second background
   // treatment for one screen.
-  // D-121: this is the first mention of "the Council of Advisors" anywhere
+  // D-096: this is the first mention of "the Council of Advisors" anywhere
   // in setup, so it introduces the concept before using the term again —
   // who the four advisors are, shown with their real portraits (D-022's
   // ported AdvisorConfig) and a short description each — rather than the
   // previous copy, which said "The Council will ask..." for what is
-  // actually just Mira, alone, per D-106.
+  // actually just Mira, alone, per D-071.
   Widget _buildEssenceIntro() {
     Widget advisorRow(AdvisorConfig advisor) {
       return Padding(
@@ -1511,13 +1488,13 @@ class _SetupScreenState extends State<SetupScreen> {
     );
   }
 
-  // D-117: a plain, static explainer of the pyramid's three tiers — no
+  // D-092: a plain, static explainer of the pyramid's three tiers — no
   // dependency on `_categories` (which may still be loading in the
-  // background, same as _buildEssenceIntro's D-102 precedent), shown
+  // background, same as _buildEssenceIntro's D-067 precedent), shown
   // once before the derived categories themselves so their arrangement
   // ("three foundational, two essential, one peak," P-6/D-038) reads as
   // legible structure rather than an unexplained layout.
-  // D-118: shown once, right after the opening conversation's real
+  // D-093: shown once, right after the opening conversation's real
   // conclusion — before categories, essences, or habits exist. Loading
   // state while _visionStatement is still null (generation takes a real
   // model call), matching this screen's own explicit-wait convention
@@ -1650,7 +1627,7 @@ class _SetupScreenState extends State<SetupScreen> {
             color: AppColors.brandGreen.withValues(alpha: 0.55),
           ),
           const SizedBox(height: 22),
-          // D-117 amendment (D-118 round): the owner asked for "a little
+          // D-092 amendment (D-093 round): the owner asked for "a little
           // bit more detail about the hierarchy, and why the hierarchy
           // matters in terms of habits — that habits fall into those
           // categories, and that some habits matter more than other
@@ -1746,8 +1723,8 @@ class _SetupScreenState extends State<SetupScreen> {
                             ],
                           ),
                         ),
-                        // D-117: name and description are edited together,
-                        // in one place, matching D-113's shared category
+                        // D-092: name and description are edited together,
+                        // in one place, matching D-088's shared category
                         // editor — this screen is the one exception that
                         // can't reuse showCategoryEditSheet, since these
                         // categories are still in-memory proposals, not
@@ -1789,7 +1766,7 @@ class _SetupScreenState extends State<SetupScreen> {
               tierSection(tier.$1, tier.$2.length,
                   _categories.where((c) => tier.$2.contains(c.position))),
             const SizedBox(height: 16),
-            // D-117: once any card has been hand-edited, that edit is
+            // D-092: once any card has been hand-edited, that edit is
             // itself the confirmation — "Not quite right" (re-enter chat)
             // and a separate "This feels right" tap both stop making
             // sense, so only Next remains, performing the exact same
@@ -1803,7 +1780,7 @@ class _SetupScreenState extends State<SetupScreen> {
                 ),
               )
             else
-              // D-093: "Not quite right" re-enters the conversation
+              // D-077: "Not quite right" re-enters the conversation
               // instead of only offering to accept the proposal — the
               // owner specifically wanted a way to keep working on the
               // list, not just confirm or abandon it.
@@ -1835,7 +1812,7 @@ class _SetupScreenState extends State<SetupScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     final step = _foundational[_essenceIndex];
-    // D-105: found live — this used to render the whole session's
+    // D-070: found live — this used to render the whole session's
     // messages, unscoped. Setup is one continuous session (D-032), so
     // that included the entire opening conversation that already built
     // the pyramid (Mira's own readyToBuild closing line among it) sitting
@@ -1848,7 +1825,7 @@ class _SetupScreenState extends State<SetupScreen> {
         ? _session!.messages.sublist(
             _essenceStepStartIndex!.clamp(0, _session!.messages.length))
         : const <BoardMessage>[];
-    // D-105: gated on the same resonance bar _acceptEssence itself
+    // D-070: gated on the same resonance bar _acceptEssence itself
     // enforces (ResonanceService.qualifies), not merely "any reply
     // exists" — found live, the button used to appear the instant any
     // message landed, including a short filler reply nowhere near
@@ -1868,7 +1845,7 @@ class _SetupScreenState extends State<SetupScreen> {
         Expanded(
             child: _buildTranscript(
           stepMessages,
-          // D-109: matches _askAboutCurrentFoundational's per-category
+          // D-084: matches _askAboutCurrentFoundational's per-category
           // rotation pick, not a hardcoded 'mira'.
           typingAdvisorKey: (_busy && _session != null)
               ? _session!
@@ -1982,7 +1959,7 @@ class _SetupScreenState extends State<SetupScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // D-104: explicit, not implicit — the chips below are editable
+          // D-069: explicit, not implicit — the chips below are editable
           // right here, but nothing said so in words, and nothing said
           // these default to a daily schedule (D-041) or that either fact
           // still holds after setup ends. Found live: the owner asked for
@@ -2012,7 +1989,7 @@ class _SetupScreenState extends State<SetupScreen> {
                 runSpacing: 8,
                 children: [
                   for (final h in _habitsByCategory[c.name] ?? const [])
-                    // D-122: found live — a habit that runs past the
+                    // D-097: found live — a habit that runs past the
                     // model's own length guidance was hard-clipped
                     // mid-word by the chip's edge, with no ellipsis and
                     // no visual sign anything was cut off. Bounding the
@@ -2077,7 +2054,7 @@ class _SetupScreenState extends State<SetupScreen> {
     if (_phase == _Phase.opening ||
         _phase == _Phase.openingRound ||
         _phase == _Phase.refining) {
-      // D-090/D-093: the same handler serves the very first reply, every
+      // D-074/D-077: the same handler serves the very first reply, every
       // back-and-forth exchange after it, and every refinement reply —
       // Mira decides when she has enough, not a fixed turn count, so
       // there is no separate "continue the round" path.

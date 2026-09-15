@@ -10,7 +10,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'auth_service.dart';
 import 'sync_service.dart';
 
-/// D-188: thin wrapper around the two native sign-in SDKs, kept separate
+/// D-148: thin wrapper around the two native sign-in SDKs, kept separate
 /// from [AuthService] because AuthService is deliberately UI/SDK-agnostic
 /// (see its own doc comment) — this is the only place that talks to
 /// `sign_in_with_apple` and `google_sign_in` directly.
@@ -34,7 +34,7 @@ class AccountLinkService {
   // inside the try/catch that already tolerates the failure).
   SyncService get _sync => _syncOverride ?? SyncService.instance;
 
-  // D-180: found live — "Continue with Google" threw a raw
+  // D-140: found live — "Continue with Google" threw a raw
   // PlatformException on iOS. google_sign_in 7.x's own doc comment on
   // GoogleSignIn.instance is explicit: "initialize must be called on
   // this instance exactly once, and its future allowed to complete,
@@ -50,11 +50,11 @@ class AccountLinkService {
       _googleSignInInit ??= GoogleSignIn.instance.initialize();
 
   /// Links the current anonymous account to a real Apple ID in place —
-  /// same uid, nothing lost (AuthService.linkWithCredential, D-188). Uses
+  /// same uid, nothing lost (AuthService.linkWithCredential, D-148). Uses
   /// a hashed nonce (Apple's recommended flow) so the identity token
   /// can't be replayed.
   ///
-  /// D-136: `signInSilently()` first, defensively — D-136's eager
+  /// D-108: `signInSilently()` first, defensively — D-108's eager
   /// re-anonymization right after sign-out was removed, so `currentUser`
   /// can genuinely be null here (freshly signed out, not yet acted on).
   /// `linkWithCredential` requires an existing anonymous user; this
@@ -102,12 +102,12 @@ class AccountLinkService {
     return linkWithCredentialOrSwitch(credential);
   }
 
-  /// D-188: if this exact credential is already linked to a *different*,
+  /// D-148: if this exact credential is already linked to a *different*,
   /// non-anonymous account (most likely: the user set up on a second
   /// device with the same Apple/Google identity), Firebase refuses the
   /// link with `credential-already-in-use`. The right outcome isn't an
   /// error — it's signing them into their real existing account, the
-  /// same "welcome back" treatment D-187 already gives a reinstall. The
+  /// same "welcome back" treatment D-147 already gives a reinstall. The
   /// fresh anonymous account being abandoned here was never synced past
   /// setup completion under its own uid, so nothing under the existing
   /// account is touched by this switch.
@@ -120,7 +120,7 @@ class AccountLinkService {
       return await _authService.linkWithCredential(credential);
     } on FirebaseAuthException catch (e) {
       if (e.code != 'credential-already-in-use') rethrow;
-      // D-140: found live — Apple's (idToken, nonce) pair is single-use
+      // D-112: found live — Apple's (idToken, nonce) pair is single-use
       // against Firebase's servers. Resubmitting the same `credential`
       // here (already consumed by the failed linkWithCredential call
       // above) always failed with missing-or-invalid-nonce, 100% of the
@@ -138,7 +138,7 @@ class AccountLinkService {
     }
   }
 
-  /// D-132: signs out of both the native Google session and Firebase.
+  /// D-105: signs out of both the native Google session and Firebase.
   /// Apple has no equivalent SDK-level session to clear — Sign in with
   /// Apple's own dialog always lets the user pick an identity, so there's
   /// nothing cached client-side to invalidate the way Google's silent
@@ -146,7 +146,7 @@ class AccountLinkService {
   /// fails, Firebase sign-out (what actually matters — Firestore access
   /// checks the Firebase session, not Google's) still proceeds.
   Future<void> signOut() async {
-    // D-187: flush any pending local changes before the identity switches.
+    // D-147: flush any pending local changes before the identity switches.
     // syncAll() is otherwise only ever triggered by app launch, a Council
     // conversation, or setup completion (never by an ordinary check-off
     // or essence edit, D-026) — so a change made since the last of those

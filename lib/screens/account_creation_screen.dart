@@ -7,20 +7,20 @@ import '../theme/app_colors.dart';
 import '../widgets/onboarding_backdrop.dart';
 import 'signing_in_screen.dart';
 
-/// D-188 (supersedes D-188/Q-28): a real account is now required here,
+/// D-148 (supersedes D-148/Q-28): a real account is now required here,
 /// right before [SetupCompletionScreen] — the one moment goal-executor
 /// itself gates on sign-in, mirrored deliberately rather than reused
 /// verbatim (goal-executor's own screen also offers email/password; this
 /// one is Apple + Google one-tap only, since a typed form is exactly the
 /// friction this screen exists to avoid).
 ///
-/// [PopScope(canPop: false)] — same mechanism D-128 already uses — removes
+/// [PopScope(canPop: false)] — same mechanism D-103 already uses — removes
 /// the back gesture/button entirely. By the time this screen shows,
 /// `_confirmHabitsAndClose` has already committed habits and ended the
 /// Council session (setup_screen.dart), so there is nothing coherent left
 /// to go back to.
 class AccountCreationScreen extends StatefulWidget {
-  // D-132: every caller needs to know whether AccountLinkService actually
+  // D-105: every caller needs to know whether AccountLinkService actually
   // linked the current (anonymous) account, or switched into a different,
   // already-existing one via the credential-already-in-use path — those
   // two outcomes call for genuinely different next steps (see setup_screen
@@ -58,7 +58,7 @@ class _AccountCreationScreenState extends State<AccountCreationScreen> {
     _analytics.logEvent(name: 'account_creation_screen');
   }
 
-  // D-143: the actual sign-in work (native Apple/Google round-trip,
+  // D-115: the actual sign-in work (native Apple/Google round-trip,
   // Firebase link-or-switch, its own analytics) now lives entirely in
   // SigningInScreen — this just navigates there and reacts to whatever
   // outcome comes back. Found live: a fixed-duration inline message on
@@ -66,7 +66,7 @@ class _AccountCreationScreenState extends State<AccountCreationScreen> {
   // substitute for an honest loading state, since the real work can take
   // more or less than the 2 seconds that text needed to be read for.
   //
-  // D-162: on success, SigningInScreen now calls widget.onDone directly
+  // D-130: on success, SigningInScreen now calls widget.onDone directly
   // and never pops back here at all — see its own doc comment. This
   // method only ever sees a SignInOutcome for a failure or a
   // cancellation, both of which do need to return to this screen.

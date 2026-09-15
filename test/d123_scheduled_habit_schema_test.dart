@@ -14,7 +14,7 @@ class _TempPathProvider extends PathProviderPlatform
   Future<String?> getApplicationDocumentsPath() async => dir;
 }
 
-/// D-123: a habit's optional recurring scheduled time and its native
+/// D-098: a habit's optional recurring scheduled time and its native
 /// calendar event id — schema-shape checks on a fresh install, matching
 /// this repo's established convention (`r3_schema_test.dart`) rather than
 /// simulating a literal version-N-to-N+1 upgrade.
@@ -41,7 +41,7 @@ void main() {
     return info.map((c) => c['name'] as String).toSet();
   }
 
-  test('D-123: task gains scheduledtime, scheduledcalendareventid, and '
+  test('D-098: task gains scheduledtime, scheduledcalendareventid, and '
       'scheduleddurationminutes', () async {
     final cols = await columnsOf(DatabaseHelper.taskTable);
     expect(cols, contains(DatabaseHelper.columnScheduledTime));
@@ -49,7 +49,7 @@ void main() {
     expect(cols, contains(DatabaseHelper.columnScheduledDurationMinutes));
   });
 
-  test('D-123: a habit inserted without a chosen duration defaults to '
+  test('D-098: a habit inserted without a chosen duration defaults to '
       "null (ScheduleHabitsScreen's own fallback interprets that as the "
       '15-minute default), not zero or some other value', () async {
     final id = await db.insertTask({
@@ -62,7 +62,7 @@ void main() {
     expect(row[DatabaseHelper.columnScheduledDurationMinutes], isNull);
   });
 
-  test('D-123: setting and clearing a habit\'s duration round-trips '
+  test('D-098: setting and clearing a habit\'s duration round-trips '
       'through the existing generic update()', () async {
     final id = await db.insertTask({
       DatabaseHelper.columnCategory: 'Health',
@@ -87,7 +87,7 @@ void main() {
     expect(row[DatabaseHelper.columnScheduledDurationMinutes], isNull);
   });
 
-  test('D-123: a habit inserted without a scheduled time defaults to '
+  test('D-098: a habit inserted without a scheduled time defaults to '
       'unscheduled (null), not some other default — today\'s existing '
       'flexible behavior must be exactly what a task gets by default',
       () async {
@@ -102,7 +102,7 @@ void main() {
     expect(row[DatabaseHelper.columnScheduledCalendarEventId], isNull);
   });
 
-  test('D-123: scheduling a habit sets both fields; unscheduling clears '
+  test('D-098: scheduling a habit sets both fields; unscheduling clears '
       'both — using the existing generic update(), no bespoke method '
       'needed', () async {
     final id = await db.insertTask({

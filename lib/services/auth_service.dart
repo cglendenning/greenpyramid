@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
-/// D-025/D-029/D-188: identity, held separately from data sync
+/// D-025/D-029/D-148: identity, held separately from data sync
 /// ([SyncService]) so habit check-off (D-026) never depends on this
 /// succeeding.
 ///
@@ -16,14 +16,14 @@ class AuthService {
 
   String? get currentUid => _auth.currentUser?.uid;
 
-  // D-132: defaults to true (no signed-in user at all) — callers gating on
+  // D-105: defaults to true (no signed-in user at all) — callers gating on
   // "is this a real account" should fail closed, not treat "unknown" as
   // "yes, real."
   bool get isAnonymous => _auth.currentUser?.isAnonymous ?? true;
 
   Stream<User?> get userChanges => _auth.userChanges();
 
-  /// D-136/D-187: Firebase restores its native session asynchronously during
+  /// D-108/D-147: Firebase restores its native session asynchronously during
   /// startup. Callers that choose a launch route or begin cloud work must
   /// wait for that initial auth-state event; a transient null must never be
   /// mistaken for a signed-out user and replaced with a new anonymous uid.
@@ -46,7 +46,7 @@ class AuthService {
     }
   }
 
-  /// D-188: upgrade the anonymous account in place via Firebase account
+  /// D-148: upgrade the anonymous account in place via Firebase account
   /// linking. Preserves the existing uid and every document under it — no
   /// data is created, copied, or lost. Throws on failure; callers (the
   /// subscribe flow, the add-a-device flow) decide how to surface that,
@@ -61,7 +61,7 @@ class AuthService {
     return result.user;
   }
 
-  /// D-136 (supersedes D-132's original doc comment): signs out of the
+  /// D-108 (supersedes D-105's original doc comment): signs out of the
   /// current (real) Firebase account and, deliberately, leaves it there —
   /// `currentUser` genuinely becomes null. That null state *is* "signed
   /// out," checked live by `main.dart`'s launch routing and by

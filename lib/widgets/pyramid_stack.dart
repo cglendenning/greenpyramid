@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'pyramid_3d.dart';
 
-/// D-151: the one place both the main pyramid screen ([lib/widgets/
+/// D-123: the one place both the main pyramid screen ([lib/widgets/
 /// pyramid.dart]'s `Pyramid`) and the pyramid edit screen
 /// ([lib/screens/editpyramid.dart]'s `EditPyramid`) build their six
 /// pyramid blocks — found live, the hard way: those two screens used to
@@ -28,7 +28,7 @@ class PyramidStack extends StatelessWidget {
   final double size;
   final bool playEntranceSpin;
 
-  // D-152: underlines every label — the edit screen's signal that its
+  // D-125: underlines every label — the edit screen's signal that its
   // blocks are editable. The main (view-only) screen leaves this false.
   final bool editable;
 
@@ -92,10 +92,10 @@ class PyramidStack extends StatelessWidget {
 /// color. Despite eight branches this is effectively a four-band scale
 /// (II-B).
 ///
-/// D-183: two distinct negative sentinels, two distinct colors — a
+/// D-143: two distinct negative sentinels, two distinct colors — a
 /// category with no tasks defined at all (`-1`) is genuinely different
 /// from one with tasks defined but none due in the current window
-/// (`-2`, D-183). The owner's own words: "whenever there is a category
+/// (`-2`, D-143). The owner's own words: "whenever there is a category
 /// that has no tasks for that day, the default for the block should be
 /// green" — nothing to check off reads as success, not as "not
 /// applicable."

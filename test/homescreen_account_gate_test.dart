@@ -2,22 +2,22 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-132: structural regression tests, not a full widget pump — this
+/// D-105: structural regression tests, not a full widget pump — this
 /// screen calls FirebaseAnalytics.instance the same way every other
 /// analytics-logging screen in this codebase does, none of which are
 /// pumped in a widget test here either (Firebase Core isn't mocked
 /// anywhere in this suite). Same source-text-assertion pattern
-/// schedule_habits_screen_test.dart already uses for its D-128 group.
+/// schedule_habits_screen_test.dart already uses for its D-103 group.
 ///
 /// Catches the exact gap Craig hit live: setup already completed before
-/// D-188 existed, so nothing had ever prompted him to link a real
-/// credential — D-188 only fires *during* setup, never for an account
+/// D-148 existed, so nothing had ever prompted him to link a real
+/// credential — D-148 only fires *during* setup, never for an account
 /// that predates it.
 void main() {
   // D-002-AC-02: completed accounts remain in tracking without forced setup.
   final homescreenSource = File('lib/screens/homescreen.dart').readAsStringSync();
 
-  group('D-132: a real account is enforced by the time the home screen is '
+  group('D-105: a real account is enforced by the time the home screen is '
       'reached', () {
     test('_HomeScreen awaits signInSilently() before checking isAnonymous '
         '— main.dart\'s bootstrap is fire-and-forget (D-029) and not '
@@ -47,7 +47,7 @@ void main() {
     });
   });
 
-  group('D-162: onDone pops both SigningInScreen and AccountCreationScreen '
+  group('D-130: onDone pops both SigningInScreen and AccountCreationScreen '
       '— found live alongside the same-cause bug on WelcomeScreen\'s own '
       'sign-in link. onDone now fires from within SigningInScreen (still '
       'on top of AccountCreationScreen), so a single pop here would leave '

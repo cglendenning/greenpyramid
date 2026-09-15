@@ -43,7 +43,7 @@ final GlobalKey<NavigatorState> navigatorKey =
     GlobalKey(debugLabel: "Main Navigator");
 
 String routeToGo = '/';
-// D-001/D-188: an unfinished setup draft resumes directly in its persisted
+// D-001/D-148: an unfinished setup draft resumes directly in its persisted
 // phase after a process restart. Fresh setup still starts at WelcomeScreen.
 bool resumePendingSetup = false;
 String payload = '';
@@ -51,12 +51,12 @@ bool populateGap = true;
 DateTime installDate = DateTime.now();
 bool interventionShown = false;
 
-/// D-124 Phase 5 / D-083 amendment Phase 6 (2026-09-10): the payload a
+/// D-099 Phase 5 / D-066 amendment Phase 6 (2026-09-10): the payload a
 /// foreground-shown local notification gets for a real FCM push, keyed
 /// off the push's own `data.type` — batch-checkin needs the full habit
 /// list re-encoded as the structured JSON payload
 /// `LocalNotificationService.onSelectNotification` recognizes; a
-/// tailored notification (D-189) needs only the same plain `/` payload
+/// tailored notification (D-149) needs only the same plain `/` payload
 /// every other "go to the pyramid tab" local notification already uses,
 /// since `onNotificationListener` (homescreen.dart) already handles that
 /// string correctly. Null for any other/unknown type — this is a
@@ -72,11 +72,11 @@ String? pushTapPayloadFrom(Map<String, dynamic> data) {
   }
 }
 
-/// D-124 Phase 5 / D-083 amendment Phase 6: routes a tap on a real FCM
+/// D-099 Phase 5 / D-066 amendment Phase 6: routes a tap on a real FCM
 /// push, keyed off `data.type` — shared by the backgrounded-tap
 /// (`onMessageOpenedApp`) and terminated-launch (`getInitialMessage`)
 /// paths. `batch_checkin` opens [BatchCheckinScreen] directly from the
-/// push's own habit list. `tailored` (D-189) routes through the exact
+/// push's own habit list. `tailored` (D-149) routes through the exact
 /// same `onNotificationClick` stream every local notification already
 /// uses — `/` on that stream already means "switch to the pyramid tab,"
 /// correctly, since `onNotificationListener`'s Phase-6 fix — rather than
@@ -142,13 +142,13 @@ Future<void> main() async {
     debugPrint('Firebase already initialized, continuing.');
   }
 
-  // D-136/D-187: native Firebase auth restoration completes asynchronously.
+  // D-108/D-147: native Firebase auth restoration completes asynchronously.
   // Route and synchronize only after the initial state is known; otherwise a
   // restored linked account can be mistaken for signed-out and replaced by a
   // new anonymous identity.
   final restoredUser = await AuthService.instance.waitForRestoredUser();
 
-  // D-070: configuring RevenueCat doesn't depend on the app's own account
+  // D-054: configuring RevenueCat doesn't depend on the app's own account
   // (it's re-tied to the Firebase uid via login() in _bootstrapAccountSync)
   // and must never block first frame — started here, awaited nowhere.
   unawaited(SubscriptionService.initialize());
@@ -170,12 +170,12 @@ Future<void> main() async {
     debugPrint('App Check setup failed: $e\n$st');
   }
 
-  // D-189: a push arriving while the app is foregrounded isn't
+  // D-149: a push arriving while the app is foregrounded isn't
   // auto-displayed by the OS on most platforms — show it via the same
   // local-notification channel. Registered unconditionally; it simply
   // never fires for an account with no FCM token registered.
   //
-  // D-124 Phase 5 / D-083 amendment Phase 6: a real push's `data` carries
+  // D-099 Phase 5 / D-066 amendment Phase 6: a real push's `data` carries
   // what this app needs to route a tap on it correctly — threaded
   // through as this local notification's own payload (pushTapPayloadFrom
   // dispatches on `data.type`), so tapping this foreground-shown
@@ -195,14 +195,14 @@ Future<void> main() async {
     debugPrint('Failed to register foreground FCM listener: $e\n$st');
   }
 
-  // D-124 Phase 5 / D-083 amendment Phase 6: real pushes previously had
+  // D-099 Phase 5 / D-066 amendment Phase 6: real pushes previously had
   // zero tap-routing capability at all — no `data` payload was ever
   // sent, for any push type, and no onMessageOpenedApp/getInitialMessage
   // handlers existed. Both are needed to cover every app state a tap can
   // happen from: a tap while backgrounded fires onMessageOpenedApp; a
   // tap that launches the app from terminated fires getInitialMessage
   // instead. handlePushTap dispatches on `data.type`, covering both the
-  // batch-checkin push (D-124) and the tailored notification (D-189,
+  // batch-checkin push (D-099) and the tailored notification (D-149,
   // fixed alongside this).
   try {
     FirebaseMessaging.onMessageOpenedApp.listen(handlePushTap);
@@ -216,7 +216,7 @@ Future<void> main() async {
     debugPrint('Failed to read initial FCM message: $e\n$st');
   }
 
-  // D-187: migration is best-effort. If the database cannot be opened or
+  // D-147: migration is best-effort. If the database cannot be opened or
   // migrated, tell the user plainly rather than crashing on a null database
   // or wiping their data without saying so.
   int defaultCats;
@@ -228,7 +228,7 @@ Future<void> main() async {
     return;
   }
 
-  // D-025/D-187: a linked account with an empty local cache must hydrate from
+  // D-025/D-147: a linked account with an empty local cache must hydrate from
   // Firestore before startup sync is allowed to reconcile anything. The
   // restore path is intentionally awaited before the first route is built.
   if (restoredUser != null && !restoredUser.isAnonymous && defaultCats == 6) {
@@ -258,7 +258,7 @@ Future<void> main() async {
 }
 
 /// D-029: create (or resume) the silent anonymous account, then run D-027's
-/// migration / D-187's ongoing sync. Every step logs its own failure rather
+/// migration / D-147's ongoing sync. Every step logs its own failure rather
 /// than throwing past this function — one failed step must not stop the
 /// others, and none of them may ever block habit check-off (D-026).
 Future<void> _bootstrapAccountSync({required bool setupComplete}) async {
@@ -298,19 +298,19 @@ Future<void> _bootstrapAccountSync({required bool setupComplete}) async {
   final hasServerEntitlement =
       await EntitlementService.instance.pullFromServer(uid);
 
-  // D-071/D-116: a completed account with no real server entitlement gets
+  // D-055/D-091: a completed account with no real server entitlement gets
   // its trial grant (re)requested here, on every launch until it succeeds.
-  // Checked against [hasServerEntitlement], never the local cache (D-116)
+  // Checked against [hasServerEntitlement], never the local cache (D-091)
   // — found live: `requestTrialAfterSetup()`'s original call can fail
   // (D-045's DeviceCheck reliability issue) and is never otherwise
   // retried, silently leaving the account permanently ungated while the
   // local cache still reads whatever it read before that failure, masking
   // the very condition this retry exists to catch. Which grant to retry
   // depends on how this account reached completion: one that has a real
-  // `setup`-typed Council session (D-188) went through the new flow and
-  // gets D-188's normal request retried; one that doesn't is the D-027
+  // `setup`-typed Council session (D-148) went through the new flow and
+  // gets D-148's normal request retried; one that doesn't is the D-027
   // migration cohort (old flow, no Council setup, so no device-bound
-  // trial was ever requested) and gets D-071's one-time 30-day grant.
+  // trial was ever requested) and gets D-055's one-time 30-day grant.
   if (setupComplete && !hasServerEntitlement) {
     final wentThroughCouncilSetup =
         await CouncilService.instance.hasEverCreatedSetupSession();
@@ -321,7 +321,7 @@ Future<void> _bootstrapAccountSync({required bool setupComplete}) async {
     }
   }
 
-  // D-189/D-189: keeps the FCM token and local fallback current on every
+  // D-149/D-149: keeps the FCM token and local fallback current on every
   // launch. Only for accounts that have already been through D-050's
   // permission screen — a brand-new install reaches this for the first
   // time from PushPermissionScreen, right after setup completes, not here.

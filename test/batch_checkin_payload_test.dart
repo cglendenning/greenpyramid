@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/main.dart';
 
-/// D-124 Phase 5 / D-083 amendment Phase 6: pushTapPayloadFrom is the
+/// D-099 Phase 5 / D-066 amendment Phase 6: pushTapPayloadFrom is the
 /// one pure piece of the foreground-tap wiring — deciding what a real
 /// FCM push's foreground-shown local notification should carry as its
 /// own payload, keyed off the push's `data.type`. Pure, so it's testable
 /// without a live FCM message or notification plugin.
 void main() {
-  test('D-124: a batch_checkin message re-encodes its data as the '
+  test('D-099: a batch_checkin message re-encodes its data as the '
       'structured payload', () {
     final result = pushTapPayloadFrom(
         {'type': 'batch_checkin', 'date': '2026-09-09', 'habits': '[]'});
@@ -16,7 +16,7 @@ void main() {
     expect(result, contains('"habits":"[]"'));
   });
 
-  test('D-083 amendment: a tailored message gets the plain "/" payload — '
+  test('D-066 amendment: a tailored message gets the plain "/" payload — '
       'the same string every other "go to the pyramid tab" local '
       'notification already uses', () {
     expect(pushTapPayloadFrom({'type': 'tailored'}), '/');

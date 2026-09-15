@@ -4,17 +4,16 @@ import 'package:flutter/foundation.dart';
 import 'calendar_service.dart';
 import 'db.dart';
 
-/// D-027/D-187: uploads exactly the enumerated local dataset to Firestore
+/// D-027/D-147: uploads exactly the enumerated local dataset to Firestore
 /// under the signed-in uid, in the layout IV-D prescribes:
 /// ```
 /// users/{uid}
-///   ttlAt                       D-187 prune marker (see below)
+///   ttlAt                       D-147 prune marker (see below)
 ///   profile/main                categories, tiers, active essences, vision
 ///                                statement, timezone, entitlement, trial window
 ///   essenceVersions/{id}        every version of every essence (D-047)
-///   domainFindings/{id}         accumulated four-domain findings (D-036)
-///   recentActivity/{id}         every task_log row, full history (D-187)
-///   tasks/{id}                  every habit/task currently defined (D-187)
+///   recentActivity/{id}         every task_log row, full history (D-147)
+///   tasks/{id}                  every habit/task currently defined (D-147)
 /// ```
 /// `councilSessions/` and `deviceTrial/` are also part of IV-D but are not
 /// built yet (R5 and D-045's Android trial marker respectively) — nothing
@@ -27,7 +26,7 @@ import 'db.dart';
 /// This runs after habit check-off, never in its path (D-026): check-off
 /// itself never calls into this class or awaits anything here.
 ///
-/// D-187: [restoreFromCloud] is the pull direction — the rest of this
+/// D-147: [restoreFromCloud] is the pull direction — the rest of this
 /// class only ever pushes. A device with no real local pyramid (a fresh
 /// install, or one that lost its data) calls it once, before setup would
 /// otherwise start, to bring back what the account already has.
@@ -46,7 +45,7 @@ class SyncService {
   final DatabaseHelper _db;
   final CalendarService _calendar;
 
-  /// D-187: an anonymous account that never finished setup is pruned 30
+  /// D-147: an anonymous account that never finished setup is pruned 30
   /// days after creation. [setupComplete] is the caller's own signal for
   /// "no longer eligible" — main.dart already computes it (the same check
   /// that decides whether to route to `/setup`), so this reuses it instead
@@ -69,7 +68,6 @@ class SyncService {
       await Future.wait([
         _syncProfile(userDoc),
         _syncEssenceVersions(userDoc),
-        _syncDomainFindings(userDoc),
         _syncRecentActivity(userDoc),
         _syncTasks(userDoc),
         _syncRetentionEligibility(userDoc, setupComplete: setupComplete),
@@ -89,7 +87,7 @@ class SyncService {
 
   /// IV-D `profile/main`: categories with tier-implying position, each
   /// category's *active* (latest) essence, vision statement, timezone, and
-  /// the account_state fields D-187 lists (entitlement, trial window).
+  /// the account_state fields D-147 lists (entitlement, trial window).
   /// Every version of essence lives separately in `essenceVersions` — this
   /// doc only ever holds the current one per category.
   Future<void> _syncProfile(
@@ -126,7 +124,7 @@ class SyncService {
     final vision = await _db.getLatestVisionStatement();
     final account = await _db.getAccountState();
 
-    // D-185 step 7: only ever synced when permission is already granted —
+    // D-145 step 7: only ever synced when permission is already granted —
     // this never prompts. Explicitly deleted (not just omitted) when null,
     // so a user who revokes calendar access in system settings doesn't
     // leave a stale summary sitting in Firestore forever — merge:true never
@@ -139,7 +137,7 @@ class SyncService {
     // (EntitlementService pulls it down), not a source pushed back up; pushing
     // it would let a stale client cache clobber a real subscribed/lapsed
     // transition on the next launch.
-    // D-178: first name/email/phone are single account-level fields, the
+    // D-138: first name/email/phone are single account-level fields, the
     // same kind of value timezone already is — synced the same way. The
     // profile photo is deliberately excluded: it stays local-only
     // (owner's own choice — cloud photo storage would mean adding
@@ -180,31 +178,8 @@ class SyncService {
     await batch.commit();
   }
 
-  /// IV-D `domainFindings/{id}`: accumulated four-domain findings (D-036).
-  Future<void> _syncDomainFindings(
-      DocumentReference<Map<String, dynamic>> userDoc) async {
-    final rows = await _db.queryAllDomainFindings();
-    if (rows.isEmpty) return;
-    final batch = _firestore.batch();
-    final col = userDoc.collection('domainFindings');
-    for (final row in rows) {
-      final id = row[DatabaseHelper.columnFindingId].toString();
-      batch.set(
-          col.doc(id),
-          {
-            'categoryid': row[DatabaseHelper.columnFindingCategoryId],
-            'domain': row[DatabaseHelper.columnFindingDomain],
-            'note': row[DatabaseHelper.columnFindingNote],
-            'created': row[DatabaseHelper.columnFindingCreated],
-            'sourceSessionId': row[DatabaseHelper.columnFindingSourceSession],
-          },
-          SetOptions(merge: true));
-    }
-    await batch.commit();
-  }
-
-  /// IV-D `recentActivity/{id}`: D-187 — every task_log row now syncs, not
-  /// just a bounded recent window (D-187's original 250-row cap reversed
+  /// IV-D `recentActivity/{id}`: D-147 — every task_log row now syncs, not
+  /// just a bounded recent window (D-147's original 250-row cap reversed
   /// outright, per the owner: "when I delete the app completely, all my
   /// checked off items need to come back"). Collection name kept as-is
   /// rather than renamed, to avoid stranding already-synced data under a
@@ -242,7 +217,7 @@ class SyncService {
   }
 
   /// IV-D `tasks/{id}`: every habit/task currently defined, keyed by its
-  /// local row id. D-187: without this, restoring a pyramid from Firestore
+  /// local row id. D-147: without this, restoring a pyramid from Firestore
   /// could bring back categories and essences but never the habits under
   /// them — the part of the app people actually check off daily. Diffs
   /// against what's already remote, the same reconcile pattern
@@ -277,7 +252,7 @@ class SyncService {
             'friday': row[DatabaseHelper.columnFriday],
             'saturday': row[DatabaseHelper.columnSaturday],
             'createdate': row[DatabaseHelper.columnCreateDate],
-            // D-123: only the intended time syncs — the native calendar
+            // D-098: only the intended time syncs — the native calendar
             // event id is this device's own, meaningless on another one
             // (see restoreFromCloud's matching comment below).
             'scheduledtime': row[DatabaseHelper.columnScheduledTime],
@@ -287,7 +262,7 @@ class SyncService {
     await batch.commit();
   }
 
-  /// D-187: the pull direction — brings a device with no real local
+  /// D-147: the pull direction — brings a device with no real local
   /// pyramid back up to date from what the account already has in
   /// Firestore, rather than starting setup over. Returns whether real
   /// data was actually found and restored (false means this is a
@@ -298,12 +273,10 @@ class SyncService {
   /// each category's *current* essence (not the full version history —
   /// `essenceVersions` is provenance, not something the app's own
   /// behavior depends on), the vision statement, every habit/task, and
-  /// (D-187/D-187) every check-off ever pushed by [_syncRecentActivity] —
-  /// which, as of D-187, is all of it, not a bounded recent window.
-  /// Domain findings (D-036, advisory-only per D-188) still do not
-  /// restore — genuinely low-stakes to lose.
+  /// (D-147/D-147) every check-off ever pushed by [_syncRecentActivity] —
+  /// which, as of D-147, is all of it, not a bounded recent window.
   ///
-  /// D-187 amendment: check-off activity restore was originally left out
+  /// D-147 amendment: check-off activity restore was originally left out
   /// entirely, reasoning "losing them costs nothing the app depends on
   /// to function." Found live, the hard way — a real reinstall-and-
   /// sign-back-in left every completed checkbox gone, discovered by the
@@ -312,8 +285,8 @@ class SyncService {
   /// simply wrong: streaks, essence-redefinition timing, and every chart
   /// on the Visualizations screen all depend on this exact data.
   ///
-  /// D-187 amendment: D-187's fix restored only whatever the push side's
-  /// 250-row bound (D-187) had actually uploaded, so a device with more
+  /// D-147 amendment: D-147's fix restored only whatever the push side's
+  /// 250-row bound (D-147) had actually uploaded, so a device with more
   /// than 250 check-offs ever recorded still lost the older ones on a
   /// full reinstall. Owner: "the one defect that has to be fixed though
   /// is that when I delete the app completely, all my checked off items
@@ -334,7 +307,7 @@ class SyncService {
     final categories = (profile?['categories'] as List<dynamic>?) ?? const [];
 
     // A placeholder-only or empty remote profile means there is nothing to
-    // restore — the same check used locally (D-188) for "no real pyramid",
+    // restore — the same check used locally (D-148) for "no real pyramid",
     // applied to what's in the cloud instead.
     final realCategories = categories
         .cast<Map<String, dynamic>>()
@@ -355,7 +328,7 @@ class SyncService {
       });
       final essence = c['activeEssence'] as String?;
       if (essence != null && essence.isNotEmpty) {
-        // D-150: insertCategoryEssence is itself a no-op when [essence]
+        // D-122: insertCategoryEssence is itself a no-op when [essence]
         // matches the category's current latest version — this call used
         // to run unconditionally on every restore, manufacturing a
         // brand-new "version" identical to the existing one purely as a
@@ -371,7 +344,7 @@ class SyncService {
       await _db.insertVisionStatement(vision);
     }
 
-    // D-178: first name/email/phone restore the same way timezone already
+    // D-138: first name/email/phone restore the same way timezone already
     // did — the profile photo is deliberately not restored here, since it
     // was never uploaded in the first place (local-only by design).
     final firstName = profile?['firstName'] as String?;
@@ -404,7 +377,7 @@ class SyncService {
         DatabaseHelper.columnSaturday: t['saturday'] ?? 'true',
         DatabaseHelper.columnCreateDate:
             t['createdate'] ?? DateTime.now().toIso8601String(),
-        // D-123: the scheduled time itself restores — it's the user's
+        // D-098: the scheduled time itself restores — it's the user's
         // own stated intent. The native calendar event id deliberately
         // does not: it names an event on the *old* device's calendar,
         // which means nothing here and would make deleteHabitEvent/
@@ -416,8 +389,8 @@ class SyncService {
       });
     }
 
-    // D-187/D-187: restores every check-off _syncRecentActivity has
-    // pushed — as of D-187, that's full history, not a bounded window.
+    // D-147/D-147: restores every check-off _syncRecentActivity has
+    // pushed — as of D-147, that's full history, not a bounded window.
     // Preserve the Firestore document id so repeated restore is idempotent
     // and the next push reconciles the same logical occurrence document.
     final activitySnap = await userDoc.collection('recentActivity').get();
@@ -436,25 +409,25 @@ class SyncService {
     return true;
   }
 
-  /// D-187: cloud data for a `lapsed` account is purged 12 months after
-  /// lapse — never the local SQLite copy (D-187), so a returning user still
+  /// D-147: cloud data for a `lapsed` account is purged 12 months after
+  /// lapse — never the local SQLite copy (D-147), so a returning user still
   /// has their pyramid on-device.
   static const lapsedRetentionWindow = Duration(days: 365);
 
-  /// D-187/D-187: writes the single `ttlAt` field a Firestore TTL policy
+  /// D-147/D-147: writes the single `ttlAt` field a Firestore TTL policy
   /// prunes on. Both retention rules share this one field — discovered
   /// live, not assumed: Firestore allows only one TTL-enabled field per
-  /// collection group, so D-187 cannot have its own `lapsedTtlAt` field
-  /// alongside D-187's `ttlAt`. The two windows are mutually exclusive in
+  /// collection group, so D-147 cannot have its own `lapsedTtlAt` field
+  /// alongside D-147's `ttlAt`. The two windows are mutually exclusive in
   /// practice (an account is never simultaneously "still in setup" and
   /// "lapsed"), so one field with two possible windows is correct, not a
   /// compromise. `ttlAt` is anchored at first write, not renewed on every
   /// sync, so it always reads the full window from *whichever moment made
-  /// it eligible* — account creation for D-187, first observed lapse for
-  /// D-187 — never from last launch. It is removed the moment neither
+  /// it eligible* — account creation for D-147, first observed lapse for
+  /// D-147 — never from last launch. It is removed the moment neither
   /// condition holds: a prune must never touch an account that went on to
-  /// link a credential or subscribe (D-187), or that returned from lapsed
-  /// (D-187's same promise). Lives on `users/{uid}` itself, not inside
+  /// link a credential or subscribe (D-147), or that returned from lapsed
+  /// (D-147's same promise). Lives on `users/{uid}` itself, not inside
   /// `profile/`, since it is pruning metadata rather than user data.
   Future<void> _syncRetentionEligibility(
       DocumentReference<Map<String, dynamic>> userDoc,

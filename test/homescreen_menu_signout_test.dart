@@ -2,16 +2,16 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-133/D-136: structural regression tests, not a full widget pump — this
+/// D-106/D-108: structural regression tests, not a full widget pump — this
 /// screen calls FirebaseAnalytics.instance and FirebaseAuth.instance the
 /// same way every other Firebase-touching screen in this codebase does,
 /// none of which are pumped in a widget test here (Firebase Core isn't
 /// mocked anywhere in this suite). Same source-text-assertion pattern
-/// schedule_habits_screen_test.dart already uses for its D-128 group.
+/// schedule_habits_screen_test.dart already uses for its D-103 group.
 void main() {
   final source = File('lib/screens/homescreen.dart').readAsStringSync();
 
-  group('D-133/D-136: the hamburger menu offers Sign out and "Set up '
+  group('D-106/D-108: the hamburger menu offers Sign out and "Set up '
       'again" — two genuinely different actions, never sharing a code '
       'path', () {
     test('the "Setup" menu item now reads "Set up again"', () {
@@ -64,7 +64,7 @@ void main() {
       expect(body, contains('const WelcomeScreen()'));
     });
 
-    test('D-144: the sign-out confirmation is a single question, "Sign '
+    test('D-116: the sign-out confirmation is a single question, "Sign '
         'out?" — no body text explaining that data is saved to the '
         'account. Owner: "I don\'t think it is necessary on the sign out '
         'Confirmation dialog box to tell users that their pyramid and '

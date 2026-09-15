@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import 'crossfading_stock_images.dart';
 
-/// D-099: the shared full-bleed rotating-photograph background used by
-/// every onboarding-adjacent screen — welcome (D-089), trial disclosure
+/// D-081: the shared full-bleed rotating-photograph background used by
+/// every onboarding-adjacent screen — welcome (D-063), trial disclosure
 /// (D-012), push permission (D-050), and any future screen in the same
 /// family. Extracted from [WelcomeScreen] so the visual treatment the
 /// owner singled out as exactly right ("I love the font. I love the
@@ -41,7 +41,7 @@ class OnboardingBackdrop extends StatelessWidget {
   }
 }
 
-/// D-099: the shared typography and button styling for onboarding-family
+/// D-081: the shared typography and button styling for onboarding-family
 /// screens — one Raleway type scale (headline / accent divider / subhead
 /// / button label) instead of each screen inlining its own copy of the
 /// same styles.

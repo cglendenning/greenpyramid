@@ -13,7 +13,7 @@ import 'dart:math';
 import 'dart:io';
 import 'package:permission_handler/permission_handler.dart';
 
-/// D-124 Phase 3: one "starting soon" reminder slot for a scheduled
+/// D-099 Phase 3: one "starting soon" reminder slot for a scheduled
 /// habit — one per day it recurs on. Pure value object, no plugin
 /// calls, so the scheduling math is directly testable.
 class HabitReminderSlot {
@@ -30,10 +30,10 @@ class HabitReminderSlot {
   });
 }
 
-/// D-124 Phase 3: a habit-reminder notification id is derived from the
+/// D-099 Phase 3: a habit-reminder notification id is derived from the
 /// habit's own row id and the specific weekday it reminds for — stable
-/// and collision-free (distinct from the small, hand-picked ids D-189's
-/// three daily fallbacks and D-115's test notification already use: 100,
+/// and collision-free (distinct from the small, hand-picked ids D-149's
+/// three daily fallbacks and D-090's test notification already use: 100,
 /// 101, 102, 999999) so a reminder can be found and cancelled later
 /// without re-deriving it from a hash.
 const int habitReminderBaseId = 600000000;
@@ -41,7 +41,7 @@ const int habitReminderBaseId = 600000000;
 int habitReminderId(int habitId, int weekday) =>
     habitReminderBaseId + habitId * 10 + weekday;
 
-/// D-124 Phase 3: the fire time for each of a scheduled habit's
+/// D-099 Phase 3: the fire time for each of a scheduled habit's
 /// "starting soon" reminders — [leadMinutes] before the habit's own
 /// time, on every day in [activeWeekdays] (`DateTime.monday..sunday`).
 /// Pure — no plugin calls — so it's testable without a live drag
@@ -210,12 +210,12 @@ class LocalNotificationService {
 
   static const int testNotificationId = 999999;
 
-  /// D-115: schedules a single local test notification 1 minute from
-  /// now, on the same delivery channel D-189's fallback notifications
+  /// D-090: schedules a single local test notification 1 minute from
+  /// now, on the same delivery channel D-149's fallback notifications
   /// use — lets the user confirm OS-level notification permission and
   /// delivery actually work, mirroring Kansei's identical settings-screen
   /// feature. Replaces the previous version's five-notification burst
-  /// that routed to '/morning', '/afternoon', '/evening' — screens D-083
+  /// that routed to '/morning', '/afternoon', '/evening' — screens D-066
   /// deleted; those routes no longer exist in this app.
   Future<void> scheduleTestNotification() async {
     await _localNotificationService.cancel(testNotificationId);
@@ -283,7 +283,7 @@ class LocalNotificationService {
     const AndroidInitializationSettings androidInitializationSettings =
         AndroidInitializationSettings('@drawable/ic_launcher');
 
-    // D-189/D-050: these must stay false. The plugin's initialize() call
+    // D-149/D-050: these must stay false. The plugin's initialize() call
     // itself requests permission immediately when they're true — on iOS
     // that means the OS dialog fires at app launch, not from D-050's
     // screen. Permission is requested explicitly later via
@@ -324,11 +324,11 @@ class LocalNotificationService {
   }
 
   /// D-050: called once, immediately after D-034's completion moment
-  /// settles. D-189: denial degrades nothing and this is never re-asked on
+  /// settles. D-149: denial degrades nothing and this is never re-asked on
   /// a schedule — callers should not invoke this more than once per
   /// install.
   ///
-  /// D-184: also reused from Settings' notification banner for an account
+  /// D-144: also reused from Settings' notification banner for an account
   /// that completed setup before D-050's screen existed and so has never
   /// called this at all — found live: on such an account, iOS never
   /// creates a Notifications entry under Settings > Green Pyramid in the
@@ -340,7 +340,7 @@ class LocalNotificationService {
   /// again after a prior denial returns false immediately with no dialog.
   Future<bool> requestPermissions() => _requestNotificationPermissions();
 
-  /// D-184: the real, current OS authorization state — distinct from
+  /// D-144: the real, current OS authorization state — distinct from
   /// [isTestNotificationPending], which only confirms the plugin
   /// *accepted* a schedule request. iOS happily "schedules" a
   /// notification with permission denied and silently drops it at
@@ -506,7 +506,7 @@ class LocalNotificationService {
     }
     if (!idFound) {
       // Generate dynamic message based on notification ID
-      // D-189: an explicit body (cached server content, or the D-049
+      // D-149: an explicit body (cached server content, or the D-049
       // static pool) overrides the built-in generic message pool.
       String dynamicBody = body ?? _generateNotificationMessage(id);
       // Create iOS details with the question as the body
@@ -570,13 +570,13 @@ class LocalNotificationService {
     return scheduledDate;
   }
 
-  /// D-189: lets a caller refresh or clear a previously-scheduled fallback
+  /// D-149: lets a caller refresh or clear a previously-scheduled fallback
   /// notification (cancel before reschedule, since [scheduleDailyNotification]
   /// no-ops when the id is already pending).
   Future<void> cancelDailyNotification(int id) =>
       _localNotificationService.cancel(id);
 
-  /// D-124 Phase 3: schedules a "starting soon" reminder [leadMinutes]
+  /// D-099 Phase 3: schedules a "starting soon" reminder [leadMinutes]
   /// before a scheduled habit's own time, recurring weekly on every day
   /// it's active — matching Kansei's own `scheduleSessionReminders`, but
   /// as a genuinely *recurring* notification per active day
@@ -584,7 +584,7 @@ class LocalNotificationService {
   /// one-time `zonedSchedule`, since a habit repeats every week rather
   /// than firing once like a dated session. Deliberately does NOT port
   /// the other half of Kansei's pair — the "Did you do it?" reminder at
-  /// session-end — D-124 replaces that with one server-triggered,
+  /// session-end — D-099 replaces that with one server-triggered,
   /// batched push per day instead, not a per-habit local notification.
   /// Cancels every one of the habit's 7 possible weekday slots first, so
   /// a day that's no longer active never leaves a stale reminder behind.
@@ -641,7 +641,7 @@ class LocalNotificationService {
     }
   }
 
-  /// D-124 Phase 3: cancels all 7 possible weekday reminder slots for a
+  /// D-099 Phase 3: cancels all 7 possible weekday reminder slots for a
   /// habit — unconditional and idempotent, since cancelling an id with
   /// no pending notification is a no-op. Called both when a habit is
   /// unscheduled entirely and as the first step of
@@ -653,7 +653,7 @@ class LocalNotificationService {
     }
   }
 
-  /// D-189: a push arriving while the app is in the foreground is not
+  /// D-149: a push arriving while the app is in the foreground is not
   /// auto-displayed by the OS on most platforms — this shows it
   /// immediately via the same local-notification channel.
   Future<void> showImmediateNotification({
@@ -688,12 +688,12 @@ class LocalNotificationService {
   onSelectNotification(NotificationResponse notificationResponse) {
     var payload = notificationResponse.payload;
     if (payload == null || payload.isEmpty) return;
-    // D-124 Phase 5: a structured JSON payload (currently only the batch
+    // D-099 Phase 5: a structured JSON payload (currently only the batch
     // check-in's foreground-shown local notification uses this shape,
     // via main.dart's batchCheckinPayloadFrom) routes directly, rather
     // than going through the plain route-string path below — which
     // pushes a stacked duplicate HomeScreen for anything that isn't a
-    // real named route (D-083's amendment).
+    // real named route (D-066's amendment).
     if (payload.startsWith('{')) {
       _handleStructuredPayload(payload);
       return;
@@ -713,7 +713,7 @@ class LocalNotificationService {
           navigatorKey.currentState?.push(MaterialPageRoute(
               builder: (_) => BatchCheckinScreen(habits: habits)));
         case 'newsfeed_item':
-          // D-150: "when you tap the notification, it will go directly
+          // D-122: "when you tap the notification, it will go directly
           // to the newsfeed" — and, specifically, scrolled to and
           // highlighting the exact item the notification was about.
           final dedupeKey = data['dedupeKey'] as String?;
@@ -726,7 +726,7 @@ class LocalNotificationService {
     }
   }
 
-  /// D-150: the Settings "Send test notification" control now behaves
+  /// D-122: the Settings "Send test notification" control now behaves
   /// exactly like a real newsfeed notification — owner: "the button to
   /// send a test notification to behave the same way that it will have
   /// a headline of one of the news items and when you tap the

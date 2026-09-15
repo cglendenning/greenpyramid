@@ -32,11 +32,6 @@ class _FakeCouncilClient extends CouncilClient {
   bool? lastSoloSetup;
   String? lastFirstName;
 
-  List<DomainFinding> domainFindingsResponse = const [];
-  String? lastDomainFindingsCategoryName;
-  List<Map<String, String?>>? lastDomainFindingsPyramidContext;
-  bool domainFindingsShouldThrow = false;
-
   @override
   Future<AdvisorTurnResult> boardAdvisorTurn({
     required String advisorKey,
@@ -58,31 +53,15 @@ class _FakeCouncilClient extends CouncilClient {
     lastFirstName = firstName;
     return response;
   }
-
-  @override
-  Future<List<DomainFinding>> deriveDomainFindings({
-    required String sessionId,
-    String? categoryName,
-    String? essence,
-    required List<Map<String, String>> transcript,
-    bool isSetup = false,
-    List<Map<String, String?>>? pyramidContext,
-  }) async {
-    lastDomainFindingsCategoryName = categoryName;
-    lastDomainFindingsPyramidContext = pyramidContext;
-    if (domainFindingsShouldThrow) throw CouncilClientException('backend unavailable');
-    return domainFindingsResponse;
-  }
 }
 
-/// R5: Council session orchestration (D-185, D-188), tested against a fake
+/// R5: Council session orchestration (D-145, D-148), tested against a fake
 /// Firestore and Auth — no live Firebase project, no live backend call.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late Directory tempDir;
 
-  // D-100: recordDomainFindings' tests exercise real insertDomainFinding
   // calls against sqflite FFI, same convention as
   // query_pyramid_summary_test.dart — no other test in this file touches
   // local SQLite, so this setup is additive and harmless to them.
@@ -117,14 +96,14 @@ void main() {
     AiGuard.instance.resetForTest();
   });
 
-  group('D-188: exactly one setup session may exist per account', () {
-    test('D-188: hasEverCreatedSetupSession is false before any session',
+  group('D-148: exactly one setup session may exist per account', () {
+    test('D-148: hasEverCreatedSetupSession is false before any session',
         () async {
       final svc = buildService();
       expect(await svc.hasEverCreatedSetupSession(), isFalse);
     });
 
-    test('D-188: hasEverCreatedSetupSession is true once one is created',
+    test('D-148: hasEverCreatedSetupSession is true once one is created',
         () async {
       final svc = buildService();
       await svc.createSession(type: BoardSessionType.setup);
@@ -132,8 +111,8 @@ void main() {
     });
   });
 
-  group('D-185: category sessions are scoped and rotation is randomized', () {
-    test('D-185: createSession for a category carries that categoryId',
+  group('D-145: category sessions are scoped and rotation is randomized', () {
+    test('D-145: createSession for a category carries that categoryId',
         () async {
       final svc = buildService();
       final s = await svc.createSession(
@@ -149,7 +128,8 @@ void main() {
       expect(s.rotationOrder.toSet(), {'mira', 'kenji', 'noa', 'eli'});
     });
 
-    test('getActiveSession finds the session just created, scoped to its '
+    test(
+        'getActiveSession finds the session just created, scoped to its '
         'category', () async {
       final svc = buildService();
       final created = await svc.createSession(
@@ -164,9 +144,11 @@ void main() {
     });
   });
 
-  group('D-185: an advisor turn is persisted and category context reaches '
+  group(
+      'D-145: an advisor turn is persisted and category context reaches '
       'the client', () {
-    test('runAdvisorTurn appends the reply and passes sanitized category '
+    test(
+        'runAdvisorTurn appends the reply and passes sanitized category '
         'context', () async {
       final client = _FakeCouncilClient();
       final svc = buildService(client: client);
@@ -193,7 +175,8 @@ void main() {
       expect(active?.totalOutputTokens, 5);
     });
 
-    test('D-178: runAdvisorTurn passes the account\'s first name through '
+    test(
+        'D-138: runAdvisorTurn passes the account\'s first name through '
         'when one is on file', () async {
       await DatabaseHelper.instance.setFirstName('Craig');
       final client = _FakeCouncilClient();
@@ -207,7 +190,8 @@ void main() {
       expect(client.lastFirstName, 'Craig');
     });
 
-    test('D-108: with no override, conversationHistory is derived from '
+    test(
+        'D-073: with no override, conversationHistory is derived from '
         'session.messages, as before', () async {
       final client = _FakeCouncilClient();
       final svc = buildService(client: client);
@@ -221,12 +205,12 @@ void main() {
           reason: 'a freshly-created session has no prior messages');
     });
 
-    test('D-108: conversationHistoryOverride replaces the derived history '
+    test(
+        'D-073: conversationHistoryOverride replaces the derived history '
         'entirely — this is what lets essence-deepening ask a fresh '
         'question about a new category instead of reacting to another '
         'category\'s leftover closing message, since setup shares one '
-        'session across all three foundational categories (D-032)',
-        () async {
+        'session across all three foundational categories (D-032)', () async {
       final client = _FakeCouncilClient();
       final svc = buildService(client: client);
       var session = await svc.createSession(type: BoardSessionType.setup);
@@ -246,7 +230,8 @@ void main() {
               'non-empty message history');
     });
 
-    test('D-095: runAdvisorTurn passes pyramidContext through, sanitized '
+    test(
+        'D-079: runAdvisorTurn passes pyramidContext through, sanitized '
         'the same way any user-derived text reaches a prompt', () async {
       final client = _FakeCouncilClient();
       final svc = buildService(client: client);
@@ -257,7 +242,11 @@ void main() {
         advisorKey: 'noa',
         categoryName: 'their life',
         pyramidContext: const [
-          {'name': 'Health', 'tier': 'foundational', 'essence': 'my body carries me'},
+          {
+            'name': 'Health',
+            'tier': 'foundational',
+            'essence': 'my body carries me'
+          },
           {'name': 'Legacy', 'tier': 'peak', 'essence': null},
         ],
       );
@@ -269,7 +258,8 @@ void main() {
       expect(client.lastPyramidContext![1]['essence'], isNull);
     });
 
-    test('D-095: runAdvisorTurn with no pyramidContext passes null through '
+    test(
+        'D-079: runAdvisorTurn with no pyramidContext passes null through '
         '— the category-scoped path is unaffected', () async {
       final client = _FakeCouncilClient();
       final svc = buildService(client: client);
@@ -282,7 +272,7 @@ void main() {
     });
 
     test(
-        'D-097: runAdvisorTurn never sets soloSetup, even inside a '
+        'D-080: runAdvisorTurn never sets soloSetup, even inside a '
         'setup-typed session — regression test for a defect found live: '
         'essence-deepening (a setup-typed session\'s four-advisor '
         'rotation) was being routed through the solo-Mira pyramid-'
@@ -298,7 +288,7 @@ void main() {
     });
 
     test(
-        'D-097: runMiraSetupTurn always sets soloSetup — the one caller '
+        'D-080: runMiraSetupTurn always sets soloSetup — the one caller '
         'that actually is the solo-Mira pyramid-building conversation',
         () async {
       final client = _FakeCouncilClient();
@@ -310,7 +300,8 @@ void main() {
     });
   });
 
-  group('D-090: the solo setup turn persists Mira\'s reply and surfaces '
+  group(
+      'D-074: the solo setup turn persists Mira\'s reply and surfaces '
       'readiness', () {
     test('runMiraSetupTurn appends Mira\'s message and returns readyToBuild',
         () async {
@@ -329,13 +320,13 @@ void main() {
       expect(result.session.messages.single.advisorKey, 'mira');
       expect(result.session.messages.single.text, 'Tell me more about that.');
 
-      final active =
-          await svc.getActiveSession(type: BoardSessionType.setup);
+      final active = await svc.getActiveSession(type: BoardSessionType.setup);
       expect(active?.messages.length, 1);
       expect(active?.totalInputTokens, 8);
     });
 
-    test('runMiraSetupTurn surfaces readyToBuild: true once the client '
+    test(
+        'runMiraSetupTurn surfaces readyToBuild: true once the client '
         'signals it', () async {
       final client = _FakeCouncilClient()
         ..response = const AdvisorTurnResult(
@@ -350,22 +341,26 @@ void main() {
       expect(result.readyToBuild, isTrue);
     });
 
-    test('D-093: runMiraSetupTurn passes existingCategories through to the '
+    test(
+        'D-077: runMiraSetupTurn passes existingCategories through to the '
         'client as a refinement signal', () async {
       final client = _FakeCouncilClient();
       final svc = buildService(client: client);
       final session = await svc.createSession(type: BoardSessionType.setup);
 
       await svc.runMiraSetupTurn(session, existingCategories: const [
-        CategoryProposal(position: 1, name: 'Health', description: 'my body carries me'),
+        CategoryProposal(
+            position: 1, name: 'Health', description: 'my body carries me'),
       ]);
 
       expect(client.lastExistingCategories, hasLength(1));
       expect(client.lastExistingCategories!.single['name'], 'Health');
-      expect(client.lastExistingCategories!.single['description'], 'my body carries me');
+      expect(client.lastExistingCategories!.single['description'],
+          'my body carries me');
     });
 
-    test('D-093: runMiraSetupTurn with no existingCategories passes null '
+    test(
+        'D-077: runMiraSetupTurn with no existingCategories passes null '
         'through — a fresh build, not a refinement', () async {
       final client = _FakeCouncilClient();
       final svc = buildService(client: client);
@@ -376,9 +371,9 @@ void main() {
     });
   });
 
-  group('D-093: a fixed advisor line can be appended without a model call',
-      () {
-    test('appendAdvisorMessage persists the given text under the given '
+  group('D-077: a fixed advisor line can be appended without a model call', () {
+    test(
+        'appendAdvisorMessage persists the given text under the given '
         'advisor key, at zero token cost', () async {
       final svc = buildService();
       final session = await svc.createSession(type: BoardSessionType.setup);
@@ -390,13 +385,14 @@ void main() {
       expect(msg.text, "What didn't feel right about this?");
 
       final active = await svc.getActiveSession(type: BoardSessionType.setup);
-      expect(active?.messages.single.text, "What didn't feel right about this?");
+      expect(
+          active?.messages.single.text, "What didn't feel right about this?");
       expect(active?.totalInputTokens, 0);
       expect(active?.totalOutputTokens, 0);
     });
   });
 
-  group('D-185: ending a session removes it from the active set', () {
+  group('D-145: ending a session removes it from the active set', () {
     test('endSession marks isComplete and it drops out of getActiveSession',
         () async {
       final svc = buildService();
@@ -408,8 +404,8 @@ void main() {
           type: BoardSessionType.category, categoryId: 1);
       expect(active, isNull);
 
-      final completed =
-          await svc.getCompletedSessions(type: BoardSessionType.category, categoryId: 1);
+      final completed = await svc.getCompletedSessions(
+          type: BoardSessionType.category, categoryId: 1);
       expect(completed.map((s) => s.sessionId), contains(session.sessionId));
     });
   });
@@ -424,7 +420,8 @@ void main() {
     // the invariant SetupScreen._load() depends on: createSession and
     // getActiveSession fail fast, rather than silently succeeding as some
     // other uid, when there is no authenticated user yet.
-    test('createSession throws StateError, not a Firestore call, when no '
+    test(
+        'createSession throws StateError, not a Firestore call, when no '
         'user is signed in', () async {
       final svc = CouncilService(
         firestore: FakeFirebaseFirestore(),
@@ -437,7 +434,8 @@ void main() {
       );
     });
 
-    test('getActiveSession throws StateError, not a Firestore call, when no '
+    test(
+        'getActiveSession throws StateError, not a Firestore call, when no '
         'user is signed in', () async {
       final svc = CouncilService(
         firestore: FakeFirebaseFirestore(),
@@ -447,105 +445,6 @@ void main() {
       await expectLater(
         svc.getActiveSession(type: BoardSessionType.setup),
         throwsA(isA<StateError>()),
-      );
-    });
-  });
-
-  group('D-036/D-100: recordDomainFindings', () {
-    BoardSession testSession() => BoardSession(
-          sessionId: 's1',
-          type: BoardSessionType.general,
-          categoryId: null,
-          createdAt: DateTime(2026, 1, 1),
-          lastUpdatedAt: DateTime(2026, 1, 1),
-          messages: const [],
-          rotationOrder: const ['mira', 'kenji', 'noa', 'eli'],
-          sliderSettings: const {},
-          isComplete: false,
-          totalInputTokens: 0,
-          totalOutputTokens: 0,
-        );
-
-    test('single-category shape: findings are inserted against the given '
-        'categoryId — the pre-existing setup/re-clarification path, '
-        'unchanged by the D-100 refactor', () async {
-      final client = _FakeCouncilClient()
-        ..domainFindingsResponse = const [
-          DomainFinding(domain: 'psychological', note: 'a note'),
-        ];
-      final svc = buildService(client: client);
-
-      await svc.recordDomainFindings(
-        session: testSession(),
-        isSetup: true,
-        categoryId: 42,
-        categoryName: 'Health',
-        essence: 'my body carries me',
-      );
-
-      expect(client.lastDomainFindingsCategoryName, 'Health');
-      expect(client.lastDomainFindingsPyramidContext, isNull);
-      final findings = await DatabaseHelper.instance.queryAllDomainFindings();
-      expect(findings, hasLength(1));
-      expect(findings.single[DatabaseHelper.columnFindingCategoryId], 42);
-      expect(findings.single[DatabaseHelper.columnFindingDomain], 'psychological');
-    });
-
-    test('pyramidContext shape: a finding is resolved to the real '
-        'categoryId by matching the model\'s categoryName against '
-        'pyramidContext', () async {
-      final client = _FakeCouncilClient()
-        ..domainFindingsResponse = const [
-          DomainFinding(domain: 'psychological', note: 'a note', categoryName: 'Box Breathing'),
-        ];
-      final svc = buildService(client: client);
-
-      await svc.recordDomainFindings(
-        session: testSession(),
-        isSetup: false,
-        pyramidContext: [
-          {'id': 7, 'name': 'Box Breathing', 'tier': 'foundational', 'essence': 'skipped when grinding'},
-          {'id': 8, 'name': 'Peak Physical Condition', 'tier': 'foundational', 'essence': 'load-bearing walls'},
-        ],
-      );
-
-      expect(client.lastDomainFindingsCategoryName, isNull);
-      expect(client.lastDomainFindingsPyramidContext, hasLength(2));
-      final findings = await DatabaseHelper.instance.queryAllDomainFindings();
-      expect(findings.single[DatabaseHelper.columnFindingCategoryId], 7);
-    });
-
-    test('pyramidContext shape: a finding naming a category that doesn\'t '
-        'match any given category is dropped, never guessed at', () async {
-      final client = _FakeCouncilClient()
-        ..domainFindingsResponse = const [
-          DomainFinding(domain: 'psychological', note: 'a note', categoryName: 'Not A Real Category'),
-        ];
-      final svc = buildService(client: client);
-
-      await svc.recordDomainFindings(
-        session: testSession(),
-        isSetup: false,
-        pyramidContext: [
-          {'id': 7, 'name': 'Box Breathing', 'tier': 'foundational', 'essence': null},
-        ],
-      );
-
-      expect(await DatabaseHelper.instance.queryAllDomainFindings(), isEmpty);
-    });
-
-    test('a backend failure is swallowed — advisory, never blocks the '
-        'caller (D-188)', () async {
-      final client = _FakeCouncilClient()..domainFindingsShouldThrow = true;
-      final svc = buildService(client: client);
-
-      await expectLater(
-        svc.recordDomainFindings(
-          session: testSession(),
-          isSetup: false,
-          pyramidContext: const [],
-        ),
-        completes,
       );
     });
   });

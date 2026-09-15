@@ -2,20 +2,20 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-113: both category-editing entry points (the pyramid's own edit
+/// D-088: both category-editing entry points (the pyramid's own edit
 /// mode, and the category detail screen) use the shared
 /// showCategoryEditSheet — structural, matching this repo's convention
 /// for screens built on live singletons (editpyramid.dart, tasklist.dart
 /// aren't directly widget-tested elsewhere either).
 void main() {
-  test('D-113: editpyramid.dart uses the shared sheet, not its own '
+  test('D-088: editpyramid.dart uses the shared sheet, not its own '
       'AlertDialog', () {
     final source = File('lib/screens/editpyramid.dart').readAsStringSync();
     expect(source, contains('showCategoryEditSheet('));
     expect(source, isNot(contains('AlertDialog(')));
   });
 
-  test('D-113: tasklist.dart uses the shared sheet, not its own '
+  test('D-088: tasklist.dart uses the shared sheet, not its own '
       '"Your essence" AlertDialog', () {
     final source = File('lib/screens/tasklist.dart').readAsStringSync();
     expect(source, contains('showCategoryEditSheet('));
@@ -23,11 +23,11 @@ void main() {
     expect(source, isNot(contains('AlertDialog(')));
   });
 
-  test('D-113: renaming a category from the pyramid\'s edit mode no '
+  test('D-088: renaming a category from the pyramid\'s edit mode no '
       'longer deletes its tasks and task-log history first — regression '
       'test for a real data-loss bug found live: '
       'renameCategoryCascading already moves every task/tasklog row to '
-      'the new name (D-084), but a leftover deleteCategoryContents call '
+      'the new name (D-059), but a leftover deleteCategoryContents call '
       'immediately before it wiped them first, so the cascade that '
       'followed had nothing left to move. Fixing a category name typo '
       'was silently deleting the category\'s entire habit history.', () {
@@ -37,7 +37,7 @@ void main() {
     expect(source, contains('renameCategoryCascading('));
   });
 
-  test('D-113: tasklist.dart\'s category detail screen can rename the '
+  test('D-088: tasklist.dart\'s category detail screen can rename the '
       'category too, not only edit its description — found live: '
       '"wherever I can edit the category, I should also be able to edit '
       'the description of the category" implies the reverse as well, '
@@ -47,7 +47,7 @@ void main() {
     expect(source, contains('renameCategoryCascading('));
   });
 
-  test('D-113: a category with no description yet still gets an edit '
+  test('D-088: a category with no description yet still gets an edit '
       'action on the category detail screen — found live, the whole '
       'block (name-editing included) used to be hidden whenever no '
       'essence existed, D-003/D-008\'s normal state for essential/peak '

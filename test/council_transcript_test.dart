@@ -5,7 +5,7 @@ import 'package:life_ops/models/board_session.dart';
 import 'package:life_ops/widgets/council_transcript.dart';
 import 'package:life_ops/widgets/typing_indicator.dart';
 
-/// D-091: CouncilTranscript is the transcript rendering shared by every
+/// D-075: CouncilTranscript is the transcript rendering shared by every
 /// screen the Council appears on — extracted so it's tested once rather
 /// than duplicated (and drifting) across setup, category, and general
 /// Council screens.
@@ -56,7 +56,7 @@ void main() {
     expect(accepted, 'my body carries me');
   });
 
-  testWidgets('D-101: typingAdvisorKey null (the default): no typing '
+  testWidgets('D-083: typingAdvisorKey null (the default): no typing '
       'indicator appears, even with messages present', (tester) async {
     await tester.pumpWidget(MaterialApp(
       home: CouncilTranscript(messages: [msg('mira', 'hello there')]),
@@ -66,7 +66,7 @@ void main() {
     expect(find.byType(TypingIndicator), findsNothing);
   });
 
-  testWidgets('D-101: typingAdvisorKey set: a TypingIndicator renders as '
+  testWidgets('D-083: typingAdvisorKey set: a TypingIndicator renders as '
       'the trailing item, after every real message — the screen never '
       'goes visually dead while waiting for a reply', (tester) async {
     await tester.pumpWidget(MaterialApp(
@@ -83,7 +83,7 @@ void main() {
     expect(indicator.advisorKey, 'kenji');
   });
 
-  group('D-148: long-press a Council response to copy it — found live: '
+  group('D-120: long-press a Council response to copy it — found live: '
       '"enable the ability to long press one of the responses from the '
       'council and copy it - again, goal-executor (Kansei) should have '
       'that"', () {

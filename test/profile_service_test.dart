@@ -59,7 +59,7 @@ class _FakeCouncilClient extends CouncilClient {
   }
 }
 
-/// D-114: ProfileService wires the profile screen's two AI features
+/// D-089: ProfileService wires the profile screen's two AI features
 /// (regenerating the vision statement, the 30-day progress analysis) onto
 /// Claude — tested against a real temp SQLite database and a fake Council
 /// backend, no live network.
@@ -83,7 +83,7 @@ void main() {
   });
 
   test(
-      'D-114: regenerateVisionStatement sends only the pyramid\'s current '
+      'D-089: regenerateVisionStatement sends only the pyramid\'s current '
       'essences, isSetup: false, and no sessionId/transcript — this is a '
       'regeneration outside any live Council conversation', () async {
     await db.insertCategory({
@@ -114,7 +114,7 @@ void main() {
   });
 
   test(
-      'D-114: regenerateVisionStatement omits a category with no essence '
+      'D-089: regenerateVisionStatement omits a category with no essence '
       'yet rather than sending a null one — D-008\'s normal state for a '
       'category that hasn\'t been deepened', () async {
     await db.insertCategory({
@@ -130,7 +130,7 @@ void main() {
   });
 
   test(
-      'D-114: generateProgressAnalysis sanitizes and shapes each task_log '
+      'D-089: generateProgressAnalysis sanitizes and shapes each task_log '
       'row into date/category/taskDescription/checked before sending it',
       () async {
     // queryTaskLogs(30) excludes today (its upper bound is a strict "<
@@ -156,7 +156,7 @@ void main() {
     expect(row['checked'], 'true');
   });
 
-  test('D-178: generateProgressAnalysis passes the account\'s first name '
+  test('D-138: generateProgressAnalysis passes the account\'s first name '
       'through when one is on file', () async {
     await db.setFirstName('Craig');
     final client = _FakeCouncilClient();
@@ -168,8 +168,8 @@ void main() {
   });
 
   test(
-      'D-114: generateProgressAnalysis bounds task_log data to '
-      'AiGuard.maxTaskLogRows — D-187\'s same cap on how much task_log '
+      'D-089: generateProgressAnalysis bounds task_log data to '
+      'AiGuard.maxTaskLogRows — D-147\'s same cap on how much task_log '
       'data any AI surface may see, kept to the most recent rows', () async {
     final now = DateTime.now();
     for (var i = 0; i < AiGuard.maxTaskLogRows + 10; i++) {
@@ -194,7 +194,7 @@ void main() {
   });
 
   test(
-      'D-114: a spend-limit refusal from the backend propagates unchanged '
+      'D-089: a spend-limit refusal from the backend propagates unchanged '
       'out of regenerateVisionStatement — the screen distinguishes it from '
       'a generic failure', () async {
     final client = _FakeCouncilClient()
@@ -206,7 +206,7 @@ void main() {
   });
 
   test(
-      'D-114: saveVisionStatement/loadVisionStatement round-trip through '
+      'D-089: saveVisionStatement/loadVisionStatement round-trip through '
       'the local database', () async {
     final svc = ProfileService(db: db, client: _FakeCouncilClient());
     expect(await svc.loadVisionStatement(), isNull);

@@ -22,7 +22,7 @@ class FakeFirestore {
 
 const path = (uid) => `users/${uid}/profile/main`;
 
-test('D-070: INITIAL_PURCHASE grants subscribed', async () => {
+test('D-054: INITIAL_PURCHASE grants subscribed', async () => {
   const store = new FakeFirestore();
   const result = await applyRevenueCatEvent({ type: 'INITIAL_PURCHASE', app_user_id: 'u1' }, store);
   assert.equal(result, 'subscribed');
@@ -30,21 +30,21 @@ test('D-070: INITIAL_PURCHASE grants subscribed', async () => {
 });
 
 for (const type of ['RENEWAL', 'UNCANCELLATION', 'PRODUCT_CHANGE', 'TRANSFER']) {
-  test(`D-070: ${type} grants subscribed`, async () => {
+  test(`D-054: ${type} grants subscribed`, async () => {
     const store = new FakeFirestore();
     const result = await applyRevenueCatEvent({ type, app_user_id: 'u1' }, store);
     assert.equal(result, 'subscribed');
   });
 }
 
-test('D-070: EXPIRATION transitions a subscribed account to lapsed', async () => {
+test('D-054: EXPIRATION transitions a subscribed account to lapsed', async () => {
   const store = new FakeFirestore({ [path('u1')]: { entitlement: 'subscribed' } });
   const result = await applyRevenueCatEvent({ type: 'EXPIRATION', app_user_id: 'u1' }, store);
   assert.equal(result, 'lapsed');
   assert.equal(store.data[path('u1')].entitlement, 'lapsed');
 });
 
-test('D-070: CANCELLATION alone does not end access — no entitlement '
+test('D-054: CANCELLATION alone does not end access — no entitlement '
     + 'change until RevenueCat sends the later EXPIRATION', async () => {
   const store = new FakeFirestore({ [path('u1')]: { entitlement: 'subscribed' } });
   const result = await applyRevenueCatEvent({ type: 'CANCELLATION', app_user_id: 'u1' }, store);
@@ -52,14 +52,14 @@ test('D-070: CANCELLATION alone does not end access — no entitlement '
   assert.equal(store.data[path('u1')].entitlement, 'subscribed');
 });
 
-test('D-070: BILLING_ISSUE and unrecognized event types are no-ops', async () => {
+test('D-054: BILLING_ISSUE and unrecognized event types are no-ops', async () => {
   const store = new FakeFirestore({ [path('u1')]: { entitlement: 'subscribed' } });
   assert.equal(await applyRevenueCatEvent({ type: 'BILLING_ISSUE', app_user_id: 'u1' }, store), null);
   assert.equal(await applyRevenueCatEvent({ type: 'TEST', app_user_id: 'u1' }, store), null);
   assert.equal(store.data[path('u1')].entitlement, 'subscribed');
 });
 
-test('D-070: a malformed event (missing type or app_user_id) is a no-op, '
+test('D-054: a malformed event (missing type or app_user_id) is a no-op, '
     + 'never a throw', async () => {
   const store = new FakeFirestore();
   assert.equal(await applyRevenueCatEvent({}, store), null);

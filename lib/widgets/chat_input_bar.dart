@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 
-/// D-101: the message-composer bar shared by every Council chat screen
+/// D-083: the message-composer bar shared by every Council chat screen
 /// (setup, category re-clarification, general Council) — extracted after
 /// the exact same single-line `TextField` was duplicated three times, with
 /// the same defect live in all three copies at once: no `maxLines`, so

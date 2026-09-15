@@ -1,5 +1,5 @@
-// D-124: the batched end-of-day check-in's server-side timing logic.
-// Distinct from D-189/notification_schedule.js's fixed three-times-daily
+// D-099: the batched end-of-day check-in's server-side timing logic.
+// Distinct from D-149/notification_schedule.js's fixed three-times-daily
 // cadence — here the "when" is per-account, per-day, and data-dependent
 // (the latest scheduled_time among today's active scheduled habits), not
 // a fixed clock slot, so it can't reuse isNotificationWindow's narrow
@@ -16,7 +16,7 @@ function isTruthyFlag(v) {
   return v != null && v !== '0' && v !== 'false' && v !== '';
 }
 
-// D-189: "today" and "now" both read in the account's own local
+// D-149: "today" and "now" both read in the account's own local
 // timezone — a fixed-cadence UTC job must never decide a Tokyo account's
 // day, or its day-of-week, using another timezone's clock. Throws on an
 // invalid IANA timezone string, which callers treat as "never matches"
@@ -53,7 +53,7 @@ function parseScheduledMinutes(scheduledtime) {
 }
 
 // A habit is part of today's batch when it has a scheduled_time AND
-// today's day-of-week flag (the same field D-123's own scheduling screen
+// today's day-of-week flag (the same field D-098's own scheduling screen
 // reads) is true — mirrors HabitScheduleRow.activeOn on the client.
 function isScheduledActiveOn(task, weekday) {
   if (!DAY_FIELDS.includes(weekday)) return false;
@@ -75,7 +75,7 @@ export function latestScheduledMinutes(tasks, weekday) {
 }
 
 // The specific scheduled+active habits today's check-in is about — the
-// push payload's own source of truth (D-124's acceptance criterion: "the
+// push payload's own source of truth (D-099's acceptance criterion: "the
 // push's payload names the specific habits it's asking about").
 export function todaysScheduledHabits(tasks, weekday) {
   return tasks

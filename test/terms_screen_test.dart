@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/screens/terms_screen.dart';
 
-/// D-149: found live — "ensure that you have a terms and conditions link
+/// D-121: found live — "ensure that you have a terms and conditions link
 /// that indicates that this is not medical advice and I think you already
 /// have this for Kansei (goal-executor) so if any of the copy is relatable
 /// to what Green Pyramid does then copy it verbatim." The disclaimer and

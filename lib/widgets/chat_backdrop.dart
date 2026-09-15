@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_colors.dart';
 
-/// D-031/D-185: the Council's two chat screens (setup and category
+/// D-031/D-145: the Council's two chat screens (setup and category
 /// re-clarification) shared one visual complaint found live — "all dark
 /// and dreary... no glow" — while the home screen's spinning pyramid,
 /// same app, already has warmth: a photograph behind it and a soft green

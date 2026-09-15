@@ -156,7 +156,7 @@ void main() {
     });
   });
 
-  group('D-152: tap-down/lift feedback — "when either of the pyramids are '
+  group('D-125: tap-down/lift feedback — "when either of the pyramids are '
       'tapped, I want there to be an indication of the down tap, and then '
       'the lift ... shared across both of the pyramids"', () {
     // The painter class is private, but its fields are public-named, so a

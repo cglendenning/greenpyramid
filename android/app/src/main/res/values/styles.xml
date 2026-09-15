@@ -7,7 +7,7 @@
         <item name="android:windowBackground">@drawable/launch_background</item>
         <item name="android:windowTranslucentStatus">true</item>
         <item name="android:windowTranslucentNavigation">true</item>
-        <!-- D-142: the splash background is always dark now, regardless of
+        <!-- D-114: the splash background is always dark now, regardless of
              the system's light/dark setting — light (dark-colored) status
              bar icons would be unreadable against it. -->
         <item name="android:windowLightStatusBar">false</item>

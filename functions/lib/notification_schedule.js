@@ -1,4 +1,4 @@
-// D-189: notifications fire in the user's local time. The scheduled job
+// D-149: notifications fire in the user's local time. The scheduled job
 // runs frequently (every SCHEDULE_INTERVAL_MINUTES) in UTC; this decides,
 // per account, whether *this* run falls inside one of the three daily
 // local-time windows — the only way a fixed-cadence UTC cron can serve
@@ -49,7 +49,7 @@ export function isNotificationWindow(timezone, now = new Date()) {
   });
 }
 
-// D-189: lapsed accounts are excluded from the job entirely — no server or
+// D-149: lapsed accounts are excluded from the job entirely — no server or
 // model cost. trialing and subscribed accounts both receive tailored
 // notifications (D-019: a trial has identical capability to a subscription);
 // pre_trial never reaches this in practice, since a pre_trial account has no

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/widgets/typing_indicator.dart';
 
-/// D-101: the three-pulsing-dots "typing" bubble shown while a Council
+/// D-083: the three-pulsing-dots "typing" bubble shown while a Council
 /// screen is genuinely awaiting an advisor's reply.
 void main() {
   Widget wrap(Widget child, {bool disableAnimations = false}) => MediaQuery(
@@ -10,7 +10,7 @@ void main() {
         child: MaterialApp(home: child),
       );
 
-  testWidgets('D-101: renders exactly three dots and the given advisor\'s '
+  testWidgets('D-083: renders exactly three dots and the given advisor\'s '
       'portrait', (tester) async {
     await tester.pumpWidget(wrap(const TypingIndicator(advisorKey: 'noa')));
     await tester.pump();
@@ -31,7 +31,7 @@ void main() {
   });
 
   testWidgets(
-      'D-101: respects reduce-motion — no AnimatedBuilder in the tree, '
+      'D-083: respects reduce-motion — no AnimatedBuilder in the tree, '
       'same discipline as SetupProgressIndicator (D-033): the static '
       'branch is taken, not merely a paused animation', (tester) async {
     await tester.pumpWidget(wrap(const TypingIndicator(advisorKey: 'eli'),
@@ -48,7 +48,7 @@ void main() {
   });
 
   testWidgets(
-      'D-107: the dots actually animate in the normal (motion-enabled) '
+      'D-072: the dots actually animate in the normal (motion-enabled) '
       'case — regression test for a defect found live: '
       '"reduceMotion == _reduceMotion" as the sole didChangeDependencies '
       'guard meant the very first call — the overwhelmingly common case, '

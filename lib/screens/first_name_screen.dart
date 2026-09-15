@@ -3,7 +3,7 @@ import '../services/db.dart';
 import '../theme/app_colors.dart';
 import '../widgets/onboarding_backdrop.dart';
 
-/// D-178: collects the user's first name once, right before the pyramid is
+/// D-138: collects the user's first name once, right before the pyramid is
 /// built — a plain, required text-entry screen (owner's own choice over a
 /// conversational Mira turn: "a quick, plain text-entry screen... lower
 /// friction than a conversation for a single unambiguous fact"). No skip

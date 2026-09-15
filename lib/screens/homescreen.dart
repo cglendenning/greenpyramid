@@ -42,14 +42,14 @@ class HomeScreen extends StatelessWidget {
       theme: AppTheme.dark(),
       initialRoute: routeToGo,
       onGenerateRoute: _generateRoute,
-      // D-138: Flutter's default initial-route generation
+      // D-110: Flutter's default initial-route generation
       // (Navigator.defaultGenerateInitialRoutes) unconditionally mounts
       // '/' *and* the requested initialRoute — found live: a fresh
       // install correctly showed WelcomeScreen ('/setup') first, then
       // 2-3 seconds later AccountCreationScreen popped up on top of it.
       // Root cause, confirmed against the Flutter SDK source: '/' (this
       // screen's HomeScreenWidget) was silently mounted underneath
-      // WelcomeScreen the whole time, so its own D-132
+      // WelcomeScreen the whole time, so its own D-105
       // _enforceRealAccount gate fired once its signInSilently() call
       // resolved. Overriding onGenerateInitialRoutes mounts exactly the
       // one route actually requested.
@@ -75,8 +75,8 @@ class HomeScreen extends StatelessWidget {
         return MaterialPageRoute(
           builder: (_) => const HomeScreenWidget(),
         );
-      // D-083: morning/afternoon/evening are deleted, replaced by
-      // D-189's server-generated notifications. These three cases stay
+      // D-066: morning/afternoon/evening are deleted, replaced by
+      // D-149's server-generated notifications. These three cases stay
       // only so a stale local notification already scheduled on a
       // device before the upgrade lands on the pyramid rather than an
       // error route.
@@ -87,7 +87,7 @@ class HomeScreen extends StatelessWidget {
           builder: (_) => const HomeScreenWidget(),
         );
       case '/setup':
-        // D-001/D-188: a process restart with an in-flight draft returns to
+        // D-001/D-148: a process restart with an in-flight draft returns to
         // the persisted setup phase. Only fresh setup needs the welcome.
         return MaterialPageRoute(
             builder: (_) => resumePendingSetup
@@ -159,7 +159,7 @@ class _HomeScreen extends State<HomeScreenWidget> {
     setFutures();
     // Listen for demo mode changes and refresh data
     DatabaseHelper.demoModeNotifier.addListener(_onDemoModeChanged);
-    // D-132: enforced once per app session, not once per tab switch —
+    // D-105: enforced once per app session, not once per tab switch —
     // this StatefulWidget is mounted once at launch; currentScreenIndex
     // changes are just an index swap, not a remount.
     WidgetsBinding.instance.addPostFrameCallback((_) => _enforceRealAccount());
@@ -172,8 +172,8 @@ class _HomeScreen extends State<HomeScreenWidget> {
     super.dispose();
   }
 
-  // D-132: catches an existing user whose account predates D-188 — Craig's
-  // own situation: setup already completed before D-188 existed, so
+  // D-105: catches an existing user whose account predates D-148 — Craig's
+  // own situation: setup already completed before D-148 existed, so
   // nothing ever prompted him to link a real credential. D-029's own
   // convention (every Firestore-touching screen awaits signInSilently()
   // first, since main.dart's bootstrap is fire-and-forget and not
@@ -187,7 +187,7 @@ class _HomeScreen extends State<HomeScreenWidget> {
       builder: (_) => AccountCreationScreen(
         onDone: ({required bool switchedToExistingAccount}) {
           accountWasSwitched = switchedToExistingAccount;
-          // D-162: onDone now fires from within SigningInScreen, still
+          // D-130: onDone now fires from within SigningInScreen, still
           // on top of AccountCreationScreen (see that screen's own doc
           // comment) — pop both, synchronously and with no await
           // between them, so AccountCreationScreen is never revealed
@@ -198,7 +198,7 @@ class _HomeScreen extends State<HomeScreenWidget> {
       ),
     ));
     if (accountWasSwitched) {
-      // D-132: a real edge case — this device already has a local
+      // D-105: a real edge case — this device already has a local
       // pyramid *and* the Apple/Google identity just used already
       // belongs to a different, real account. That account's own cloud
       // data (if any) needs restoring; the local pyramid that was here
@@ -300,9 +300,9 @@ class _HomeScreen extends State<HomeScreenWidget> {
   void listenToNotification() =>
       service.onNotificationClick.stream.listen(onNotificationListener);
 
-  /// D-083 amendment / Phase 6 fix (2026-09-10): every tap-routing path
-  /// that isn't the new D-124 batch check-in — D-189's local fallback,
-  /// D-021's lapsed static pool, and now D-189's real tailored push (once
+  /// D-066 amendment / Phase 6 fix (2026-09-10): every tap-routing path
+  /// that isn't the new D-099 batch check-in — D-149's local fallback,
+  /// D-021's lapsed static pool, and now D-149's real tailored push (once
   /// it carries a `type: 'tailored'` data payload, wired in main.dart) —
   /// funnels through this one listener via [payload]. It used to call
   /// `navigatorKey.currentState?.pushNamed(payload)` for every payload,
@@ -487,7 +487,7 @@ class CustomAppBarState extends State<CustomAppBar> {
             value: 'profile',
             child: Text('Profile'),
           ),
-          // D-133: only offered when actually signed in with a real
+          // D-106: only offered when actually signed in with a real
           // account — checked live (AuthService.instance.isAnonymous),
           // not cached, so it can never go stale across a sign-out.
           if (!AuthService.instance.isAnonymous)
@@ -506,7 +506,7 @@ class CustomAppBarState extends State<CustomAppBar> {
 
     List<Widget> actions = [menu];
 
-    // D-131 originally replaced this gradient with an opaque-feeling
+    // D-104 originally replaced this gradient with an opaque-feeling
     // rounded frosted panel — found live not to be what was wanted
     // ("I like what I had before... I really wanted was simply to have
     // more transparency so that the background image... shine through
@@ -555,14 +555,14 @@ class CustomAppBarState extends State<CustomAppBar> {
     setState(() {});
   }
 
-  // D-136: "Set up again" in the hamburger menu — the user stays signed
+  // D-108: "Set up again" in the hamburger menu — the user stays signed
   // in throughout (never touches AuthService.signOut) and is rebuilding
   // their existing, cloud-synced pyramid, not starting from a signed-out
   // state — a genuinely different, more consequential action than
   // anything WelcomeScreen handles, so it never goes near that screen.
   // Confirms explicitly (this erases real, synced data) before wiping
   // local storage and going straight into setup. setup_screen.dart's own
-  // existing anonymous-check at completion already skips the D-188
+  // existing anonymous-check at completion already skips the D-148
   // account-creation screen for a non-anonymous user, so nothing else
   // is needed to honor "they will not be presented with the screen to
   // create an account because they're already signed in."
@@ -602,7 +602,7 @@ class CustomAppBarState extends State<CustomAppBar> {
     setState(() {});
   }
 
-  // D-136: hamburger-menu sign-out — same underlying flow Settings'
+  // D-108: hamburger-menu sign-out — same underlying flow Settings'
   // ACCOUNT section already uses. Leaves the app genuinely signed out
   // (no eager re-anonymization) and lands on the plain WelcomeScreen —
   // identical to a fresh install, per the owner's explicit correction
@@ -635,7 +635,7 @@ class CustomAppBarState extends State<CustomAppBar> {
     );
   }
 
-  // D-091/D-014: the shared ensureEntitled gate — same one CouncilCategoryPicker
+  // D-075/D-014: the shared ensureEntitled gate — same one CouncilCategoryPicker
   // uses (council_category_picker.dart:_open) — found live, the hard way:
   // without it, an unentitled account reaches GeneralCouncilScreen, the
   // backend's EntitlementRequiredException isn't one of the exceptions that
@@ -644,7 +644,7 @@ class CustomAppBarState extends State<CustomAppBar> {
   // and the user sees a generic "Could not open this conversation" with no
   // path forward.
   //
-  // D-182 (amended): this used to be its own private duplicate of the
+  // D-142 (amended): this used to be its own private duplicate of the
   // check, which meant it never benefited from ensureEntitled's own
   // server-freshness fix — now the shared gate itself, not a copy of it.
   Future<void> navigateToCouncil(BuildContext context) async {
@@ -661,7 +661,7 @@ class CustomAppBarState extends State<CustomAppBar> {
     setState(() {});
   }
 
-  // D-150: unlike the Council (entitlement-gated, D-091), the newsfeed is
+  // D-122: unlike the Council (entitlement-gated, D-075), the newsfeed is
   // generated entirely from data already local to the device — no AI
   // call, no server round trip — so it carries no paywall.
   void navigateToNewsfeed(BuildContext context) async {
@@ -673,7 +673,7 @@ class CustomAppBarState extends State<CustomAppBar> {
     setState(() {});
   }
 
-  // D-159: purely static content, unlike every other item in this menu —
+  // D-127: purely static content, unlike every other item in this menu —
   // no entitlement gate, no network call, nothing account-specific.
   void navigateToPhilosophy(BuildContext context) async {
     utils.Utils().changeSystemColor(Brightness.dark);

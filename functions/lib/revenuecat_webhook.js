@@ -1,4 +1,4 @@
-// D-070: RevenueCat is authoritative for the *subscribed* state only —
+// D-054: RevenueCat is authoritative for the *subscribed* state only —
 // trial state (D-044/D-045) is never touched here, and this never grants a
 // trial. `app_user_id` is the Firebase uid: the client calls
 // `Purchases.logIn(uid)` right after Firebase sign-in (D-025), so RevenueCat

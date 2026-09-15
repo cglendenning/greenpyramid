@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-101: every Council chat screen (setup, category re-clarification,
+/// D-083: every Council chat screen (setup, category re-clarification,
 /// general Council) uses the shared ChatInputBar (wraps, never scrolls
 /// off-screen) and passes typingAdvisorKey to CouncilTranscript (the
 /// screen never goes visually dead while awaiting a reply). Structural,
@@ -16,7 +16,7 @@ void main() {
     'lib/screens/general_council_screen.dart',
   ];
 
-  test('D-101: every chat screen uses the shared ChatInputBar, not a bare '
+  test('D-083: every chat screen uses the shared ChatInputBar, not a bare '
       'TextField, for its message composer', () {
     for (final path in screens) {
       final source = File(path).readAsStringSync();
@@ -24,7 +24,7 @@ void main() {
     }
   });
 
-  test('D-101: no chat screen builds its own composer TextField anymore — '
+  test('D-083: no chat screen builds its own composer TextField anymore — '
       'the single-line-with-no-maxLines defect this replaces must not '
       'reappear via a parallel, un-fixed copy', () {
     for (final path in screens) {
@@ -40,7 +40,7 @@ void main() {
     }
   });
 
-  test('D-101: every chat screen passes typingAdvisorKey into '
+  test('D-083: every chat screen passes typingAdvisorKey into '
       'CouncilTranscript — the typing indicator this screen relies on to '
       'avoid going dead while waiting for a reply', () {
     for (final path in screens) {
@@ -49,10 +49,10 @@ void main() {
     }
   });
 
-  test('D-101: setup\'s solo-Mira phases (opening/openingRound/refining) '
+  test('D-083: setup\'s solo-Mira phases (opening/openingRound/refining) '
       'always show \'mira\' typing, never session.nextAdvisorKey — a setup '
       'session\'s rotationOrder is a shuffled four-advisor list it never '
-      'actually uses for these turns (D-090)', () {
+      'actually uses for these turns (D-074)', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
     final occurrences = RegExp(r"typingAdvisorKey: _busy \? 'mira' : null")
         .allMatches(source)
@@ -61,7 +61,7 @@ void main() {
         reason: 'opening, openingRound, and refining each pass this');
   });
 
-  test('D-101: category and general Council chat pass the real '
+  test('D-083: category and general Council chat pass the real '
       'session.nextAdvisorKey — a genuine four-advisor rotation, unlike '
       'setup\'s solo-Mira turns', () {
     for (final path in [

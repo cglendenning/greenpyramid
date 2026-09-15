@@ -2,9 +2,9 @@ import 'ai_guard.dart';
 import 'council_client.dart';
 import 'db.dart';
 
-/// D-114: the profile screen's two AI features — regenerating the vision
+/// D-089: the profile screen's two AI features — regenerating the vision
 /// statement and generating a 30-day progress analysis — migrated onto
-/// Claude. Both were, until now, the one AI surface D-069/D-083's
+/// Claude. Both were, until now, the one AI surface D-053/D-066's
 /// retirement of the legacy AI screens missed: still calling OpenAI
 /// directly through a now-defunct account (confirmed dead from live Cloud
 /// Run logs — "429 You have no credits remaining" — not guessed).
@@ -31,7 +31,7 @@ class ProfileService {
 
   /// Regenerates the vision statement from the pyramid's current essences
   /// — not a live conversation (there isn't one at this point), so
-  /// [sessionId]/transcript are omitted entirely (D-114's amendment to
+  /// [sessionId]/transcript are omitted entirely (D-089's amendment to
   /// buildVisionStatementPrompt frames an absent transcript explicitly,
   /// rather than rendering an empty conversation section).
   Future<String> regenerateVisionStatement() async {
@@ -48,7 +48,7 @@ class ProfileService {
   }
 
   /// A short Claude-written reflection on the last 30 days of habit
-  /// check-offs. Bounded to [AiGuard.maxTaskLogRows], the same cap D-187's
+  /// check-offs. Bounded to [AiGuard.maxTaskLogRows], the same cap D-147's
   /// Firestore sync already uses for task_log — the most recent rows, not
   /// an arbitrary or unbounded slice.
   Future<String> generateProgressAnalysis() async {

@@ -2,19 +2,19 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-188: structural regression tests, not a full widget pump — this
+/// D-148: structural regression tests, not a full widget pump — this
 /// screen calls FirebaseAnalytics.instance in initState the same way
 /// every other analytics-logging screen in this codebase does
 /// (faq.dart, homescreen.dart, ...), none of which are pumped in a
 /// widget test here either, since Firebase Core isn't mocked anywhere
 /// in this suite. Same source-text-assertion pattern
-/// schedule_habits_screen_test.dart already uses for its D-128 group.
+/// schedule_habits_screen_test.dart already uses for its D-103 group.
 void main() {
   final source = File('lib/screens/account_creation_screen.dart').readAsStringSync();
 
-  group('D-188: mandatory account creation before the pyramid reveal', () {
+  group('D-148: mandatory account creation before the pyramid reveal', () {
     test('wraps its content in PopScope(canPop: false) — no back gesture, '
-        'consistent with D-128\'s mechanism: nothing to go back to once '
+        'consistent with D-103\'s mechanism: nothing to go back to once '
         'habits are committed and the Council session has ended', () {
       expect(source, contains('canPop: false'));
     });
@@ -37,14 +37,14 @@ void main() {
 
     test('uses the shared OnboardingBackdrop — the same rotating-photo '
         'collage as WelcomeScreen, TrialDisclosureScreen, and '
-        'PushPermissionScreen (D-099), not a bespoke background', () {
+        'PushPermissionScreen (D-081), not a bespoke background', () {
       expect(source, contains('OnboardingBackdrop('));
     });
 
-    test('D-132: declares onDone with whether AccountLinkService switched '
+    test('D-105: declares onDone with whether AccountLinkService switched '
         'to a different, already-existing account (credential-already-in-'
         'use) rather than linking the current one — every caller needs to '
-        'react differently to the two outcomes. D-162: onDone itself is '
+        'react differently to the two outcomes. D-130: onDone itself is '
         'now called from SigningInScreen on success (see that screen\'s '
         'own tests) — this screen only threads it through.', () {
       expect(source, contains('void Function({required bool switchedToExistingAccount}) onDone'));
@@ -58,7 +58,7 @@ void main() {
     });
   });
 
-  group('D-188: setup_screen.dart wires AccountCreationScreen before '
+  group('D-148: setup_screen.dart wires AccountCreationScreen before '
       'SetupCompletionScreen', () {
     final setupSource = File('lib/screens/setup_screen.dart').readAsStringSync();
 
@@ -68,7 +68,7 @@ void main() {
       expect(setupSource, contains('onDone: ({required switchedToExistingAccount}) async {'));
     });
 
-    test('D-132: a credential-already-in-use switch restores the real '
+    test('D-105: a credential-already-in-use switch restores the real '
         'account\'s cloud data and goes straight home, skipping '
         'SetupCompletionScreen entirely — the pyramid just built in this '
         'session belongs to the abandoned anonymous account, not the real '
@@ -84,19 +84,19 @@ void main() {
     });
   });
 
-  group('D-143: the actual sign-in work (and D-139\'s error handling) now '
+  group('D-115: the actual sign-in work (and D-111\'s error handling) now '
       'lives in SigningInScreen, reached via Navigator.push — this screen '
       'only reacts to the SignInOutcome that comes back', () {
     test('_handle pushes SigningInScreen and awaits a SignInOutcome, '
         'instead of calling the sign-in function directly inline — the '
         'awaited outcome now only ever represents a failure or a '
-        'cancellation (D-162)', () {
+        'cancellation (D-130)', () {
       expect(source, contains('Navigator.of(context).push<SignInOutcome>('));
       expect(source, contains('signIn: signIn,'));
       expect(source, contains('provider: provider,'));
     });
 
-    test('a cancelled outcome shows no error — matches D-139\'s original '
+    test('a cancelled outcome shows no error — matches D-111\'s original '
         '"Apple sheet dismissed is not a failure" behavior', () {
       expect(source, contains('outcome.cancelled) return'));
     });

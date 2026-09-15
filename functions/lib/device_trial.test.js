@@ -51,7 +51,7 @@ test('D-045: a fresh Android device is granted a 3-day trial and marked '
   assert.equal(expiresAt.getTime() - now.getTime(), TRIAL_DAYS * 24 * 60 * 60 * 1000);
 });
 
-test('D-046/D-187: the device trial marker carries a 24-month ttlAt so '
+test('D-046/D-147: the device trial marker carries a 24-month ttlAt so '
     + 'Firestore purges it — retained, not kept forever', () => {
   const store = new FakeFirestore();
   return grantTrialIfEligible(
@@ -59,7 +59,7 @@ test('D-046/D-187: the device trial marker carries a 24-month ttlAt so '
   ).then(() => {
     const ttlAt = store.data[trialPath('hash1')].ttlAt.toDate();
     assert.equal(ttlAt.getTime() - now.getTime(), DEVICE_TRIAL_RETENTION_DAYS * 24 * 60 * 60 * 1000);
-    assert.equal(DEVICE_TRIAL_RETENTION_DAYS, 730, 'D-187 specifies 24 months');
+    assert.equal(DEVICE_TRIAL_RETENTION_DAYS, 730, 'D-147 specifies 24 months');
   });
 });
 
@@ -130,7 +130,7 @@ test('invalid_platform is rejected', async () => {
   );
 });
 
-test('D-071: a pre_trial existing-user account is granted a one-time '
+test('D-055: a pre_trial existing-user account is granted a one-time '
     + '30-day migration trial', async () => {
   const store = new FakeFirestore({ [profilePath('u1')]: { entitlement: 'pre_trial' } });
   const result = await grantMigrationTrial('u1', store, now);
@@ -140,7 +140,7 @@ test('D-071: a pre_trial existing-user account is granted a one-time '
   assert.equal(expiresAt.getTime() - now.getTime(), MIGRATION_TRIAL_DAYS * 24 * 60 * 60 * 1000);
 });
 
-test('D-071: the migration trial is never granted twice, even on a '
+  test('D-055: the migration trial is never granted twice, even on a '
     + 'retried request', async () => {
   const store = new FakeFirestore({
     [profilePath('u1')]: { entitlement: 'trialing', migrationTrialGrantedAt: 'already-set' },
@@ -150,7 +150,7 @@ test('D-071: the migration trial is never granted twice, even on a '
   assert.equal(result.entitlement, 'trialing');
 });
 
-test('D-071: an account that already went through setup\'s own device '
+test('D-055: an account that already went through setup\'s own device '
     + 'trial (or is subscribed/lapsed) never receives the migration grant', async () => {
   const store = new FakeFirestore({ [profilePath('u1')]: { entitlement: 'subscribed' } });
   const result = await grantMigrationTrial('u1', store, now);

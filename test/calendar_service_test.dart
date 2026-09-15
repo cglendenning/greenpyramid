@@ -2,7 +2,7 @@ import 'package:device_calendar_plus/device_calendar_plus.dart' as dc;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/services/calendar_service.dart';
 
-/// D-185 step 7: no live calendar plugin is registered in this test
+/// D-145 step 7: no live calendar plugin is registered in this test
 /// environment (no platform channel), so hasPermission/requestPermission
 /// hit the plugin's MissingPluginException path — this is exactly the
 /// defensive contract under test: a platform failure must never throw past
@@ -29,7 +29,7 @@ void main() {
     expect(result, isNull);
   });
 
-  group('D-123: createHabitEvent/rescheduleHabitEvent/deleteHabitEvent '
+  group('D-098: createHabitEvent/rescheduleHabitEvent/deleteHabitEvent '
       'never throw — same defensive contract as the read-side methods, '
       'since no live plugin is registered in this test environment', () {
     test('createHabitEvent resolves to null rather than throwing', () async {
@@ -71,7 +71,7 @@ void main() {
       expect(result, isFalse);
     });
 
-    test('D-163: eventExists resolves to true (never throws) when '
+    test('D-131: eventExists resolves to true (never throws) when '
         'permission can\'t even be determined — "can\'t confirm it\'s '
         'gone" must never be treated the same as "confirmed gone," or a '
         'real habit could be silently unscheduled just because calendar '
@@ -82,7 +82,7 @@ void main() {
     });
   });
 
-  group('D-123: daysOfWeekFrom — pure mapping from the task table\'s own '
+  group('D-098: daysOfWeekFrom — pure mapping from the task table\'s own '
       'Sunday-Saturday flags to the plugin\'s day-of-week enum', () {
     test('maps every day true to all seven, in Monday-first order '
         'matching the plugin\'s own enum declaration order', () {
@@ -134,7 +134,7 @@ void main() {
     });
   });
 
-  group('D-123: anchorFor — the first valid recurring-series anchor', () {
+  group('D-098: anchorFor — the first valid recurring-series anchor', () {
     test('today, at the given time, when today is one of the recurring '
         'days and that time hasn\'t passed yet', () {
       final now = DateTime(2026, 9, 9, 6, 0); // a Wednesday
@@ -185,14 +185,14 @@ void main() {
     });
   });
 
-  test('D-123: eventTitleFor prefixes every scheduled-habit event so it '
+  test('D-098: eventTitleFor prefixes every scheduled-habit event so it '
       'can be identified and later replaced or removed — matching '
       'Kansei\'s own "[GOAL]" identification convention', () {
     expect(CalendarService.eventTitleFor('Walk 20 minutes'),
         '[Green Pyramid] Walk 20 minutes');
   });
 
-  group('D-123 Phase 2: filterSchedulableEvents — regression for a defect '
+  group('D-098 Phase 2: filterSchedulableEvents — regression for a defect '
       'found live: an all-day Rosh Hashanah entry from the read-only '
       'Holidays calendar "collided" with every hour and made the whole '
       'grid unschedulable', () {

@@ -32,7 +32,7 @@ class Pyramid3D extends StatefulWidget {
   // is set.
   final bool playEntranceSpin;
 
-  // D-152: underlines every label, signaling the pyramid's blocks are
+  // D-125: underlines every label, signaling the pyramid's blocks are
   // editable — set only by the edit screen (PyramidStack's own
   // `editable` param), never the main (view-only) screen.
   final bool editable;
@@ -75,7 +75,7 @@ class _Pyramid3DState extends State<Pyramid3D> with TickerProviderStateMixin {
   AnimationController? _entranceSpin;
   static const double _entranceSpinStart = -12 * math.pi; // several full turns
 
-  // D-152: tap-down/lift feedback, shared by both pyramid screens since
+  // D-125: tap-down/lift feedback, shared by both pyramid screens since
   // it lives here rather than in either one. _pressedCategory names which
   // block to highlight; _pressController drives that highlight's opacity
   // — snapped to 1 instantly on tap-down (an immediate "down" cue), then
@@ -161,10 +161,10 @@ class _Pyramid3DState extends State<Pyramid3D> with TickerProviderStateMixin {
     _settle.forward(from: 0);
   }
 
-  // D-152: "when either of the pyramids are tapped, I want there to be an
+  // D-125: "when either of the pyramids are tapped, I want there to be an
   // indication of the down tap, and then the lift" — shared here, in
   // Pyramid3D itself, rather than in either screen, so it applies to both
-  // identically (exactly how D-151 shares everything else about the
+  // identically (exactly how D-123 shares everything else about the
   // pyramid's appearance). The hit-test itself is unchanged from
   // _onTapUp's own; factored out so tap-down can highlight the same block
   // tap-up is about to act on.
@@ -184,7 +184,7 @@ class _Pyramid3DState extends State<Pyramid3D> with TickerProviderStateMixin {
     return category;
   }
 
-  // D-152 found live (via the test that exercises this, not guessed):
+  // D-125 found live (via the test that exercises this, not guessed):
   // GestureDetector's own onTapDown does NOT fire on physical touch-down
   // here — this detector also owns the horizontal-drag recognizers, and
   // with a competing recognizer in the same gesture arena, the tap
@@ -377,7 +377,7 @@ class _Pyramid3DPainter extends CustomPainter {
   final List<PyramidCategoryData> categories;
   final ui.Image? wallImage;
 
-  // D-152: which block (if any) is currently pressed, and how visible its
+  // D-125: which block (if any) is currently pressed, and how visible its
   // press highlight should be right now (0 = invisible, 1 = fully shown)
   // — animated by the state's own AnimationController, not baked into the
   // cached wall bitmap, since it changes every frame during the lift.
@@ -431,7 +431,7 @@ class _Pyramid3DPainter extends CustomPainter {
         );
       }
 
-      // D-152: the pressed block's own outline, on the front face only —
+      // D-125: the pressed block's own outline, on the front face only —
       // taps only ever register on the front face (see _hitCategoryAt),
       // so a pressed category never belongs to a back/side face here.
       final pressed = pressedCategory;

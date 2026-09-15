@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/widgets/pyramid_3d.dart';
 
-/// D-152: three visual-polish fixes to the pyramid edit screen requested
-/// right after D-151 unified it onto the main screen's real renderer —
+/// D-125: three visual-polish fixes to the pyramid edit screen requested
+/// right after D-123 unified it onto the main screen's real renderer —
 /// owner: "I think I used to have underlines" (editability signal), "the
 /// pyramid itself is aligned slightly to the left unlike the main screen"
 /// (centering), and "I need the background of the edit page to be the
@@ -16,7 +16,7 @@ import 'package:life_ops/widgets/pyramid_3d.dart';
 /// that class of screen; the underline mechanism itself (in
 /// PyramidPainting/Pyramid3D) is genuinely unit/widget-tested.
 void main() {
-  group('D-152: an editable pyramid underlines its labels; a view-only '
+  group('D-125: an editable pyramid underlines its labels; a view-only '
       'one does not', () {
     test('paintReadableLabel takes an underline flag, off by default', () {
       final source =
@@ -54,7 +54,7 @@ void main() {
     });
   });
 
-  group('D-152: the edit screen is centered like the main screen', () {
+  group('D-125: the edit screen is centered like the main screen', () {
     test('editpyramid.dart wraps its content in Align(topCenter) — found '
         'live, a bare Column shrink-wraps to its widest child and, with '
         'nothing centering the column itself, renders flush left instead '
@@ -64,7 +64,7 @@ void main() {
     });
   });
 
-  group('D-152: the edit screen uses the same rotating-photo background '
+  group('D-125: the edit screen uses the same rotating-photo background '
       'as the first screen (WelcomeScreen), not a plain background', () {
     test('editpyramid.dart wraps its content in OnboardingBackdrop', () {
       final source = File('lib/screens/editpyramid.dart').readAsStringSync();

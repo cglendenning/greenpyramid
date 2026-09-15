@@ -11,7 +11,7 @@ import 'package:life_ops/services/db.dart';
 import 'package:life_ops/services/notification.dart';
 import 'package:life_ops/services/utils.dart';
 
-/// D-123 Phase 2: drag a habit onto a time to give it a recurring
+/// D-098 Phase 2: drag a habit onto a time to give it a recurring
 /// scheduled time, backed by a real native-calendar event. A direct port
 /// of Kansei's `calendar_proposal_screen.dart` — the landscape, 7-day
 /// week grid, the aqua draggable event box, the same long-press-to-pick-
@@ -43,7 +43,7 @@ const Color _sumiBlack = Color(0xFF1a1714);
 const Color _aqua = Color(0xFF4FC3C8);
 const Color _washiCream = Color(0xFFf4ede0);
 const Color _bengaraRed = Color(0xFFa8453a);
-// D-123 Phase 2: found live — the drag hint's default snack bar text was
+// D-098 Phase 2: found live — the drag hint's default snack bar text was
 // almost illegible against a dark background. A vivid green against the
 // near-black snack bar background gives the strongest legible contrast.
 const Color _hintGreen = Color(0xFF4ADE80);
@@ -59,7 +59,7 @@ const int _dayCount = 7;
 double _timeToY(int hour, int minute) =>
     ((hour - _startHour) + minute / 60.0) * _hourH;
 
-/// D-123 Phase 2: converts a raw vertical drop offset (grid-local pixels)
+/// D-098 Phase 2: converts a raw vertical drop offset (grid-local pixels)
 /// into an hour/minute snapped to the nearest 15 minutes and clamped so
 /// the habit's whole duration fits within the visible day — pure so the
 /// snap math is testable without simulating a live drag gesture.
@@ -77,7 +77,7 @@ double _timeToY(int hour, int minute) =>
   return (startHour + clamped ~/ 60, clamped % 60);
 }
 
-/// D-123 Phase 2: half-open interval overlap — the collision test behind
+/// D-098 Phase 2: half-open interval overlap — the collision test behind
 /// both the calendar-write guard and the drop-rejection haptic. Pure.
 bool intervalsOverlap(
         DateTime aStart, DateTime aEnd, DateTime bStart, DateTime bEnd) =>
@@ -110,7 +110,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
     ]);
   }
 
-  // D-176: on iOS, the home indicator (the bottom "little white bar") sits
+  // D-136: on iOS, the home indicator (the bottom "little white bar") sits
   // directly over this screen's bottom row of habit-tap targets in
   // landscape, and a tap that lands on it is captured by the OS as the
   // start of the swipe-up-to-home gesture instead of reaching this
@@ -194,7 +194,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
 
   bool _dragHintShown = false;
 
-  /// D-123 Phase 2: a couple of seconds' worth of instruction the instant
+  /// D-098 Phase 2: a couple of seconds' worth of instruction the instant
   /// the screen arrives, before permission is even checked — found live:
   /// a first-time user had no way to know the tray items at the bottom
   /// could be dragged up onto the calendar at all. Fired once from the
@@ -250,7 +250,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
     setState(() => _loading = true);
     final rows = await _dbHelper.queryAllTasks();
     var habits = rows.map((m) => HabitScheduleRow.fromMap(m, _utils)).toList();
-    // D-163: the local scheduledtime/scheduledeventid columns are only a
+    // D-131: the local scheduledtime/scheduledeventid columns are only a
     // cache of the last write this app made — reconcile against the
     // calendar's actual current state every time this screen loads,
     // rather than trusting that cache as ground truth.
@@ -272,7 +272,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
     });
   }
 
-  /// D-163: found live — owner: "if I remove an item from the native
+  /// D-131: found live — owner: "if I remove an item from the native
   /// calendar after adding it there through Green Pyramid, that removal
   /// is not reflected within Green Pyramid the next time that the
   /// schedule is opened. So for the week that is being displayed, Green
@@ -314,7 +314,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
   bool _sameDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
 
-  /// D-123 Phase 2: a scheduled habit's time is shared across every day
+  /// D-098 Phase 2: a scheduled habit's time is shared across every day
   /// it's active on (rescheduling moves the whole recurring series at
   /// once), so a collision has to be checked on every one of those days,
   /// not just the day column the drag was dropped into.
@@ -411,7 +411,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
         DatabaseHelper.columnScheduledTime: timeStr,
         DatabaseHelper.columnScheduledCalendarEventId: eventId,
       });
-      // D-124 Phase 3: the local "starting soon" reminder, kept in sync
+      // D-099 Phase 3: the local "starting soon" reminder, kept in sync
       // with the calendar write above rather than a separate step the
       // user could forget or that could drift out of sync.
       await _localNotificationService.scheduleHabitReminders(
@@ -462,7 +462,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
       DatabaseHelper.columnScheduledTime: null,
       DatabaseHelper.columnScheduledCalendarEventId: null,
     });
-    // D-124 Phase 3: no time, no reminder.
+    // D-099 Phase 3: no time, no reminder.
     await _localNotificationService.cancelHabitReminders(habit.id);
     await _loadAll();
   }
@@ -472,7 +472,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // D-128: this screen is always landscape (see _lockLandscape above) and
+    // D-103: this screen is always landscape (see _lockLandscape above) and
     // the habit tray (_tray, a horizontal ListView.builder) sits right at
     // the bottom where a swipe near the left edge to scroll it collided
     // with iOS's edge-swipe-back gesture / Android's predictive back,
@@ -879,7 +879,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: GestureDetector(
-              // D-123: tap to set a duration before dragging — a plain
+              // D-098: tap to set a duration before dragging — a plain
               // tap coexists fine with LongPressDraggable's own long-press
               // recognizer below (different gesture types, so Flutter's
               // gesture arena never has to arbitrate between them).
@@ -941,7 +941,7 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
 
   static const List<int> _durationChoicesMinutes = [10, 15, 20, 30, 45, 60, 90];
 
-  /// D-123: lets a habit's scheduled-event duration be set before it's
+  /// D-098: lets a habit's scheduled-event duration be set before it's
   /// dragged onto the calendar — persists to the habit's own row
   /// (survives an unschedule/reschedule cycle, since duration lives on
   /// the habit, not on any one drag) but does NOT itself write anything
@@ -1072,7 +1072,7 @@ class HabitScheduleRow {
     );
   }
 
-  /// D-163: a copy with no scheduled time or event — used when
+  /// D-131: a copy with no scheduled time or event — used when
   /// reconciling against the native calendar finds this habit's own
   /// event has been deleted outside the app. Mirrors exactly what
   /// `_confirmUnschedule`'s own database update clears: the duration is
@@ -1126,7 +1126,7 @@ class HabitScheduleRow {
     return (hour, minute);
   }
 
-  /// D-124 Phase 3: this habit's active days as `DateTime.monday..sunday`
+  /// D-099 Phase 3: this habit's active days as `DateTime.monday..sunday`
   /// ints, for `LocalNotificationService.scheduleHabitReminders`.
   List<int> get activeDartWeekdays => [
         if (monday) DateTime.monday,

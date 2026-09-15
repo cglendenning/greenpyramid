@@ -12,7 +12,7 @@ import 'package:http/http.dart' as http;
 
 import 'db.dart';
 
-/// D-044/D-188/D-045/D-071: requests and caches the server-authoritative
+/// D-044/D-148/D-045/D-055: requests and caches the server-authoritative
 /// trial/subscription state. `functions/lib/device_trial.js` and
 /// `functions/lib/entitlement.js` are the actual source of truth — this
 /// class only asks for a grant and mirrors the answer into the local
@@ -36,7 +36,7 @@ class EntitlementService {
   // in a unit test with no Firebase app initialized, and many existing
   // tests construct this service without ever needing auth at all (e.g.
   // pullFromServer's own tests) — same lazy-getter fix already applied
-  // to AccountLinkService's SyncService dependency (D-187) for the
+  // to AccountLinkService's SyncService dependency (D-147) for the
   // identical reason.
   FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
 
@@ -91,7 +91,7 @@ class EntitlementService {
   /// changes to `app-store` or `ad-hoc` for real distribution.**
   static const bool _isDeviceCheckDevelopmentEnvironment = true;
 
-  /// D-188: called once, right at setup completion — the clock starts at
+  /// D-148: called once, right at setup completion — the clock starts at
   /// the pyramid reveal, not at install. Never throws past this point, only
   /// logs: a network hiccup here must not block the completion screen, and
   /// the account simply stays pre_trial until the next opportunity.
@@ -126,7 +126,7 @@ class EntitlementService {
     }
   }
 
-  /// D-071: the one-time 30-day grant for existing (pre-R8) users. Callers
+  /// D-055: the one-time 30-day grant for existing (pre-R8) users. Callers
   /// only invoke this when the pulled server entitlement is still
   /// 'pre_trial' on a setup-complete account (main.dart's bootstrap) — the
   /// backend re-checks this itself anyway, so a spurious call is harmless.
@@ -143,7 +143,7 @@ class EntitlementService {
   /// RevenueCat webhook never touches this device directly, so this is how
   /// it reaches the local gate that CouncilCategoryPicker reads.
   ///
-  /// D-116: returns whether a real server entitlement was found and
+  /// D-091: returns whether a real server entitlement was found and
   /// applied — `main.dart`'s bootstrap uses this, not the local cache, to
   /// decide whether a trial grant needs retrying. The local cache is
   /// exactly the wrong signal for that decision: it never changes when
@@ -182,7 +182,7 @@ class EntitlementService {
   /// in Firestore and get pulled back down on the next launch.
   Future<void> markSubscribedLocally() => _db.setAccountEntitlement(entitlement: 'subscribed');
 
-  /// D-182 (amended): the single shared gate (`ensureEntitled`, and
+  /// D-142 (amended): the single shared gate (`ensureEntitled`, and
   /// through it every screen that calls it) now self-heals against
   /// Firestore before trusting the local cache — found live, the local
   /// `account_state.entitlement` column is otherwise refreshed only at
@@ -201,7 +201,7 @@ class EntitlementService {
     return entitlement == 'trialing' || entitlement == 'subscribed';
   }
 
-  /// D-115: the raw local entitlement string — 'trialing', 'subscribed',
+  /// D-090: the raw local entitlement string — 'trialing', 'subscribed',
   /// 'lapsed', or 'pre_trial' — for a caller that needs to *display* the
   /// account's state (the settings screen's subscription panel copy),
   /// not gate a feature on it. [isEntitled] remains the gate; keeping the

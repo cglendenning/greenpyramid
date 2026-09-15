@@ -1,6 +1,6 @@
 import 'dart:math';
 
-// D-090: ambient background imagery, ported from Kansei
+// D-074: ambient background imagery, ported from Kansei
 // (goal-executor/lib/utils/stock_images.dart) for the welcome screen's
 // rotating backdrop. randomStockImage() is unused today but ported
 // alongside the list since it's the same file Kansei draws it from.

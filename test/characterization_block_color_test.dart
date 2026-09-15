@@ -21,7 +21,7 @@ void main() {
       expect(setColor(-1), blue);
     });
 
-    test('D-183: a category with tasks defined but none due in the '
+    test('D-143: a category with tasks defined but none due in the '
         'current window is green, not blue — owner: "whenever there is '
         'a category that has no tasks for that day, the default for the '
         'block should be green"', () {
@@ -50,7 +50,7 @@ void main() {
       expect(setColor(101), blue);
     });
 
-    test('D-017/D-183: exactly four distinct colors across the whole '
+    test('D-017/D-143: exactly four distinct colors across the whole '
         'range, -2 included', () {
       final distinct = <Color>{};
       for (var pct = -2; pct <= 101; pct++) {

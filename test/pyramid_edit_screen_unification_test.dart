@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-151: the pyramid edit screen used to run six flat, old, separate
+/// D-123: the pyramid edit screen used to run six flat, old, separate
 /// CustomPainters (`DrawCat1`..`DrawCat6`) nobody migrated when the main
 /// pyramid screen was rebuilt on the real 3D `Pyramid3D` widget — found
 /// live, five times over, the owner escalating each time: "The labels on
@@ -23,7 +23,7 @@ void main() {
   final homescreenSource =
       File('lib/screens/homescreen.dart').readAsStringSync();
 
-  group('D-151: the old, separate flat-painter pipeline is gone', () {
+  group('D-123: the old, separate flat-painter pipeline is gone', () {
     test('editpyramid.dart no longer defines or uses DrawCat1..DrawCat6, '
         'or the on/off color-toggle state that existed only to give them '
         'tap feedback', () {
@@ -41,7 +41,7 @@ void main() {
     });
   });
 
-  group('D-151: both screens render the exact same shared widget', () {
+  group('D-123: both screens render the exact same shared widget', () {
     test('editpyramid.dart renders PyramidStack', () {
       expect(editPyramidSource, contains('PyramidStack('));
     });
@@ -55,7 +55,7 @@ void main() {
     });
   });
 
-  group('D-151: tapping a block still opens the rename/essence editor, '
+  group('D-123: tapping a block still opens the rename/essence editor, '
       'and the underlying data actually refreshes afterward', () {
     test('EditPyramid wires PyramidStack\'s onCategoryTap to '
         'showEditDialog, mapping the 0-5 index to a 1-6 category id', () {

@@ -37,7 +37,7 @@ void main() {
     });
 
     testWidgets(
-        'D-107: the pulse actually animates in the normal (motion-enabled) '
+        'D-072: the pulse actually animates in the normal (motion-enabled) '
         'case — regression test for a defect found live in TypingIndicator\'s '
         'copy of this exact pattern: "reduceMotion == _reduceMotion" as the '
         'sole didChangeDependencies guard meant the very first call — the '

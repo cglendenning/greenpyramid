@@ -12,9 +12,9 @@ import 'model_output_guard.dart';
 import 'package:sqflite/sqflite.dart';
 
 /// D-032: orchestrates the single continuous setup conversation — one
-/// `setup`-typed [BoardSession] (D-188) that produces six tiered
+/// `setup`-typed [BoardSession] (D-148) that produces six tiered
 /// categories (D-038), habits per category (D-039), three foundational
-/// essences (D-007/D-185), and the closing vision statement (D-042). The
+/// essences (D-007/D-145), and the closing vision statement (D-042). The
 /// screen calls these methods and renders state; no SQL or prompt
 /// construction lives in the screen (D-024).
 class SetupService {
@@ -97,7 +97,7 @@ class SetupService {
   }
 
   /// D-038: derives the six tiered categories from the transcript so far.
-  /// D-093: [existingCategories], non-null, requests a refinement of that
+  /// D-077: [existingCategories], non-null, requests a refinement of that
   /// proposal ("not quite right") rather than a fresh derivation.
   Future<List<CategoryProposal>> proposeCategories(BoardSession session,
       {List<CategoryProposal>? existingCategories}) {
@@ -110,7 +110,7 @@ class SetupService {
     );
   }
 
-  /// D-039/D-103: proposes 1 to [maxAllowed] habits for one category
+  /// D-039/D-068: proposes 1 to [maxAllowed] habits for one category
   /// (never more than 3). [essence] is null for a category with none yet
   /// (D-008) — the prompt degrades to name-only without inventing a
   /// reason. [maxAllowed] is the caller's cross-category budget, keeping
@@ -132,7 +132,7 @@ class SetupService {
     );
   }
 
-  /// D-118: the vision statement, written once, right after the opening
+  /// D-093: the vision statement, written once, right after the opening
   /// conversation concludes — before categories, essences, or habits
   /// exist. Reverses D-042's original "generated at the close of setup,
   /// from essences and the full transcript" timing: the owner's explicit
@@ -158,7 +158,7 @@ class SetupService {
 
   /// D-038: commits the derived pyramid — category id and position both
   /// equal the proposal's position (1-6), matching the app's existing
-  /// convention on a fresh install; D-084's rename-safety uses the id, not
+  /// convention on a fresh install; D-059's rename-safety uses the id, not
   /// the position, once the user later renames one.
   Future<void> commitCategories(List<CategoryProposal> categories) async {
     final now = DateTime.now().toIso8601String();
@@ -194,7 +194,7 @@ class SetupService {
     }
   }
 
-  /// D-007/D-185: commits a foundational category's captured essence.
+  /// D-007/D-145: commits a foundational category's captured essence.
   Future<void> commitEssence({
     required int categoryId,
     required String essence,
@@ -206,28 +206,6 @@ class SetupService {
       sourceSessionId: sessionId,
     );
   }
-
-  /// D-036: derives and commits domain findings for one foundational
-  /// category's conversation, at the moment its essence is accepted. Never
-  /// throws past this point — advisory, never required (D-188). D-100:
-  /// delegates to `CouncilService.recordDomainFindings`, the single shared
-  /// implementation (also used by `CouncilScreen` and the general Council
-  /// conversation) — this stays only as the setup-specific entry point
-  /// callers already use.
-  Future<void> recordDomainFindings({
-    required BoardSession session,
-    required int categoryId,
-    required String categoryName,
-    required String essence,
-    required bool isSetup,
-  }) =>
-      _council.recordDomainFindings(
-        session: session,
-        isSetup: isSetup,
-        categoryId: categoryId,
-        categoryName: categoryName,
-        essence: essence,
-      );
 
   static String? validateCategories(List<CategoryProposal> categories) {
     if (categories.length != 6 ||
@@ -338,7 +316,7 @@ class SetupService {
   Future<void> acknowledgeCompletion(BoardSession session) =>
       _client.completeSetup(session.sessionId);
 
-  /// Pushes everything setup just wrote to Firestore (D-187) in one pass,
+  /// Pushes everything setup just wrote to Firestore (D-147) in one pass,
   /// same as any other profile change — the account bootstrap in
   /// main.dart already guarantees a signed-in uid by the time setup runs.
   Future<void> syncAfterSetup() async {
@@ -348,7 +326,7 @@ class SetupService {
   }
 }
 
-/// D-188/D-187: thrown by [SetupService.startOrResumeSetup] whenever setup
+/// D-148/D-147: thrown by [SetupService.startOrResumeSetup] whenever setup
 /// has nothing left to do for this account — either this device already
 /// had a real local pyramid and the account already completed a setup
 /// session (re-entering setup, e.g. the home screen's menu item, must not

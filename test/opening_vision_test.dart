@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-118: the vision statement moves to right after the opening
+/// D-093: the vision statement moves to right after the opening
 /// conversation concludes, shown on its own screen before the tier
 /// explainer/categories, with a fixed "I'm the kind of person that"
 /// opener — structural, matching this repo's convention for
@@ -12,7 +12,7 @@ void main() {
   final source = File('lib/screens/setup_screen.dart').readAsStringSync();
 
   test(
-      'D-118: the real conclusion of the opening conversation (never a '
+      'D-093: the real conclusion of the opening conversation (never a '
       'refinement round) routes through _Phase.openingVision before the '
       'tier explainer/categories', () {
     final start = source.indexOf(
@@ -28,7 +28,7 @@ void main() {
   });
 
   test(
-      'D-118: a refinement round\'s conclusion (priorCategories non-null) '
+      'D-093: a refinement round\'s conclusion (priorCategories non-null) '
       'is unaffected — straight to the tier explainer/categories, no '
       'second vision-statement moment', () {
     final start = source.indexOf('Future<void> _proceedFromReadyToBuild(');
@@ -44,9 +44,9 @@ void main() {
   });
 
   test(
-      'D-118: the opening-vision screen\'s own Next fires the category '
+      'D-093: the opening-vision screen\'s own Next fires the category '
       'derivation and advances into the tier explainer (or straight to '
-      'categories if already shown this session, matching D-117)', () {
+      'categories if already shown this session, matching D-092)', () {
     final start = source.indexOf('Future<void> _proceedFromOpeningVision()');
     expect(start, greaterThan(-1));
     final end = source.indexOf('\n  }', start);
@@ -59,9 +59,9 @@ void main() {
   });
 
   test(
-      'D-118: the opening-vision screen shows a real loading state while '
+      'D-093: the opening-vision screen shows a real loading state while '
       'generation is in flight, and uses the shared OnboardingStyles type '
-      'scale once it has the statement, matching D-102/D-117\'s '
+      'scale once it has the statement, matching D-067/D-092\'s '
       'precedent', () {
     final start = source.indexOf('Widget _buildOpeningVision()');
     expect(start, greaterThan(-1));
@@ -77,7 +77,7 @@ void main() {
   });
 
   test(
-      'D-118: the setup-completion flow no longer generates a second '
+      'D-093: the setup-completion flow no longer generates a second '
       'vision statement — closeSynthesis is gone, replaced by directly '
       'ending the session, since deriveOpeningVisionStatement already '
       'wrote the one and only vision statement earlier in the same '
@@ -92,7 +92,7 @@ void main() {
   });
 
   test(
-      'D-118: the tier-intro screen now also explains why the hierarchy '
+      'D-093: the tier-intro screen now also explains why the hierarchy '
       'matters for habits — a foundational miss carries more weight than '
       'a peak one (D-018), not just what the three tiers are named', () {
     final start = source.indexOf('Widget _buildTierIntro()');

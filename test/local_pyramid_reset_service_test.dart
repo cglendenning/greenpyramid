@@ -18,7 +18,7 @@ class _TempPathProvider extends PathProviderPlatform with MockPlatformInterfaceM
   Future<String?> getApplicationDocumentsPath() async => dir;
 }
 
-/// D-132: the destructive "start fresh" piece of sign-out — wipes the
+/// D-105: the destructive "start fresh" piece of sign-out — wipes the
 /// local pyramid and re-seeds the exact placeholder state a genuinely
 /// fresh install starts in.
 void main() {
@@ -44,7 +44,7 @@ void main() {
   });
 
   test(
-      'D-132: wipeLocalPyramid deletes every real category/task/essence/log '
+      'D-105: wipeLocalPyramid deletes every real category/task/essence/log '
       'row and re-seeds the six "EmptyN" placeholders a fresh install '
       'starts with', () async {
     await db.insertCategory({
@@ -77,7 +77,7 @@ void main() {
   });
 
   test(
-      'D-132: wipeLocalPyramid never touches demo tables — this must '
+      'D-105: wipeLocalPyramid never touches demo tables — this must '
       'always wipe the real pyramid regardless of Demo Mode state',
       () async {
     DatabaseHelper.toggleDemoMode();
@@ -99,7 +99,7 @@ void main() {
   });
 
   test(
-      'D-179: wipeLocalPyramid leaves account_state with its single row '
+      'D-139: wipeLocalPyramid leaves account_state with its single row '
       'intact — found live: deleting it without re-inserting left the '
       'very next getAccountState() call anywhere in the app throwing '
       '"Bad state: No element," surfacing as "Something went wrong '

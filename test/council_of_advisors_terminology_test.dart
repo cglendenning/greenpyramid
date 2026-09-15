@@ -2,14 +2,14 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-121: the essence-intro screen introduces the Council of Advisors —
+/// D-096: the essence-intro screen introduces the Council of Advisors —
 /// who they are, with portraits and personalities — before the term is
 /// used anywhere else in setup, and every user-facing "Council" mention
 /// throughout the app says "Council of Advisors." Structural, matching
 /// this repo's convention for setup_screen.dart and the other
 /// live-singleton screens this change touches.
 void main() {
-  group('D-121: the essence-intro screen introduces the Council of '
+  group('D-096: the essence-intro screen introduces the Council of '
       'Advisors before using the term', () {
     final source = File('lib/screens/setup_screen.dart').readAsStringSync();
     final start = source.indexOf('Widget _buildEssenceIntro()');
@@ -32,7 +32,7 @@ void main() {
 
     test(
         'no longer misattributes the essence-deepening questions to "the '
-        'Council" — D-106 already established essence-deepening always '
+        'Council" — D-071 already established essence-deepening always '
         'speaks as Mira alone, so the intro screen must say so too',
         () {
       expect(body, isNot(contains('The Council will ask')));
@@ -45,7 +45,7 @@ void main() {
   });
 
   test(
-      'D-121: every user-facing "the/The Council" mention in setup_screen '
+      'D-096: every user-facing "the/The Council" mention in setup_screen '
       'says "Council of Advisors" — regression test for the owner\'s '
       'report that "Council" appeared unexplained before this screen '
       'introduced it', () {
@@ -78,7 +78,7 @@ void main() {
   });
 
   test(
-      'D-121: the general Council screen\'s own title says "Council of '
+      'D-096: the general Council screen\'s own title says "Council of '
       'Advisors"', () {
     final source =
         File('lib/screens/general_council_screen.dart').readAsStringSync();
@@ -86,14 +86,14 @@ void main() {
   });
 
   test(
-      'D-121: the home screen\'s menu item and paywall reason both say '
+      'D-096: the home screen\'s menu item and paywall reason both say '
       '"Council of Advisors"', () {
     final source = File('lib/screens/homescreen.dart').readAsStringSync();
     expect(source, contains('Talk to the Council of Advisors'));
   });
 
   test(
-      'D-121: settings.dart\'s two Council mentions (category '
+      'D-096: settings.dart\'s two Council mentions (category '
       're-clarification, calendar access) both say "Council of Advisors"',
       () {
     final source = File('lib/screens/settings.dart').readAsStringSync();
@@ -102,7 +102,7 @@ void main() {
   });
 
   test(
-      'D-121: the lapsed-notification pool\'s Council mentions say '
+      'D-096: the lapsed-notification pool\'s Council mentions say '
       '"Council of Advisors" — this copy is quoted verbatim in the spec '
       '(D-049) and must match', () {
     final source =

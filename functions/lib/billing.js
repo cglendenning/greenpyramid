@@ -1,18 +1,18 @@
-// D-087: per-account spend cap, server-enforced. Ported and adapted from
+// D-061: per-account spend cap, server-enforced. Ported and adapted from
 // Kansei's backend/src/utils/billing.js — same shape (checkBillingLimit /
 // recordCost against a Firestore-backed running total), adapted for a
-// recurring monthly cap (D-087) rather than a lifetime free-tier ceiling.
+// recurring monthly cap (D-061) rather than a lifetime free-tier ceiling.
 import admin from 'firebase-admin';
 
-// D-087: the default cap for both trialing and subscribed accounts,
+// D-061: the default cap for both trialing and subscribed accounts,
 // resetting monthly. Editable per-account directly on the account's
 // Firestore profile document (an operator override, not client-exposed) —
 // that's what lets a specific account's cap be raised without a code change.
 export const DEFAULT_SPEND_CAP_USD = 5.0;
 
-// D-185: published per-token rates (USD), used to compute real cost from
+// D-145: published per-token rates (USD), used to compute real cost from
 // actual usage — never estimated. All three tiers are priced here since
-// D-185's model is now switchable at runtime (config/council) — a rate
+// D-145's model is now switchable at runtime (config/council) — a rate
 // missing for whichever model is actually selected would silently record
 // zero cost for every call.
 export const MODEL_RATES = {

@@ -19,7 +19,7 @@ import 'package:life_ops/services/entitlement_gate.dart';
 import 'package:life_ops/services/sync_service.dart';
 import 'package:life_ops/screens/paywall_screen.dart';
 
-/// D-178: revamped per the owner's own request — "Re-vamp the profile
+/// D-138: revamped per the owner's own request — "Re-vamp the profile
 /// screen to contain our standard multi-photo rotation of the 20 photos
 /// and to look beautiful," plus new fields for first name, a local
 /// photo, email, and phone ("any other info they want to store"),
@@ -29,7 +29,7 @@ import 'package:life_ops/screens/paywall_screen.dart';
 /// 20-photo treatment every other onboarding-family screen already
 /// uses — replacing this screen's own private 4-image rotation.
 ///
-/// D-114: both AI features on this screen — regenerating the vision
+/// D-089: both AI features on this screen — regenerating the vision
 /// statement and the 30-day progress analysis — are Claude-backed via
 /// [ProfileService], gated by D-014's entitlement check like every other
 /// non-setup AI surface. Neither is free, matching how the rest of the
@@ -54,7 +54,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool isReviewing = false;
   String? visionError;
 
-  // D-114: generation is now an explicit action, not fired automatically
+  // D-089: generation is now an explicit action, not fired automatically
   // on screen open — the legacy version called the AI unconditionally
   // every time this screen was opened, which is both a paywall surprise
   // for an unentitled account and an unnecessary spend for an entitled
@@ -63,7 +63,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool isLoadingAnalysis = false;
   String? analysisError;
 
-  // D-178/D-181: personal info — pure reference fields, no functional
+  // D-138/D-141: personal info — pure reference fields, no functional
   // behavior. Owner: "it was a little unclear whether or not I needed to
   // hit save" — nothing here persists until the explicit Save button is
   // tapped, including a picked/removed photo, which is held as pending
@@ -117,7 +117,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  /// D-181: picking/removing a photo only ever changes pending, in-memory
+  /// D-141: picking/removing a photo only ever changes pending, in-memory
   /// state — the picked file itself is left in image_picker's own temp
   /// location (rendered directly for preview) and copied into the app's
   /// documents directory only once Save is actually tapped, matching the
@@ -139,7 +139,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
   }
 
-  /// D-181: the one and only place any of this screen's personal-info
+  /// D-141: the one and only place any of this screen's personal-info
   /// state is actually written — owner: "it was a little unclear whether
   /// or not I needed to hit save... make sure that the photo and the
   /// phone number and information gets persisted when save is clicked."
@@ -186,7 +186,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (mounted) setState(() => visionStatement = vision);
   }
 
-  /// D-114: found live — this screen's local entitlement cache can say
+  /// D-089: found live — this screen's local entitlement cache can say
   /// "trialing"/"subscribed" while the server's own record (Firestore's
   /// `users/{uid}/profile/main`) disagrees, so [_ensureEntitled] passes
   /// and the backend still refuses with 402
@@ -479,12 +479,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   if (!_loadingAccountInfo) ...[
                     const SizedBox(height: 14),
-                    // D-181: owner — "it was a little unclear whether or
+                    // D-141: owner — "it was a little unclear whether or
                     // not I needed to hit save... if I remember correctly,
                     // we only store this on the local device" — worth
                     // stating exactly, since that's only true of the
                     // photo; name/email/phone actually do sync to the
-                    // account (D-178), matching everything else in the
+                    // account (D-138), matching everything else in the
                     // app that treats Firestore as the source of truth.
                     const Text(
                       'Your first name, email, and phone are saved to your '
@@ -626,7 +626,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-/// D-181: owner — "auto format the phone number into area code and then
+/// D-141: owner — "auto format the phone number into area code and then
 /// hyphenated digits." Formats up to 10 digits as `(XXX) XXX-XXXX` as the
 /// user types; the cursor is always pinned to the end, a deliberate
 /// simplification for a plain reference field with no functional

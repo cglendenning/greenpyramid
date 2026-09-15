@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:uuid/uuid.dart';
 
 import '../models/board_session.dart';
@@ -10,7 +9,7 @@ import 'ai_guard.dart';
 import 'council_client.dart';
 import 'db.dart';
 
-/// D-185/D-188: orchestrates Council sessions, ported from Kansei's
+/// D-145/D-148: orchestrates Council sessions, ported from Kansei's
 /// `BoardService`. Sessions live flat under `users/{uid}/councilSessions`
 /// (IV-D) rather than nested per-goal — this is what resolves II-K
 /// mismatches 1 and 3 (persistence and scope) for Green Pyramid.
@@ -30,7 +29,7 @@ class CouncilService {
   final FirebaseFirestore _db;
   final FirebaseAuth _auth;
   final CouncilClient _client;
-  // D-100: local SQLite, not Firestore — named distinctly from _db (which
+  // D-082: local SQLite, not Firestore — named distinctly from _db (which
   // is Firestore here, unlike most other services where _db means
   // DatabaseHelper) to keep the two unambiguous in this file.
   final DatabaseHelper _localDb;
@@ -45,7 +44,7 @@ class CouncilService {
   CollectionReference<Map<String, dynamic>> get _sessionsCol =>
       _db.collection('users').doc(_uid).collection('councilSessions');
 
-  /// D-188: exactly one `setup` session may exist per account, ever. Callers
+  /// D-148: exactly one `setup` session may exist per account, ever. Callers
   /// check this before offering setup — a second attempt is a `category`
   /// session or is refused, never a second `setup` session.
   Future<bool> hasEverCreatedSetupSession() async {
@@ -120,11 +119,11 @@ class CouncilService {
 
   /// Calls the backend for one advisor turn, persists the message, and
   /// returns it. [categoryName], [categoryTier], and [priorEssence] are the
-  /// category-scoped context D-185 requires; sanitized the same way any
+  /// category-scoped context D-145 requires; sanitized the same way any
   /// user-derived text reaches a prompt (D-004).
   ///
-  /// D-095: [pyramidContext], non-null, is the general Council chat's
-  /// (D-091) whole-pyramid grounding — when present, the backend ignores
+  /// D-079: [pyramidContext], non-null, is the general Council chat's
+  /// (D-075) whole-pyramid grounding — when present, the backend ignores
   /// the category-scoped fields above entirely and uses the pyramid-aware
   /// prompt instead.
   Future<BoardMessage?> runAdvisorTurn({
@@ -134,7 +133,7 @@ class CouncilService {
     int? categoryTier,
     String? priorEssence,
     List<Map<String, dynamic>>? pyramidContext,
-    // D-108: overrides the default "the whole session so far" history.
+    // D-073: overrides the default "the whole session so far" history.
     // Needed because essence-deepening (D-007 step 3) shares one session
     // across all three foundational categories (D-032) — session.messages
     // for category 2's kickoff call already contains category 1's entire
@@ -148,11 +147,11 @@ class CouncilService {
     await AiGuard.instance.acquire();
 
     final sliderValue = session.sliderSettings[advisorKey] ?? 0.5;
-    // D-015/D-188: a setup-typed session is free, bounded by call count —
-    // never charged against D-087's dollar cap. Derived from the session
+    // D-015/D-148: a setup-typed session is free, bounded by call count —
+    // never charged against D-061's dollar cap. Derived from the session
     // itself so callers can't get this wrong.
     final isSetup = session.type == BoardSessionType.setup;
-    // D-178: real for post-setup category re-clarification and the
+    // D-138: real for post-setup category re-clarification and the
     // general Council chat; still absent during setup-time essence-
     // deepening (this same method's other use), since the first-name
     // screen hasn't run yet at that point — the backend prompt degrades
@@ -176,11 +175,13 @@ class CouncilService {
       sessionId: session.sessionId,
       pyramidContext: pyramidContext
           ?.map((c) => {
-                'name': AiGuard.sanitizeField(c['name'] as String, maxChars: 24),
+                'name':
+                    AiGuard.sanitizeField(c['name'] as String, maxChars: 24),
                 'tier': c['tier'] as String?,
                 'essence': (c['essence'] as String?) == null
                     ? null
-                    : AiGuard.sanitizeField(c['essence'] as String, maxChars: 300),
+                    : AiGuard.sanitizeField(c['essence'] as String,
+                        maxChars: 300),
               })
           .toList(),
       firstName: firstName,
@@ -197,76 +198,13 @@ class CouncilService {
     return msg;
   }
 
-  /// D-036/D-100: derives and commits domain findings for a Council
-  /// conversation. Advisory, never required (D-188) — never throws past
-  /// this point. Extracted here after this exact derive-then-insert
-  /// sequence had been copy-pasted twice already (`SetupService` and
-  /// `CouncilScreen`, both now delegate here) — a third copy for the
-  /// general Council conversation would have made it three.
-  ///
-  /// Two shapes, exactly one required: [categoryId]/[categoryName]/
-  /// [essence] for a single-category conversation (setup's foundational
-  /// capture, D-047's re-clarification); [pyramidContext] for the general
-  /// Council conversation (D-091), which spans the whole pyramid — each
-  /// returned finding is attributed to whichever category the model named,
-  /// resolved back to a real `categoryId` by matching against
-  /// [pyramidContext]'s own `name` field (from `queryPyramidSummary`). A
-  /// finding naming a category that doesn't match is dropped rather than
-  /// guessed at.
-  Future<void> recordDomainFindings({
-    required BoardSession session,
-    required bool isSetup,
-    int? categoryId,
-    String? categoryName,
-    String? essence,
-    List<Map<String, dynamic>>? pyramidContext,
-  }) async {
-    assert((categoryId != null && categoryName != null) != (pyramidContext != null),
-        'pass either categoryId+categoryName, or pyramidContext, never both or neither');
-    try {
-      final findings = await _client.deriveDomainFindings(
-        sessionId: session.sessionId,
-        categoryName: pyramidContext == null ? categoryName : null,
-        essence: pyramidContext == null ? essence : null,
-        pyramidContext: pyramidContext
-            ?.map((c) => {
-                  'name': c['name'] as String,
-                  'tier': c['tier'] as String?,
-                  'essence': c['essence'] as String?,
-                })
-            .toList(),
-        transcript: session.messages
-            .map((m) => {'advisor': m.advisorKey, 'text': m.text})
-            .toList(),
-        isSetup: isSetup,
-      );
-      for (final f in findings) {
-        final resolvedCategoryId = pyramidContext == null
-            ? categoryId!
-            : pyramidContext.firstWhere(
-                (c) => c['name'] == f.categoryName,
-                orElse: () => const {},
-              )['id'] as int?;
-        if (resolvedCategoryId == null) continue;
-        await _localDb.insertDomainFinding(
-          categoryId: resolvedCategoryId,
-          domain: f.domain,
-          note: AiGuard.sanitizeField(f.note, maxChars: 200),
-          sourceSessionId: session.sessionId,
-        );
-      }
-    } catch (e, st) {
-      debugPrint('CouncilService.recordDomainFindings failed: $e\n$st');
-    }
-  }
-
-  /// D-090: one turn of the solo setup conversation — Mira only, forced
+  /// D-074: one turn of the solo setup conversation — Mira only, forced
   /// through a tool call so her readiness to build the pyramid comes back
   /// as [readyToBuild] rather than something parsed out of free text.
   /// Returns the session with her reply already appended, since the caller
   /// needs both the updated transcript and the readiness flag together.
   ///
-  /// D-093: [existingCategories], non-null, means this is a refinement
+  /// D-077: [existingCategories], non-null, means this is a refinement
   /// round ("not quite right") rather than an original build — passed
   /// straight through so the backend frames the conversation accordingly.
   Future<({BoardSession session, bool readyToBuild})> runMiraSetupTurn(
@@ -295,7 +233,10 @@ class CouncilService {
     );
     await _appendMessage(session.sessionId, msg,
         inputTokens: result.inputTokens, outputTokens: result.outputTokens);
-    return (session: session.withMessage(msg), readyToBuild: result.readyToBuild);
+    return (
+      session: session.withMessage(msg),
+      readyToBuild: result.readyToBuild
+    );
   }
 
   /// Appends a user-typed message to the session — no API call, no token cost.
@@ -309,10 +250,10 @@ class CouncilService {
     return msg;
   }
 
-  /// D-093: appends a fixed, client-authored advisor line (e.g. the
+  /// D-077: appends a fixed, client-authored advisor line (e.g. the
   /// "what didn't feel right" refinement prompt) — no API call, no token
   /// cost, the same as [appendUserMessage] but attributed to an advisor.
-  /// Unlike D-067's opening line, this is persisted: the turn after it
+  /// Unlike D-052's opening line, this is persisted: the turn after it
   /// needs the real conversation history to show why the user's next
   /// reply is about what to refine, not a continuation of the original
   /// opening questions.
@@ -337,12 +278,16 @@ class CouncilService {
     await _db.runTransaction((tx) async {
       final snap = await tx.get(ref);
       final raw = (snap.data()?['messages'] as List<dynamic>?) ?? [];
-      if (raw.isNotEmpty && raw.last['advisorKey'] == msg.advisorKey && raw.last['text'] == msg.text) return;
+      if (raw.isNotEmpty &&
+          raw.last['advisorKey'] == msg.advisorKey &&
+          raw.last['text'] == msg.text) return;
       tx.update(ref, {
         'messages': [...raw, msg.toMap()],
         'lastUpdatedAt': Timestamp.fromDate(DateTime.now()),
-        if (inputTokens > 0) 'totalInputTokens': FieldValue.increment(inputTokens),
-        if (outputTokens > 0) 'totalOutputTokens': FieldValue.increment(outputTokens),
+        if (inputTokens > 0)
+          'totalInputTokens': FieldValue.increment(inputTokens),
+        if (outputTokens > 0)
+          'totalOutputTokens': FieldValue.increment(outputTokens),
       });
     });
   }
@@ -353,7 +298,7 @@ class CouncilService {
 }
 
 /// The fixed rotation pool — Green Pyramid does not port the per-advisor
-/// intensity slider UI (D-073), so this is the only place advisor keys are
+/// intensity slider UI (D-056), so this is the only place advisor keys are
 /// enumerated for session setup.
 class AdvisorRotation {
   static const keys = ['mira', 'kenji', 'noa', 'eli'];

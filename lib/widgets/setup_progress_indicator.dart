@@ -26,7 +26,7 @@ class _SetupProgressIndicatorState extends State<SetupProgressIndicator>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulse;
   bool _reduceMotion = false;
-  // D-107: found live in TypingIndicator's copy of this exact pattern —
+  // D-072: found live in TypingIndicator's copy of this exact pattern —
   // "reduceMotion == _reduceMotion" as the sole guard means the very
   // first call, the overwhelmingly common case where the real MediaQuery
   // value is also false, short-circuits before ever calling

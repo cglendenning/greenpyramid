@@ -2,14 +2,14 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-115: the settings screen mirrors Kansei's (`goal-executor`) layout —
+/// D-090: the settings screen mirrors Kansei's (`goal-executor`) layout —
 /// sectioned cards, an entitlement-aware subscription panel, and a "send
 /// test notification" control — structural, matching this repo's
 /// convention for screens built on live plugins/singletons
 /// (RevenueCat's `Purchases`, `flutter_local_notifications`).
 void main() {
   test(
-      'D-115: the subscription panel branches through '
+      'D-090: the subscription panel branches through '
       'decideSubscriptionPanelState rather than assuming an active '
       'subscription — regression test for the reported bug: "when I '
       'clicked on update subscription, the subscription section doesn\'t '
@@ -22,7 +22,7 @@ void main() {
   });
 
   test(
-      'D-115: "Manage subscription" (the cancel flow) is gated behind '
+      'D-090: "Manage subscription" (the cancel flow) is gated behind '
       '_openManage, called only from the activeRenewing branch — not '
       'reachable from needsSubscription, which is what a trialing account '
       'actually hits', () {
@@ -40,13 +40,13 @@ void main() {
     expect(needsSubBranch, isNot(contains('CancelSubscriptionScreen')));
   });
 
-  test('D-115: a test notification can be sent from settings', () {
+  test('D-090: a test notification can be sent from settings', () {
     final source = File('lib/screens/settings.dart').readAsStringSync();
     expect(source, contains('isTestNotificationPending()'));
   });
 
   test(
-      'D-150: the settings test notification now uses a real newsfeed '
+      'D-122: the settings test notification now uses a real newsfeed '
       "item's own headline/body, not a generic message — owner: \"the "
       'button to send a test notification [should] behave the same way '
       "that it will have a headline of one of the news items and when "
@@ -59,8 +59,8 @@ void main() {
   });
 
   test(
-      'D-115: notification.dart\'s test notification no longer routes to '
-      'the deleted /morning, /afternoon, /evening screens (D-083) — '
+      'D-090: notification.dart\'s test notification no longer routes to '
+      'the deleted /morning, /afternoon, /evening screens (D-066) — '
       'regression test for the previous version\'s five-notification '
       'burst that would throw on tap since those routes no longer exist',
       () {
@@ -72,11 +72,11 @@ void main() {
   });
 
   test(
-      'D-115: homescreen.dart no longer unconditionally schedules the '
+      'D-090: homescreen.dart no longer unconditionally schedules the '
       'legacy morning/afternoon/evening local notifications on every '
       'build — found live while building this change: they routed to '
-      '/morning, /afternoon, /evening, screens D-083 already deleted, and '
-      'ran regardless of push authorization, duplicating the real D-189 '
+      '/morning, /afternoon, /evening, screens D-066 already deleted, and '
+      'ran regardless of push authorization, duplicating the real D-149 '
       'fallback push_messaging_service.dart already implements correctly',
       () {
     final source = File('lib/screens/homescreen.dart').readAsStringSync();
@@ -85,7 +85,7 @@ void main() {
     expect(source, isNot(contains("payload: '/evening'")));
   });
 
-  group('D-184: the real OS notification-permission state is checked and '
+  group('D-144: the real OS notification-permission state is checked and '
       'surfaced, not just whether a test notification was accepted for '
       'scheduling — found live: "Send test notification" showed '
       '"Pending…" and the notification never arrived, with no error '
@@ -143,7 +143,7 @@ void main() {
     });
   });
 
-  group('D-184: LocalNotificationService.areNotificationsEnabled() reads '
+  group('D-144: LocalNotificationService.areNotificationsEnabled() reads '
       'the real OS state per platform', () {
     final source = File('lib/services/notification.dart').readAsStringSync();
 

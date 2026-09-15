@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-138: structural regression test, not a full widget pump —
+/// D-110: structural regression test, not a full widget pump —
 /// HomeScreenWidget's initState() owns Firebase/DB/notification
 /// bootstrap end to end, which this suite doesn't mock. Same
 /// source-text-assertion pattern main_stale_session_test.dart already
-/// uses for D-137.
+/// uses for D-109.
 ///
 /// Found live: a genuine fresh install correctly showed WelcomeScreen
 /// ('/setup') first, then ~2-3 seconds later AccountCreationScreen
@@ -15,11 +15,11 @@ import 'package:flutter_test/flutter_test.dart';
 /// only `initialRoute`/`onGenerateRoute` set, Flutter's default initial
 /// route generation unconditionally mounts '/' (HomeScreenWidget, via
 /// `home`) underneath whatever `initialRoute` actually points to. The
-/// buried HomeScreenWidget still ran its own D-132 _enforceRealAccount
+/// buried HomeScreenWidget still ran its own D-105 _enforceRealAccount
 /// gate, which popped AccountCreationScreen once its signInSilently()
 /// call resolved.
 void main() {
-  test('D-138: launching straight into /setup must not also silently '
+  test('D-110: launching straight into /setup must not also silently '
       'mount HomeScreenWidget underneath it', () {
     final source = File('lib/screens/homescreen.dart').readAsStringSync();
 

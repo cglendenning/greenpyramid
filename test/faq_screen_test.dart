@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-160: found stale on a direct read-through — the FAQ still described
+/// D-128: found stale on a direct read-through — the FAQ still described
 /// the pre-Council "Coach," a manual multi-step setup wizard with
 /// day-of-week scheduling (moved out of setup by D-041), a 3-color legend
 /// missing the real 4th band (blue, no tasks defined), and said nothing
@@ -15,7 +15,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// this class of screen, so it isn't safely pumpWidget-testable without a
 /// live Firebase app.
 void main() {
-  test('D-160: no longer references the retired Coach feature, replaced '
+  test('D-128: no longer references the retired Coach feature, replaced '
       'everywhere by the Council of Advisors', () {
     final source = File('lib/screens/faq.dart').readAsStringSync();
     // Scoped to the faqItems list itself, not this file's own doc
@@ -28,7 +28,7 @@ void main() {
     expect(itemsSource, contains('Council of Advisors'));
   });
 
-  test('D-160: setup is described as a conversation with Mira, not a '
+  test('D-128: setup is described as a conversation with Mira, not a '
       'manual step list, and day-of-week scheduling is not claimed as '
       'part of setup (moved out of it by D-041)', () {
     final source = File('lib/screens/faq.dart').readAsStringSync();
@@ -36,7 +36,7 @@ void main() {
     expect(source, isNot(contains('days of the week each task')));
   });
 
-  test('D-160: the color legend names all four bands, including blue for '
+  test('D-128: the color legend names all four bands, including blue for '
       'a category with no habits defined yet', () {
     final source = File('lib/screens/faq.dart').readAsStringSync();
     final colorsIdx = source.indexOf('What do the colors mean?');
@@ -48,7 +48,7 @@ void main() {
     expect(answer, contains('Blue'));
   });
 
-  test('D-160: covers the account requirement, the trial/subscription '
+  test('D-128: covers the account requirement, the trial/subscription '
       'model, and the Newsfeed and Philosophy screens — none of which '
       'existed when this file was first written', () {
     final source = File('lib/screens/faq.dart').readAsStringSync();
@@ -58,7 +58,7 @@ void main() {
     expect(source, contains("Green Pyramid's philosophy"));
   });
 
-  test('D-160: every FAQItem has a non-empty question and answer', () {
+  test('D-128: every FAQItem has a non-empty question and answer', () {
     final source = File('lib/screens/faq.dart').readAsStringSync();
     final matches =
         RegExp(r'question:\s*"([^"]+)"').allMatches(source).toList();

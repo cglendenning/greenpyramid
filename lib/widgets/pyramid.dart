@@ -54,7 +54,7 @@ class _Pyramid extends State<Pyramid> {
 
     double pyramidWidth = MediaQuery.of(context).size.width * 0.87;
 
-    // D-131: text now sits over a full-bleed photo (was previously over a
+    // D-104: text now sits over a full-bleed photo (was previously over a
     // plain default background) — explicit light colors so it stays
     // legible against the scrim below.
     var mainTextStyle = const TextStyle(
@@ -73,7 +73,7 @@ class _Pyramid extends State<Pyramid> {
 
     return Stack(
       children: [
-        // D-131: the jungle background now fills the entire screen (was
+        // D-104: the jungle background now fills the entire screen (was
         // bounded to a small rounded card behind the pyramid). A gradient
         // scrim keeps the title/percent text and the segmented control
         // legible against the photo, same technique OnboardingBackdrop
@@ -221,7 +221,7 @@ class _Pyramid extends State<Pyramid> {
     );
   }
 
-  // D-131: the photo-real jungle clearing is now the whole screen's
+  // D-104: the photo-real jungle clearing is now the whole screen's
   // background (build()'s own Stack), not a card bounded to this widget —
   // this just centers the pyramid over it, no separate image of its own.
   Widget _jungleScene(double pyramidWidth, Widget pyramid) {

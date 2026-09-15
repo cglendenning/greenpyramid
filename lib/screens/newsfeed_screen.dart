@@ -12,14 +12,14 @@ import '../theme/app_colors.dart';
 import '../utils/stock_images.dart';
 import 'paywall_screen.dart';
 
-/// D-150: "create a newsfeed that is generated from the users own personal
+/// D-122: "create a newsfeed that is generated from the users own personal
 /// information ... so then in this newsfeed, they can scroll back as far
 /// as they want in their newsfeed and see previous items that have cropped
 /// up." A plain, always-growing, newest-first list — [_pageSize] items at
 /// a time, loading another page as the user nears the bottom, rather than
 /// one fixed window, so scrolling back is genuinely unbounded.
 ///
-/// D-150: [highlightDedupeKey], when set, is how a tapped notification
+/// D-122: [highlightDedupeKey], when set, is how a tapped notification
 /// gets here — "when you tap the notification, it will go directly to
 /// the newsfeed" (and land on the exact item the notification was
 /// about). This screen loads exactly as far into the feed as that item's
@@ -48,7 +48,7 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
   bool _initialLoad = true;
   String? _highlighted;
 
-  // D-150: the "Generate new analysis" control is hidden entirely for a
+  // D-122: the "Generate new analysis" control is hidden entirely for a
   // non-entitled account (the sample cards' own subscribe links are the
   // upsell surface, not a locked button) and shows/disables against
   // today's remaining on-demand allowance.
@@ -66,7 +66,7 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
     _loadEntitlementState();
   }
 
-  /// D-182: found live — the local `account_state.entitlement` cache can
+  /// D-142: found live — the local `account_state.entitlement` cache can
   /// sit stale indefinitely (it's only otherwise refreshed at app cold
   /// launch, or reactively after a 402 refusal elsewhere) while
   /// Firestore already has the true, current value — exactly what
@@ -138,7 +138,7 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
         if (mounted) setState(() => _highlighted = null);
       });
     } else {
-      // D-150: the AI-written daily article is generated in the
+      // D-122: the AI-written daily article is generated in the
       // background, never blocking the instant, on-device feed above —
       // it can take a few seconds. Skipped entirely when the screen was
       // opened to focus on one specific (older) item via a notification
@@ -161,7 +161,7 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
     });
   }
 
-  /// D-150: owner — "I also want subscribed users to be able to generate
+  /// D-122: owner — "I also want subscribed users to be able to generate
   /// a new news item on demand in addition to the news item that gets
   /// generated automatically once per day." Reuses the exact same
   /// generation path (and AI backend call) as the daily automatic
@@ -207,7 +207,7 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  /// D-173: rebuilt per owner feedback — no icon at all ("do not use the
+  /// D-133: rebuilt per owner feedback — no icon at all ("do not use the
   /// little stars, indicating artificial intelligence icon... create a
   /// rule to never use that thing ever" — a decorative "AI" glyph on a
   /// control is exactly what the project's own icon rule already
@@ -327,7 +327,7 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
   }
 }
 
-// D-150: a small, fixed set of layout templates — image on top, on
+// D-122: a small, fixed set of layout templates — image on top, on
 // either side, or full-bleed behind the text — so "not each card has
 // the same layout." Which template (and which stock image) a given
 // card gets is derived from its own dedupeKey, so it's stable across
@@ -352,12 +352,12 @@ class _NewsfeedCard extends StatelessWidget {
       this.entitled = false});
 
   final Map<String, dynamic> item;
-  // D-173: lets the subscribe link refresh the screen's entitlement state
+  // D-133: lets the subscribe link refresh the screen's entitlement state
   // on return from the paywall — this card itself is stateless and owns
   // no entitlement state of its own.
   final Future<void> Function()? onReturnFromPaywall;
   final bool highlighted;
-  // D-177: a sample card's subscribe pitch only makes sense for an
+  // D-137: a sample card's subscribe pitch only makes sense for an
   // unentitled account — owner: "I want that whole text block to not
   // appear when I am subscribed."
   final bool entitled;
@@ -475,7 +475,7 @@ class _NewsfeedCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // D-150: "make it like an analysis shaped as a news article" —
+          // D-122: "make it like an analysis shaped as a news article" —
           // a small section label, the way a real news article carries
           // one, is also the one honest signal to the reader that this
           // particular card was AI-written analysis, not a plain
@@ -490,7 +490,7 @@ class _NewsfeedCard extends StatelessWidget {
                   fontSize: 11,
                   letterSpacing: 1.2),
             ),
-            // D-150: owner — "place the date just underneath the
+            // D-122: owner — "place the date just underneath the
             // 'analysis' keyword" — a byline-style date reads naturally
             // right under a section label, the way a real article
             // dateline sits under its section, rather than trailing at
@@ -507,7 +507,7 @@ class _NewsfeedCard extends StatelessWidget {
             ],
             const SizedBox(height: 6),
           ],
-          // D-150: the sample cards' own designation — "some designation
+          // D-122: the sample cards' own designation — "some designation
           // that these are sample newsfeed" — a distinct color from the
           // real ANALYSIS label (brandPurple, not brandGreen) so a
           // sample is never visually confusable with genuine AI
@@ -542,22 +542,22 @@ class _NewsfeedCard extends StatelessWidget {
                 fontSize: 15,
                 height: 1.5),
           ),
-          // D-150: "each one of the cards will have a subscribe link and
+          // D-122: "each one of the cards will have a subscribe link and
           // a short indication that if they subscribe then they are
           // going to get newsfeed items that are tailored to their
           // actual trends and behavior." A distinct, clearly-tappable
           // element — the card body itself stays non-interactive, same
           // as every other card type ("we're not clicking into each
-          // news article," D-150).
-          // D-177: hidden entirely once entitled — pitching a
+          // news article," D-122).
+          // D-137: hidden entirely once entitled — pitching a
           // subscription to someone who already has one makes no sense.
-          // The SAMPLE label above stays regardless (D-150) — the card
+          // The SAMPLE label above stays regardless (D-122) — the card
           // is still illustrative, non-personal content either way.
           if (isSample && !entitled) ...[
             const SizedBox(height: 12),
             GestureDetector(
               onTap: () async {
-                // D-173: found live — subscribing here and landing back on
+                // D-133: found live — subscribing here and landing back on
                 // this screen still showed the sample's subscribe pitch
                 // and hid the generate button, because entitlement state
                 // was only ever loaded once, in initState. Reload it on

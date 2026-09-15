@@ -5,13 +5,13 @@ import 'package:life_ops/screens/schedule_habits_screen.dart';
 import 'package:life_ops/services/db.dart';
 import 'package:life_ops/services/utils.dart';
 
-/// D-123 Phase 2: the scheduling screen's pure logic — snap-to-time,
+/// D-098 Phase 2: the scheduling screen's pure logic — snap-to-time,
 /// collision detection, and the habit-row model — factored out so it's
 /// testable without a live drag gesture or a registered calendar plugin,
 /// matching this repo's established pattern for plugin-adjacent decision
 /// logic (`CalendarService.daysOfWeekFrom`/`anchorFor`).
 void main() {
-  group('D-123: snapDropToTime — pixel offset to snapped hour/minute', () {
+  group('D-098: snapDropToTime — pixel offset to snapped hour/minute', () {
     test('snaps down to the nearest 15 minutes', () {
       // 62 px at 60 px/hour = 62 minutes, snaps down to 60.
       expect(snapDropToTime(62.0), (1, 0));
@@ -38,7 +38,7 @@ void main() {
     });
   });
 
-  group('D-123: intervalsOverlap — half-open interval overlap', () {
+  group('D-098: intervalsOverlap — half-open interval overlap', () {
     test('two disjoint intervals do not overlap', () {
       final a0 = DateTime(2026, 1, 1, 7, 0);
       final a1 = DateTime(2026, 1, 1, 7, 15);
@@ -65,7 +65,7 @@ void main() {
     });
   });
 
-  group('D-123: HabitScheduleRow.activeOn — the habit\'s own day flags, '
+  group('D-098: HabitScheduleRow.activeOn — the habit\'s own day flags, '
       'unchanged by scheduling', () {
     HabitScheduleRow habit({
       bool sunday = false,
@@ -114,7 +114,7 @@ void main() {
     });
   });
 
-  group('D-123: HabitScheduleRow.parsedTime', () {
+  group('D-098: HabitScheduleRow.parsedTime', () {
     HabitScheduleRow habitWithTime(String? time) => HabitScheduleRow(
           id: 1,
           category: 'Health',
@@ -143,7 +143,7 @@ void main() {
     });
   });
 
-  group('D-123: HabitScheduleRow.fromMap — day flags come from the '
+  group('D-098: HabitScheduleRow.fromMap — day flags come from the '
       "task table's text columns ('true'/'false'/''), via the shared "
       'Utils.toBoolean the rest of the day-of-week UI already uses', () {
     test('parses a fully-populated, scheduled row', () {
@@ -219,7 +219,7 @@ void main() {
     });
   });
 
-  group('D-123: HabitScheduleRow.durationMinutes — falls back to the '
+  group('D-098: HabitScheduleRow.durationMinutes — falls back to the '
       "default when the habit hasn't chosen one", () {
     HabitScheduleRow habit({int? durationMinutes}) => HabitScheduleRow(
           id: 1,
@@ -249,7 +249,7 @@ void main() {
     });
   });
 
-  group('D-163: HabitScheduleRow.unscheduled — the in-memory shape used '
+  group('D-131: HabitScheduleRow.unscheduled — the in-memory shape used '
       'when a habit\'s scheduled event was deleted directly in the native '
       'calendar', () {
     test('clears the scheduled time and event id, but keeps the day '
@@ -284,7 +284,7 @@ void main() {
     });
   });
 
-  group('D-163: _loadAll reconciles against the native calendar\'s actual '
+  group('D-131: _loadAll reconciles against the native calendar\'s actual '
       'current state, rather than trusting the local scheduledtime/'
       'scheduledeventid columns as ground truth', () {
     final source =
@@ -328,7 +328,7 @@ void main() {
     });
   });
 
-  group('D-128: the iOS/Android edge-swipe-back gesture is disabled on this '
+  group('D-103: the iOS/Android edge-swipe-back gesture is disabled on this '
       'always-landscape screen', () {
     test('build() wraps its content in PopScope(canPop: false) — found '
         'live: swiping right near the left edge to scroll the bottom '
@@ -351,7 +351,7 @@ void main() {
     });
   });
 
-  group('D-176: the iOS home indicator is hidden while this screen is open '
+  group('D-136: the iOS home indicator is hidden while this screen is open '
       '— found live: a tap on a habit near the bottom edge was frequently '
       'grabbed by the OS as a swipe-to-home gesture instead of reaching '
       'this screen', () {

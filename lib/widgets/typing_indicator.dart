@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import 'advisor.dart';
 
-/// D-101: shown as the last item in a Council transcript while waiting for
+/// D-083: shown as the last item in a Council transcript while waiting for
 /// an advisor's reply, so the screen never simply goes dead after the
 /// person sends a message — the same three-pulsing-dots convention every
 /// major messenger app uses for "the other person is composing a reply."
@@ -22,7 +22,7 @@ class _TypingIndicatorState extends State<TypingIndicator>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   bool _reduceMotion = false;
-  // D-107: found live — "reduceMotion == _reduceMotion" as the sole guard
+  // D-072: found live — "reduceMotion == _reduceMotion" as the sole guard
   // meant the very first call, the overwhelmingly common case where the
   // real MediaQuery value is also false, short-circuited before ever
   // calling _controller.repeat() at all: false == false is true, so the

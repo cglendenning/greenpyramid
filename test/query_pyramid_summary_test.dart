@@ -14,8 +14,8 @@ class _TempPathProvider extends PathProviderPlatform
   Future<String?> getApplicationDocumentsPath() async => dir;
 }
 
-/// D-095: queryPyramidSummary() is what grounds the general Council
-/// conversation (D-091) in the user's actual pyramid instead of the
+/// D-079: queryPyramidSummary() is what grounds the general Council
+/// conversation (D-075) in the user's actual pyramid instead of the
 /// "their life" placeholder that produced disconnected, non-sequitur
 /// advisor replies (found live). Tested against the real sqflite FFI
 /// plugin, not fakes — the read-only-list defect this codebase has hit
@@ -39,7 +39,7 @@ void main() {
   });
 
   test(
-      'D-095: returns all six categories, ordered by position, tiered '
+      'D-079: returns all six categories, ordered by position, tiered '
       '1-3 foundational / 4-5 essential / 6 peak', () async {
     for (var i = 1; i <= 6; i++) {
       await db.insertCategory({
@@ -51,8 +51,14 @@ void main() {
 
     final summary = await db.queryPyramidSummary();
     expect(summary, hasLength(6));
-    expect(summary.map((c) => c['name']),
-        ['Category 1', 'Category 2', 'Category 3', 'Category 4', 'Category 5', 'Category 6']);
+    expect(summary.map((c) => c['name']), [
+      'Category 1',
+      'Category 2',
+      'Category 3',
+      'Category 4',
+      'Category 5',
+      'Category 6'
+    ]);
     expect(summary[0]['tier'], 'foundational');
     expect(summary[2]['tier'], 'foundational');
     expect(summary[3]['tier'], 'essential');
@@ -60,7 +66,8 @@ void main() {
     expect(summary[5]['tier'], 'peak');
   });
 
-  test('D-095: each category carries its latest essence, or null if none '
+  test(
+      'D-079: each category carries its latest essence, or null if none '
       'has ever been captured', () async {
     await db.insertCategory({
       DatabaseHelper.columnCategoryId: 1,
@@ -82,7 +89,8 @@ void main() {
     expect(craft['essence'], isNull);
   });
 
-  test('D-095: a category with more than one essence version reports the '
+  test(
+      'D-079: a category with more than one essence version reports the '
       'latest, not the first', () async {
     await db.insertCategory({
       DatabaseHelper.columnCategoryId: 1,
@@ -98,9 +106,7 @@ void main() {
     expect(summary.single['essence'], 'the real one');
   });
 
-  test('D-100: each entry carries its real categoryId — how a general '
-      'Council domain finding, named by the model against a category '
-      'name, resolves back to a real category for insertDomainFinding',
+  test('D-079: each entry carries its real categoryId for pyramid grounding',
       () async {
     await db.insertCategory({
       DatabaseHelper.columnCategoryId: 7,

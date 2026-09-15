@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 
-/// D-142: structural regression test, not a full widget pump — the
+/// D-114: structural regression test, not a full widget pump — the
 /// native launch/splash screen (iOS's LaunchScreen.storyboard, Android's
 /// launch_background.xml) renders before Flutter's engine draws its
 /// first frame, so none of it is reachable from `flutter test`. Same
@@ -16,7 +16,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// Owner: "what I would like is a splash screen that is dark with a
 /// center icon of a glowing Green Pyramid."
 void main() {
-  group('D-142: a dark splash screen with the glowing brand pyramid, '
+  group('D-114: a dark splash screen with the glowing brand pyramid, '
       'shown natively before Flutter draws its first frame', () {
     test('iOS LaunchScreen.storyboard uses the app\'s dark background '
         'color, not the default white', () {

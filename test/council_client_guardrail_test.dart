@@ -14,20 +14,16 @@ void main() {
       'before returning — regression test for a defect found live: a '
       'literal "<UNKNOWN>" category name reached the setup screen '
       'unvalidated', () {
-    final source =
-        File('lib/services/council_client.dart').readAsStringSync();
+    final source = File('lib/services/council_client.dart').readAsStringSync();
 
-    final categoriesStart = source.indexOf('Future<List<CategoryProposal>> deriveCategories(');
+    final categoriesStart =
+        source.indexOf('Future<List<CategoryProposal>> deriveCategories(');
     final habitsStart = source.indexOf('Future<List<String>> deriveHabits(');
     expect(categoriesStart, greaterThan(-1));
     expect(habitsStart, greaterThan(categoriesStart));
 
-    final domainFindingsStart =
-        source.indexOf('deriveDomainFindings(', habitsStart);
     final categoriesBody = source.substring(categoriesStart, habitsStart);
-    final habitsBody = domainFindingsStart > habitsStart
-        ? source.substring(habitsStart, domainFindingsStart)
-        : source.substring(habitsStart);
+    final habitsBody = source.substring(habitsStart);
 
     expect(categoriesBody, contains('looksLikePlaceholder'));
     expect(habitsBody, contains('looksLikePlaceholder'));
@@ -42,9 +38,6 @@ void main() {
         File('lib/services/council_client.dart').readAsStringSync();
     expect(modelSource, contains('final String? description;'));
     expect(modelSource, contains("description: c['description'] as String?"));
-    expect(
-        modelSource,
-        contains(
-            "looksLikePlaceholder(c.description!)"));
+    expect(modelSource, contains("looksLikePlaceholder(c.description!)"));
   });
 }

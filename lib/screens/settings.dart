@@ -6,12 +6,10 @@ import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:life_ops/screens/council_category_picker.dart';
 import 'package:life_ops/screens/cancel_subscription_screen.dart';
-import 'package:life_ops/screens/domain_map_screen.dart';
 import 'package:life_ops/screens/paywall_screen.dart';
 import 'package:life_ops/screens/welcome_screen.dart';
 import 'package:life_ops/services/account_link_service.dart';
 import 'package:life_ops/services/calendar_service.dart';
-import 'package:life_ops/services/entitlement_gate.dart';
 import 'package:life_ops/services/entitlement_service.dart';
 import 'package:life_ops/services/newsfeed_service.dart';
 import 'package:life_ops/services/notification.dart';
@@ -109,7 +107,7 @@ Future<void> showPreviewWarningDialog(BuildContext context) async {
   );
 }
 
-/// D-115: rebuilt on Kansei's settings-screen layout (`goal-executor`'s
+/// D-090: rebuilt on Kansei's settings-screen layout (`goal-executor`'s
 /// `settings_screen.dart`) — sectioned cards, an entitlement-aware
 /// subscription panel, and a "send test notification" control that
 /// mirrors Kansei's identical feature. Stays an embedded homescreen tab
@@ -210,39 +208,19 @@ class _SettingsState extends State<Settings> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  // D-185: the domain map — a destination visited
-                  // deliberately, gated as a paid capability (D-014).
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: TextButton(
-                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                      onPressed: () async {
-                        final allowed = await ensureEntitled(context,
-                            reason: 'See your domain map');
-                        if (!allowed || !context.mounted) return;
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) => const DomainMapScreen()),
-                        );
-                      },
-                      child: const Text('Your domain map'),
-                    ),
-                  ),
                 ],
               ),
             ),
             const SizedBox(height: 28),
 
             _sectionLabel('CALENDAR'),
-            // D-185 step 7: opt-in only, requested here — never on launch.
+            // D-145 step 7: opt-in only, requested here — never on launch.
             _card(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: const [
                   Expanded(
-                    child: Text(
-                        'Let the Council of Advisors see your calendar',
+                    child: Text('Let the Council of Advisors see your calendar',
                         style: TextStyle(color: AppColors.textPrimary)),
                   ),
                   CalendarAccessSwitch(),
@@ -260,7 +238,7 @@ class _SettingsState extends State<Settings> {
   }
 }
 
-/// D-115: mirrors Kansei's inline subscription panel — branches on
+/// D-090: mirrors Kansei's inline subscription panel — branches on
 /// RevenueCat's own `CustomerInfo` ([decideSubscriptionPanelState]) rather
 /// than assuming a purchase exists. Found live: the previous "Manage
 /// subscription" link always opened a cancel-only screen, even for a
@@ -285,7 +263,8 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
 
   Future<void> _load() async {
     final info = await SubscriptionService.syncAndGetCustomerInfo();
-    final localEntitlement = await EntitlementService.instance.currentLocalEntitlement();
+    final localEntitlement =
+        await EntitlementService.instance.currentLocalEntitlement();
     if (!mounted) return;
     setState(() {
       _info = info;
@@ -298,7 +277,8 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
     final result = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (context) => const PaywallScreen(reason: 'Subscribe to Green Pyramid'),
+        builder: (context) =>
+            const PaywallScreen(reason: 'Subscribe to Green Pyramid'),
       ),
     );
     if (result == true) _load();
@@ -345,7 +325,8 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
               expiryStr != null
                   ? 'Subscribed — renews $expiryStr'
                   : 'Active subscription',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              style:
+                  const TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 12),
             Align(
@@ -373,7 +354,8 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
               expiryStr != null
                   ? 'Cancellation pending — access until $expiryStr'
                   : 'Subscription cancelled',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              style:
+                  const TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 12),
             SizedBox(
@@ -409,8 +391,8 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
   }
 }
 
-/// D-115: schedules a single local test notification, mirroring Kansei's
-/// identical settings-screen control. D-150: now uses a real newsfeed
+/// D-090: schedules a single local test notification, mirroring Kansei's
+/// identical settings-screen control. D-122: now uses a real newsfeed
 /// item's own headline/body as the preview, and tapping it deep-links
 /// straight to that item in the newsfeed — "the button to send a test
 /// notification [should] behave the same way that it will have a
@@ -421,14 +403,15 @@ class _TestNotificationButton extends StatefulWidget {
   final LocalNotificationService lns;
 
   @override
-  State<_TestNotificationButton> createState() => _TestNotificationButtonState();
+  State<_TestNotificationButton> createState() =>
+      _TestNotificationButtonState();
 }
 
 class _TestNotificationButtonState extends State<_TestNotificationButton>
     with WidgetsBindingObserver {
   bool _pending = false;
   bool _scheduling = false;
-  // D-184: found live — a test notification "schedules" successfully
+  // D-144: found live — a test notification "schedules" successfully
   // (isTestNotificationPending() just confirms the OS accepted the
   // request) even when notification permission is denied; iOS then
   // silently drops it at delivery time with no error anywhere. Owner:
@@ -471,7 +454,7 @@ class _TestNotificationButtonState extends State<_TestNotificationButton>
     });
   }
 
-  /// D-184: found live — an account that completed setup before D-050's
+  /// D-144: found live — an account that completed setup before D-050's
   /// PushPermissionScreen existed has never called the OS permission API
   /// at all, so iOS never created a Notifications entry under Settings for
   /// this app in the first place; "Open Settings" alone sent the owner to
@@ -524,7 +507,8 @@ class _TestNotificationButtonState extends State<_TestNotificationButton>
             decoration: BoxDecoration(
               color: Colors.redAccent.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.redAccent.withValues(alpha: 0.35)),
+              border:
+                  Border.all(color: Colors.redAccent.withValues(alpha: 0.35)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -534,14 +518,18 @@ class _TestNotificationButtonState extends State<_TestNotificationButton>
                   'will actually arrive — including a scheduled test — '
                   'until you turn them back on.',
                   style: TextStyle(
-                      fontFamily: 'Raleway', color: Colors.redAccent, fontSize: 14, height: 1.3),
+                      fontFamily: 'Raleway',
+                      color: Colors.redAccent,
+                      fontSize: 14,
+                      height: 1.3),
                 ),
                 const SizedBox(height: 10),
                 TextButton(
                   onPressed: _enableNotifications,
                   style: TextButton.styleFrom(padding: EdgeInsets.zero),
                   child: const Text('Enable Notifications',
-                      style: TextStyle(fontFamily: 'Exo2', color: AppColors.brandGreen)),
+                      style: TextStyle(
+                          fontFamily: 'Exo2', color: AppColors.brandGreen)),
                 ),
               ],
             ),
@@ -572,7 +560,7 @@ class _TestNotificationButtonState extends State<_TestNotificationButton>
   }
 }
 
-/// D-185 step 7: reflects and toggles calendar read access. Turning it on
+/// D-145 step 7: reflects and toggles calendar read access. Turning it on
 /// prompts the OS permission dialog; turning it off only stops the app from
 /// reading the calendar going forward — revoking the OS grant itself
 /// happens in system settings, same as every other permission in this app.
@@ -611,7 +599,7 @@ class _CalendarAccessSwitchState extends State<CalendarAccessSwitch> {
   }
 }
 
-/// D-132/D-136: shows the linked provider (if any) and lets the user sign
+/// D-105/D-108: shows the linked provider (if any) and lets the user sign
 /// out — the same underlying flow the hamburger menu's "Sign out" item
 /// also offers (homescreen.dart's CustomAppBarState.signOut). Sign-out
 /// deliberately leaves the app genuinely signed out (no eager
@@ -630,7 +618,8 @@ class _AccountSectionState extends State<_AccountSection> {
   bool _signingOut = false;
 
   String? get _providerLabel {
-    final providers = FirebaseAuth.instance.currentUser?.providerData ?? const [];
+    final providers =
+        FirebaseAuth.instance.currentUser?.providerData ?? const [];
     for (final p in providers) {
       if (p.providerId == 'apple.com') return 'Signed in with Apple';
       if (p.providerId == 'google.com') return 'Signed in with Google';
@@ -643,7 +632,8 @@ class _AccountSectionState extends State<_AccountSection> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Sign out?', style: TextStyle(color: AppColors.textPrimary)),
+        title: const Text('Sign out?',
+            style: TextStyle(color: AppColors.textPrimary)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),

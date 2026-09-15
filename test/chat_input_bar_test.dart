@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/widgets/chat_input_bar.dart';
 
-/// D-101: the message composer shared by every Council chat screen — found
+/// D-083: the message composer shared by every Council chat screen — found
 /// live, the single-line TextField this replaces had no maxLines, so long
 /// messages scrolled off-screen instead of wrapping.
 void main() {
-  testWidgets('D-101: the field wraps rather than scrolling horizontally — '
+  testWidgets('D-083: the field wraps rather than scrolling horizontally — '
       'multiline enabled, never a single fixed line', (tester) async {
     final controller = TextEditingController();
     await tester.pumpWidget(MaterialApp(
@@ -24,7 +24,7 @@ void main() {
     expect(field.keyboardType, TextInputType.multiline);
   });
 
-  testWidgets('D-101: return inserts a newline rather than submitting — '
+  testWidgets('D-083: return inserts a newline rather than submitting — '
       'matching a messenger app\'s composer, not a single-line search box',
       (tester) async {
     final controller = TextEditingController();
@@ -39,7 +39,7 @@ void main() {
     expect(field.textInputAction, TextInputAction.newline);
   });
 
-  testWidgets('D-101: submits via the send button and the tap handler',
+  testWidgets('D-083: submits via the send button and the tap handler',
       (tester) async {
     final controller = TextEditingController(text: 'hello');
     var submitted = false;
@@ -58,7 +58,7 @@ void main() {
     expect(submitted, isTrue);
   });
 
-  testWidgets('D-101: disabled state disables both the field and the send '
+  testWidgets('D-083: disabled state disables both the field and the send '
       'button — matches the existing busy-while-awaiting-reply gating',
       (tester) async {
     final controller = TextEditingController();
@@ -75,7 +75,7 @@ void main() {
     expect(button.onPressed, isNull);
   });
 
-  testWidgets('D-101: the given hintText reaches the field — each caller '
+  testWidgets('D-083: the given hintText reaches the field — each caller '
       'keeps its own existing copy ("Say more…", "Say something…")',
       (tester) async {
     final controller = TextEditingController();

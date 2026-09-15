@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-/// D-129: fixed, disclosed categories — never a freeform "subject" field.
+/// D-124: fixed, disclosed categories — never a freeform "subject" field.
 /// A user only ever picks one of these; the [FeedbackCategory.wireValue]
 /// strings are what actually gets written to Firestore.
 enum FeedbackCategory { bug, idea, confusing, loveIt }
@@ -22,9 +22,9 @@ extension FeedbackCategoryLabel on FeedbackCategory {
       };
 }
 
-/// D-129: writes a single feedback document to the signed-in user's own
+/// D-124: writes a single feedback document to the signed-in user's own
 /// Firestore tree (`users/{uid}/feedback/{id}`). This stays inside the
-/// existing D-026/D-187 model — the same per-uid rule that already governs
+/// existing D-026/D-147 model — the same per-uid rule that already governs
 /// every other synced collection covers this one too, so no rules change
 /// was needed. It is a disclosed, user-initiated write (the user taps
 /// "Send"), not passive collection, which is what keeps it consistent with
