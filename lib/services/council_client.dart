@@ -5,6 +5,7 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
 
 import 'model_output_guard.dart';
 
@@ -90,6 +91,7 @@ class CouncilClient {
   // rather than mocking HTTP, since the real methods' only job is transport.
   CouncilClient();
   static final CouncilClient instance = CouncilClient();
+  static const _uuid = Uuid();
 
   static const String _baseUrl =
       'https://us-central1-life-ops.cloudfunctions.net/api';
@@ -101,6 +103,27 @@ class CouncilClient {
       'expectedRevision': 0
     });
   }
+
+  /// D-149: installation transport is separate from profile synchronization.
+  Future<Map<String, dynamic>> registerInstallation({
+    required String installationId,
+    required String token,
+    required bool enabled,
+    required String timezone,
+    required int expectedRevision,
+  }) =>
+      _post('registerInstallation', {
+        'requestId': _uuid.v4(),
+        'installationId': installationId,
+        'token': token,
+        'enabled': enabled,
+        'timezone': timezone,
+        'expectedRevision': expectedRevision,
+      });
+
+  /// D-149: inbox acknowledgements are account-bound by the auth header.
+  Future<Map<String, dynamic>> markInboxRead(String messageKey) => _post(
+      'markInboxRead', {'requestId': _uuid.v4(), 'messageKey': messageKey});
 
   Future<Map<String, String>> _headers() async {
     String? appCheckToken;

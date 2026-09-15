@@ -2,9 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:uuid/uuid.dart';
+import 'package:timezone/timezone.dart' as tz;
 
 import 'lapsed_notification_pool.dart';
 import 'notification.dart';
+import 'council_client.dart';
 
 enum NotificationFallbackAction {
   /// Push is authorized and a token is registered — rely on it; cancel any
@@ -48,10 +52,12 @@ class PushMessagingService {
     FirebaseAuth? auth,
     FirebaseMessaging? messaging,
     LocalNotificationService? local,
+    CouncilClient? client,
   })  : _db = firestore ?? FirebaseFirestore.instance,
         _auth = auth ?? FirebaseAuth.instance,
         _messaging = messaging ?? FirebaseMessaging.instance,
-        _local = local ?? LocalNotificationService();
+        _local = local ?? LocalNotificationService(),
+        _client = client ?? CouncilClient.instance;
 
   static final PushMessagingService instance = PushMessagingService();
 
@@ -59,6 +65,10 @@ class PushMessagingService {
   final FirebaseAuth _auth;
   final FirebaseMessaging _messaging;
   final LocalNotificationService _local;
+  final CouncilClient _client;
+  static const _uuid = Uuid();
+  static const _installationKey = 'd149.installation_id';
+  static const _revisionKey = 'd149.installation_revision';
 
   static const _fallbackIds = {0: 100, 1: 101, 2: 102};
   static const _fallbackSlots = [(9, 0), (14, 0), (19, 0)];
@@ -74,17 +84,36 @@ class PushMessagingService {
     final uid = _auth.currentUser?.uid;
     final doc = _profileDoc(uid);
     if (doc == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final installationId = prefs.getString(_installationKey) ?? _uuid.v4();
+    await prefs.setString(_installationKey, installationId);
 
     bool pushAuthorized = false;
     String? token;
     try {
       final settings = await _messaging.getNotificationSettings();
-      pushAuthorized = settings.authorizationStatus == AuthorizationStatus.authorized ||
-          settings.authorizationStatus == AuthorizationStatus.provisional;
+      pushAuthorized =
+          settings.authorizationStatus == AuthorizationStatus.authorized ||
+              settings.authorizationStatus == AuthorizationStatus.provisional;
       if (pushAuthorized) {
         token = await _messaging.getToken();
         if (token != null) {
-          await doc.set({'fcmToken': token}, SetOptions(merge: true));
+          try {
+            final result = await _client.registerInstallation(
+              installationId: installationId,
+              token: token,
+              enabled: true,
+              timezone: tz.local.name,
+              expectedRevision: prefs.getInt(_revisionKey) ?? 0,
+            );
+            if (result['acknowledged'] == true) {
+              await prefs.setInt(
+                  _revisionKey, (prefs.getInt(_revisionKey) ?? 0) + 1);
+            }
+          } catch (e) {
+            debugPrint(
+                'PushMessagingService: installation registration failed: $e');
+          }
         }
       }
     } catch (e) {
@@ -111,7 +140,8 @@ class PushMessagingService {
         await _scheduleLapsedPool();
       case NotificationFallbackAction.localFallback:
         await _scheduleFallback(
-          body: (data?['lastNotificationBody'] as String?) ?? _defaultFallbackBody,
+          body: (data?['lastNotificationBody'] as String?) ??
+              _defaultFallbackBody,
         );
     }
   }
@@ -141,7 +171,8 @@ class PushMessagingService {
     final dayIndex = DateTime.now().difference(DateTime(2026, 1, 1)).inDays;
     for (final entry in _fallbackIds.entries) {
       final (hour, minute) = _fallbackSlots[entry.key];
-      final body = LapsedNotificationPool.forSlot(slotIndex: entry.key, dayIndex: dayIndex);
+      final body = LapsedNotificationPool.forSlot(
+          slotIndex: entry.key, dayIndex: dayIndex);
       await _local.cancelDailyNotification(entry.value);
       await _local.scheduleDailyNotification(
         id: entry.value,

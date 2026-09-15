@@ -34,6 +34,7 @@ import { applyRevenueCatEvent, verifyWebhookAuth } from './lib/revenuecat_webhoo
 import { buildAdminMetrics } from './lib/admin_metrics.js';
 import { applySyncRequest, restoreAccount } from './lib/sync_operations.js';
 import { cleanupAnonymousAccounts } from './lib/anonymous_cleanup.js';
+import { markInboxRead, registerInstallation } from './lib/notification_delivery.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -372,6 +373,31 @@ app.post('/requestTrial', requireFirebaseAuth, async (req, res) => {
     }
     console.error('requestTrial error:', e.message);
     res.status(502).json({ error: e.message });
+  }
+});
+
+// D-149: installation identity and token lifecycle are account-scoped, but
+// deliberately separate from profile data. A stable installation id can move
+// during account linking; registering it disables any outgoing account copy.
+app.post('/registerInstallation', requireFirebaseAuth, async (req, res) => {
+  try {
+    ensureAdmin();
+    res.json(await registerInstallation(admin.firestore(), req.uid, req.body || {}));
+  } catch (e) {
+    const status = e.status || 503;
+    res.status(status).json({ error: status === 503 ? 'installation_unavailable' : e.message });
+  }
+});
+
+// D-149: read acknowledgement is best-effort and account-bound. Unknown or
+// already-deleted keys still receive the contract acknowledgement.
+app.post('/markInboxRead', requireFirebaseAuth, async (req, res) => {
+  try {
+    ensureAdmin();
+    res.json(await markInboxRead(admin.firestore(), req.uid, req.body || {}));
+  } catch (e) {
+    const status = e.status || 503;
+    res.status(status).json({ error: status === 503 ? 'inbox_unavailable' : e.message });
   }
 });
 
