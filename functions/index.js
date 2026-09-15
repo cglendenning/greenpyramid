@@ -36,6 +36,7 @@ import { applySyncRequest, restoreAccount } from './lib/sync_operations.js';
 import { cleanupAnonymousAccounts } from './lib/anonymous_cleanup.js';
 import { claimNotificationDispatch, completeNotificationDispatch, failNotificationDispatch, markInboxRead, notificationMessageKey, registerInstallation, upsertInboxItem } from './lib/notification_delivery.js';
 import { evaluateIntervention } from './lib/intervention_engine.js';
+import { appendBehavioralEvents } from './lib/behavioral_event_store.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -234,6 +235,21 @@ app.post('/evaluateIntervention', requireFirebaseAuth, async (req, res) => {
     if (e.code === 6 || e.code === 'already-exists') return res.status(409).json({ error: 'decision_already_recorded' });
     console.error('evaluateIntervention error:', e.message);
     res.status(500).json({ error: 'service_unavailable' });
+  }
+});
+
+// D-153: verified account identity is the only owner of an append request;
+// event payloads cannot select another account or replace historical facts.
+app.post('/behavioralEvents', requireFirebaseAuth, async (req, res) => {
+  try {
+    ensureAdmin();
+    const result = await appendBehavioralEvents(
+        admin.firestore(), req.uid, req.body?.events, new Date());
+    res.json(result);
+  } catch (e) {
+    const status = /invalid|duplicate|conflict/.test(e.message) ? 400 : 500;
+    console.error('behavioralEvents error:', e.message);
+    res.status(status).json({ error: status === 500 ? 'service_unavailable' : e.message });
   }
 });
 
