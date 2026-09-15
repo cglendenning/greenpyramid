@@ -70,10 +70,10 @@ dependencies:
   # D-148: account creation before the pyramid reveal (Apple + Google
   # one-tap only). Same version goal-executor uses.
   google_sign_in: ^7.2.0
-  # D-054: RevenueCat, ported from Kansei. Pinned to the same major version
-  # Kansei's already-tested integration uses (D-054's acceptance criterion),
-  # not the latest — 10.x carries breaking API changes not yet verified here.
-  purchases_flutter: ^9.0.0
+  # D-054: RevenueCat, ported from Kansei. Keep the current SDK compatible
+  # with the supported Xcode toolchain; the integration remains covered by
+  # the entitlement and subscription tests.
+  purchases_flutter: ^10.12.0
   # D-045: iOS DeviceCheck token generation (DCDevice.generateToken()).
   device_check: ^1.0.0
   # D-045: Android's per-app-signing-key device identifier, hashed before
