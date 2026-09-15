@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 
 const apiBase = 'https://us-central1-life-ops.cloudfunctions.net/api';
@@ -162,7 +163,18 @@ class Dashboard extends StatelessWidget {
     final c = data['cost'] as Map<String, dynamic>;
     final screens = (data['screenUsage'] as List).cast<Map<String, dynamic>>();
     return Scaffold(
-      appBar: AppBar(title: const Text('Green Pyramid Admin')),
+      appBar: AppBar(
+        title: const Text('Green Pyramid Admin'),
+        actions: [
+          IconButton(
+            tooltip: 'Run simulation',
+            icon: const Icon(Icons.science_outlined),
+            onPressed: () => Navigator.of(
+              context,
+            ).push(MaterialPageRoute(builder: (_) => const SimulationScreen())),
+          ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: onRefresh,
         child: ListView(
@@ -269,3 +281,204 @@ class Dashboard extends StatelessWidget {
     ),
   );
 }
+
+class SimulationScreen extends StatefulWidget {
+  const SimulationScreen({super.key});
+  @override
+  State<SimulationScreen> createState() => _SimulationScreenState();
+}
+
+class _SimulationScreenState extends State<SimulationScreen> {
+  final seedController = TextEditingController(text: '1');
+  int months = 6;
+  String failureMode = 'default';
+  final selectedScenarios = <String>{...requiredScenarios};
+  Map<String, dynamic>? report;
+  String? error;
+  bool running = false;
+
+  @override
+  void dispose() {
+    seedController.dispose();
+    super.dispose();
+  }
+
+  Future<void> run() async {
+    final seed = int.tryParse(seedController.text.trim());
+    if (seed == null || seed < 0 || selectedScenarios.isEmpty) {
+      setState(
+        () => error = 'Choose at least one scenario and enter a valid seed.',
+      );
+      return;
+    }
+    setState(() {
+      running = true;
+      error = null;
+      report = null;
+    });
+    try {
+      final user = FirebaseAuth.instance.currentUser!;
+      final token = await user.getIdToken(true);
+      final response = await http.post(
+        Uri.parse('$apiBase/adminSimulation'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'months': months,
+          'seed': seed,
+          'scenarios': selectedScenarios.toList(),
+          'failureMode': failureMode,
+        }),
+      );
+      if (response.statusCode != 200) {
+        throw SimulationException(response.statusCode);
+      }
+      setState(
+        () => report = jsonDecode(response.body) as Map<String, dynamic>,
+      );
+    } catch (_) {
+      setState(() => error = 'Simulation could not be completed.');
+    } finally {
+      if (mounted) setState(() => running = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scenarios =
+        (report?['scenarios'] as List?)?.cast<Map<String, dynamic>>() ??
+        const [];
+    return Scaffold(
+      appBar: AppBar(title: const Text('Intervention simulator')),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          const Text('Sandbox only. No production data is read or written.'),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<int>(
+            initialValue: months,
+            decoration: const InputDecoration(labelText: 'Virtual months'),
+            items: [
+              for (var i = 1; i <= 6; i++)
+                DropdownMenuItem(value: i, child: Text('$i')),
+            ],
+            onChanged: running
+                ? null
+                : (value) => setState(() => months = value ?? 6),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: seedController,
+            enabled: !running,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Deterministic seed'),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: failureMode,
+            decoration: const InputDecoration(
+              labelText: 'Delivery failure mode',
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: 'default',
+                child: Text('Default deterministic failures'),
+              ),
+              DropdownMenuItem(
+                value: 'none',
+                child: Text('Disable delivery failures'),
+              ),
+            ],
+            onChanged: running
+                ? null
+                : (value) => setState(() => failureMode = value ?? 'default'),
+          ),
+          const SizedBox(height: 16),
+          const Text('Scenarios'),
+          Wrap(
+            spacing: 8,
+            children: requiredScenarios
+                .map(
+                  (name) => FilterChip(
+                    label: Text(name),
+                    selected: selectedScenarios.contains(name),
+                    onSelected: running
+                        ? null
+                        : (selected) => setState(
+                            () => selected
+                                ? selectedScenarios.add(name)
+                                : selectedScenarios.remove(name),
+                          ),
+                  ),
+                )
+                .toList(),
+          ),
+          const SizedBox(height: 20),
+          FilledButton.icon(
+            onPressed: running ? null : run,
+            icon: running
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.play_arrow),
+            label: Text(running ? 'Running…' : 'Run simulation'),
+          ),
+          if (error != null) ...[
+            const SizedBox(height: 12),
+            Text(error!, style: const TextStyle(color: Colors.red)),
+          ],
+          if (report != null) ...[
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text('Results', style: Theme.of(context).textTheme.titleLarge),
+                OutlinedButton.icon(
+                  onPressed: () => Clipboard.setData(
+                    ClipboardData(text: jsonEncode(report)),
+                  ),
+                  icon: const Icon(Icons.copy),
+                  label: const Text('Copy JSON'),
+                ),
+              ],
+            ),
+            Text(
+              '${report!['virtualMonths']} virtual months · ${report!['virtualDays']} days · sandbox',
+            ),
+            ...scenarios.map((scenario) {
+              final metrics = scenario['metrics'] as Map<String, dynamic>;
+              return Card(
+                child: ListTile(
+                  title: Text(scenario['name'] as String),
+                  subtitle: Text(
+                    '${metrics['evaluations']} evaluations · ${metrics['delivered']} delivered · ${metrics['failedDelivery']} failed',
+                  ),
+                  trailing: Text('${metrics['none']} NONE'),
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class SimulationException implements Exception {
+  const SimulationException(this.statusCode);
+  final int statusCode;
+}
+
+const requiredScenarios = [
+  'autonomous',
+  'responsive',
+  'fatigue',
+  'sequence',
+  'changing',
+  'difficult',
+  'mature',
+];

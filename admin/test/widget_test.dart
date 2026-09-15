@@ -5,6 +5,7 @@ void main() {
   final source = File('lib/main.dart').readAsStringSync();
   // D-165-AC-03
   // D-165-AC-04: the signed IPA was manually reviewed after this surface test.
+  // D-162-AC-04: simulator controls and report output are exposed here.
   test('admin surface is authenticated and exposes required views', () {
     expect(source, contains('signInWithProvider'));
     expect(source, contains("/adminMetrics"));
@@ -13,5 +14,10 @@ void main() {
     expect(source, contains('Top users by spend'));
     expect(source, contains('RefreshIndicator'));
     expect(source, contains('AlwaysScrollableScrollPhysics'));
+    expect(source, contains('/adminSimulation'));
+    expect(source, contains('Virtual months'));
+    expect(source, contains('Deterministic seed'));
+    expect(source, contains('Copy JSON'));
+    expect(source, contains('Sandbox only'));
   });
 }

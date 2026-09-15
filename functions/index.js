@@ -40,6 +40,7 @@ import { appendBehavioralEvents } from './lib/behavioral_event_store.js';
 import { revalidateIntervention } from './lib/intervention_lifecycle.js';
 import { renderIntervention } from './lib/intervention_renderer.js';
 import { applySafetyConstraints } from './lib/safety_constraints.js';
+import { runSimulation, REQUIRED_SCENARIOS } from './lib/behavioral_simulator.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -157,6 +158,37 @@ app.get('/adminMetrics', requireAdmin, async (_req, res) => {
   } catch (e) {
     console.error('adminMetrics error:', e.message);
     res.status(500).json({ error: 'service_unavailable' });
+  }
+});
+
+// D-162/D-165: the private admin app uses the same simulator as the CLI. The
+// target is fixed server-side so a client can never select a production
+// project or provide credentials. This endpoint is intentionally claim-gated
+// and remains before the consumer App Check gate.
+app.post('/adminSimulation', requireAdmin, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const months = Number(body.months ?? 6);
+    const seed = Number(body.seed ?? 1);
+    const scenarios = body.scenarios ?? [...REQUIRED_SCENARIOS];
+    const failureMode = body.failureMode ?? 'default';
+    if (!Number.isInteger(months) || months < 1 || months > 6 ||
+        !Number.isInteger(seed) || !Number.isSafeInteger(seed) ||
+        !Array.isArray(scenarios) || scenarios.length > REQUIRED_SCENARIOS.length ||
+        !['default', 'none'].includes(failureMode)) {
+      return res.status(400).json({ error: 'simulation_options_invalid' });
+    }
+    res.json(runSimulation({
+      projectId: 'greenpyramid-sandbox',
+      months,
+      seed,
+      scenarios,
+      failureMode,
+    }));
+  } catch (e) {
+    const status = /invalid|rejected|required/.test(e.message) ? 400 : 500;
+    console.error('adminSimulation error:', e.message);
+    res.status(status).json({ error: status === 400 ? e.message : 'service_unavailable' });
   }
 });
 

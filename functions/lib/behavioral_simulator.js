@@ -36,7 +36,7 @@ function checkedForScenario(name, day, draw) {
 }
 
 /** D-162: virtual-time simulator using the production logical engine. */
-export function runScenario({ name, days = 180, seed = 1, start = '2026-01-01T12:00:00Z' }) {
+export function runScenario({ name, days = 180, seed = 1, start = '2026-01-01T12:00:00Z', failureMode = 'default' }) {
   if (!REQUIRED_SCENARIOS.includes(name)) throw new Error('scenario_invalid');
   if (!Number.isInteger(days) || days < 1 || days > 3650) throw new Error('days_invalid');
   const draw = random(seed);
@@ -57,7 +57,9 @@ export function runScenario({ name, days = 180, seed = 1, start = '2026-01-01T12
       priorInterventions: decisions,
       now,
     });
-    const deliveryState = decision.type === 'NONE' ? 'not_sent' : day % 17 === 0 ? 'failed' : 'sent';
+    const deliveryState = decision.type === 'NONE'
+      ? 'not_sent'
+      : failureMode === 'none' ? 'sent' : day % 17 === 0 ? 'failed' : 'sent';
     const record = { day, at: now.toISOString(), activity, decision, deliveryState };
     timeline.push(record);
     decisions.push(decision);
@@ -75,17 +77,21 @@ export function runScenario({ name, days = 180, seed = 1, start = '2026-01-01T12
   };
 }
 
-export function runSimulation({ projectId = 'greenpyramid-sandbox', months = 6, seed = 1 } = {}) {
+export function runSimulation({ projectId = 'greenpyramid-sandbox', months = 6, seed = 1, scenarios = REQUIRED_SCENARIOS, failureMode = 'default' } = {}) {
   assertSandboxTarget({ projectId });
   if (!Number.isInteger(months) || months < 1 || months > 24) throw new Error('months_invalid');
+  if (!Number.isInteger(seed)) throw new Error('seed_invalid');
+  if (!Array.isArray(scenarios) || scenarios.length < 1 || scenarios.length > REQUIRED_SCENARIOS.length || new Set(scenarios).size !== scenarios.length || scenarios.some((name) => !REQUIRED_SCENARIOS.includes(name))) throw new Error('scenarios_invalid');
+  if (!['default', 'none'].includes(failureMode)) throw new Error('failure_mode_invalid');
   const days = months * 30;
-  const scenarios = REQUIRED_SCENARIOS.map((name, index) => runScenario({ name, days, seed: seed + index }));
+  const results = scenarios.map((name, index) => runScenario({ name, days, seed: seed + index, failureMode }));
   return {
     projectId,
     virtualMonths: months,
     virtualDays: days,
-    scenarios,
-    timeline: scenarios.flatMap((scenario) => scenario.timeline),
+    seed,
+    failureMode,
+    scenarios: results,
+    timeline: results.flatMap((scenario) => scenario.timeline),
   };
 }
-

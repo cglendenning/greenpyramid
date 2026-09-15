@@ -27,3 +27,14 @@ test('D-162-AC-03: production targets and credentials are rejected; sandbox writ
   assert.equal(report.timeline.every((entry) => entry.decision.accountUid === 'sim-autonomous'), true);
 });
 
+test('D-162-AC-04: selected scenarios and failure mode are deterministic', () => {
+  const options = { months: 1, seed: 11, scenarios: ['autonomous', 'fatigue'], failureMode: 'none' };
+  const first = runSimulation(options);
+  const second = runSimulation(options);
+  assert.deepEqual(first, second);
+  assert.deepEqual(first.scenarios.map((scenario) => scenario.name), options.scenarios);
+  assert.equal(first.failureMode, 'none');
+  assert.equal(first.scenarios.every((scenario) => scenario.metrics.failedDelivery === 0), true);
+  assert.throws(() => runSimulation({ months: 25 }), /months_invalid/);
+  assert.throws(() => runSimulation({ scenarios: ['not-a-scenario'] }), /scenarios_invalid/);
+});
