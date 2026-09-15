@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { buildInterventionContext } from './intervention_context.js';
+import { estimateBaseline } from './baseline_estimator.js';
 
 const LOOKBACK_DAYS = 14;
 const AUTONOMOUS_COMPLETION_THRESHOLD = 0.8;
@@ -26,7 +27,7 @@ function stableDecisionId(accountUid, now, state) {
   return createHash('sha256').update(fingerprint).digest('hex').slice(0, 32);
 }
 
-function noneDecision({ accountUid, now, reason, state, decisionId, context }) {
+function noneDecision({ accountUid, now, reason, state, decisionId, context, baseline }) {
   return {
     decisionId: decisionId || stableDecisionId(accountUid, now, state),
     accountUid,
@@ -37,6 +38,7 @@ function noneDecision({ accountUid, now, reason, state, decisionId, context }) {
     objective: null,
     rationale: reason,
     context,
+    baseline,
     validityWindowHours: 0,
     measurementWindowDays: 0,
     outcome: {
@@ -71,20 +73,21 @@ export function evaluateIntervention({
   const completedCount = observed.filter((entry) => isChecked(entry.checked)).length;
   const observedCount = observed.length;
   const completionRate = observedCount ? completedCount / observedCount : null;
+  const baseline = estimateBaseline({ recentActivity: observed });
   const context = buildInterventionContext({ profile, tasks, recentActivity: observed });
   const state = { observedCount, completedCount, completionRate, target: null };
 
   if (profile.setupComplete !== true) {
-    return noneDecision({ accountUid, now: current, reason: 'setup_incomplete', state, decisionId, context });
+    return noneDecision({ accountUid, now: current, reason: 'setup_incomplete', state, decisionId, context, baseline });
   }
   if (!activeTasks.length) {
-    return noneDecision({ accountUid, now: current, reason: 'no_active_habits', state, decisionId, context });
+    return noneDecision({ accountUid, now: current, reason: 'no_active_habits', state, decisionId, context, baseline });
   }
   if (!observedCount) {
-    return noneDecision({ accountUid, now: current, reason: 'insufficient_history', state, decisionId, context });
+    return noneDecision({ accountUid, now: current, reason: 'insufficient_history', state, decisionId, context, baseline });
   }
   if (completionRate >= AUTONOMOUS_COMPLETION_THRESHOLD) {
-    return noneDecision({ accountUid, now: current, reason: 'autonomous_completion', state, decisionId, context });
+    return noneDecision({ accountUid, now: current, reason: 'autonomous_completion', state, decisionId, context, baseline });
   }
 
   const missed = observed.find((entry) => !isChecked(entry.checked));
@@ -100,6 +103,7 @@ export function evaluateIntervention({
     objective: 'support_next_checkbox',
     rationale: 'recent_completion_risk',
     context,
+    baseline,
     validityWindowHours: 24,
     measurementWindowDays: 1,
     outcome: {
