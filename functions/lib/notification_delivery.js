@@ -52,6 +52,11 @@ export async function registerInstallation(store, uid, request, now = new Date()
   if (typeof request.enabled !== 'boolean' || typeof request.timezone !== 'string' || !request.timezone) {
     throw new NotificationDeliveryError('installation_fields_invalid');
   }
+  try {
+    new Intl.DateTimeFormat('en-US', { timeZone: request.timezone }).format();
+  } catch {
+    throw new NotificationDeliveryError('timezone_invalid');
+  }
   if (!Number.isInteger(request.expectedRevision) || request.expectedRevision < 0) {
     throw new NotificationDeliveryError('revision_invalid');
   }

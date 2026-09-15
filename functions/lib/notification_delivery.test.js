@@ -46,6 +46,14 @@ test('D-149-AC-01: stale installation revision is rejected', async () => {
   await assert.rejects(() => registerInstallation(store, 'u', { requestId, installationId, token: 'b', enabled: true, timezone: 'UTC', expectedRevision: 0 }), /revision_conflict/);
 });
 
+test('D-149-AC-01: installation registration rejects a non-IANA timezone', async () => {
+  const store = new Store();
+  await assert.rejects(() => registerInstallation(store, 'u', {
+    requestId, installationId, token: 'a', enabled: true,
+    timezone: 'not-a-timezone', expectedRevision: 0,
+  }), /timezone_invalid/);
+});
+
 test('D-149-AC-03: inbox upsert is idempotent by stable message key', async () => {
   const store = new Store();
   const item = { messageKey: notificationMessageKey({ type: 'tailored', occurrenceDate: '2026-09-15', slot: 'morning' }), type: 'tailored', occurrenceDate: '2026-09-15', habitIds: [], title: 'A', body: 'B' };
