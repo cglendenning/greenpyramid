@@ -33,6 +33,7 @@ import { grantTrialIfEligible, grantMigrationTrial, DeviceTrialError } from './l
 import { applyRevenueCatEvent, verifyWebhookAuth } from './lib/revenuecat_webhook.js';
 import { buildAdminMetrics } from './lib/admin_metrics.js';
 import { applySyncRequest, restoreAccount } from './lib/sync_operations.js';
+import { cleanupAnonymousAccounts } from './lib/anonymous_cleanup.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -820,6 +821,23 @@ export const notificationJob = onSchedule(
         console.error(`notificationJob: failed for ${uid}:`, e.message);
       }
     }
+  },
+);
+
+// D-147: prune only abandoned, never-linked anonymous accounts after their
+// server-owned ttlAt. The helper rechecks Auth/profile state and records a
+// per-uid audit outcome, so transient deletion failures can be retried.
+export const anonymousCleanupJob = onSchedule(
+  {
+    schedule: 'every 24 hours',
+    timeoutSeconds: 300,
+    memory: '256MiB',
+  },
+  async () => {
+    ensureAdmin();
+    const outcomes = await cleanupAnonymousAccounts(
+        admin.firestore(), admin.auth(), new Date());
+    console.log('anonymousCleanupJob outcomes:', outcomes.map(({ uid, outcome }) => ({ uid, outcome })));
   },
 );
 
