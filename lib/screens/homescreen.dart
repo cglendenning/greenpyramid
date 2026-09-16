@@ -172,6 +172,11 @@ class _HomeScreen extends State<HomeScreenWidget> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _enforceRealAccount();
       await _offerNotificationRecovery();
+      final initialPayload =
+          LocalNotificationService.takePendingInitialPayload();
+      if (initialPayload != null && mounted) {
+        service.handleNotificationPayload(initialPayload);
+      }
     });
     super.initState();
   }

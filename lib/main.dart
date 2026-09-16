@@ -174,7 +174,10 @@ Future<void> main() async {
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
-  LocalNotificationService().intialize();
+  // Capture a terminated-app notification tap before the initial route is
+  // built. Structured payloads are queued by the service and dispatched once
+  // HomeScreenWidget has a live navigator.
+  await LocalNotificationService().intialize();
   tz.initializeTimeZones();
   final dbHelper = DatabaseHelper.instance;
   dbHelper.populateQuote();

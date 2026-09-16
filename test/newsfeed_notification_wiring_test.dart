@@ -11,6 +11,9 @@ import 'package:flutter_test/flutter_test.dart';
 /// covered directly by newsfeed_service_test.dart's in-memory-sqlite
 /// tests.
 ///
+/// D-090-AC-03 / D-149-AC-04: the same destination must remain valid when a
+/// local test notification launches the app from a terminated state.
+///
 /// D-132: tasklist.dart and editpyramid.dart no longer fire a newsfeed
 /// notification at all — owner: "I only want #3 and #4. Get rid of both
 /// #1 and #2," #1/#2 being the streak-milestone and essence-change cards
@@ -27,6 +30,26 @@ void main() {
       final source = File('lib/services/notification.dart').readAsStringSync();
       expect(source, contains("case 'newsfeed_item':"));
       expect(source, contains('NewsfeedScreen(highlightDedupeKey: dedupeKey)'));
+    });
+
+    test('a terminated-app structured tap is queued instead of being used as '
+        'the initial named route', () {
+      final source = File('lib/services/notification.dart').readAsStringSync();
+      final start = source.indexOf('final payload = '
+          'notificationAppLaunchDetails?.notificationResponse?.payload;');
+      expect(start, greaterThan(-1));
+      final body = source.substring(start, start + 1000);
+      expect(body, contains("if (payload.startsWith('{'))"));
+      expect(body, contains('_pendingInitialPayload = payload'));
+      expect(body, contains("routeToGo = '/';"));
+    });
+
+    test('the queued tap is dispatched after the home navigator/account gate '
+        'is ready', () {
+      final source = File('lib/screens/homescreen.dart').readAsStringSync();
+      expect(source, contains('takePendingInitialPayload()'));
+      expect(source,
+          contains('service.handleNotificationPayload(initialPayload)'));
     });
 
     test('scheduleNewsfeedTestNotification carries the item\'s dedupeKey '

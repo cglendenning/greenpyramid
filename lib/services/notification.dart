@@ -94,6 +94,18 @@ class LocalNotificationService {
 
   final BehaviorSubject<String?> onNotificationClick = BehaviorSubject();
 
+  // A notification tap that launches a terminated app is discovered before
+  // Flutter has a navigator. Keep structured payloads out of routeToGo —
+  // they are data, not named routes — and let HomeScreenWidget consume them
+  // after its navigator and account gate are ready.
+  static String? _pendingInitialPayload;
+
+  static String? takePendingInitialPayload() {
+    final payload = _pendingInitialPayload;
+    _pendingInitialPayload = null;
+    return payload;
+  }
+
   // Notification message generator
   String _generateNotificationMessage(int notificationId) {
     final random = Random();
@@ -304,11 +316,19 @@ class LocalNotificationService {
     final NotificationAppLaunchDetails? notificationAppLaunchDetails =
         await _localNotificationService.getNotificationAppLaunchDetails();
 
-    var payload = notificationAppLaunchDetails!.notificationResponse?.payload;
+    final payload = notificationAppLaunchDetails?.notificationResponse?.payload;
     if (payload != null) {
-      // The String sent to the payload parameter in zonedSchedule() must
-      // be a valid route. '/morning' for example.
-      routeToGo = payload;
+      if (payload.startsWith('{')) {
+        // Structured payloads need a live navigator so their type-specific
+        // destination can be resolved. A JSON object is never a valid named
+        // route; passing it to initialRoute produced the black/error screen
+        // seen when tapping the test notification from a terminated app.
+        _pendingInitialPayload = payload;
+        routeToGo = '/';
+      } else {
+        // Legacy/simple local notifications still carry a real route string.
+        routeToGo = payload;
+      }
 
       // I do not know why I had pushNamed() in the first place, but it was
       // causing a bug that required two presses of the back button to get
@@ -686,8 +706,7 @@ class LocalNotificationService {
   void onDidReceiveLocalNotification(
       int id, String? title, String? body, String? payload) {}
 
-  onSelectNotification(NotificationResponse notificationResponse) {
-    var payload = notificationResponse.payload;
+  void handleNotificationPayload(String? payload) {
     if (payload == null || payload.isEmpty) return;
     // D-099 Phase 5: a structured JSON payload (currently only the batch
     // check-in's foreground-shown local notification uses this shape,
@@ -700,6 +719,10 @@ class LocalNotificationService {
       return;
     }
     onNotificationClick.add(payload);
+  }
+
+  void onSelectNotification(NotificationResponse notificationResponse) {
+    handleNotificationPayload(notificationResponse.payload);
   }
 
   void _handleStructuredPayload(String payload) {
