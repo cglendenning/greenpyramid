@@ -104,7 +104,8 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
     await _service.seedSampleCardsIfNeeded();
 
     final target = widget.highlightDedupeKey;
-    final targetPosition = target == null ? null : await _service.getItemPosition(target);
+    final targetPosition =
+        target == null ? null : await _service.getItemPosition(target);
 
     final List<Map<String, dynamic>> page;
     if (targetPosition != null) {
@@ -197,14 +198,16 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
         // for a non-entitled account — handled defensively regardless.
         break;
       case OnDemandArticleOutcome.failed:
-        _showSnack("Couldn't generate an analysis right now — try again shortly.");
+        _showSnack(
+            "Couldn't generate an analysis right now — try again shortly.");
         break;
     }
   }
 
   void _showSnack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   /// D-133: rebuilt per owner feedback — no icon at all ("do not use the
@@ -230,7 +233,8 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
           style: OutlinedButton.styleFrom(
             side: const BorderSide(color: AppColors.brandGreen),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           ),
           child: Text(
             _generating ? 'Generating…' : 'Generate new analysis',
@@ -252,7 +256,8 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
 
   Future<void> _loadMore() async {
     setState(() => _loadingMore = true);
-    final page = await _service.getFeed(limit: _pageSize, offset: _items.length);
+    final page =
+        await _service.getFeed(limit: _pageSize, offset: _items.length);
     if (!mounted) return;
     setState(() {
       _items.addAll(page);
@@ -285,7 +290,8 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
 
   Widget _body() {
     return _initialLoad
-        ? const Center(child: CircularProgressIndicator(color: AppColors.brandGreen))
+        ? const Center(
+            child: CircularProgressIndicator(color: AppColors.brandGreen))
         : _items.isEmpty
             ? Center(
                 child: Padding(
@@ -302,7 +308,12 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
             : ListView.separated(
                 controller: _scrollController,
                 padding: const EdgeInsets.all(16),
-                itemCount: _items.length + (_hasMore ? 1 : 0),
+                // Having older history available is not itself a loading
+                // state. In particular, a notification tap may load exactly
+                // the highlighted item while `_hasMore` remains true; the
+                // footer must not look like a request that is spinning
+                // forever until the user actually reaches the end.
+                itemCount: _items.length + (_loadingMore ? 1 : 0),
                 separatorBuilder: (_, __) => const SizedBox(height: 16),
                 itemBuilder: (context, index) {
                   if (index >= _items.length) {
@@ -389,7 +400,11 @@ class _NewsfeedCard extends StatelessWidget {
           width: highlighted ? 2 : 1,
         ),
         boxShadow: highlighted
-            ? [BoxShadow(color: AppColors.brandGreen.withValues(alpha: 0.35), blurRadius: 16)]
+            ? [
+                BoxShadow(
+                    color: AppColors.brandGreen.withValues(alpha: 0.35),
+                    blurRadius: 16)
+              ]
             : null,
       ),
       clipBehavior: Clip.antiAlias,
@@ -398,8 +413,15 @@ class _NewsfeedCard extends StatelessWidget {
     );
   }
 
-  Widget _buildLayout(BuildContext context, _CardLayout layout, String image,
-      String title, String body, DateTime? created, bool isArticle, bool isSample) {
+  Widget _buildLayout(
+      BuildContext context,
+      _CardLayout layout,
+      String image,
+      String title,
+      String body,
+      DateTime? created,
+      bool isArticle,
+      bool isSample) {
     switch (layout) {
       case _CardLayout.imageTop:
         return Column(
@@ -408,7 +430,8 @@ class _NewsfeedCard extends StatelessWidget {
             Expanded(flex: 4, child: Image.asset(image, fit: BoxFit.cover)),
             Expanded(
               flex: 6,
-              child: _textBlock(context, title, body, created, isArticle, isSample,
+              child: _textBlock(
+                  context, title, body, created, isArticle, isSample,
                   padding: const EdgeInsets.all(18)),
             ),
           ],
@@ -420,7 +443,8 @@ class _NewsfeedCard extends StatelessWidget {
             Expanded(flex: 4, child: Image.asset(image, fit: BoxFit.cover)),
             Expanded(
               flex: 6,
-              child: _textBlock(context, title, body, created, isArticle, isSample,
+              child: _textBlock(
+                  context, title, body, created, isArticle, isSample,
                   padding: const EdgeInsets.all(18)),
             ),
           ],
@@ -431,7 +455,8 @@ class _NewsfeedCard extends StatelessWidget {
           children: [
             Expanded(
               flex: 6,
-              child: _textBlock(context, title, body, created, isArticle, isSample,
+              child: _textBlock(
+                  context, title, body, created, isArticle, isSample,
                   padding: const EdgeInsets.all(18)),
             ),
             Expanded(flex: 4, child: Image.asset(image, fit: BoxFit.cover)),
@@ -458,7 +483,8 @@ class _NewsfeedCard extends StatelessWidget {
             ),
             Align(
               alignment: Alignment.bottomLeft,
-              child: _textBlock(context, title, body, created, isArticle, isSample,
+              child: _textBlock(
+                  context, title, body, created, isArticle, isSample,
                   padding: const EdgeInsets.fromLTRB(18, 18, 18, 18)),
             ),
           ],
@@ -573,7 +599,8 @@ class _NewsfeedCard extends StatelessWidget {
               },
               child: RichText(
                 text: const TextSpan(
-                  style: TextStyle(fontFamily: 'Exo2', fontSize: 13, height: 1.4),
+                  style:
+                      TextStyle(fontFamily: 'Exo2', fontSize: 13, height: 1.4),
                   children: [
                     TextSpan(
                       text: 'This is a sample. ',
