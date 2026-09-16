@@ -622,6 +622,97 @@ class _ScenarioGuide extends StatelessWidget {
   );
 }
 
+class InterventionEngineGuideScreen extends StatelessWidget {
+  const InterventionEngineGuideScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('How the Intervention Engine works')),
+    body: ListView(
+      padding: const EdgeInsets.all(20),
+      children: const [
+        Text(
+          'The engine’s job',
+          style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+        ),
+        SizedBox(height: 8),
+        Text(
+          'The backend-owned Intervention Engine uses the account’s values, '
+          'goals, categories, tasks, schedules and checkbox history to decide '
+          'whether the minimum useful intervention is silence or a bounded '
+          'semantic intervention. It optimizes for checkbox completion, not '
+          'message volume. The client, renderer and delivery service execute '
+          'its decisions; they do not choose behavioral policy.',
+        ),
+        SizedBox(height: 20),
+        _EngineFlow(),
+        SizedBox(height: 20),
+        _GuideSection(
+          title: 'What each stage does',
+          children: [
+            Text(
+              '1. Context and history — account-scoped events provide the '
+              'current task context and observed completion history. Missing '
+              'context is never filled in with invented facts.',
+            ),
+            Text(
+              '2. Baseline — the engine estimates desired checkbox completion '
+              'if it stays silent. This is the comparison point, not a promise.',
+            ),
+            Text(
+              '3. Opportunity — the engine looks for meaningful completion risk, '
+              'useful information gain, recovery, reflection or target review. '
+              'A schedule deficit alone is not enough.',
+            ),
+            Text(
+              '4. Candidates — the engine considers NONE and semantic options '
+              'such as REMINDER or RECOVERY. A semantic type has an objective, '
+              'target, validity window, measurement window and surface; wording '
+              'comes later.',
+            ),
+            Text(
+              '5. Utility and burden — fixed policy rules compare expected '
+              'checkbox lift against burden, fatigue, annoyance, dependency, '
+              'timing, information value and sequence effects. Silence is both '
+              'a control condition and a way for burden to recover.',
+            ),
+            Text(
+              '6. Safety gate — approved safety boundaries run before rendering '
+              'and delivery. A prohibited candidate is constrained or suppressed '
+              'and the action is auditable without unnecessary sensitive content.',
+            ),
+            Text(
+              '7. Render, deliver and learn — a permitted semantic decision is '
+              'rendered with deterministic fallback, then delivery is attempted. '
+              'Decision, delivery, viewing, response, outcome, expiry, '
+              'cancellation and supersession remain separate states. Checkbox '
+              'completion is the primary outcome; technical failure is not a '
+              'behavioral treatment failure.',
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
+        _GuideSection(
+          title: 'The most important distinctions',
+          children: [
+            Text(
+              'NONE is an intentional policy decision. Safety suppression means '
+              'a safety boundary prevented a prohibited path. Delivery failure '
+              'means a permitted decision was selected but transport did not '
+              'complete. These are different causes and must not be combined.',
+            ),
+            Text(
+              'deterministic_utility identifies the fixed policy used to compare '
+              'candidates in the simulator. It is not an AI model selecting '
+              'messages, and it does not mean the result predicts a person.',
+            ),
+          ],
+        ),
+      ],
+    ),
+  );
+}
+
 class SimulationGuideScreen extends StatelessWidget {
   const SimulationGuideScreen({super.key});
 
@@ -644,6 +735,22 @@ class SimulationGuideScreen extends StatelessWidget {
           'person and it does not send notifications.',
         ),
         SizedBox(height: 20),
+        _GuideSection(
+          title: 'Start here: understand the engine first',
+          children: [
+            Text(
+              'The simulator does not implement a second policy. It sends '
+              'options to the same backend endpoint and exercises the same '
+              'engine contracts with synthetic data and virtual time.',
+            ),
+            SizedBox(height: 4),
+            _GuideLink(
+              label: 'Open “How the Intervention Engine works”',
+              screen: InterventionEngineGuideScreen(),
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
         _GuideSection(
           title: 'Safety: what it means here',
           children: [
@@ -838,6 +945,68 @@ class _SimulationFlow extends StatelessWidget {
         ],
       ),
     ),
+  );
+}
+
+class _EngineFlow extends StatelessWidget {
+  const _EngineFlow();
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        children: const [
+          _FlowStep(
+            number: '1',
+            title: 'Context + history',
+            body: 'Values, goals, tasks, schedules and observed checkboxes.',
+          ),
+          _FlowArrow(),
+          _FlowStep(
+            number: '2',
+            title: 'Baseline + opportunity',
+            body:
+                'Estimate silent completion and find a meaningful opportunity.',
+          ),
+          _FlowArrow(),
+          _FlowStep(
+            number: '3',
+            title: 'Candidates + utility',
+            body:
+                'Compare NONE and bounded semantic interventions against burden.',
+          ),
+          _FlowArrow(),
+          _FlowStep(
+            number: '4',
+            title: 'Safety gate',
+            body:
+                'Constrain or suppress prohibited paths before rendering/delivery.',
+          ),
+          _FlowArrow(),
+          _FlowStep(
+            number: '5',
+            title: 'Render + lifecycle',
+            body:
+                'Render, deliver, record separate states and measure outcomes.',
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _GuideLink extends StatelessWidget {
+  const _GuideLink({required this.label, required this.screen});
+  final String label;
+  final Widget screen;
+
+  @override
+  Widget build(BuildContext context) => TextButton.icon(
+    onPressed: () =>
+        Navigator.of(context).push(MaterialPageRoute(builder: (_) => screen)),
+    icon: const Icon(Icons.account_tree_outlined),
+    label: Text(label),
   );
 }
 
