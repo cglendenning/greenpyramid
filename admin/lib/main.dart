@@ -642,7 +642,7 @@ class InterventionEngineGuideScreen extends StatelessWidget {
           'whether the minimum useful intervention is silence or a bounded '
           'semantic intervention. It optimizes for checkbox completion, not '
           'message volume. The client, renderer and delivery service execute '
-          'its decisions; they do not choose behavioral policy.',
+          'its decisions; they do not choose intervention behavior policy.',
         ),
         SizedBox(height: 20),
         _EngineFlow(),
