@@ -564,6 +564,14 @@ class _SimulationScreenState extends State<SimulationScreen> {
                     '${metrics['evaluations']} evaluations · ${metrics['delivered']} delivered · '
                     '${metrics['failedDelivery']} failed deliveries · ${metrics['none']} NONE decisions',
                   ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => SimulationScenarioDetailsScreen(
+                        scenario: scenario,
+                      ),
+                    ),
+                  ),
                 ),
               );
             }),
@@ -593,6 +601,101 @@ class _ExplanationCard extends StatelessWidget {
       ),
     ),
   );
+}
+
+class SimulationScenarioDetailsScreen extends StatelessWidget {
+  const SimulationScenarioDetailsScreen({super.key, required this.scenario});
+  final Map<String, dynamic> scenario;
+
+  @override
+  Widget build(BuildContext context) {
+    final timeline = (scenario['timeline'] as List).cast<Map<String, dynamic>>();
+    final metrics = scenario['metrics'] as Map<String, dynamic>;
+    return Scaffold(
+      appBar: AppBar(title: Text('${scenario['name']} details')),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          Text(
+            'Every virtual day is shown below. A decision is recorded before delivery is attempted; a failed delivery does not change the decision.',
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _detailStat('Evaluations', '${metrics['evaluations']}'),
+              _detailStat('Delivered', '${metrics['delivered']}'),
+              _detailStat('Failed', '${metrics['failedDelivery']}'),
+              _detailStat('NONE', '${metrics['none']}'),
+            ],
+          ),
+          const SizedBox(height: 20),
+          ...timeline.map((entry) => _DecisionDayTile(entry: entry)),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailStat(String label, String value) => Chip(
+    label: Text('$label: $value'),
+    padding: const EdgeInsets.all(8),
+  );
+}
+
+class _DecisionDayTile extends StatelessWidget {
+  const _DecisionDayTile({required this.entry});
+  final Map<String, dynamic> entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final decision = entry['decision'] as Map<String, dynamic>;
+    final activity = entry['activity'] as Map<String, dynamic>;
+    final policy = (decision['policy'] as Map?)?.cast<String, dynamic>();
+    final baseline = (decision['baseline'] as Map?)?.cast<String, dynamic>();
+    final delivery = entry['deliveryState'] as String;
+    final delivered = delivery == 'sent';
+    return Card(
+      child: ExpansionTile(
+        title: Text('Day ${entry['day']} · ${decision['type']}'),
+        subtitle: Text(
+          '${activity['checked'] == true ? 'Checked' : 'Missed'} · '
+          '${delivered ? 'Delivered' : delivery == 'failed' ? 'Delivery failed' : 'Not sent'}',
+        ),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          _field('Time', '${entry['at']}'),
+          _field('Observed check-in', '${activity['taskdescription']} · ${activity['checked'] == true ? 'complete' : 'missed'}'),
+          _field('Decision ID', '${decision['decisionId']}'),
+          _field('Decision', '${decision['type']} — ${decision['rationale']}'),
+          _field('Target', '${decision['target'] ?? 'none'}'),
+          _field('Objective', '${decision['objective'] ?? 'none'}'),
+          _field('Delivery', delivery),
+          if (baseline != null) _field('Silent baseline', _formatMap(baseline)),
+          if (policy != null) _field('Policy comparison', _formatMap(policy)),
+          if (decision['context'] != null)
+            _field('Context used', _formatMap((decision['context'] as Map).cast<String, dynamic>())),
+          if (decision['lifecycle'] != null)
+            _field('Lifecycle', _formatMap((decision['lifecycle'] as Map).cast<String, dynamic>())),
+          if (decision['safety'] != null)
+            _field('Safety', _formatMap((decision['safety'] as Map).cast<String, dynamic>())),
+        ],
+      ),
+    );
+  }
+
+  Widget _field(String label, String value) => Padding(
+    padding: const EdgeInsets.only(top: 8),
+    child: Align(
+      alignment: Alignment.centerLeft,
+      child: Text('$label: $value'),
+    ),
+  );
+
+  String _formatMap(Map<String, dynamic> value) => value.entries
+      .map((entry) => '${entry.key}=${entry.value}')
+      .join(' · ');
 }
 
 class _ScenarioGuide extends StatelessWidget {
@@ -643,6 +746,17 @@ class InterventionEngineGuideScreen extends StatelessWidget {
           'semantic intervention. It optimizes for checkbox completion, not '
           'message volume. The client, renderer and delivery service execute '
           'its decisions; they do not choose intervention behavior policy.',
+        ),
+        SizedBox(height: 12),
+        Text(
+          'Important: the production intervention engine does not create or '
+          'train a predictive model from a person’s data. It estimates a '
+          'short-term silent baseline from observed history, then applies a '
+          'fixed, auditable utility policy. “Deterministic” means the same '
+          'inputs, policy version and time produce the same candidate comparison '
+          'and selection; it does not mean the engine predicts a person or '
+          'learns a private model. Model-generated wording, when used, happens '
+          'after the semantic decision and cannot choose whether to intervene.',
         ),
         SizedBox(height: 20),
         _EngineFlow(),

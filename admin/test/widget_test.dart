@@ -21,6 +21,11 @@ void main() {
     expect(source, contains('Virtual months'));
     expect(source, contains('Deterministic seed'));
     expect(source, contains('Copy JSON'));
+    expect(source, contains('SimulationScenarioDetailsScreen'));
+    expect(source, contains('Every virtual day is shown below'));
+    expect(source, contains('Policy comparison'));
+    expect(source, contains('Delivery'));
+    expect(source, contains('does not create or train a predictive model'));
     expect(source, contains('Sandbox only'));
     expect(source, contains('What this tests'));
     expect(source, contains('Default deterministic failures makes every 17th'));
