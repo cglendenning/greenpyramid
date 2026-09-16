@@ -58,6 +58,9 @@ lib/services/secrets.dart
 # Firebase hosting deploy cache
 .firebase/
 
+# Locally staged OTA artifacts are generated and must not be committed.
+/hosting/admin/
+
 # Private product specification — pricing, monetization strategy, compliance
 # analysis and sibling-app internals. Deliberately not published: this repo is
 # public. Rendered artifact lives on claude.ai instead.
