@@ -644,8 +644,68 @@ class SimulationGuideScreen extends StatelessWidget {
           'person and it does not send notifications.',
         ),
         SizedBox(height: 20),
+        _GuideSection(
+          title: 'Safety: what it means here',
+          children: [
+            Text(
+              'Safety is a hard boundary around the Intervention Engine. It '
+              'means the engine must not create or deliver a prohibited '
+              'intervention when an approved safety trigger is present. Safety '
+              'is not a score about whether a person is safe, and it is not a '
+              'claim that a simulation predicts real-world outcomes.',
+            ),
+            SizedBox(height: 8),
+            Text(
+              'The safety gate runs before message wording is rendered and '
+              'before delivery is attempted. It can constrain or suppress a '
+              'candidate, including replacing it with NONE. The report records '
+              'the trigger category, decision ID, action, policy version and '
+              'time for audit without copying sensitive trigger content.',
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Example: if a synthetic case would enter a prohibited path, the '
+              'safety gate suppresses it before the renderer and delivery '
+              'provider run. That is different from a delivery failure, where a '
+              'permitted reminder was selected but could not be delivered.',
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
         _SimulationFlow(),
         SizedBox(height: 24),
+        _GuideSection(
+          title: 'What the engine is evaluating',
+          children: [
+            Text(
+              'Baseline — the estimated completion pattern if the engine stays '
+              'silent. It gives the policy something to compare against.',
+            ),
+            Text(
+              'Opportunity — whether the synthetic pattern shows a meaningful '
+              'chance for a bounded reminder to help. Strong completion or too '
+              'little history can mean there is no opportunity.',
+            ),
+            Text(
+              'Burden — the modeled cost of prompting repeatedly. Recent '
+              'interventions increase burden; silence lets it recover, so the '
+              'engine can avoid nagging.',
+            ),
+            Text(
+              'Selection — the policy compares NONE with a permitted reminder '
+              'using expected checkbox lift minus burden. '
+              'deterministic_utility means fixed server rules make that choice; '
+              'it is not an AI prediction.',
+            ),
+            Text(
+              'Lifecycle — a decision, delivery attempt, provider acceptance, '
+              'viewing and behavioral outcome are separate events. A selected '
+              'reminder is not necessarily delivered, and a failed delivery is '
+              'not the same as a missed check-in.',
+            ),
+          ],
+        ),
+        SizedBox(height: 16),
         _GuideSection(
           title: 'A concrete example',
           children: [

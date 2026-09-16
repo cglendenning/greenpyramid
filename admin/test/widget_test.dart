@@ -31,6 +31,15 @@ void main() {
     expect(source, contains('selectionMode (deterministic_utility)'));
     expect(source, contains('How the simulator works'));
     expect(source, contains('The goal'));
+    expect(source, contains('Safety: what it means here'));
+    expect(source, contains('hard boundary'));
+    expect(source, contains('before message wording is rendered'));
+    expect(source, contains('safety gate suppresses it'));
+    expect(source, contains('Baseline'));
+    expect(source, contains('Opportunity'));
+    expect(source, contains('Burden'));
+    expect(source, contains('Selection'));
+    expect(source, contains('Lifecycle'));
     expect(source, contains('Synthetic person'));
     expect(source, contains('A concrete example'));
     expect(source, contains('Failed delivery'));
