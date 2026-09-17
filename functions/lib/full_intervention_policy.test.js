@@ -73,13 +73,54 @@ test('D-166-AC-03: burden and same-type cooldown suppress otherwise useful candi
     accountUid: 'taxonomy-test',
     profile,
     tasks: [task],
-    recentActivity: activity([{ checked: false, missreason: 'An unexpected meeting interrupted me' }]),
+    recentActivity: activity([
+      { checked: false, missreason: 'An unexpected meeting interrupted me' },
+      { checked: false, missreason: 'An unexpected meeting interrupted me' },
+    ]),
     priorInterventions: prior,
     now,
   });
   assert.equal(decision.type, 'NONE');
   assert.equal(decision.policy.candidates.some((candidate) => candidate.type === 'RECOVERY' && candidate.cooldownBlocked), true);
-  assert.equal(decision.policy.burdenAssumptions.typeCooldownDays, 7);
+  assert.equal(decision.policy.burdenAssumptions.typeCooldownDays, 3);
+  assert.equal(decision.policy.suppressionReason, 'same_type_cooldown');
+});
+
+test('D-166-AC-03: persistent difficulty receives a shorter cadence and larger bounded support budget', () => {
+  const decision = evaluate([
+    { checked: false, missreason: 'The equipment was not available' },
+    { checked: false, missreason: 'The equipment was not available' },
+    { checked: false, missreason: 'The equipment was not available' },
+  ]);
+  assert.equal(decision.policy.derivedSignals.supportTier, 'persistent');
+  assert.equal(decision.policy.burdenAssumptions.typeCooldownDays, 2);
+  assert.equal(decision.policy.burdenAssumptions.maxRecentNonSilent, 4);
+  assert.equal(decision.type, 'ENVIRONMENT_PROMPT');
+});
+
+test('D-166-AC-03: three failed uses of one type cause a bounded alternative to be considered', () => {
+  const priorInterventions = [
+    { type: 'ENVIRONMENT_PROMPT', evaluatedAt: '2026-09-06T10:00:00.000Z' },
+    { type: 'ENVIRONMENT_PROMPT', evaluatedAt: '2026-09-08T10:00:00.000Z' },
+    { type: 'ENVIRONMENT_PROMPT', evaluatedAt: '2026-09-10T10:00:00.000Z' },
+  ];
+  const recentActivity = [6, 7, 8, 9, 10, 11, 12, 13, 14].map((day) => ({
+    taskdate: `2026-09-${day}T10:00:00.000Z`,
+    taskdescription: task.description,
+    checked: false,
+    missreason: 'The equipment was not available',
+  }));
+  const decision = evaluateIntervention({
+    accountUid: 'taxonomy-test',
+    profile,
+    tasks: [task],
+    recentActivity,
+    priorInterventions,
+    now,
+  });
+  assert.equal(decision.type, 'INFORMATION_REQUEST');
+  assert.equal(decision.policy.derivedSignals.failedTypeCounts.ENVIRONMENT_PROMPT, 3);
+  assert.equal(decision.rationale, 'alternate_after_repeated_failure');
 });
 
 test('D-166-AC-04: miss reason classification is bounded and unknown-preserving', () => {

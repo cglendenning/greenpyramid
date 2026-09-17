@@ -8,6 +8,7 @@ void main() {
   // D-165-AC-05: simulator controls and report terminology are explained.
   // D-162-AC-04: simulator controls and report output are exposed here.
   // D-166-AC-06: the admin surface exposes shared-policy taxonomy reporting.
+  // D-166-AC-03: adaptive support cadence and suppression reasons are explained.
   test('admin surface is authenticated and exposes required views', () {
     expect(source, contains('signInWithProvider'));
     expect(source, contains("tooltip: 'Sign out'"));
@@ -57,6 +58,10 @@ void main() {
     expect(source, contains('Baseline'));
     expect(source, contains('Opportunity'));
     expect(source, contains('Burden'));
+    expect(source, contains('Adaptive support cadence'));
+    expect(source, contains('supportTier'));
+    expect(source, contains('suppressionReason'));
+    expect(source, contains('2-day cooldown'));
     expect(source, contains('Selection'));
     expect(source, contains('Lifecycle'));
     expect(source, contains('Synthetic person'));

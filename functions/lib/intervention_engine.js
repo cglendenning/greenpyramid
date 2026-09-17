@@ -129,7 +129,16 @@ export function evaluateIntervention({
   }
 
   if (policy.selectedType === 'NONE') {
-    return validateInterventionDecision(noneDecision({ accountUid, now: current, reason: 'burden_or_low_utility', state, decisionId, context, baseline, policy }));
+    return validateInterventionDecision(noneDecision({
+      accountUid,
+      now: current,
+      reason: policy.suppressionReason || 'no_useful_action',
+      state,
+      decisionId,
+      context,
+      baseline,
+      policy,
+    }));
   }
   return selectedDecision({ accountUid, now: current, state, decisionId, context, baseline, policy });
 }

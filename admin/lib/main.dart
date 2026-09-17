@@ -550,11 +550,13 @@ class _SimulationScreenState extends State<SimulationScreen> {
                   'Evaluations is the number of virtual days assessed. Delivered '
                   'counts interventions whose delivery succeeded. Failed counts '
                   'simulated delivery failures. NONE means the deterministic '
-                  'utility policy chose no intervention—usually because completion '
-                  'was already strong, there was not enough history, or recent '
-                  'interventions made the burden too high. The JSON also '
+                  'utility policy chose no intervention. The policy records why: '
+                  'strong completion or insufficient history can remove the '
+                  'opportunity; same-type cooldown or the tier-specific burden '
+                  'limit can suppress an otherwise useful candidate. The JSON also '
                   'includes the timeline, baseline, candidates, burden, safety '
-                  'bound, derived evidence, selected type, and selectionMode '
+                  'bound, derived evidence, supportTier, typeCooldownDays, '
+                  'maxRecentNonSilent, suppressionReason, selected type, and selectionMode '
                   '(deterministic_utility) for audit detail.',
             ),
             _InterventionTypeSummary(
@@ -961,6 +963,16 @@ class SimulationGuideScreen extends StatelessWidget {
               'engine can avoid nagging.',
             ),
             Text(
+              'Adaptive support cadence — stable completion stays quiet: a '
+              '7-day same-type cooldown and at most one non-silent intervention '
+              'per rolling 7 days. Emerging difficulty (two misses or completion '
+              'below 80%) uses a 3-day cooldown and at most two. Persistent '
+              'difficulty (three consecutive misses or at least three observations '
+              'at 50% completion or below) uses a 2-day cooldown and at most four. '
+              'A new miss is new evidence; a completed check-in lets support '
+              'burden recover.',
+            ),
+            Text(
               'Selection — the policy compares NONE with permitted semantic '
               'candidates using expected checkbox lift minus burden and a '
               'small success-continuity value for acknowledgment/reflection. '
@@ -1022,7 +1034,10 @@ class SimulationGuideScreen extends StatelessWidget {
             Text(
               'NONE — the engine deliberately chooses not to intervene. This '
               'can mean strong autonomous completion, insufficient history, '
-              'or too much recent intervention burden.',
+              'same-type cooldown, a tier-specific burden limit, low utility, '
+              'or no eligible candidate. Inspect suppressionReason, supportTier, '
+              'typeCooldownDays, and maxRecentNonSilent in the JSON to tell which '
+              'case occurred.',
             ),
             Text(
               'Default deterministic failures — selected interventions fail '

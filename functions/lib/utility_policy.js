@@ -2,9 +2,12 @@ import { INTERVENTION_TYPES, SURFACE_BY_TYPE } from './intervention_taxonomy.js'
 
 const MAX_CANDIDATES = 4;
 const BURDEN_WINDOW_DAYS = 7;
-const BURDEN_LIMIT = 3;
-const TYPE_COOLDOWN_DAYS = 7;
 const BURDEN_PER_RECENT_INTERVENTION = 0.5;
+const SUPPORT_CADENCE = Object.freeze({
+  stable: Object.freeze({ sameTypeCooldownDays: 7, maxRecentNonSilent: 1 }),
+  emerging: Object.freeze({ sameTypeCooldownDays: 3, maxRecentNonSilent: 2 }),
+  persistent: Object.freeze({ sameTypeCooldownDays: 2, maxRecentNonSilent: 4 }),
+});
 const LIFT_BY_TYPE = Object.freeze({
   REMINDER: 0.10,
   COMMITMENT_REQUEST: 0.08,
@@ -23,6 +26,21 @@ const LIFT_BY_TYPE = Object.freeze({
 const SECONDARY_UTILITY_BY_TYPE = Object.freeze({
   CELEBRATION: 0.08,
   SUCCESS_REFLECTION: 0.07,
+});
+const ALTERNATIVE_TYPES_BY_TYPE = Object.freeze({
+  REMINDER: ['REFLECTION', 'INFORMATION_REQUEST'],
+  COMMITMENT_REQUEST: ['PLAN_PROMPT', 'REFLECTION'],
+  PLAN_PROMPT: ['INFORMATION_REQUEST', 'REFLECTION'],
+  IMPLEMENTATION_INTENTION: ['PLAN_PROMPT', 'INFORMATION_REQUEST'],
+  VALUE_REFRAME: ['REFLECTION', 'INFORMATION_REQUEST'],
+  REFLECTION: ['INFORMATION_REQUEST', 'PLAN_PROMPT'],
+  INFORMATION_REQUEST: ['PLAN_PROMPT', 'REFLECTION'],
+  ENVIRONMENT_PROMPT: ['INFORMATION_REQUEST', 'PLAN_PROMPT'],
+  RECOVERY: ['REFLECTION', 'INFORMATION_REQUEST'],
+  CELEBRATION: ['SUCCESS_REFLECTION', 'REFLECTION'],
+  SUCCESS_REFLECTION: ['CELEBRATION', 'REFLECTION'],
+  TARGET_REVIEW: ['INFORMATION_REQUEST', 'REFLECTION'],
+  CHALLENGE_REVIEW: ['PLAN_PROMPT', 'REFLECTION'],
 });
 
 const OBJECTIVE_BY_TYPE = Object.freeze({
@@ -69,12 +87,27 @@ function recentCount(priorInterventions, now) {
   }).length;
 }
 
-function recentTypeCount(priorInterventions, type, now) {
-  const cutoff = now.getTime() - TYPE_COOLDOWN_DAYS * 86400000;
+function recentTypeCount(priorInterventions, type, now, cooldownDays) {
+  const cutoff = now.getTime() - cooldownDays * 86400000;
   return priorInterventions.filter((decision) => {
     const at = dateValue(decision.evaluatedAt);
     return at !== null && at >= cutoff && at <= now.getTime() && decision.type === type;
   }).length;
+}
+
+function failedTypeCounts(priorInterventions, history, now) {
+  const counts = {};
+  for (const decision of priorInterventions) {
+    if (!decision.type || decision.type === 'NONE' || !INTERVENTION_TYPES.includes(decision.type)) continue;
+    const at = dateValue(decision.evaluatedAt);
+    if (at === null || at > now.getTime()) continue;
+    const response = history
+      .map((entry) => ({ entry, at: dateValue(entry.date || entry.taskdate) }))
+      .filter(({ at: responseAt }) => responseAt !== null && responseAt > at && responseAt <= now.getTime())
+      .sort((a, b) => a.at - b.at)[0];
+    if (response && response.entry.checked !== true) counts[decision.type] = (counts[decision.type] || 0) + 1;
+  }
+  return counts;
 }
 
 function trailingStreak(history, checked) {
@@ -92,7 +125,7 @@ export function classifyMissReason(reason) {
   return REASON_PATTERNS.find(([, pattern]) => pattern.test(value))?.[0] || 'unknown';
 }
 
-function deriveSignals({ baseline, target, context = {} }) {
+function deriveSignals({ baseline, target, context = {}, priorInterventions = [], now = new Date() }) {
   const history = Array.isArray(context.checkboxHistory) ? context.checkboxHistory : [];
   const tasks = Array.isArray(context.tasks) ? context.tasks : [];
   const task = tasks.find((candidate) => candidate.description === target) || tasks[0] || null;
@@ -112,8 +145,22 @@ function deriveSignals({ baseline, target, context = {} }) {
   const completedStreak = trailingStreak(history, true);
   const missedStreak = trailingStreak(history, false);
   const mixedHistory = baseline.completedCount > 0 && baseline.missedCount > 0;
+  const observedCount = Number.isInteger(baseline.observedCount)
+    ? baseline.observedCount
+    : history.length;
+  const completionRate = Number.isFinite(baseline.desiredCheckboxCompletion)
+    ? baseline.desiredCheckboxCompletion
+    : null;
+  const supportTier = missedStreak >= 3 ||
+      (observedCount >= 3 && completionRate !== null && completionRate <= 0.5)
+    ? 'persistent'
+    : missedStreak >= 2 ||
+        (observedCount >= 2 && completionRate !== null && completionRate < 0.8)
+      ? 'emerging'
+      : 'stable';
   const needsImplementationIntention = reasonClass === 'planning' &&
     /\b(time|when|cue|trigger|situation|after|before)\b/.test(normalized(latestReason));
+  const failedTypeCountsByType = failedTypeCounts(priorInterventions, history, now);
 
   return {
     task,
@@ -127,6 +174,8 @@ function deriveSignals({ baseline, target, context = {} }) {
     completedStreak,
     missedStreak,
     mixedHistory,
+    supportTier,
+    failedTypeCounts: failedTypeCountsByType,
     needsImplementationIntention,
     commitmentNeeded: context.commitmentNeeded === true || task?.commitmentRequired === true,
   };
@@ -165,7 +214,8 @@ export function generateInterventionCandidates({
     : 0;
   const count = recentCount(priorInterventions, now);
   const burden = 1 + count * BURDEN_PER_RECENT_INTERVENTION;
-  const signals = deriveSignals({ baseline, target, context });
+  const signals = deriveSignals({ baseline, target, context, priorInterventions, now });
+  const cadence = SUPPORT_CADENCE[signals.supportTier];
   const candidates = [{
     type: 'NONE', target: null, objective: null, surface: 'none',
     rationale: 'no_useful_action', predictedCheckboxCompletion: baselineValue,
@@ -173,8 +223,18 @@ export function generateInterventionCandidates({
   }];
   const add = (type, reason, explicitObjective = null) => {
     if (!INTERVENTION_TYPES.includes(type) || type === 'NONE' || candidates.some((item) => item.type === type)) return;
+    const failedCount = signals.failedTypeCounts[type] || 0;
+    const alternativeType = failedCount >= 3
+      ? (ALTERNATIVE_TYPES_BY_TYPE[type] || []).find((alternative) =>
+        !candidates.some((item) => item.type === alternative) &&
+        (signals.failedTypeCounts[alternative] || 0) < 3)
+      : null;
+    const selectedType = alternativeType || type;
     candidates.push(candidate({
-      type, target, objective: explicitObjective, rationale: reason,
+      type: selectedType,
+      target,
+      objective: explicitObjective,
+      rationale: alternativeType ? 'alternate_after_repeated_failure' : reason,
       baseline: baselineValue, burden,
     }));
   };
@@ -231,6 +291,8 @@ export function generateInterventionCandidates({
     signals,
     recentInterventionCount: count,
     burden,
+    supportTier: signals.supportTier,
+    cadence,
   };
 }
 
@@ -245,9 +307,10 @@ export function chooseIntervention({
 } = {}) {
   const generated = generateInterventionCandidates({ baseline, target, objective, priorInterventions, now, context });
   const count = generated.recentInterventionCount;
+  const cadence = generated.cadence;
   const candidates = generated.candidates.map((item) => ({
     ...item,
-    cooldownBlocked: item.type !== 'NONE' && recentTypeCount(priorInterventions, item.type, now) > 0,
+    cooldownBlocked: item.type !== 'NONE' && recentTypeCount(priorInterventions, item.type, now, cadence.sameTypeCooldownDays) > 0,
     utilityScore: item.predictedCheckboxCompletion + item.secondaryUtility - item.burden * 0.01,
   }));
   const silence = candidates[0];
@@ -255,12 +318,23 @@ export function chooseIntervention({
     .filter((item) => item.type !== 'NONE' && !item.cooldownBlocked)
     .sort((a, b) => b.utilityScore - a.utilityScore || b.predictedLift - a.predictedLift);
   const best = eligible[0];
-  const selected = count < BURDEN_LIMIT && best && best.utilityScore > silence.utilityScore
+  const cooldownBlockedCandidate = candidates.find((item) => item.type !== 'NONE' && item.cooldownBlocked);
+  const selected = count < cadence.maxRecentNonSilent && best && best.utilityScore > silence.utilityScore
     ? best : silence;
+  const suppressionReason = selected.type === 'NONE'
+    ? count >= cadence.maxRecentNonSilent
+      ? 'burden_limit'
+      : cooldownBlockedCandidate
+        ? 'same_type_cooldown'
+        : best && best.utilityScore <= silence.utilityScore
+          ? 'low_utility'
+          : 'no_eligible_candidate'
+    : null;
 
   return {
     candidates,
     selectedType: selected.type,
+    suppressionReason,
     selectionMode: 'deterministic_utility',
     policyVersion: 'intervention-policy-v2',
     derivedSignals: generated.signals,
@@ -269,7 +343,10 @@ export function chooseIntervention({
       windowDays: BURDEN_WINDOW_DAYS,
       repeatedInterventionPenalty: BURDEN_PER_RECENT_INTERVENTION,
       silenceRecovery: selected.type === 'NONE' && count > 0,
-      typeCooldownDays: TYPE_COOLDOWN_DAYS,
+      supportTier: generated.supportTier,
+      maxRecentNonSilent: cadence.maxRecentNonSilent,
+      typeCooldownDays: cadence.sameTypeCooldownDays,
+      repeatedTypeFailureThreshold: 3,
     },
     burdenAfterSelection: selected.type === 'NONE' ? Math.max(0, count - 1) : count + 1,
     safetyBound: { maxCandidates: MAX_CANDIDATES, allowedTypes: INTERVENTION_TYPES },

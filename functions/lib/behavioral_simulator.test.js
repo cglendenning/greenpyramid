@@ -46,3 +46,11 @@ test('D-162-AC-04: selected scenarios and failure mode are deterministic', () =>
   assert.throws(() => runSimulation({ months: 25 }), /months_invalid/);
   assert.throws(() => runSimulation({ scenarios: ['not-a-scenario'] }), /scenarios_invalid/);
 });
+
+test('D-166-AC-03: persistent difficulty receives more support than autonomous completion', () => {
+  const report = runSimulation({ months: 1, seed: 1, failureMode: 'none' });
+  const autonomous = report.scenarios.find((scenario) => scenario.name === 'autonomous');
+  const difficult = report.scenarios.find((scenario) => scenario.name === 'difficult');
+  assert.equal(difficult.metrics.evaluations - difficult.metrics.none > autonomous.metrics.evaluations - autonomous.metrics.none, true);
+  assert.equal(difficult.metrics.selectedTypes.ENVIRONMENT_PROMPT > 0, true);
+});
