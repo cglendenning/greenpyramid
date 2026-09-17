@@ -7,6 +7,7 @@ void main() {
   // D-165-AC-04: the signed IPA was manually reviewed after this surface test.
   // D-165-AC-05: simulator controls and report terminology are explained.
   // D-162-AC-04: simulator controls and report output are exposed here.
+  // D-166-AC-06: the admin surface exposes shared-policy taxonomy reporting.
   test('admin surface is authenticated and exposes required views', () {
     expect(source, contains('signInWithProvider'));
     expect(source, contains("tooltip: 'Sign out'"));
@@ -25,7 +26,8 @@ void main() {
     expect(source, contains('Every virtual day is shown below'));
     expect(source, contains('Policy comparison'));
     expect(source, contains('Delivery'));
-    expect(source, contains('does not create or train a predictive model'));
+    expect(source, contains('does not create or'));
+    expect(source, contains('train a predictive model'));
     expect(source, contains('Sandbox only'));
     expect(source, contains('What this tests'));
     expect(source, contains('Default deterministic failures makes every 17th'));
@@ -33,7 +35,10 @@ void main() {
       source,
       contains('The same seed and settings produce the same report'),
     );
-    expect(source, contains('selectionMode (deterministic_utility)'));
+    expect(source, contains('selectionMode '));
+    expect(source, contains('(deterministic_utility)'));
+    expect(source, contains('Selected intervention types'));
+    expect(source, contains('evidence-triggered taxonomy selection'));
     expect(source, contains('How the simulator works'));
     expect(source, contains('How the Intervention Engine works'));
     expect(source, contains('The engine’s job'));

@@ -1,6 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { deterministicFallback, INTERVENTION_TYPES, validateInterventionDecision } from './intervention_taxonomy.js';
+import {
+  deterministicFallback,
+  INTERVENTION_TYPES,
+  SURFACE_BY_TYPE,
+  validateInterventionDecision,
+} from './intervention_taxonomy.js';
 
 test('D-156-AC-01: semantic decisions carry the required fields', () => {
   const decision = deterministicFallback('REMINDER', { target: 'Walk', objective: 'support_next_checkbox' });
@@ -25,6 +30,6 @@ test('D-156-AC-03: every taxonomy type has deterministic fallback behavior', () 
     const fallback = deterministicFallback(type, { target: 'target', objective: 'objective' });
     assert.doesNotThrow(() => validateInterventionDecision(fallback));
     assert.equal(fallback.type, type);
-    assert.equal(fallback.surface, type === 'NONE' ? 'none' : 'in_app');
+    assert.equal(fallback.surface, type === 'NONE' ? 'none' : SURFACE_BY_TYPE[type]);
   }
 });

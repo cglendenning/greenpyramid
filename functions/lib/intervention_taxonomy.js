@@ -7,6 +7,22 @@ export const INTERVENTION_TYPES = Object.freeze([
 
 const SURFACES = new Set(['none', 'push', 'inbox', 'in_app', 'council', 'dedicated', 'local']);
 
+export const SURFACE_BY_TYPE = Object.freeze({
+  REMINDER: 'in_app',
+  COMMITMENT_REQUEST: 'council',
+  PLAN_PROMPT: 'council',
+  IMPLEMENTATION_INTENTION: 'council',
+  VALUE_REFRAME: 'in_app',
+  REFLECTION: 'council',
+  INFORMATION_REQUEST: 'council',
+  ENVIRONMENT_PROMPT: 'council',
+  RECOVERY: 'in_app',
+  CELEBRATION: 'in_app',
+  SUCCESS_REFLECTION: 'council',
+  TARGET_REVIEW: 'council',
+  CHALLENGE_REVIEW: 'council',
+});
+
 /** D-156: semantic decision validation is independent of copy and delivery. */
 export function validateInterventionDecision(decision) {
   if (!decision || !INTERVENTION_TYPES.includes(decision.type)) throw new Error('intervention_type_invalid');
@@ -34,7 +50,6 @@ export function deterministicFallback(type, { target = null, objective = null } 
     objective: silent ? null : objective,
     validityWindowHours: silent ? 0 : 24,
     measurementWindowDays: silent ? 0 : 1,
-    surface: silent ? 'none' : 'in_app',
+    surface: silent ? 'none' : SURFACE_BY_TYPE[type] || 'in_app',
   };
 }
-

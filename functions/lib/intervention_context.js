@@ -2,6 +2,10 @@ function text(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function boolean(value) {
+  return value === true || value === 'true' || value === 1;
+}
+
 function categoryName(category) {
   return text(category?.name) || text(category?.cat);
 }
@@ -42,13 +46,19 @@ export function buildInterventionContext({ profile = {}, tasks = [], recentActiv
         description: text(task.description) || text(task.taskdescription),
         category: text(task.category),
         categoryId: task.categoryId ?? null,
+        scheduledTime: text(task.scheduledtime) || text(task.scheduledTime),
+        plan: text(task.plan) || text(task.nextStep),
+        cue: text(task.cue) || text(task.implementationIntention),
+        commitmentRequired: boolean(task.commitmentRequired),
+        challengeLevel: text(task.challengeLevel),
       })),
     checkboxHistory: recentActivity.map((entry) => ({
       date: text(entry.taskdate) || text(entry.date),
       category: text(entry.category),
       task: text(entry.taskdescription) || text(entry.description),
-      checked: entry.checked === true || entry.checked === 'true' || entry.checked === 1,
+      checked: boolean(entry.checked),
+      missReason: text(entry.missreason) || text(entry.missReason),
     })),
+    commitmentNeeded: boolean(profile.commitmentNeeded),
   };
 }
-

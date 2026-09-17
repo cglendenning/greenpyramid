@@ -1,4 +1,5 @@
 import { evaluateIntervention } from './intervention_engine.js';
+import { INTERVENTION_TYPES } from './intervention_taxonomy.js';
 
 export const REQUIRED_SCENARIOS = Object.freeze([
   'autonomous', 'responsive', 'fatigue', 'sequence', 'changing', 'difficult', 'mature',
@@ -35,6 +36,19 @@ function checkedForScenario(name, day, draw) {
   }
 }
 
+function missReasonForScenario(name, day, checked) {
+  if (checked) return null;
+  switch (name) {
+    case 'responsive': return 'An unexpected meeting interrupted me';
+    case 'fatigue': return day >= 45 ? 'This became difficult' : null;
+    case 'sequence': return 'I need a better time to do this';
+    case 'changing': return day >= 60 ? 'This target is no longer relevant' : null;
+    case 'difficult': return 'The equipment was not available';
+    case 'mature': return day < 20 ? 'I am not sure what changed' : null;
+    default: return null;
+  }
+}
+
 /** D-162: virtual-time simulator using the production logical engine. */
 export function runScenario({ name, days = 180, seed = 1, start = '2026-01-01T12:00:00Z', failureMode = 'default' }) {
   if (!REQUIRED_SCENARIOS.includes(name)) throw new Error('scenario_invalid');
@@ -47,7 +61,11 @@ export function runScenario({ name, days = 180, seed = 1, start = '2026-01-01T12
   for (let day = 0; day < days; day++) {
     const now = new Date(new Date(start).valueOf() + day * 86400000);
     const checked = checkedForScenario(name, day, draw);
-    const activity = { taskdate: now.toISOString(), taskdescription: tasks[0].description, checked };
+    const missreason = missReasonForScenario(name, day, checked);
+    const activity = {
+      taskdate: now.toISOString(), taskdescription: tasks[0].description, checked,
+      ...(missreason ? { missreason } : {}),
+    };
     const recentActivity = [...timeline.map((entry) => entry.activity), activity];
     const decision = evaluateIntervention({
       accountUid: `sim-${name}`,
@@ -64,6 +82,8 @@ export function runScenario({ name, days = 180, seed = 1, start = '2026-01-01T12
     timeline.push(record);
     decisions.push(decision);
   }
+  const typeCounts = Object.fromEntries(INTERVENTION_TYPES.map((type) => [type, 0]));
+  for (const entry of timeline) typeCounts[entry.decision.type] += 1;
   return {
     name,
     virtualDays: days,
@@ -73,6 +93,7 @@ export function runScenario({ name, days = 180, seed = 1, start = '2026-01-01T12
       none: timeline.filter((entry) => entry.decision.type === 'NONE').length,
       delivered: timeline.filter((entry) => entry.deliveryState === 'sent').length,
       failedDelivery: timeline.filter((entry) => entry.deliveryState === 'failed').length,
+      selectedTypes: typeCounts,
     },
   };
 }
@@ -85,6 +106,10 @@ export function runSimulation({ projectId = 'greenpyramid-sandbox', months = 6, 
   if (!['default', 'none'].includes(failureMode)) throw new Error('failure_mode_invalid');
   const days = months * 30;
   const results = scenarios.map((name, index) => runScenario({ name, days, seed: seed + index, failureMode }));
+  const selectedTypes = Object.fromEntries(INTERVENTION_TYPES.map((type) => [type, 0]));
+  for (const result of results) {
+    for (const [type, count] of Object.entries(result.metrics.selectedTypes)) selectedTypes[type] += count;
+  }
   return {
     projectId,
     virtualMonths: months,
@@ -92,6 +117,7 @@ export function runSimulation({ projectId = 'greenpyramid-sandbox', months = 6, 
     seed,
     failureMode,
     scenarios: results,
+    selectedTypes,
     timeline: results.flatMap((scenario) => scenario.timeline),
   };
 }

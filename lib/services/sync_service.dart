@@ -210,6 +210,10 @@ class SyncService {
             'taskdescription': row[DatabaseHelper.columnTLTaskDescription],
             'checked': row[DatabaseHelper.columnTLChecked],
             'taskdate': row[DatabaseHelper.columnTLTaskDate],
+            // D-099/D-166: preserve the user's bounded miss reason so the
+            // cloud selector can distinguish recovery, planning, friction,
+            // information and target-review opportunities.
+            'missreason': row[DatabaseHelper.columnTLMissReason],
           },
           SetOptions(merge: true));
     }
@@ -403,6 +407,7 @@ class SyncService {
         DatabaseHelper.columnTLTaskDescription: a['taskdescription'],
         DatabaseHelper.columnTLChecked: a['checked'],
         DatabaseHelper.columnTLTaskDate: a['taskdate'],
+        DatabaseHelper.columnTLMissReason: a['missreason'],
       });
     }
 

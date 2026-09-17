@@ -411,8 +411,9 @@ class _SimulationScreenState extends State<SimulationScreen> {
                 'Each selected scenario supplies a different synthetic pattern '
                 'of completed and missed check-ins. Every virtual day is evaluated '
                 'by the intervention engine, which compares doing nothing with a '
-                'bounded reminder. This tests detection, deterministic policy '
-                'selection, delivery failures, and the resulting audit timeline; '
+                'bounded set of semantic intervention candidates. This tests '
+                'evidence-triggered taxonomy selection, delivery failures, and '
+                'the resulting audit timeline; '
                 'it does not test real people, notifications, or production data.',
           ),
           Align(
@@ -551,9 +552,15 @@ class _SimulationScreenState extends State<SimulationScreen> {
                   'simulated delivery failures. NONE means the deterministic '
                   'utility policy chose no intervention—usually because completion '
                   'was already strong, there was not enough history, or recent '
-                  'interventions made the reminder burden too high. The JSON also '
+                  'interventions made the burden too high. The JSON also '
                   'includes the timeline, baseline, candidates, burden, safety '
-                  'bound, and selectionMode (deterministic_utility) for audit detail.',
+                  'bound, derived evidence, selected type, and selectionMode '
+                  '(deterministic_utility) for audit detail.',
+            ),
+            _InterventionTypeSummary(
+              counts:
+                  (report!['selectedTypes'] as Map?)?.cast<String, dynamic>() ??
+                  const {},
             ),
             ...scenarios.map((scenario) {
               final metrics = scenario['metrics'] as Map<String, dynamic>;
@@ -567,9 +574,8 @@ class _SimulationScreenState extends State<SimulationScreen> {
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                      builder: (_) => SimulationScenarioDetailsScreen(
-                        scenario: scenario,
-                      ),
+                      builder: (_) =>
+                          SimulationScenarioDetailsScreen(scenario: scenario),
                     ),
                   ),
                 ),
@@ -603,13 +609,32 @@ class _ExplanationCard extends StatelessWidget {
   );
 }
 
+class _InterventionTypeSummary extends StatelessWidget {
+  const _InterventionTypeSummary({required this.counts});
+  final Map<String, dynamic> counts;
+
+  @override
+  Widget build(BuildContext context) {
+    final entries = counts.entries
+        .where((entry) => (entry.value as num?)?.toInt() != 0)
+        .toList();
+    return _ExplanationCard(
+      title: 'Selected intervention types',
+      body: entries.isEmpty
+          ? 'No semantic intervention was selected in this run. The engine intentionally chose NONE for every evaluation.'
+          : entries.map((entry) => '${entry.key}: ${entry.value}').join(' · '),
+    );
+  }
+}
+
 class SimulationScenarioDetailsScreen extends StatelessWidget {
   const SimulationScenarioDetailsScreen({super.key, required this.scenario});
   final Map<String, dynamic> scenario;
 
   @override
   Widget build(BuildContext context) {
-    final timeline = (scenario['timeline'] as List).cast<Map<String, dynamic>>();
+    final timeline = (scenario['timeline'] as List)
+        .cast<Map<String, dynamic>>();
     final metrics = scenario['metrics'] as Map<String, dynamic>;
     return Scaffold(
       appBar: AppBar(title: Text('${scenario['name']} details')),
@@ -638,10 +663,8 @@ class SimulationScenarioDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _detailStat(String label, String value) => Chip(
-    label: Text('$label: $value'),
-    padding: const EdgeInsets.all(8),
-  );
+  Widget _detailStat(String label, String value) =>
+      Chip(label: Text('$label: $value'), padding: const EdgeInsets.all(8));
 }
 
 class _DecisionDayTile extends StatelessWidget {
@@ -661,12 +684,19 @@ class _DecisionDayTile extends StatelessWidget {
         title: Text('Day ${entry['day']} · ${decision['type']}'),
         subtitle: Text(
           '${activity['checked'] == true ? 'Checked' : 'Missed'} · '
-          '${delivered ? 'Delivered' : delivery == 'failed' ? 'Delivery failed' : 'Not sent'}',
+          '${delivered
+              ? 'Delivered'
+              : delivery == 'failed'
+              ? 'Delivery failed'
+              : 'Not sent'}',
         ),
         childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         children: [
           _field('Time', '${entry['at']}'),
-          _field('Observed check-in', '${activity['taskdescription']} · ${activity['checked'] == true ? 'complete' : 'missed'}'),
+          _field(
+            'Observed check-in',
+            '${activity['taskdescription']} · ${activity['checked'] == true ? 'complete' : 'missed'}',
+          ),
           _field('Decision ID', '${decision['decisionId']}'),
           _field('Decision', '${decision['type']} — ${decision['rationale']}'),
           _field('Target', '${decision['target'] ?? 'none'}'),
@@ -675,11 +705,22 @@ class _DecisionDayTile extends StatelessWidget {
           if (baseline != null) _field('Silent baseline', _formatMap(baseline)),
           if (policy != null) _field('Policy comparison', _formatMap(policy)),
           if (decision['context'] != null)
-            _field('Context used', _formatMap((decision['context'] as Map).cast<String, dynamic>())),
+            _field(
+              'Context used',
+              _formatMap((decision['context'] as Map).cast<String, dynamic>()),
+            ),
           if (decision['lifecycle'] != null)
-            _field('Lifecycle', _formatMap((decision['lifecycle'] as Map).cast<String, dynamic>())),
+            _field(
+              'Lifecycle',
+              _formatMap(
+                (decision['lifecycle'] as Map).cast<String, dynamic>(),
+              ),
+            ),
           if (decision['safety'] != null)
-            _field('Safety', _formatMap((decision['safety'] as Map).cast<String, dynamic>())),
+            _field(
+              'Safety',
+              _formatMap((decision['safety'] as Map).cast<String, dynamic>()),
+            ),
         ],
       ),
     );
@@ -693,9 +734,8 @@ class _DecisionDayTile extends StatelessWidget {
     ),
   );
 
-  String _formatMap(Map<String, dynamic> value) => value.entries
-      .map((entry) => '${entry.key}=${entry.value}')
-      .join(' · ');
+  String _formatMap(Map<String, dynamic> value) =>
+      value.entries.map((entry) => '${entry.key}=${entry.value}').join(' · ');
 }
 
 class _ScenarioGuide extends StatelessWidget {
@@ -740,10 +780,10 @@ class InterventionEngineGuideScreen extends StatelessWidget {
         ),
         SizedBox(height: 8),
         Text(
-          'The backend-owned Intervention Engine uses the account’s values, '
+          'The cloud-based Intervention Engine uses the account’s values, '
           'goals, categories, tasks, schedules and checkbox history to decide '
-          'whether the minimum useful intervention is silence or a bounded '
-          'semantic intervention. It optimizes for checkbox completion, not '
+          'whether the minimum useful intervention is silence or one bounded '
+          'semantic intervention from the complete taxonomy. It optimizes for checkbox completion, not '
           'message volume. The client, renderer and delivery service execute '
           'its decisions; they do not choose intervention behavior policy.',
         ),
@@ -779,8 +819,9 @@ class InterventionEngineGuideScreen extends StatelessWidget {
               'A schedule deficit alone is not enough.',
             ),
             Text(
-              '4. Candidates — the engine considers NONE and semantic options '
-              'such as REMINDER or RECOVERY. A semantic type has an objective, '
+              '4. Candidates — the engine considers NONE and evidence-triggered '
+              'semantic options such as REMINDER, RECOVERY, PLAN_PROMPT, or '
+              'TARGET_REVIEW. A semantic type has an objective, '
               'target, validity window, measurement window and surface; wording '
               'comes later.',
             ),
@@ -845,7 +886,7 @@ class SimulationGuideScreen extends StatelessWidget {
           'This is a repeatable safety and behavior test for the Intervention '
           'Engine. It answers: “If these synthetic check-in patterns happened '
           'over time, when would the engine stay silent, choose a reminder, '
-          'or encounter a delivery failure?” It is not a prediction about a '
+          'choose a type-specific bounded intervention, or encounter a delivery failure?” It is not a prediction about a '
           'person and it does not send notifications.',
         ),
         SizedBox(height: 20),
@@ -888,7 +929,7 @@ class SimulationGuideScreen extends StatelessWidget {
               'Example: if a synthetic case would enter a prohibited path, the '
               'safety gate suppresses it before the renderer and delivery '
               'provider run. That is different from a delivery failure, where a '
-              'permitted reminder was selected but could not be delivered.',
+              'permitted intervention was selected but could not be delivered.',
             ),
           ],
         ),
@@ -904,7 +945,7 @@ class SimulationGuideScreen extends StatelessWidget {
             ),
             Text(
               'Opportunity — whether the synthetic pattern shows a meaningful '
-              'chance for a bounded reminder to help. Strong completion or too '
+              'chance for a bounded intervention to help. Strong completion or too '
               'little history can mean there is no opportunity.',
             ),
             Text(
@@ -913,8 +954,9 @@ class SimulationGuideScreen extends StatelessWidget {
               'engine can avoid nagging.',
             ),
             Text(
-              'Selection — the policy compares NONE with a permitted reminder '
-              'using expected checkbox lift minus burden. '
+              'Selection — the policy compares NONE with permitted semantic '
+              'candidates using expected checkbox lift minus burden and a '
+              'small success-continuity value for acknowledgment/reflection. '
               'deterministic_utility means fixed server rules make that choice; '
               'it is not an AI prediction.',
             ),
@@ -934,9 +976,10 @@ class SimulationGuideScreen extends StatelessWidget {
               'Imagine the “difficult” scenario. On a virtual day the '
               'synthetic person misses “Daily practice.” The engine looks '
               'back at recent check-ins, estimates the no-intervention '
-              'completion baseline, and compares two candidates: NONE and a '
-              'REMINDER. If the expected completion lift is worth the modeled '
-              'burden, it selects REMINDER. If not, it selects NONE. The '
+              'completion baseline, and compares NONE with a type-specific '
+              'candidate such as RECOVERY, PLAN_PROMPT, or REMINDER. If the '
+              'expected completion lift is worth the modeled burden, it selects '
+              'that semantic type. If not, it selects NONE. The '
               'decision is recorded even when delivery later fails.',
             ),
             SizedBox(height: 8),

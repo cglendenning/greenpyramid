@@ -593,8 +593,7 @@ void main() {
       expect(categories, hasLength(1));
       expect(categories.single[DatabaseHelper.columnCat], 'Google category');
       expect(await db.queryAllTasks(), isEmpty);
-      expect(
-          await database.query('setup_drafts'), hasLength(1));
+      expect(await database.query('setup_drafts'), hasLength(1));
       expect((await db.getAccountState())[DatabaseHelper.columnAccountUid],
           incomingUid);
     });
@@ -679,8 +678,9 @@ void main() {
       await db.insertTaskLog({
         DatabaseHelper.columnTLCategory: 'Health',
         DatabaseHelper.columnTLTaskDescription: 'Walk 20 minutes',
-        DatabaseHelper.columnTLChecked: 'true',
+        DatabaseHelper.columnTLChecked: 'false',
         DatabaseHelper.columnTLTaskDate: '2026-09-10',
+        DatabaseHelper.columnTLMissReason: 'A meeting interrupted me',
       });
       await push.syncAll(uid, setupComplete: true);
 
@@ -701,8 +701,10 @@ void main() {
       expect(logs.single[DatabaseHelper.columnTLCategory], 'Health');
       expect(logs.single[DatabaseHelper.columnTLTaskDescription],
           'Walk 20 minutes');
-      expect(logs.single[DatabaseHelper.columnTLChecked], 'true');
+      expect(logs.single[DatabaseHelper.columnTLChecked], 'false');
       expect(logs.single[DatabaseHelper.columnTLTaskDate], '2026-09-10');
+      expect(logs.single[DatabaseHelper.columnTLMissReason],
+          'A meeting interrupted me');
 
       await pull.restoreFromCloud(uid);
       expect(await (await db.database).query(DatabaseHelper.taskLogTable),
