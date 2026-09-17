@@ -569,7 +569,8 @@ class _SimulationScreenState extends State<SimulationScreen> {
                   title: Text(scenario['name'] as String),
                   subtitle: Text(
                     '${metrics['evaluations']} evaluations · ${metrics['delivered']} delivered · '
-                    '${metrics['failedDelivery']} failed deliveries · ${metrics['none']} NONE decisions',
+                    '${metrics['failedDelivery']} failed deliveries · ${metrics['none']} NONE decisions · '
+                    '${(metrics['evaluations'] as num) - (metrics['none'] as num)} non-silent selections',
                   ),
                   trailing: const Icon(Icons.chevron_right),
                   onTap: () => Navigator.of(context).push(
@@ -655,6 +656,12 @@ class SimulationScenarioDetailsScreen extends StatelessWidget {
               _detailStat('Failed', '${metrics['failedDelivery']}'),
               _detailStat('NONE', '${metrics['none']}'),
             ],
+          ),
+          const SizedBox(height: 12),
+          _InterventionTypeSummary(
+            counts:
+                (metrics['selectedTypes'] as Map?)?.cast<String, dynamic>() ??
+                const {},
           ),
           const SizedBox(height: 20),
           ...timeline.map((entry) => _DecisionDayTile(entry: entry)),

@@ -4,7 +4,11 @@ import { requestSimulation } from './simulation_client.js';
 
 test('D-162-AC-05: CLI transport sends the admin app request shape to one protected endpoint', async () => {
   let request;
-  const report = { virtualMonths: 1, scenarios: [] };
+  const report = {
+    virtualMonths: 1,
+    selectedTypes: { NONE: 1, REMINDER: 0 },
+    scenarios: [{ name: 'autonomous', metrics: { selectedTypes: { NONE: 1 } } }],
+  };
   const result = await requestSimulation({
     endpoint: 'http://localhost:5001/api/adminSimulation',
     token: 'admin-token',
@@ -18,6 +22,8 @@ test('D-162-AC-05: CLI transport sends the admin app request shape to one protec
     },
   });
   assert.deepEqual(result, report);
+  assert.deepEqual(result.selectedTypes, { NONE: 1, REMINDER: 0 });
+  assert.deepEqual(result.scenarios[0].metrics.selectedTypes, { NONE: 1 });
   assert.equal(request.url, 'http://localhost:5001/api/adminSimulation');
   assert.equal(request.options.method, 'POST');
   assert.equal(request.options.headers.Authorization, 'Bearer admin-token');

@@ -38,6 +38,8 @@ void main() {
     expect(source, contains('selectionMode '));
     expect(source, contains('(deterministic_utility)'));
     expect(source, contains('Selected intervention types'));
+    expect(source, contains("metrics['selectedTypes']"));
+    expect(source, contains('non-silent selections'));
     expect(source, contains('evidence-triggered taxonomy selection'));
     expect(source, contains('How the simulator works'));
     expect(source, contains('How the Intervention Engine works'));

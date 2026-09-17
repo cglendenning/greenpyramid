@@ -9,7 +9,7 @@ const args = new Map(process.argv.slice(2).map((arg) => {
 
 try {
   if (args.has('--help')) {
-    process.stdout.write('Usage: FIREBASE_ID_TOKEN=... node functions/bin/simulate-behavior.js [--endpoint=URL] [--months=N] [--seed=N] [--scenarios=a,b] [--failure-mode=default|none]\n');
+    process.stdout.write('Usage: FIREBASE_ID_TOKEN=... node functions/bin/simulate-behavior.js [--endpoint=URL] [--months=N] [--seed=N] [--scenarios=a,b] [--failure-mode=default|none]\nOutput: JSON from the shared adminSimulation endpoint, including aggregate and per-scenario selectedTypes counts.\n');
     process.exit(0);
   }
   const report = await requestSimulation({
