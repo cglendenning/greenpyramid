@@ -823,7 +823,9 @@ class InterventionEngineGuideScreen extends StatelessWidget {
               'if it stays silent. This is the comparison point, not a promise.',
             ),
             Text(
-              '3. Opportunity — the engine looks for meaningful completion risk, '
+              '3. Opportunity — completion risk means evidence that the next '
+              'checkbox is more likely to be missed or abandoned without support. '
+              'It is not a judgment about the person. The engine also looks for '
               'useful information gain, recovery, reflection or target review. '
               'A schedule deficit alone is not enough.',
             ),
@@ -836,14 +838,18 @@ class InterventionEngineGuideScreen extends StatelessWidget {
             ),
             Text(
               '5. Utility and burden — fixed policy rules compare expected '
-              'checkbox lift against burden, fatigue, annoyance, dependency, '
-              'timing, information value and sequence effects. Silence is both '
-              'a control condition and a way for burden to recover.',
+              'checkbox lift against intervention cost: fatigue, annoyance, '
+              'prompt dependence, distraction, timing, information value, '
+              'sequence effects, and the possibility that repeated prompts reduce '
+              'future check-ins or checkbox completion. Silence is both a control '
+              'condition and a way for burden to recover.',
             ),
             Text(
               '6. Safety gate — approved safety boundaries run before rendering '
-              'and delivery. A prohibited candidate is constrained or suppressed '
-              'and the action is auditable without unnecessary sensitive content.',
+              'and delivery. Safety is a hard prohibition boundary, not a score '
+              'about whether a person is safe and not the same thing as completion '
+              'risk. A prohibited candidate is constrained or suppressed and the '
+              'action is auditable without unnecessary sensitive content.',
             ),
             Text(
               '7. Render, deliver and learn — a permitted semantic decision is '
@@ -869,6 +875,12 @@ class InterventionEngineGuideScreen extends StatelessWidget {
               'deterministic_utility identifies the fixed policy used to compare '
               'candidates in the simulator. It is not an AI model selecting '
               'messages, and it does not mean the result predicts a person.',
+            ),
+            Text(
+              'Completion risk means a greater chance of a missed future checkbox. '
+              'Intervention cost means the possible downside of prompting. Safety '
+              'means a hard rule that blocks a prohibited intervention. These terms '
+              'are separate and should not be read as judgments about the user.',
             ),
           ],
         ),
