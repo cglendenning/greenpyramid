@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 25; // 7: R3 schema — position, essences,
+  static const _databaseVersion = 26; // 7: R3 schema — position, essences,
   // account state (Part IV). 8: R6/D-048 — discards an
   // incomplete old-flow setup so the user starts the new Council setup
   // fresh instead of landing on a half-populated pyramid with no way back
@@ -108,6 +108,9 @@ class DatabaseHelper {
   // answered "No" from the check-in screen (including every row from
   // before this column existed).
   static const columnTLMissReason = 'missreason';
+  // D-099: distinguishes a check-in answer from a tasklog row that was
+  // pre-created by the daily task-log backfill.
+  static const columnTLCheckinRecorded = 'checkinrecorded';
 
   // The quote table. This stores quotes displayed on the notification
   // response screen.
@@ -457,6 +460,7 @@ class DatabaseHelper {
               $columnTLChecked TEXT NOT NULL,
               $columnTLTaskDate TEXT NOT NULL,
               $columnTLMissReason TEXT,
+              $columnTLCheckinRecorded TEXT NOT NULL DEFAULT 'false',
               UNIQUE($columnTLCategory, $columnTLTaskDescription, $columnTLTaskDate)
             )
             ''');
@@ -597,6 +601,7 @@ class DatabaseHelper {
             $columnTLChecked TEXT NOT NULL,
             $columnTLTaskDate TEXT NOT NULL,
             $columnTLMissReason TEXT,
+            $columnTLCheckinRecorded TEXT NOT NULL DEFAULT 'false',
             UNIQUE($columnTLCategory, $columnTLTaskDescription, $columnTLTaskDate)
           )
           ''');
@@ -905,6 +910,19 @@ class DatabaseHelper {
             await db.execute('ALTER TABLE $accountStateTable ADD COLUMN '
                 '$columnLifetimeAccess INTEGER NOT NULL DEFAULT 0');
             break;
+          case 26:
+            // D-099: mark answers made from the scheduled check-in so the
+            // inbox can reopen the recorded result instead of treating a
+            // pre-created tasklog row as a new prompt.
+            await db.execute('ALTER TABLE $taskLogTable ADD COLUMN '
+                '$columnTLCheckinRecorded TEXT NOT NULL DEFAULT \'false\'');
+            try {
+              await db.execute('ALTER TABLE $demoTaskLogTable ADD COLUMN '
+                  '$columnTLCheckinRecorded TEXT NOT NULL DEFAULT \'false\'');
+            } catch (_) {
+              // The demo table is created below when it did not exist yet.
+            }
+            break;
         }
       }
     }
@@ -943,6 +961,7 @@ class DatabaseHelper {
         $columnTLChecked TEXT NOT NULL,
         $columnTLTaskDate TEXT NOT NULL,
         $columnTLMissReason TEXT,
+        $columnTLCheckinRecorded TEXT NOT NULL DEFAULT 'false',
         UNIQUE($columnTLCategory, $columnTLTaskDescription, $columnTLTaskDate)
       )
     ''');
@@ -1782,6 +1801,7 @@ class DatabaseHelper {
         columnTLTaskDescription: taskDescription,
         columnTLChecked: 'false',
         columnTLTaskDate: taskDate,
+        columnTLCheckinRecorded: 'false',
       });
     } catch (_) {
       // A row for today already exists — the update below is what matters.
@@ -1791,11 +1811,35 @@ class DatabaseHelper {
       {
         columnTLChecked: checked.toString(),
         columnTLMissReason: missReason,
+        columnTLCheckinRecorded: 'true',
       },
       where: '$columnTLCategory = ? AND $columnTLTaskDescription = ? '
           'AND $columnTLTaskDate = ?',
       whereArgs: [category, taskDescription, taskDate],
     );
+  }
+
+  /// Returns the answer made from the scheduled check-in for one habit/date.
+  /// A tasklog row can exist before a person answers because the daily log is
+  /// backfilled in advance, so the explicit marker is the source of truth.
+  /// The checked/reason fallbacks preserve useful results written by older
+  /// builds that predate the marker column.
+  Future<Map<String, dynamic>?> queryBatchCheckinResult({
+    required String category,
+    required String taskDescription,
+    required String taskDate,
+  }) async {
+    final db = await instance.database;
+    final rows = await db.query(
+      getTaskLogTable(),
+      where: '$columnTLCategory = ? AND $columnTLTaskDescription = ? '
+          'AND $columnTLTaskDate = ? AND '
+          '($columnTLCheckinRecorded = \'true\' OR '
+          '$columnTLChecked = \'true\' OR $columnTLMissReason IS NOT NULL)',
+      whereArgs: [category, taskDescription, taskDate],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : rows.first;
   }
 
   /// Deletes every log row for one habit. Parameterized.
@@ -2059,11 +2103,8 @@ class DatabaseHelper {
     if (lifetimeAccess != null) {
       values[columnLifetimeAccess] = lifetimeAccess ? 1 : 0;
     }
-    await db.update(
-        accountStateTable,
-        values,
-        where: '$columnAccountId = ?',
-        whereArgs: [1]);
+    await db.update(accountStateTable, values,
+        where: '$columnAccountId = ?', whereArgs: [1]);
   }
 
   /// D-147: every version of every category's essence — part of the synced

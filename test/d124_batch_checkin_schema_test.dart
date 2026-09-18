@@ -44,6 +44,7 @@ void main() {
   test('D-099: tasklog gains missreason', () async {
     final cols = await columnsOf(DatabaseHelper.taskLogTable);
     expect(cols, contains(DatabaseHelper.columnTLMissReason));
+    expect(cols, contains(DatabaseHelper.columnTLCheckinRecorded));
   });
 
   test(
@@ -60,6 +61,7 @@ void main() {
     expect(rows, hasLength(1));
     expect(rows.single[DatabaseHelper.columnTLChecked], 'true');
     expect(rows.single[DatabaseHelper.columnTLMissReason], isNull);
+    expect(rows.single[DatabaseHelper.columnTLCheckinRecorded], 'true');
   });
 
   test(
@@ -76,6 +78,7 @@ void main() {
     expect(rows.single[DatabaseHelper.columnTLChecked], 'false');
     expect(rows.single[DatabaseHelper.columnTLMissReason],
         'Got caught up in a meeting.');
+    expect(rows.single[DatabaseHelper.columnTLCheckinRecorded], 'true');
   });
 
   test(
@@ -111,6 +114,15 @@ void main() {
         RegExp(r'taskDate: _occurrenceDate').allMatches(source), hasLength(2));
     expect(
         source, isNot(contains('taskDate: _dateFmt.format(DateTime.now())')));
+  });
+
+  test('D-099: reopening a check-in shows its result and offers a change', () {
+    final source =
+        File('lib/screens/batch_checkin_screen.dart').readAsStringSync();
+    expect(source, contains('_loadExistingResults()'));
+    expect(source, contains('queryBatchCheckinResult'));
+    expect(source, contains('Check-in already recorded'));
+    expect(source, contains('Change check-in'));
   });
 
   test('D-099: the Yes action has a contrasting label color', () {

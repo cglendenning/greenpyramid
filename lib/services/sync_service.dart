@@ -214,6 +214,7 @@ class SyncService {
             // cloud selector can distinguish recovery, planning, friction,
             // information and target-review opportunities.
             'missreason': row[DatabaseHelper.columnTLMissReason],
+            'checkinrecorded': row[DatabaseHelper.columnTLCheckinRecorded],
           },
           SetOptions(merge: true));
     }
@@ -414,6 +415,8 @@ class SyncService {
         DatabaseHelper.columnTLChecked: a['checked'],
         DatabaseHelper.columnTLTaskDate: a['taskdate'],
         DatabaseHelper.columnTLMissReason: a['missreason'],
+        if (a['checkinrecorded'] != null)
+          DatabaseHelper.columnTLCheckinRecorded: a['checkinrecorded'],
       });
     }
 

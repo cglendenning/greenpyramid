@@ -63,12 +63,43 @@ class _BatchCheckinScreenState extends State<BatchCheckinScreen> {
   final _dateFmt = DateFormat('yyyy-MM-dd');
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
   late List<_HabitCheckin> _rows;
+  bool _loadingExistingResults = true;
+  bool _openedWithExistingCheckin = false;
 
   @override
   void initState() {
     super.initState();
     analytics.logEvent(name: 'batch_checkin');
     _rows = widget.habits.map(_HabitCheckin.fromMap).toList();
+    _loadExistingResults();
+  }
+
+  Future<void> _loadExistingResults() async {
+    final occurrenceDate = _occurrenceDate;
+    final results = await Future.wait(_rows.map((row) {
+      return _dbHelper.queryBatchCheckinResult(
+        category: row.category,
+        taskDescription: row.description,
+        taskDate: occurrenceDate,
+      );
+    }));
+    if (!mounted) return;
+    var foundExistingResult = false;
+    for (var i = 0; i < results.length; i++) {
+      final result = results[i];
+      if (result == null) continue;
+      foundExistingResult = true;
+      final checked = result[DatabaseHelper.columnTLChecked]?.toString();
+      _rows[i]
+        ..status = _RowStatus.done
+        ..answeredYes = checked == 'true'
+        ..transcript =
+            result[DatabaseHelper.columnTLMissReason]?.toString() ?? '';
+    }
+    setState(() {
+      _loadingExistingResults = false;
+      _openedWithExistingCheckin = foundExistingResult;
+    });
   }
 
   @override
@@ -123,56 +154,69 @@ class _BatchCheckinScreenState extends State<BatchCheckinScreen> {
     });
   }
 
+  void _changeCheckin(_HabitCheckin row) {
+    HapticFeedback.selectionClick();
+    setState(() {
+      row.status = _RowStatus.pending;
+      row.answeredYes = null;
+      row.transcript = '';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
       child: Scaffold(
         appBar: const NavBar(),
         backgroundColor: AppColors.background,
-        body: _rows.isEmpty
-            ? const Center(
-                child: Text('Nothing to check in on.',
-                    style: TextStyle(color: AppColors.textSecondary)))
-            : Column(
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(24, 16, 24, 4),
-                    child: Text('Did you do it?',
-                        style: TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Exo2',
-                            color: AppColors.textPrimary)),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
-                    child: Text("Today's scheduled habits — one at a time.",
-                        style: TextStyle(color: AppColors.textSecondary)),
-                  ),
-                  Expanded(
-                    child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      itemCount: _rows.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, i) => _row(_rows[i]),
-                    ),
-                  ),
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _allDone
-                            ? () => Navigator.of(context)
-                                .popUntil((route) => route.isFirst)
-                            : null,
-                        child: const Text('Done'),
+        body: _loadingExistingResults
+            ? const Center(child: CircularProgressIndicator())
+            : _rows.isEmpty
+                ? const Center(
+                    child: Text('Nothing to check in on.',
+                        style: TextStyle(color: AppColors.textSecondary)))
+                : Column(
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(24, 16, 24, 4),
+                        child: Text('Did you do it?',
+                            style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                fontFamily: 'Exo2',
+                                color: AppColors.textPrimary)),
                       ),
-                    ),
+                      const Padding(
+                        padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
+                        child: Text("Today's scheduled habits — one at a time.",
+                            style: TextStyle(color: AppColors.textSecondary)),
+                      ),
+                      if (_openedWithExistingCheckin) _existingCheckinNotice(),
+                      Expanded(
+                        child: ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          itemCount: _rows.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(height: 12),
+                          itemBuilder: (context, i) => _row(_rows[i]),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton(
+                            onPressed: _allDone
+                                ? () => Navigator.of(context)
+                                    .popUntil((route) => route.isFirst)
+                                : null,
+                            child: const Text('Done'),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
       ),
     );
   }
@@ -320,25 +364,49 @@ class _BatchCheckinScreenState extends State<BatchCheckinScreen> {
             ),
           ],
         ),
-        if (!yes) ...[
-          const SizedBox(height: 8),
-          Text(
-            reason.isEmpty
-                ? 'Recorded as missed. No explanation was provided.'
-                : 'Note received. We’ll use it with your check-in history to shape future guidance.',
-            style:
-                const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-          ),
-          if (reason.isNotEmpty) ...[
-            const SizedBox(height: 4),
-            Text('Your note: “$reason”',
-                style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                    fontStyle: FontStyle.italic)),
-          ],
+        const SizedBox(height: 8),
+        Text(
+          yes
+              ? 'You answered YES.'
+              : reason.isEmpty
+                  ? 'Recorded as missed. No explanation was provided.'
+                  : 'Note received. We’ll use it with your check-in history to shape future guidance.',
+          style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        ),
+        if (reason.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text('Your note: “$reason”',
+              style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontStyle: FontStyle.italic)),
         ],
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            onPressed: () => _changeCheckin(row),
+            style: TextButton.styleFrom(padding: EdgeInsets.zero),
+            child: const Text('Change check-in'),
+          ),
+        ),
       ],
+    );
+  }
+
+  Widget _existingCheckinNotice() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceHigh,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.brandGreen.withValues(alpha: 0.45)),
+      ),
+      child: const Text(
+        'Check-in already recorded. Your answers and any note are shown below. You can change an answer if you need to.',
+        style: TextStyle(color: AppColors.textPrimary, fontSize: 13),
+      ),
     );
   }
 }
