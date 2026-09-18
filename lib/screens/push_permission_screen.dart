@@ -19,7 +19,7 @@ class PushPermissionScreen extends StatelessWidget {
   Future<void> _requestAndContinue(BuildContext context) async {
     try {
       await LocalNotificationService().requestPermissions();
-      await PushMessagingService.instance.syncNotificationState();
+      await PushMessagingService.instance.requestPermissionAndSync();
     } catch (_) {
       // D-149: a failure here degrades nothing — proceed regardless.
     }

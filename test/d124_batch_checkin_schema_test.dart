@@ -105,4 +105,9 @@ void main() {
     expect(RegExp(r'taskDate: _occurrenceDate').allMatches(source), hasLength(2));
     expect(source, isNot(contains('taskDate: _dateFmt.format(DateTime.now())')));
   });
+
+  test('D-099: the Yes action has a contrasting label color', () {
+    final source = File('lib/screens/batch_checkin_screen.dart').readAsStringSync();
+    expect(source, contains('foregroundColor: AppColors.background'));
+  });
 }

@@ -14,6 +14,7 @@ import 'package:life_ops/services/billing_service.dart';
 import 'package:life_ops/services/entitlement_service.dart';
 import 'package:life_ops/services/newsfeed_service.dart';
 import 'package:life_ops/services/notification.dart';
+import 'package:life_ops/services/push_messaging_service.dart';
 import 'package:life_ops/services/subscription_panel_logic.dart';
 import 'package:life_ops/services/subscription_service.dart';
 import 'package:life_ops/theme/app_colors.dart';
@@ -650,6 +651,7 @@ class _TestNotificationButtonState extends State<_TestNotificationButton>
     final granted = await widget.lns.requestPermissions();
     if (!mounted) return;
     if (granted) {
+      await PushMessagingService.instance.requestPermissionAndSync();
       await _checkPermission();
       return;
     }

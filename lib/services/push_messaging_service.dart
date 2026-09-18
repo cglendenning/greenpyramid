@@ -1,5 +1,7 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 import 'dart:convert';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -77,6 +79,7 @@ class PushMessagingService {
   static const _defaultFallbackTitle = 'Your next step matters';
   static const _defaultFallbackBody =
       'The Council of Advisors is here whenever you\'re ready.';
+  bool _tokenRefreshListenerStarted = false;
 
   DocumentReference<Map<String, dynamic>>? _profileDoc(String? uid) {
     if (uid == null) return null;
@@ -90,6 +93,7 @@ class PushMessagingService {
     final prefs = await SharedPreferences.getInstance();
     final installationId = prefs.getString(_installationKey) ?? _uuid.v4();
     await prefs.setString(_installationKey, installationId);
+    _startTokenRefreshListener();
 
     bool pushAuthorized = false;
     String? token;
@@ -99,25 +103,13 @@ class PushMessagingService {
           settings.authorizationStatus == AuthorizationStatus.authorized ||
               settings.authorizationStatus == AuthorizationStatus.provisional;
       if (pushAuthorized) {
-        token = await _messaging.getToken();
+        token = await _getTokenWithRetry();
         if (token != null) {
-          try {
-            final result = await _client.registerInstallation(
-              installationId: installationId,
-              token: token,
-              enabled: true,
-              timezone: tz.local.name,
-              expectedRevision: prefs.getInt(_revisionKey) ?? 0,
-            );
-            if (result['acknowledged'] == true) {
-              await prefs.setInt(
-                  _revisionKey, (prefs.getInt(_revisionKey) ?? 0) + 1);
-              await prefs.setString(_tokenKey, token);
-            }
-          } catch (e) {
-            debugPrint(
-                'PushMessagingService: installation registration failed: $e');
-          }
+          await _registerInstallationToken(
+            installationId: installationId,
+            token: token,
+            prefs: prefs,
+          );
         }
       }
     } catch (e) {
@@ -150,6 +142,87 @@ class PushMessagingService {
               _defaultFallbackBody,
         );
     }
+  }
+
+  /// D-050/D-149: Firebase Messaging owns the APNs/FCM registration as well
+  /// as the local notification permission. Calling this only from the three
+  /// explicit permission flows avoids a permission prompt on ordinary launch.
+  Future<void> requestPermissionAndSync() async {
+    try {
+      await _messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+        provisional: false,
+      );
+    } catch (e) {
+      debugPrint('PushMessagingService: FCM permission request failed: $e');
+    }
+    await syncNotificationState();
+  }
+
+  void _startTokenRefreshListener() {
+    if (_tokenRefreshListenerStarted) return;
+    _tokenRefreshListenerStarted = true;
+    _messaging.onTokenRefresh.listen((token) async {
+      final user = _auth.currentUser;
+      if (user == null || token.isEmpty) return;
+      final prefs = await SharedPreferences.getInstance();
+      final installationId = prefs.getString(_installationKey) ?? _uuid.v4();
+      await prefs.setString(_installationKey, installationId);
+      await _registerInstallationToken(
+        installationId: installationId,
+        token: token,
+        prefs: prefs,
+      );
+    }, onError: (Object error) {
+      debugPrint('PushMessagingService: token refresh stream failed: $error');
+    });
+  }
+
+  Future<String?> _getTokenWithRetry() async {
+    // On iOS the APNs token may become available just after Firebase Auth and
+    // the notification permission flow finish. The old one-shot getToken()
+    // left the account with no installation permanently until a later app
+    // launch, which is why the inbox could contain a check-in with no banner.
+    for (var attempt = 0; attempt < 3; attempt++) {
+      try {
+        final token = await _messaging.getToken();
+        if (token != null && token.isNotEmpty) return token;
+      } catch (e) {
+        debugPrint('PushMessagingService: FCM token attempt failed: $e');
+      }
+      if (attempt < 2) {
+        await Future<void>.delayed(Duration(seconds: attempt + 1));
+      }
+    }
+    return null;
+  }
+
+  Future<bool> _registerInstallationToken({
+    required String installationId,
+    required String token,
+    required SharedPreferences prefs,
+  }) async {
+    try {
+      final result = await _client.registerInstallation(
+        installationId: installationId,
+        token: token,
+        enabled: true,
+        timezone: tz.local.name,
+        expectedRevision: prefs.getInt(_revisionKey) ?? 0,
+      );
+      if (result['acknowledged'] == true) {
+        await prefs.setInt(
+            _revisionKey, (prefs.getInt(_revisionKey) ?? 0) + 1);
+        await prefs.setString(_tokenKey, token);
+        return true;
+      }
+    } catch (e) {
+      debugPrint(
+          'PushMessagingService: installation registration failed: $e');
+    }
+    return false;
   }
 
   /// D-149-AC-04: disable this installation before Firebase identity changes

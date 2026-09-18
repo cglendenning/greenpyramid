@@ -513,6 +513,33 @@ void main() {
       expect(tasks.docs.single.data()['taskdescription'], 'Walk 20 minutes');
     });
 
+    test('D-098/D-099: scheduled duration syncs so the server computes the '
+        'batch check-in at event end, not event start', () async {
+      await db.insertTask({
+        DatabaseHelper.columnCategory: 'Health',
+        DatabaseHelper.columnTaskDescription: 'Walk 20 minutes',
+        DatabaseHelper.columnSunday: 'true',
+        DatabaseHelper.columnMonday: 'true',
+        DatabaseHelper.columnScheduledTime: '11:30',
+        DatabaseHelper.columnScheduledDurationMinutes: 15,
+        DatabaseHelper.columnCreateDate: '2026-01-01T00:00:00.000',
+      });
+      final firestore = FakeFirebaseFirestore();
+      await SyncService(firestore: firestore, db: db)
+          .syncAll(uid, setupComplete: true);
+
+      final task = (await firestore
+              .collection('users')
+              .doc(uid)
+              .collection('tasks')
+              .get())
+          .docs
+          .single
+          .data();
+      expect(task['scheduledtime'], '11:30');
+      expect(task['scheduleddurationminutes'], 15);
+    });
+
     test(
         'IV-D/D-147: a task deleted locally is removed from Firestore on '
         'the next sync — same reconcile pattern as recentActivity', () async {

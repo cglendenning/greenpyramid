@@ -216,7 +216,8 @@ class _BatchCheckinScreenState extends State<BatchCheckinScreen> {
               child: ElevatedButton(
                 onPressed: () => _markYes(row),
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.brandGreen),
+                    backgroundColor: AppColors.brandGreen,
+                    foregroundColor: AppColors.background),
                 child: const Text('Yes'),
               ),
             ),

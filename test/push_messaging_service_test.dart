@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/services/push_messaging_service.dart';
 
@@ -39,5 +41,15 @@ void main() {
           entitlement: 'pre_trial', pushAuthorized: true, hasToken: true);
       expect(action, NotificationFallbackAction.relyOnPush);
     });
+  });
+
+  test('D-149: FCM registration retries token readiness and listens for '
+      'token refresh so an account cannot remain inbox-only after startup', () {
+    final source =
+        File('lib/services/push_messaging_service.dart').readAsStringSync();
+    expect(source, contains('requestPermissionAndSync'));
+    expect(source, contains('_getTokenWithRetry'));
+    expect(source, contains('onTokenRefresh'));
+    expect(source, contains('_registerInstallationToken'));
   });
 }

@@ -267,7 +267,7 @@ class _HomeScreen extends State<HomeScreenWidget> {
     final granted = await service.requestPermissions();
     if (granted) {
       try {
-        await PushMessagingService.instance.syncNotificationState();
+        await PushMessagingService.instance.requestPermissionAndSync();
       } catch (e, st) {
         debugPrint('Failed to sync notification state after recovery: $e\n$st');
       }

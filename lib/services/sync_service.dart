@@ -260,6 +260,10 @@ class SyncService {
             // event id is this device's own, meaningless on another one
             // (see restoreFromCloud's matching comment below).
             'scheduledtime': row[DatabaseHelper.columnScheduledTime],
+            // D-098: the server's batch check-in deadline is the event's
+            // end, so the chosen duration must travel with its start time.
+            'scheduleddurationminutes':
+                row[DatabaseHelper.columnScheduledDurationMinutes],
           },
           SetOptions(merge: true));
     }
@@ -390,6 +394,8 @@ class SyncService {
         // signal a future screen needs to (re)create the native event
         // fresh, on this device.
         DatabaseHelper.columnScheduledTime: t['scheduledtime'],
+        DatabaseHelper.columnScheduledDurationMinutes:
+            t['scheduleddurationminutes'],
       });
     }
 
