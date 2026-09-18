@@ -80,12 +80,17 @@ class _BatchCheckinScreenState extends State<BatchCheckinScreen> {
 
   bool get _allDone => _rows.every((r) => r.status == _RowStatus.done);
 
+  // The push may be opened after midnight. Both answers must still write the
+  // occurrence the notification was about, not the calendar day of the tap.
+  String get _occurrenceDate =>
+      _dateFmt.format(widget.occurrenceDate ?? DateTime.now());
+
   Future<void> _markYes(_HabitCheckin row) async {
     HapticFeedback.mediumImpact();
     await _dbHelper.recordBatchCheckinResult(
       category: row.category,
       taskDescription: row.description,
-      taskDate: _dateFmt.format(widget.occurrenceDate ?? DateTime.now()),
+      taskDate: _occurrenceDate,
       checked: true,
     );
     if (!mounted) return;
@@ -104,7 +109,7 @@ class _BatchCheckinScreenState extends State<BatchCheckinScreen> {
     await _dbHelper.recordBatchCheckinResult(
       category: row.category,
       taskDescription: row.description,
-      taskDate: _dateFmt.format(DateTime.now()),
+      taskDate: _occurrenceDate,
       checked: false,
       missReason: row.transcript.isEmpty ? null : row.transcript,
     );

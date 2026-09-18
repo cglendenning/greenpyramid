@@ -427,13 +427,21 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
       // D-099 Phase 3: the local "starting soon" reminder, kept in sync
       // with the calendar write above rather than a separate step the
       // user could forget or that could drift out of sync.
-      await _localNotificationService.scheduleHabitReminders(
+      final remindersScheduled =
+          await _localNotificationService.scheduleHabitReminders(
         habitId: habit.id,
         habitDescription: habit.description,
         hour: hour,
         minute: minute,
         activeWeekdays: habit.activeDartWeekdays,
       );
+      if (mounted && !remindersScheduled) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text(
+              'Calendar time saved, but the reminder could not be scheduled. '
+              'Enable notifications in Settings and try again.'),
+        ));
+      }
       HapticFeedback.mediumImpact();
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(

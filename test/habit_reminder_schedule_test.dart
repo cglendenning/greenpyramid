@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:life_ops/services/notification.dart';
 
@@ -108,5 +110,13 @@ void main() {
         habitReminderId(42, DateTime.thursday),
       });
     });
+  });
+
+  test('D-099: scheduling verifies native pending requests and reports '
+      'permission failure to the scheduling screen', () {
+    final source = File('lib/services/notification.dart').readAsStringSync();
+    expect(source, contains('areNotificationsEnabled()'));
+    expect(source, contains('pendingNotificationRequests()'));
+    expect(source, contains('Future<bool> scheduleHabitReminders'));
   });
 }

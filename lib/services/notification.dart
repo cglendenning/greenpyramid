@@ -652,7 +652,9 @@ class LocalNotificationService {
   /// batched push per day instead, not a per-habit local notification.
   /// Cancels every one of the habit's 7 possible weekday slots first, so
   /// a day that's no longer active never leaves a stale reminder behind.
-  Future<void> scheduleHabitReminders({
+  /// Returns false when notification authorization is unavailable or the
+  /// native plugin does not report every requested slot as pending.
+  Future<bool> scheduleHabitReminders({
     required int habitId,
     required String habitDescription,
     required int hour,
@@ -660,8 +662,20 @@ class LocalNotificationService {
     required List<int> activeWeekdays,
     int leadMinutes = 10,
   }) async {
+    // Scheduling APIs accept requests even when iOS will later discard them
+    // because notification authorization is off. Ask at the moment the user
+    // creates the schedule so a reminder cannot silently disappear.
+    if (!await areNotificationsEnabled()) {
+      await requestPermissions();
+      if (!await areNotificationsEnabled()) {
+        debugPrint(
+            'Habit reminder not scheduled: notification permission is off');
+        return false;
+      }
+    }
+
     await cancelHabitReminders(habitId);
-    if (activeWeekdays.isEmpty) return;
+    if (activeWeekdays.isEmpty) return true;
 
     final slots = buildHabitReminderSlots(
       habitId: habitId,
@@ -718,6 +732,23 @@ class LocalNotificationService {
         payload: '/',
       );
     }
+
+    // The plugin can acknowledge a request even when the native platform
+    // rejects it. Verify that every recurring slot is actually pending so the
+    // scheduling screen can tell the user that calendar scheduling succeeded
+    // but reminder delivery still needs attention.
+    final pending =
+        await _localNotificationService.pendingNotificationRequests();
+    final pendingIds = pending.map((request) => request.id).toSet();
+    final missing = slots
+        .where((slot) => !pendingIds.contains(slot.notificationId))
+        .map((slot) => slot.notificationId)
+        .toList();
+    if (missing.isNotEmpty) {
+      debugPrint('Habit reminder slots missing after scheduling: $missing');
+      return false;
+    }
+    return true;
   }
 
   /// D-099 Phase 3: cancels all 7 possible weekday reminder slots for a

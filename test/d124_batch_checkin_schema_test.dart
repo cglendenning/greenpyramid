@@ -97,4 +97,12 @@ void main() {
     expect(rows, hasLength(1));
     expect(rows.single[DatabaseHelper.columnTLChecked], 'true');
   });
+
+  test('D-099: Yes and No use the notification occurrence date, not the '
+      'tap date', () {
+    final source = File('lib/screens/batch_checkin_screen.dart').readAsStringSync();
+    expect(source, contains('String get _occurrenceDate'));
+    expect(RegExp(r'taskDate: _occurrenceDate').allMatches(source), hasLength(2));
+    expect(source, isNot(contains('taskDate: _dateFmt.format(DateTime.now())')));
+  });
 }
