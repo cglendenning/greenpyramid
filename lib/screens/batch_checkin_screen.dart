@@ -51,7 +51,8 @@ class BatchCheckinScreen extends StatefulWidget {
   final List<Map<String, dynamic>> habits;
   final DateTime? occurrenceDate;
 
-  const BatchCheckinScreen({required this.habits, this.occurrenceDate, super.key});
+  const BatchCheckinScreen(
+      {required this.habits, this.occurrenceDate, super.key});
 
   @override
   State<BatchCheckinScreen> createState() => _BatchCheckinScreenState();
@@ -106,17 +107,19 @@ class _BatchCheckinScreenState extends State<BatchCheckinScreen> {
   }
 
   Future<void> _submitMiss(_HabitCheckin row) async {
+    final reason = row.transcript.trim();
     await _dbHelper.recordBatchCheckinResult(
       category: row.category,
       taskDescription: row.description,
       taskDate: _occurrenceDate,
       checked: false,
-      missReason: row.transcript.isEmpty ? null : row.transcript,
+      missReason: reason.isEmpty ? null : reason,
     );
     if (!mounted) return;
     setState(() {
       row.status = _RowStatus.done;
       row.answeredYes = false;
+      row.transcript = reason;
     });
   }
 
@@ -143,8 +146,7 @@ class _BatchCheckinScreenState extends State<BatchCheckinScreen> {
                   ),
                   const Padding(
                     padding: EdgeInsets.fromLTRB(24, 0, 24, 12),
-                    child: Text(
-                        "Today's scheduled habits — one at a time.",
+                    child: Text("Today's scheduled habits — one at a time.",
                         style: TextStyle(color: AppColors.textSecondary)),
                   ),
                   Expanded(
@@ -162,8 +164,8 @@ class _BatchCheckinScreenState extends State<BatchCheckinScreen> {
                       width: double.infinity,
                       child: ElevatedButton(
                         onPressed: _allDone
-                            ? () => Navigator.of(context).popUntil(
-                                (route) => route.isFirst)
+                            ? () => Navigator.of(context)
+                                .popUntil((route) => route.isFirst)
                             : null,
                         child: const Text('Done'),
                       ),
@@ -200,8 +202,8 @@ class _BatchCheckinScreenState extends State<BatchCheckinScreen> {
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary)),
         Text(row.category,
-            style: const TextStyle(
-                fontSize: 12, color: AppColors.textSecondary)),
+            style:
+                const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
         const SizedBox(height: 12),
         Row(
           children: [
@@ -217,8 +219,8 @@ class _BatchCheckinScreenState extends State<BatchCheckinScreen> {
                 onPressed: () => _markYes(row),
                 style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.brandGreen,
-                    foregroundColor: AppColors.background),
-                child: const Text('Yes'),
+                    foregroundColor: Colors.black),
+                child: const Text('Yes', style: TextStyle(color: Colors.black)),
               ),
             ),
           ],
@@ -272,9 +274,8 @@ class _BatchCheckinScreenState extends State<BatchCheckinScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: ElevatedButton(
-                onPressed: row.transcript.isEmpty
-                    ? null
-                    : () => _submitMiss(row),
+                onPressed:
+                    row.transcript.isEmpty ? null : () => _submitMiss(row),
                 child: const Text('Done'),
               ),
             ),
@@ -286,15 +287,39 @@ class _BatchCheckinScreenState extends State<BatchCheckinScreen> {
 
   Widget _doneRow(_HabitCheckin row) {
     final yes = row.answeredYes == true;
-    return Row(
+    final reason = row.transcript.trim();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(yes ? Icons.check_circle : Icons.cancel_outlined,
-            color: yes ? AppColors.brandGreen : AppColors.textSecondary),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(row.description,
-              style: const TextStyle(color: AppColors.textPrimary)),
+        Row(
+          children: [
+            Icon(yes ? Icons.check_circle : Icons.cancel_outlined,
+                color: yes ? AppColors.brandGreen : AppColors.textSecondary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(row.description,
+                  style: const TextStyle(color: AppColors.textPrimary)),
+            ),
+          ],
         ),
+        if (!yes) ...[
+          const SizedBox(height: 8),
+          Text(
+            reason.isEmpty
+                ? 'Recorded as missed. No explanation was provided.'
+                : 'Note received. We’ll use it with your check-in history to shape future guidance.',
+            style:
+                const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          ),
+          if (reason.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text('Your note: “$reason”',
+                style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic)),
+          ],
+        ],
       ],
     );
   }

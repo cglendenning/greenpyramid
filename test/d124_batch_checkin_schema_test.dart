@@ -46,7 +46,8 @@ void main() {
     expect(cols, contains(DatabaseHelper.columnTLMissReason));
   });
 
-  test('D-099: recordBatchCheckinResult creates a row when none exists yet '
+  test(
+      'D-099: recordBatchCheckinResult creates a row when none exists yet '
       'for today — the push may have arrived on a device that never '
       'opened the task list today', () async {
     await db.recordBatchCheckinResult(
@@ -61,7 +62,8 @@ void main() {
     expect(rows.single[DatabaseHelper.columnTLMissReason], isNull);
   });
 
-  test('D-099: a "No" answer records checked=false plus the '
+  test(
+      'D-099: a "No" answer records checked=false plus the '
       'voice-transcribed reason', () async {
     await db.recordBatchCheckinResult(
       category: 'Health',
@@ -76,7 +78,8 @@ void main() {
         'Got caught up in a meeting.');
   });
 
-  test('D-099: recordBatchCheckinResult updates an already-existing row '
+  test(
+      'D-099: recordBatchCheckinResult updates an already-existing row '
       'for today rather than creating a duplicate (the UNIQUE constraint '
       'on category+description+date)', () async {
     await db.insertTaskLog({
@@ -98,16 +101,35 @@ void main() {
     expect(rows.single[DatabaseHelper.columnTLChecked], 'true');
   });
 
-  test('D-099: Yes and No use the notification occurrence date, not the '
+  test(
+      'D-099: Yes and No use the notification occurrence date, not the '
       'tap date', () {
-    final source = File('lib/screens/batch_checkin_screen.dart').readAsStringSync();
+    final source =
+        File('lib/screens/batch_checkin_screen.dart').readAsStringSync();
     expect(source, contains('String get _occurrenceDate'));
-    expect(RegExp(r'taskDate: _occurrenceDate').allMatches(source), hasLength(2));
-    expect(source, isNot(contains('taskDate: _dateFmt.format(DateTime.now())')));
+    expect(
+        RegExp(r'taskDate: _occurrenceDate').allMatches(source), hasLength(2));
+    expect(
+        source, isNot(contains('taskDate: _dateFmt.format(DateTime.now())')));
   });
 
   test('D-099: the Yes action has a contrasting label color', () {
-    final source = File('lib/screens/batch_checkin_screen.dart').readAsStringSync();
-    expect(source, contains('foregroundColor: AppColors.background'));
+    final source =
+        File('lib/screens/batch_checkin_screen.dart').readAsStringSync();
+    expect(source, contains('foregroundColor: Colors.black'));
+    expect(source, contains("Text('Yes',"));
+    expect(source, contains('color: Colors.black'));
+  });
+
+  test(
+      'D-099-AC-05: a submitted No explains receipt and future use of the note',
+      () {
+    final source =
+        File('lib/screens/batch_checkin_screen.dart').readAsStringSync();
+    expect(source, contains('Note received.'));
+    expect(source, contains('check-in history to shape future guidance'));
+    expect(
+        source, contains('Recorded as missed. No explanation was provided.'));
+    expect(source, contains('Your note: “\$reason”'));
   });
 }
