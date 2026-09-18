@@ -1155,36 +1155,35 @@ class _EngineFlow extends StatelessWidget {
         children: const [
           _FlowStep(
             number: '1',
-            title: 'Context + history',
-            body: 'Values, goals, tasks, schedules and observed checkboxes.',
+            title: 'Cloud receives current facts',
+            body: 'Tasks, check-ins, values, goals, schedules and prior decisions.',
           ),
           _FlowArrow(),
           _FlowStep(
             number: '2',
-            title: 'Baseline + opportunity',
-            body:
-                'Estimate silent completion and find a meaningful opportunity.',
+            title: 'Estimate doing nothing',
+            body: 'Estimate future checkbox completion without sending support.',
           ),
           _FlowArrow(),
           _FlowStep(
             number: '3',
-            title: 'Candidates + utility',
+            title: 'List and compare choices',
             body:
-                'Compare NONE and bounded intervention types against intervention cost.',
+                'Compare NONE and evidence-supported intervention types against prompt cost.',
           ),
           _FlowArrow(),
           _FlowStep(
             number: '4',
-            title: 'Safety gate',
+            title: 'Apply five safety stop rules',
             body:
-                'Constrain or suppress prohibited paths before rendering/delivery.',
+                'If one matches, replace the proposed intervention with NONE before it is written or sent.',
           ),
           _FlowArrow(),
           _FlowStep(
             number: '5',
-            title: 'Render + lifecycle',
+            title: 'Return, deliver, and measure',
             body:
-                'Render, deliver, record separate states and measure outcomes.',
+                'Return one result; downstream services write, send, record, and measure it.',
           ),
         ],
       ),

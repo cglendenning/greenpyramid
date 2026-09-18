@@ -45,11 +45,11 @@ void main() {
     expect(source, contains('How the simulator works'));
     expect(source, contains('How the Intervention Engine works'));
     expect(source, contains('The engine’s job'));
-    expect(source, contains('Context + history'));
-    expect(source, contains('Baseline + opportunity'));
-    expect(source, contains('Candidates + utility'));
-    expect(source, contains('Safety gate'));
-    expect(source, contains('Render + lifecycle'));
+    expect(source, contains('Cloud receives current facts'));
+    expect(source, contains('Estimate doing nothing'));
+    expect(source, contains('List and compare choices'));
+    expect(source, contains('Apply five safety stop rules'));
+    expect(source, contains('Return, deliver, and measure'));
     expect(source, contains('The goal'));
     expect(source, contains('Safety: what it means here'));
     expect(source, contains('five approved stop categories'));
