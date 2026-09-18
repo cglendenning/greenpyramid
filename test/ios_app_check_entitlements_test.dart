@@ -55,15 +55,10 @@ void main() {
   });
 
   test(
-      'the App Attest entitlement is "production" — verified on-device, '
-      'not assumed: Xcode\'s automatic signing embeds "production" here '
-      'even for this project\'s "development"-method export '
-      '(ios/ExportOptions.plist), because the App Attest environment '
-      'tracks the provisioning profile\'s capability grant, not the '
-      'export method. A "development" value here was tried first and '
-      'built fine, but doesn\'t reflect what actually gets signed — '
-      'pinned to the real value so a future edit doesn\'t quietly '
-      'reintroduce that same wrong assumption.', () {
+      'the App Attest entitlement is "production" for release signing — '
+      'the distribution provisioning profile must carry the production '
+      'capability grant so App Check uses the production attestation path.',
+      () {
     final content = entitlementsFile.readAsStringSync();
     expect(content, contains('<string>production</string>'));
   });

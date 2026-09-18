@@ -18,7 +18,8 @@ import 'db.dart';
 /// class only asks for a grant and mirrors the answer into the local
 /// account_state cache. It never decides entitlement on-device.
 class EntitlementService {
-  EntitlementService({DatabaseHelper? db, FirebaseFirestore? firestore, FirebaseAuth? auth})
+  EntitlementService(
+      {DatabaseHelper? db, FirebaseFirestore? firestore, FirebaseAuth? auth})
       : _db = db ?? DatabaseHelper.instance,
         _firestore = firestore ?? FirebaseFirestore.instance,
         _authOverride = auth;
@@ -44,7 +45,8 @@ class EntitlementService {
     final appCheckToken = await FirebaseAppCheck.instance.getToken();
     final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
     if (appCheckToken == null || idToken == null) {
-      throw StateError('EntitlementService: not ready (missing App Check or ID token)');
+      throw StateError(
+          'EntitlementService: not ready (missing App Check or ID token)');
     }
     return {
       'Content-Type': 'application/json',
@@ -53,13 +55,16 @@ class EntitlementService {
     };
   }
 
-  Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body) async {
+  Future<Map<String, dynamic>> _post(
+      String path, Map<String, dynamic> body) async {
     final headers = await _headers();
     final resp = await http
-        .post(Uri.parse('$_baseUrl/$path'), headers: headers, body: jsonEncode(body))
+        .post(Uri.parse('$_baseUrl/$path'),
+            headers: headers, body: jsonEncode(body))
         .timeout(const Duration(seconds: 20));
     if (resp.statusCode != 200) {
-      throw StateError('EntitlementService: $path backend ${resp.statusCode}: ${resp.body}');
+      throw StateError(
+          'EntitlementService: $path backend ${resp.statusCode}: ${resp.body}');
     }
     return jsonDecode(resp.body) as Map<String, dynamic>;
   }
@@ -74,10 +79,10 @@ class EntitlementService {
 
   /// D-045: whether THIS build's iOS code signing is Apple's "development"
   /// DeviceCheck environment — not whether Dart itself is compiled in debug
-  /// mode. The OTA signing profile available on this machine is a development
-  /// provisioning profile, while the Flutter compilation remains `--release`.
-  /// DeviceCheck tokens from that profile must use the development endpoint.
-  static const bool _isDeviceCheckDevelopmentEnvironment = true;
+  /// mode. Release/OTA artifacts use Apple's distribution provisioning profile
+  /// and the production DeviceCheck endpoint. A development-signed artifact is
+  /// not a valid release fallback because its attestation environment differs.
+  static const bool _isDeviceCheckDevelopmentEnvironment = false;
 
   /// D-148: called once, right at setup completion — the clock starts at
   /// the pyramid reveal, not at install. Never throws past this point, only
@@ -91,7 +96,8 @@ class EntitlementService {
       if (Platform.isAndroid) {
         final hash = await _androidIdHash();
         if (hash == null) {
-          debugPrint('EntitlementService: no ANDROID_ID available, skipping trial request.');
+          debugPrint(
+              'EntitlementService: no ANDROID_ID available, skipping trial request.');
           return;
         }
         body['platform'] = 'android';
@@ -99,7 +105,8 @@ class EntitlementService {
       } else if (Platform.isIOS) {
         final supported = await DeviceCheck.instance.isSupported();
         if (!supported) {
-          debugPrint('EntitlementService: DeviceCheck unsupported, skipping trial request.');
+          debugPrint(
+              'EntitlementService: DeviceCheck unsupported, skipping trial request.');
           return;
         }
         final token = await DeviceCheck.instance.generateToken();
@@ -120,7 +127,8 @@ class EntitlementService {
   /// backend re-checks this itself anyway, so a spurious call is harmless.
   Future<void> requestMigrationTrial() async {
     try {
-      await _applyServerResult(await _post('requestTrial', {'isMigration': true}));
+      await _applyServerResult(
+          await _post('requestTrial', {'isMigration': true}));
     } catch (e, st) {
       debugPrint('EntitlementService.requestMigrationTrial failed: $e\n$st');
     }
@@ -153,15 +161,15 @@ class EntitlementService {
       final entitlement = data?['entitlement'] as String?;
       if (entitlement == null) return false;
       final local = await _db.getAccountState();
-      final localEntitlement = local[DatabaseHelper.columnEntitlement] as String?;
+      final localEntitlement =
+          local[DatabaseHelper.columnEntitlement] as String?;
       // D-142/D-054: a successful RevenueCat purchase is written locally
       // before its webhook reaches Firestore. Do not let that in-flight
       // webhook gap downgrade the confirmed paid state when a screen opens
       // and refreshes the server copy. A later server lapsed state remains
       // authoritative and is still applied below.
-      final preserveConfirmedSubscription =
-          localEntitlement == 'subscribed' &&
-              (entitlement == 'pre_trial' || entitlement == 'trialing');
+      final preserveConfirmedSubscription = localEntitlement == 'subscribed' &&
+          (entitlement == 'pre_trial' || entitlement == 'trialing');
       if (preserveConfirmedSubscription) {
         debugPrint(
             'EntitlementService: preserving confirmed local subscription '
@@ -170,8 +178,10 @@ class EntitlementService {
       }
       await _db.setAccountEntitlement(
         entitlement: entitlement,
-        trialStartedAt: (data?['trialStartedAt'] as Timestamp?)?.toDate().toIso8601String(),
-        trialExpiresAt: (data?['trialExpiresAt'] as Timestamp?)?.toDate().toIso8601String(),
+        trialStartedAt:
+            (data?['trialStartedAt'] as Timestamp?)?.toDate().toIso8601String(),
+        trialExpiresAt:
+            (data?['trialExpiresAt'] as Timestamp?)?.toDate().toIso8601String(),
         lifetimeAccess: data?['lifetimeAccess'] == true,
       );
       return true;
@@ -185,14 +195,16 @@ class EntitlementService {
   /// mirrors Kansei's markSubscribed pattern, so the app reflects the new
   /// state instantly rather than waiting for the RevenueCat webhook to land
   /// in Firestore and get pulled back down on the next launch.
-  Future<void> markSubscribedLocally() => _db.setAccountEntitlement(entitlement: 'subscribed');
+  Future<void> markSubscribedLocally() =>
+      _db.setAccountEntitlement(entitlement: 'subscribed');
 
   /// D-167: redeems an admin-issued, single-use lifetime gift through the
   /// authenticated cloud service. The response grants the normal subscribed
   /// capability plus a separate lifetime flag; no RevenueCat purchase is
   /// created or modified.
   Future<void> redeemLifetimeCode(String code) async {
-    await _applyServerResult(await _post('redeemLifetimeCode', {'code': code.trim()}));
+    await _applyServerResult(
+        await _post('redeemLifetimeCode', {'code': code.trim()}));
   }
 
   /// D-168: removes only the lifetime gift. The cloud service preserves any

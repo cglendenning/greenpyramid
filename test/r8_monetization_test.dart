@@ -112,12 +112,7 @@ void main() {
   test(
       'D-045: the DeviceCheck environment flag sent for iOS trial requests '
       'reflects this build\'s actual code-signing environment, not Dart\'s '
-      'kDebugMode — found live: every device on the OTA pipeline silently '
-      'failed every trial request because ios/ExportOptions.plist signs '
-      '"development" while a release Dart build always has kDebugMode '
-      'false, so the server queried DeviceCheck\'s production endpoint for '
-      'a development-environment token and Apple returned 200 with a '
-      'plain-text "Failed to authenticate device" body instead of JSON', () {
+      'kDebugMode', () {
     final source =
         File('lib/services/entitlement_service.dart').readAsStringSync();
     expect(source, contains('_isDeviceCheckDevelopmentEnvironment'));
@@ -188,7 +183,8 @@ void main() {
     expect(authenticatedBillingIdx, greaterThan(isSetupBranchIdx),
         reason:
             'authenticated calls must reserve against the server-owned spend cap after the setup branch');
-    final setupBranch = source.substring(isSetupBranchIdx, authenticatedBillingIdx);
+    final setupBranch =
+        source.substring(isSetupBranchIdx, authenticatedBillingIdx);
     expect(setupBranch, contains('guardAndCountSetupCall'));
     expect(setupBranch, isNot(contains('reserveCost(')),
         reason: 'the setup branch is governed by its call-count allowance');
