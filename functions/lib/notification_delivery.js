@@ -125,6 +125,52 @@ export async function upsertInboxItem(store, uid, item, now = new Date()) {
   });
 }
 
+/**
+ * D-149: the one delivery path for account-scoped user-facing messages.
+ * Inbox persistence happens before provider delivery so the account still has
+ * a durable record when push permission, token registration, or FCM transport
+ * is unavailable. The caller supplies the already-selected semantic result;
+ * this helper never chooses policy.
+ */
+export async function deliverNotification({
+  store,
+  messaging,
+  uid,
+  item,
+  payload = {},
+  now = new Date(),
+}) {
+  const claimed = await claimNotificationDispatch(store, uid, item.messageKey, now);
+  if (!claimed) return { state: 'duplicate', inbox: false, delivered: false };
+
+  await upsertInboxItem(store, uid, item, now);
+  const installationSnap = await store.collection('users').doc(uid)
+      .collection('installations').where('enabled', '==', true).get();
+  const installations = installationSnap.docs.map((doc) => doc.data())
+      .filter((installation) => installation.token);
+  if (installations.length === 0) {
+    await failNotificationDispatch(store, uid, item.messageKey, now);
+    return { state: 'no_installation', inbox: true, delivered: false };
+  }
+
+  try {
+    const response = await messaging.sendEachForMulticast({
+      tokens: installations.map((installation) => installation.token),
+      notification: { title: item.title, body: item.body },
+      data: payload,
+    });
+    if (response.successCount > 0) {
+      await completeNotificationDispatch(store, uid, item.messageKey, now);
+      return { state: 'sent', inbox: true, delivered: true };
+    }
+    await failNotificationDispatch(store, uid, item.messageKey, now);
+    return { state: 'failed', inbox: true, delivered: false };
+  } catch (error) {
+    await failNotificationDispatch(store, uid, item.messageKey, now);
+    return { state: 'failed', inbox: true, delivered: false, error };
+  }
+}
+
 export async function markInboxRead(store, uid, request, now = new Date()) {
   requireUuid(request?.requestId, 'request_id');
   if (typeof request.messageKey !== 'string' || request.messageKey.length === 0 || request.messageKey.length > 256) {

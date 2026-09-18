@@ -7,6 +7,7 @@ import '../services/db.dart';
 import '../services/notification.dart';
 import '../theme/app_colors.dart';
 import 'batch_checkin_screen.dart';
+import 'general_council_screen.dart';
 import 'paywall_screen.dart';
 
 /// D-149: the account-scoped notification inbox is available regardless of
@@ -61,6 +62,17 @@ class NotificationInboxScreen extends StatelessWidget {
         break;
       case 'tailored':
         LocalNotificationService().onNotificationClick.add('/');
+        break;
+      case 'intervention':
+        // D-149/D-152: the inbox item is the rendered engine result. The
+        // surface is metadata for the destination; opening it never selects
+        // a new policy.
+        if (item['surface'] == 'council') {
+          await Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const GeneralCouncilScreen()));
+        } else {
+          LocalNotificationService().onNotificationClick.add('/');
+        }
         break;
     }
   }

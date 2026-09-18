@@ -34,7 +34,7 @@ import { applyRevenueCatEvent, verifyWebhookAuth } from './lib/revenuecat_webhoo
 import { buildAdminMetrics } from './lib/admin_metrics.js';
 import { applySyncRequest, restoreAccount } from './lib/sync_operations.js';
 import { cleanupAnonymousAccounts } from './lib/anonymous_cleanup.js';
-import { claimNotificationDispatch, completeNotificationDispatch, failNotificationDispatch, markInboxRead, notificationMessageKey, registerInstallation, upsertInboxItem } from './lib/notification_delivery.js';
+import { deliverNotification, markInboxRead, notificationMessageKey, registerInstallation } from './lib/notification_delivery.js';
 import { evaluateIntervention } from './lib/intervention_engine.js';
 import { appendBehavioralEvents } from './lib/behavioral_event_store.js';
 import { revalidateIntervention } from './lib/intervention_lifecycle.js';
@@ -62,6 +62,109 @@ function ensureAdmin() {
     admin.initializeApp();
     adminInitialised = true;
   }
+}
+
+/**
+ * D-152/D-158/D-161: run the production policy boundary once, persist its
+ * auditable result, and return the same decision to every caller. Rendering
+ * and delivery happen afterward and cannot change the selected type.
+ */
+async function evaluateAndPersistIntervention({
+  db,
+  uid,
+  profileData,
+  tasks,
+  recentActivity,
+  now = new Date(),
+  decisionId,
+}) {
+  const user = db.collection('users').doc(uid);
+  const priorSnap = await user.collection('interventionDecisions').get();
+  const decision = evaluateIntervention({
+    accountUid: uid,
+    profile: profileData || {},
+    tasks,
+    recentActivity,
+    priorInterventions: priorSnap.docs.map((doc) => doc.data()),
+    now,
+    decisionId,
+  });
+  const constrained = applySafetyConstraints({
+    decision,
+    decisionId: decision.decisionId,
+    triggers: profileData?.safetyTriggers || [],
+    now,
+  });
+  const lifecycle = revalidateIntervention(constrained.decision, { now });
+  const stored = {
+    ...constrained.decision,
+    lifecycle,
+    safety: constrained.audit,
+    evaluatedAt: admin.firestore.Timestamp.fromDate(new Date(constrained.decision.evaluatedAt)),
+  };
+  const ref = user.collection('interventionDecisions').doc(decision.decisionId);
+  try {
+    await ref.create(stored);
+    return { decision: stored, created: true };
+  } catch (error) {
+    if (error.code !== 6 && error.code !== 'already-exists') throw error;
+    const existing = await ref.get();
+    return { decision: existing.data(), created: false };
+  }
+}
+
+/**
+ * D-149: every non-silent engine result becomes one durable inbox record and
+ * uses the shared transport/claim path. Surface controls the eventual route;
+ * it does not decide whether policy should run.
+ */
+async function deliverInterventionDecision({
+  db,
+  uid,
+  decision,
+  rendered,
+  occurrenceDate,
+  slot,
+  now = new Date(),
+}) {
+  if (!decision || decision.type === 'NONE' || decision.surface === 'none') {
+    return { state: 'not_applicable', inbox: false, delivered: false };
+  }
+  const messageKey = notificationMessageKey({
+    type: 'intervention',
+    occurrenceDate,
+    slot: slot || decision.decisionId,
+  });
+  const item = {
+    messageKey,
+    type: 'intervention',
+    interventionType: decision.type,
+    decisionId: decision.decisionId,
+    surface: decision.surface,
+    objective: decision.objective,
+    target: decision.target,
+    occurrenceDate,
+    habitIds: [],
+    title: rendered.title,
+    body: rendered.body,
+  };
+  return deliverNotification({
+    store: db,
+    messaging: admin.messaging(),
+    uid,
+    item,
+    payload: {
+      type: 'intervention',
+      messageKey,
+      accountUid: uid,
+      decisionId: decision.decisionId,
+      interventionType: decision.type,
+      surface: decision.surface,
+      occurrenceDate,
+      habitIds: '[]',
+    },
+    now,
+  });
 }
 
 // App Check: proves the request came from the genuine, unmodified app binary
@@ -281,27 +384,36 @@ app.post('/evaluateIntervention', requireFirebaseAuth, async (req, res) => {
     const db = admin.firestore();
     const user = db.collection('users').doc(req.uid);
     const profileSnap = await user.collection('profile').doc('main').get();
-    const [tasksSnap, activitySnap, priorInterventionsSnap] = await Promise.all([
+    const [tasksSnap, activitySnap] = await Promise.all([
       user.collection('tasks').get(),
       user.collection('recentActivity').get(),
-      user.collection('interventionDecisions').get(),
     ]);
-    const decision = evaluateIntervention({
-      accountUid: req.uid,
-      profile: profileSnap.data() || {},
-      tasks: tasksSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() })),
-      recentActivity: activitySnap.docs.map((doc) => doc.data()),
-      priorInterventions: priorInterventionsSnap.docs.map((doc) => doc.data()),
+    const profileData = profileSnap.data() || {};
+    const tasks = tasksSnap.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+    const recentActivity = activitySnap.docs.map((doc) => doc.data());
+    const now = new Date();
+    const result = await evaluateAndPersistIntervention({
+      db,
+      uid: req.uid,
+      profileData,
+      tasks,
+      recentActivity,
+      now,
     });
-    const lifecycle = revalidateIntervention(decision);
-    decision.lifecycle = lifecycle;
-    await user.collection('interventionDecisions').doc(decision.decisionId).create({
-      ...decision,
-      evaluatedAt: admin.firestore.Timestamp.fromDate(new Date(decision.evaluatedAt)),
+    const decision = result.decision;
+    const rendered = renderIntervention(decision);
+    const local = localDateParts(profileData.timezone || 'UTC', now);
+    const delivery = await deliverInterventionDecision({
+      db,
+      uid: req.uid,
+      decision,
+      rendered,
+      occurrenceDate: local.dateString,
+      slot: decision.decisionId,
+      now,
     });
-    res.json(decision);
+    res.json({ ...decision, rendered, delivery });
   } catch (e) {
-    if (e.code === 6 || e.code === 'already-exists') return res.status(409).json({ error: 'decision_already_recorded' });
     console.error('evaluateIntervention error:', e.message);
     res.status(500).json({ error: 'service_unavailable' });
   }
@@ -871,25 +983,47 @@ export const api = onRequest(
   app,
 );
 
-// ── Notifications (D-149/D-028/D-149) ───────────────────────────────────────
+// ── Notifications (D-149/D-028/D-152) ───────────────────────────────────────
 //
 // D-028: exactly this context, read from profile/main — the array already
 // synced by the client (SyncService), never a separate model call to
-// assemble it.
+// assemble it. The policy decision is made first by D-152; this function only
+// supplies optional copy after the type, target, objective and surface have
+// already been selected.
 async function sendTailoredNotification(uid, profileData) {
   const db = admin.firestore();
   const now = new Date();
   const local = localDateParts(profileData.timezone, now);
   const slot = `${String(local.hour).padStart(2, '0')}:00`;
+  const messageKey = notificationMessageKey({
+    type: 'intervention', occurrenceDate: local.dateString, slot,
+  });
+  const decisionId = createHash('sha256').update(`${uid}:${messageKey}`).digest('hex').slice(0, 32);
   const categories = (profileData.categories || []).map((c) => ({
     name: c.cat,
     tier: c.position <= 3 ? 1 : c.position <= 5 ? 2 : 3,
     essence: c.activeEssence ?? null,
   }));
 
-  const recentSnap = await db
-      .collection('users').doc(uid).collection('recentActivity').get();
+  const accountRef = db.collection('users').doc(uid);
+  const [tasksSnap, recentSnap] = await Promise.all([
+    accountRef.collection('tasks').get(),
+    accountRef.collection('recentActivity').get(),
+  ]);
+  const tasks = tasksSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
   const recentActivity = recentSnap.docs.map((d) => d.data());
+
+  const result = await evaluateAndPersistIntervention({
+    db,
+    uid,
+    profileData,
+    tasks,
+    recentActivity,
+    now,
+    decisionId,
+  });
+  const decision = result.decision;
+  if (decision.type === 'NONE' || decision.surface === 'none') return;
 
   // D-145 step 7: present only when the user granted calendar access —
   // absent entirely otherwise (buildNotificationPrompt already omits the
@@ -904,6 +1038,7 @@ async function sendTailoredNotification(uid, profileData) {
     // D-138: already present on profileData — synced by the client's
     // SyncService the same way every other profile/main field is.
     firstName: profileData.firstName,
+    intervention: decision,
   });
 
   const model = await getNotificationModel();
@@ -918,17 +1053,18 @@ async function sendTailoredNotification(uid, profileData) {
   });
   const toolUse = msg.content.find((b) => b.type === 'tool_use');
   if (!toolUse) throw new Error('no_tool_use_in_response');
-  const body = toolUse.input.body;
+  const rendered = renderIntervention(decision, {
+    modelCopy: {
+      title: toolUse.input.title,
+      body: toolUse.input.body,
+    },
+  });
   const title = normalizeNotificationPreview({
-    title: toolUse.input.title,
+    title: rendered.title,
     categories,
     recentActivity,
     firstName: profileData.firstName,
   });
-  const messageKey = notificationMessageKey({
-    type: 'tailored', occurrenceDate: local.dateString, slot,
-  });
-  if (!await claimNotificationDispatch(db, uid, messageKey, now)) return;
 
   recordCost(uid, model, msg.usage.input_tokens, msg.usage.output_tokens)
       .catch((e) => console.error('recordCost error:', e.message));
@@ -937,48 +1073,21 @@ async function sendTailoredNotification(uid, profileData) {
   // server-generated content if push was never granted or delivery fails.
   await db.collection('users').doc(uid).collection('profile').doc('main').set({
     lastNotificationTitle: title,
-    lastNotificationBody: body,
+    lastNotificationBody: rendered.body,
     lastNotificationAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
 
-  await upsertInboxItem(db, uid, {
-    messageKey,
-    type: 'tailored',
+  const delivery = await deliverInterventionDecision({
+    db,
+    uid,
+    decision,
+    rendered: { ...rendered, title },
     occurrenceDate: local.dateString,
-    habitIds: [],
-    title,
-    body,
-  }, now);
-
-  const installationSnap = await db.collection('users').doc(uid)
-      .collection('installations').where('enabled', '==', true).get();
-  const installations = installationSnap.docs.map((doc) => doc.data())
-      .filter((installation) => installation.token);
-  if (installations.length === 0) {
+    slot,
+    now,
+  });
+  if (delivery.state === 'no_installation') {
     console.log(`notificationJob: ${uid} has no enabled installation — inbox/local fallback remains available.`);
-    await failNotificationDispatch(db, uid, messageKey, now);
-    return;
-  }
-
-  try {
-    const response = await admin.messaging().sendEachForMulticast({
-      tokens: installations.map((installation) => installation.token),
-      notification: { title, body },
-      data: {
-        type: 'tailored', messageKey, accountUid: uid,
-        occurrenceDate: local.dateString, habitIds: '[]',
-      },
-    });
-    if (response.successCount > 0) {
-      await completeNotificationDispatch(db, uid, messageKey, now);
-    } else {
-      await failNotificationDispatch(db, uid, messageKey, now);
-    }
-  } catch (e) {
-    // D-149: a delivery failure is logged and surfaced, never swallowed —
-    // lastNotificationTitle/Body above is what lets the client recover.
-    console.error(`notificationJob: FCM send failed for ${uid}:`, e.message);
-    await failNotificationDispatch(db, uid, messageKey, now);
   }
 }
 
@@ -1073,8 +1182,6 @@ async function maybeSendBatchCheckin(uid, profileData, now) {
     occurrenceDate: dateString,
     habitIds: habits.map((habit) => String(habit.id)),
   });
-  const claimed = await claimNotificationDispatch(db, uid, messageKey, now);
-  if (!claimed) return;
 
   // D-099: the payload the batch check-in screen renders from, not a
   // fresh query — so what the user sees on tap matches what the push was
@@ -1089,48 +1196,29 @@ async function maybeSendBatchCheckin(uid, profileData, now) {
     ? `${habits[0].description} — how did it go?`
     : `${habits.length} habits scheduled today — how did they go?`;
 
-  await upsertInboxItem(db, uid, {
-    messageKey,
-    type: 'batch_checkin',
-    occurrenceDate: dateString,
-    habitIds: habits.map((habit) => String(habit.id)),
-    title: 'Your next step matters',
-    body,
-  }, now);
-
-  const installationSnap = await db.collection('users').doc(uid)
-      .collection('installations').where('enabled', '==', true).get();
-  const installations = installationSnap.docs.map((doc) => doc.data())
-      .filter((installation) => installation.token);
-  if (installations.length === 0) {
+  const delivery = await deliverNotification({
+    store: db,
+    messaging: admin.messaging(),
+    uid,
+    item: {
+      messageKey,
+      type: 'batch_checkin',
+      occurrenceDate: dateString,
+      habitIds: habits.map((habit) => String(habit.id)),
+      title: 'Your next step matters',
+      body,
+    },
+    payload: {
+      type: 'batch_checkin',
+      messageKey,
+      accountUid: uid,
+      occurrenceDate: dateString,
+      habitIds: JSON.stringify(habits.map((habit) => String(habit.id))),
+    },
+    now,
+  });
+  if (delivery.state === 'no_installation') {
     console.log(`batchCheckinJob: ${uid} has no enabled installation — inbox/local fallback remains available.`);
-    await failNotificationDispatch(db, uid, messageKey, now);
-    return;
-  }
-
-  try {
-    const response = await admin.messaging().sendEachForMulticast({
-      tokens: installations.map((installation) => installation.token),
-      notification: { title: 'Your next step matters', body },
-      // D-066's amendment noted real FCM pushes carry no `data` field at
-      // all today — this is the first push that needs one, so it's added
-      // here rather than for every push type at once.
-      data: {
-        type: 'batch_checkin',
-        messageKey,
-        accountUid: uid,
-        occurrenceDate: dateString,
-        habitIds: JSON.stringify(habits.map((habit) => String(habit.id))),
-      },
-    });
-    if (response.successCount > 0) {
-      await completeNotificationDispatch(db, uid, messageKey, now);
-    } else {
-      await failNotificationDispatch(db, uid, messageKey, now);
-    }
-  } catch (e) {
-    console.error(`batchCheckinJob: FCM send failed for ${uid}:`, e.message);
-    await failNotificationDispatch(db, uid, messageKey, now);
   }
 }
 

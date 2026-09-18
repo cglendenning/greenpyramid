@@ -62,6 +62,7 @@ export function buildNotificationPrompt({
   recentActivity = [],
   calendarContext,
   firstName,
+  intervention = null,
 }) {
   const name = firstName ? sanitize(firstName, 40) : null;
   const categoryLines = categories.map((c) => {
@@ -88,6 +89,12 @@ export function buildNotificationPrompt({
     'grounded in one named category, value, goal, task, completion, miss, or ' +
     'current pattern, plus a one-sentence body. No generic title, emojis, or ' +
     'invented personal detail.' +
+    (intervention
+      ? ` The cloud policy has already selected the intervention type ${sanitize(intervention.type, 40)} ` +
+        `for the objective ${sanitize(intervention.objective, 80)}. The target is ` +
+        `${sanitize(intervention.target || 'the next checkbox', 120)}. Write copy that expresses that ` +
+        'purpose, but do not change the type, target, objective, timing, or delivery surface.'
+      : '') +
     (name
       ? ` The reader's name is ${name} — use it in the title or body when it reads naturally (e.g. ` +
         `"Nice work, ${name}"), not forced into every notification.`
@@ -96,6 +103,9 @@ export function buildNotificationPrompt({
   const user =
     `CATEGORIES:\n${categoryLines}\n\n` +
     (visionStatement ? `THEIR VISION: "${sanitize(visionStatement, 500)}"\n\n` : '') +
+    (intervention
+      ? `SELECTED INTERVENTION:\nType: ${sanitize(intervention.type, 40)}\nObjective: ${sanitize(intervention.objective, 80)}\nTarget: ${sanitize(intervention.target || 'the next checkbox', 120)}\n\n`
+      : '') +
     `RECENT ACTIVITY:\n${recentLines || '(none yet)'}` +
     (calendarContext ? `\n\nTODAY'S CALENDAR: ${sanitize(calendarContext, 500)}` : '');
 

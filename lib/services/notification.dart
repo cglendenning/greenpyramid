@@ -815,6 +815,7 @@ class LocalNotificationService {
           navigatorKey.currentState?.push(MaterialPageRoute(
               builder: (_) => BatchCheckinScreen(habits: habits)));
         case 'tailored':
+        case 'intervention':
         case 'upgrade':
           handlePushDataTap(data);
           break;

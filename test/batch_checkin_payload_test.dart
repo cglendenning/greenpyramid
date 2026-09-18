@@ -34,6 +34,24 @@ void main() {
   });
 
   test(
+      'D-149/D-152: an engine intervention keeps its account, decision and surface',
+      () {
+    final intervention = jsonDecode(pushTapPayloadFrom({
+      'type': 'intervention',
+      'accountUid': 'uid',
+      'messageKey': 'intervention:2026-09-15:09:00',
+      'decisionId': 'decision-1',
+      'interventionType': 'RECOVERY',
+      'surface': 'in_app',
+    })!) as Map<String, dynamic>;
+    expect(intervention['type'], 'intervention');
+    expect(intervention['accountUid'], 'uid');
+    expect(intervention['decisionId'], 'decision-1');
+    expect(intervention['interventionType'], 'RECOVERY');
+    expect(intervention['surface'], 'in_app');
+  });
+
+  test(
       'any other message type produces no payload — this is a '
       'deliberate allowlist, not a general passthrough', () {
     expect(pushTapPayloadFrom({'type': 'something_else'}), isNull);

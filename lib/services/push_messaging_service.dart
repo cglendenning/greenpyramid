@@ -190,9 +190,9 @@ class PushMessagingService {
         hour: hour,
         minute: minute,
         payload: jsonEncode({
-          'type': 'tailored',
+          'type': 'intervention',
           'accountUid': _auth.currentUser?.uid,
-          'messageKey': 'tailored:fallback:${entry.key}',
+          'messageKey': 'intervention:fallback:${entry.key}',
           'occurrenceDate': DateTime.now().toIso8601String().substring(0, 10),
         }),
       );

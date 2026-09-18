@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:life_ops/screens/batch_checkin_screen.dart';
 import 'package:life_ops/screens/paywall_screen.dart';
 import 'package:life_ops/screens/homescreen.dart';
+import 'package:life_ops/screens/general_council_screen.dart';
 import 'package:life_ops/screens/database_recovery_screen.dart';
 import 'package:life_ops/services/notification.dart';
 import "package:timezone/data/latest.dart" as tz show initializeTimeZones;
@@ -69,6 +70,8 @@ String? pushTapPayloadFrom(Map<String, dynamic> data) {
       return jsonEncode(data);
     case 'tailored':
       return jsonEncode(data);
+    case 'intervention':
+      return jsonEncode(data);
     default:
       return null;
   }
@@ -111,6 +114,17 @@ void handlePushDataTap(Map<String, dynamic> data) {
       break;
     case 'tailored':
       LocalNotificationService().onNotificationClick.add('/');
+      break;
+    case 'intervention':
+      // D-149: the inbox is the durable record for every non-silent engine
+      // result; the selected surface is retained in the payload for the
+      // eventual destination without letting the client choose policy.
+      if (data['surface'] == 'council') {
+        navigatorKey.currentState?.push(
+            MaterialPageRoute(builder: (_) => const GeneralCouncilScreen()));
+      } else {
+        LocalNotificationService().onNotificationClick.add('/');
+      }
       break;
     case 'upgrade':
       navigatorKey.currentState?.push(MaterialPageRoute(

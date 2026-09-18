@@ -87,6 +87,22 @@ test('D-021: the prompt requires a personalized preview quip of at most five wor
   assert.equal(MAX_NOTIFICATION_PREVIEW_WORDS, 5);
 });
 
+test('D-152/D-159: notification copy receives the selected engine decision without policy authority', () => {
+  const { system, user } = buildNotificationPrompt({
+    intervention: {
+      type: 'RECOVERY',
+      objective: 'restart_after_disruption',
+      target: 'Take a short walk',
+      surface: 'in_app',
+    },
+  });
+  assert.match(system, /selected the intervention type RECOVERY/);
+  assert.match(system, /do not change the type, target, objective/);
+  assert.match(user, /Type: RECOVERY/);
+  assert.match(user, /Objective: restart_after_disruption/);
+  assert.match(user, /Target: Take a short walk/);
+});
+
 test('D-021: an overlong model title is replaced with a context-grounded quip', () => {
   assert.equal(normalizeNotificationPreview({
     title: 'This is far too many words for a notification preview',

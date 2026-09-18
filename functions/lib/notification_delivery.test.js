@@ -1,12 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { claimNotificationDispatch, completeNotificationDispatch, failNotificationDispatch, markInboxRead, notificationMessageKey, registerInstallation, upsertInboxItem } from './notification_delivery.js';
+import { claimNotificationDispatch, completeNotificationDispatch, deliverNotification, failNotificationDispatch, markInboxRead, notificationMessageKey, registerInstallation, upsertInboxItem } from './notification_delivery.js';
 
 class Ref {
   constructor(store, path) { this.store = store; this.path = path; }
   collection(name) { return new Ref(this.store, `${this.path}/${name}`); }
   doc(name) { return new Ref(this.store, `${this.path}/${name}`); }
+  where(field, operator, value) {
+    if (operator !== '==') throw new Error('test_only_supports_equality');
+    const store = this.store;
+    const prefix = `${this.path}/`;
+    return {
+      async get() {
+        return {
+          docs: Object.entries(store.data)
+              .filter(([path, data]) => path.startsWith(prefix) && !path.slice(prefix.length).includes('/') && data?.[field] === value)
+              .map(([path, data]) => ({ ref: new Ref(store, path), data: () => data })),
+        };
+      },
+    };
+  }
   async get() { return { exists: this.path in this.store.data, data: () => this.store.data[this.path], ref: this }; }
   async set(data, options) { this.store.data[this.path] = options?.merge ? { ...this.store.data[this.path], ...data } : data; }
 }
@@ -76,6 +90,24 @@ test('D-149-AC-03: concurrent retries claim one logical dispatch', async () => {
     claimNotificationDispatch(store, 'u', key),
   ]);
   assert.deepEqual(claims.sort(), [false, true]);
+});
+
+test('D-149: shared delivery writes the inbox before provider delivery', async () => {
+  const store = new Store();
+  store.data['users/u/installations/i'] = { enabled: true, token: 'token-1' };
+  const key = notificationMessageKey({ type: 'intervention', occurrenceDate: '2026-09-15', slot: '09:00' });
+  const result = await deliverNotification({
+    store,
+    messaging: { sendEachForMulticast: async () => ({ successCount: 1 }) },
+    uid: 'u',
+    item: { messageKey: key, type: 'intervention', occurrenceDate: '2026-09-15', title: 'Keep going', body: 'A bounded message.' },
+    payload: { type: 'intervention', messageKey: key, accountUid: 'u' },
+  });
+  assert.deepEqual(result, { state: 'sent', inbox: true, delivered: true });
+  const inboxDocs = Object.entries(store.data).filter(([path]) => path.includes('/inbox/'));
+  assert.equal(inboxDocs.length, 1);
+  assert.equal(inboxDocs[0][1].type, 'intervention');
+  assert.equal(store.data[Object.keys(store.data).find((path) => path.includes('/notificationClaims/'))].state, 'sent');
 });
 
 test('D-149-AC-03: failed transport releases the stable claim for retry, '
