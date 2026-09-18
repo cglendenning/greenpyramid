@@ -789,23 +789,27 @@ class InterventionEngineGuideScreen extends StatelessWidget {
         ),
         SizedBox(height: 8),
         Text(
-          'The cloud-based Intervention Engine uses the account’s values, '
-          'goals, categories, tasks, schedules and checkbox history to decide '
-          'whether the minimum useful intervention is silence or one bounded '
-          'intervention type from the complete taxonomy. It optimizes for checkbox completion, not '
-          'message volume. The client, renderer and delivery service execute '
-          'its decisions; they do not choose intervention behavior policy.',
+          'Start with this simple picture: each time a person checks or misses '
+          'a task, Green Pyramid records that event. The cloud-based '
+          'Intervention Engine receives the current task, recent checkbox '
+          'history, values, goals, schedules, prior interventions and current '
+          'time. It examines that information once and decides whether support '
+          'could increase future checkbox completion. It returns either NONE '
+          '(stay silent) or one intervention type from the complete list. The '
+          'app, renderer and delivery service carry out that decision; they do '
+          'not choose the intervention.',
         ),
         SizedBox(height: 12),
         Text(
-          'Important: the production intervention engine does not create or '
+          'The engine does not create or '
           'train a predictive model from a person’s data. It estimates a '
-          'short-term silent baseline from observed history, then applies a '
-          'fixed, auditable utility policy. “Deterministic” means the same '
-          'inputs, policy version and time produce the same candidate comparison '
-          'and selection; it does not mean the engine predicts a person or '
-          'learns a private model. Model-generated wording, when used, happens '
-              'after the intervention type is chosen and cannot choose whether to intervene.',
+          'short-term completion baseline if it sends nothing, checks whether '
+          'there is a useful chance to help, compares the available choices, '
+          'and applies safety and timing limits. “Deterministic” means the same '
+          'information, policy version and time produce the same choice; it does '
+          'not mean the engine predicts a person. Model-generated wording, when '
+          'used, happens after the intervention type is chosen and cannot choose '
+          'whether to intervene.',
         ),
         SizedBox(height: 20),
         _EngineFlow(),
