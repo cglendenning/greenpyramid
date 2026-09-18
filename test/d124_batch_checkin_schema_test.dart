@@ -116,8 +116,9 @@ void main() {
   test('D-099: the Yes action has a contrasting label color', () {
     final source =
         File('lib/screens/batch_checkin_screen.dart').readAsStringSync();
-    expect(source, contains('foregroundColor: Colors.black'));
-    expect(source, contains("Text('Yes',"));
+    expect(source, contains("label: 'Yes'"));
+    expect(source, contains("'YES'"));
+    expect(source, contains('Center('));
     expect(source, contains('color: Colors.black'));
   });
 

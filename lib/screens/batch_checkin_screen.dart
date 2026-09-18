@@ -215,12 +215,30 @@ class _BatchCheckinScreenState extends State<BatchCheckinScreen> {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: ElevatedButton(
-                onPressed: () => _markYes(row),
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.brandGreen,
-                    foregroundColor: Colors.black),
-                child: const Text('Yes', style: TextStyle(color: Colors.black)),
+              child: Semantics(
+                button: true,
+                label: 'Yes',
+                child: Material(
+                  color: AppColors.brandGreen,
+                  borderRadius: BorderRadius.circular(28),
+                  child: InkWell(
+                    onTap: () => _markYes(row),
+                    borderRadius: BorderRadius.circular(28),
+                    child: const SizedBox(
+                      height: 48,
+                      child: Center(
+                        child: Text(
+                          'YES',
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
