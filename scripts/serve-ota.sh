@@ -13,6 +13,8 @@ BUNDLE_ID="com.cglendenning.lifeops"
 TITLE="Green Pyramid"
 PORT="${PORT:-8765}"
 LOG_SUFFIX="${PORT}"
+OTA_ICON_NAME="ota-display.png"
+OTA_ICON_SOURCE="/Users/craig/greenpyramid/ios/Runner/Assets.xcassets/AppIcon.appiconset/1024.png"
 SERVER_LOG="/tmp/gp_ota_server_${LOG_SUFFIX}.log"
 TUNNEL_LOG="/tmp/gp_cloudflared_${LOG_SUFFIX}.log"
 
@@ -62,6 +64,11 @@ if [ -z "$TUNNEL_URL" ]; then
 fi
 
 if [ "$MODE" = "ios" ]; then
+  # Include the app icon in the OTA manifest so the install sheet and the
+  # downloaded app both present the same Green Pyramid identity.
+  if [ -f "$OTA_ICON_SOURCE" ]; then
+    cp "$OTA_ICON_SOURCE" "${SERVE_DIR}/${OTA_ICON_NAME}"
+  fi
   # Write the manifest with the live URL.
   cat > "${SERVE_DIR}/manifest.plist" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -82,6 +89,10 @@ if [ "$MODE" = "ios" ]; then
       </array>
       <key>metadata</key>
       <dict>
+        <key>display-image</key>
+        <string>${TUNNEL_URL}/${OTA_ICON_NAME}</string>
+        <key>full-size-image</key>
+        <string>${TUNNEL_URL}/${OTA_ICON_NAME}</string>
         <key>bundle-identifier</key>
         <string>${BUNDLE_ID}</string>
         <key>bundle-version</key>

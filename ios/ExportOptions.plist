@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>method</key>
-	<string>app-store-connect</string>
+	<string>ad-hoc</string>
     <key>teamID</key>
     <string>MCALPSQ5P5</string>
 	<key>signingStyle</key>
@@ -11,7 +11,7 @@
 	<key>provisioningProfiles</key>
 	<dict>
 		<key>com.cglendenning.lifeops</key>
-		<string>Green Pyramid Consumer App Store</string>
+		<string>Green Pyramid Consumer Ad Hoc</string>
 	</dict>
     <key>stripSwiftSymbols</key>
     <true/>
