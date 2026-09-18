@@ -223,7 +223,7 @@ class _SettingsState extends State<Settings> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: const [
                   Expanded(
-                    child: Text('Let the Council of Advisors see your calendar',
+                    child: Text('Share calendar availability with Green Pyramid',
                         style: TextStyle(color: AppColors.textPrimary)),
                   ),
                   CalendarAccessSwitch(),

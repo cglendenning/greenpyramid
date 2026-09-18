@@ -94,11 +94,12 @@ void main() {
 
   test(
       'D-096: settings.dart\'s two Council mentions (category '
-      're-clarification, calendar access) both say "Council of Advisors"',
+      're-clarification, calendar access) use clear, app-centered wording',
       () {
     final source = File('lib/screens/settings.dart').readAsStringSync();
     expect(source, contains('Revisit a category with the Council of Advisors'));
-    expect(source, contains('Let the Council of Advisors see your calendar'));
+    expect(source,
+        contains('Share calendar availability with Green Pyramid'));
   });
 
   test(
