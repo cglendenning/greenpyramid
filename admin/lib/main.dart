@@ -411,7 +411,7 @@ class _SimulationScreenState extends State<SimulationScreen> {
                 'Each selected scenario supplies a different synthetic pattern '
                 'of completed and missed check-ins. Every virtual day is evaluated '
                 'by the intervention engine, which compares doing nothing with a '
-                'bounded set of semantic intervention candidates. This tests '
+                'bounded set of intervention type candidates. This tests '
                 'evidence-triggered taxonomy selection, delivery failures, and '
                 'the resulting audit timeline; '
                 'it does not test real people, notifications, or production data.',
@@ -624,7 +624,7 @@ class _InterventionTypeSummary extends StatelessWidget {
     return _ExplanationCard(
       title: 'Selected intervention types',
       body: entries.isEmpty
-          ? 'No semantic intervention was selected in this run. The engine intentionally chose NONE for every evaluation.'
+          ? 'No intervention type was selected in this run. The engine intentionally chose NONE for every evaluation.'
           : entries.map((entry) => '${entry.key}: ${entry.value}').join(' · '),
     );
   }
@@ -792,7 +792,7 @@ class InterventionEngineGuideScreen extends StatelessWidget {
           'The cloud-based Intervention Engine uses the account’s values, '
           'goals, categories, tasks, schedules and checkbox history to decide '
           'whether the minimum useful intervention is silence or one bounded '
-          'semantic intervention from the complete taxonomy. It optimizes for checkbox completion, not '
+          'intervention type from the complete taxonomy. It optimizes for checkbox completion, not '
           'message volume. The client, renderer and delivery service execute '
           'its decisions; they do not choose intervention behavior policy.',
         ),
@@ -805,7 +805,7 @@ class InterventionEngineGuideScreen extends StatelessWidget {
           'inputs, policy version and time produce the same candidate comparison '
           'and selection; it does not mean the engine predicts a person or '
           'learns a private model. Model-generated wording, when used, happens '
-          'after the semantic decision and cannot choose whether to intervene.',
+              'after the intervention type is chosen and cannot choose whether to intervene.',
         ),
         SizedBox(height: 20),
         _EngineFlow(),
@@ -831,8 +831,8 @@ class InterventionEngineGuideScreen extends StatelessWidget {
             ),
             Text(
               '4. Candidates — the engine considers NONE and evidence-triggered '
-              'semantic options such as REMINDER, RECOVERY, PLAN_PROMPT, or '
-              'TARGET_REVIEW. A semantic type has an objective, '
+              'intervention types such as REMINDER, RECOVERY, PLAN_PROMPT, or '
+              'TARGET_REVIEW. Each type has a purpose, '
               'target, validity window, measurement window and surface; wording '
               'comes later.',
             ),
@@ -852,7 +852,7 @@ class InterventionEngineGuideScreen extends StatelessWidget {
               'action is auditable without unnecessary sensitive content.',
             ),
             Text(
-              '7. Render, deliver and learn — a permitted semantic decision is '
+              '7. Render, deliver and learn — a permitted intervention decision is '
               'rendered with deterministic fallback, then delivery is attempted. '
               'Decision, delivery, viewing, response, outcome, expiry, '
               'cancellation and supersession remain separate states. Checkbox '
@@ -985,7 +985,7 @@ class SimulationGuideScreen extends StatelessWidget {
               'burden recover.',
             ),
             Text(
-              'Selection — the policy compares NONE with permitted semantic '
+              'Selection — the policy compares NONE with permitted intervention '
               'candidates using expected checkbox lift minus burden and a '
               'small success-continuity value for acknowledgment/reflection. '
               'deterministic_utility means fixed server rules make that choice; '
@@ -1010,7 +1010,7 @@ class SimulationGuideScreen extends StatelessWidget {
               'completion baseline, and compares NONE with a type-specific '
               'candidate such as RECOVERY, PLAN_PROMPT, or REMINDER. If the '
               'expected completion lift is worth the modeled burden, it selects '
-              'that semantic type. If not, it selects NONE. The '
+              'that intervention type. If not, it selects NONE. The '
               'decision is recorded even when delivery later fails.',
             ),
             SizedBox(height: 8),
@@ -1165,7 +1165,7 @@ class _EngineFlow extends StatelessWidget {
             number: '3',
             title: 'Candidates + utility',
             body:
-                'Compare NONE and bounded semantic interventions against burden.',
+                'Compare NONE and bounded intervention types against intervention cost.',
           ),
           _FlowArrow(),
           _FlowStep(
