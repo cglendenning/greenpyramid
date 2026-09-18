@@ -161,6 +161,36 @@ app.get('/adminMetrics', requireAdmin, async (_req, res) => {
   }
 });
 
+// D-124/admin support: feedback is user-submitted content, so the private
+// admin surface may read it only through the server-side admin claim. Keep the
+// response bounded and expose an operator-safe uid hash rather than raw uid.
+app.get('/adminFeedback', requireAdmin, async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 500);
+    const snapshot = await admin.firestore().collectionGroup('feedback').limit(500).get();
+    const feedback = snapshot.docs.map((doc) => {
+      const data = doc.data() || {};
+      const path = doc.ref.path.split('/');
+      const uid = path[1] || 'unknown';
+      const createdAt = data.createdAt?.toDate?.() || data.createdAt || null;
+      return {
+        id: doc.id,
+        uidHash: createHash('sha256').update(uid).digest('hex'),
+        category: data.category || 'unknown',
+        comment: data.comment || '',
+        appVersion: data.appVersion || null,
+        buildNumber: data.buildNumber || null,
+        platform: data.platform || null,
+        createdAt: createdAt instanceof Date ? createdAt.toISOString() : createdAt,
+      };
+    }).sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))).slice(0, limit);
+    res.json({ feedback });
+  } catch (e) {
+    console.error('adminFeedback error:', e.message);
+    res.status(500).json({ error: 'service_unavailable' });
+  }
+});
+
 // D-162/D-165: the private admin app uses the same simulator as the CLI. The
 // target is fixed server-side so a client can never select a production
 // project or provide credentials. This endpoint is intentionally claim-gated

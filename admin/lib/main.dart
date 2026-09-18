@@ -187,6 +187,53 @@ class Dashboard extends StatelessWidget {
           ),
         ],
       ),
+      drawer: Drawer(
+        child: SafeArea(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              const DrawerHeader(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Icon(Icons.admin_panel_settings_outlined, size: 34),
+                    SizedBox(height: 8),
+                    Text('Green Pyramid Admin', style: TextStyle(fontSize: 20)),
+                  ],
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.dashboard_outlined),
+                title: const Text('Product pulse'),
+                onTap: () => Navigator.pop(context),
+              ),
+              ListTile(
+                leading: const Icon(Icons.feedback_outlined),
+                title: const Text('App feedback'),
+                subtitle: const Text('Read user-submitted feedback'),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AdminFeedbackScreen()),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.science_outlined),
+                title: const Text('Intervention simulator'),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const SimulationScreen()),
+                ),
+              ),
+              ListTile(
+                leading: const Icon(Icons.account_tree_outlined),
+                title: const Text('How the intervention engine works'),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const InterventionEngineGuideScreen()),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
       body: RefreshIndicator(
         onRefresh: onRefresh,
         child: ListView(
@@ -291,6 +338,173 @@ class Dashboard extends StatelessWidget {
         Text('${(value * 100).round()}%'),
       ],
     ),
+  );
+}
+
+class AdminFeedbackScreen extends StatefulWidget {
+  const AdminFeedbackScreen({super.key});
+
+  @override
+  State<AdminFeedbackScreen> createState() => _AdminFeedbackScreenState();
+}
+
+class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
+  late Future<List<Map<String, dynamic>>> feedbackFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    feedbackFuture = _load();
+  }
+
+  Future<List<Map<String, dynamic>>> _load() async {
+    final token = await FirebaseAuth.instance.currentUser!.getIdToken(true);
+    final response = await http.get(
+      Uri.parse('$apiBase/adminFeedback?limit=500'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode != 200) {
+      throw AdminMetricsException(response.statusCode);
+    }
+    final payload = jsonDecode(response.body) as Map<String, dynamic>;
+    return (payload['feedback'] as List).cast<Map<String, dynamic>>();
+  }
+
+  void refresh() => setState(() => feedbackFuture = _load());
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: const Text('App feedback'),
+      actions: [
+        IconButton(
+          tooltip: 'Refresh feedback',
+          icon: const Icon(Icons.refresh),
+          onPressed: refresh,
+        ),
+      ],
+    ),
+    body: FutureBuilder<List<Map<String, dynamic>>>(
+      future: feedbackFuture,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(child: Text('Feedback could not be loaded: ${snapshot.error}'));
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final entries = snapshot.data!;
+        if (entries.isEmpty) {
+          return const Center(child: Text('No user feedback has been submitted yet.'));
+        }
+        return RefreshIndicator(
+          onRefresh: () async => refresh(),
+          child: ListView.separated(
+            padding: const EdgeInsets.all(12),
+            itemCount: entries.length,
+            separatorBuilder: (_, _) => const SizedBox(height: 4),
+            itemBuilder: (context, index) {
+              final entry = entries[index];
+              return Card(
+                child: ListTile(
+                  leading: Icon(_feedbackIcon(entry['category'] as String?)),
+                  title: Text(_feedbackLabel(entry['category'] as String?)),
+                  subtitle: Text(
+                    '${entry['comment']?.toString().isEmpty == true ? '(No comment)' : entry['comment']}\n${_formatDate(entry['createdAt'])}',
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  isThreeLine: true,
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => AdminFeedbackDetailScreen(entry: entry),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        );
+      },
+    ),
+  );
+
+  String _feedbackLabel(String? category) => switch (category) {
+    'bug' => 'Report a bug',
+    'idea' => 'Suggest an idea',
+    'confusing' => "Something's confusing",
+    'love_it' => "What's working",
+    _ => 'Other feedback',
+  };
+
+  IconData _feedbackIcon(String? category) => switch (category) {
+    'bug' => Icons.bug_report_outlined,
+    'idea' => Icons.lightbulb_outline,
+    'confusing' => Icons.help_outline,
+    'love_it' => Icons.favorite_border,
+    _ => Icons.feedback_outlined,
+  };
+
+  String _formatDate(dynamic value) {
+    if (value is! String) return 'Date unavailable';
+    return value.replaceFirst('T', ' ').replaceFirst('Z', ' UTC');
+  }
+}
+
+class AdminFeedbackDetailScreen extends StatelessWidget {
+  const AdminFeedbackDetailScreen({super.key, required this.entry});
+  final Map<String, dynamic> entry;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Feedback detail')),
+    body: ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        Text(
+          _label(entry['category'] as String?),
+          style: Theme.of(context).textTheme.headlineSmall,
+        ),
+        const SizedBox(height: 20),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              (entry['comment'] as String?)?.isNotEmpty == true
+                  ? entry['comment'] as String
+                  : 'No comment was included.',
+              style: Theme.of(context).textTheme.bodyLarge,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Text('Submission details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        _row('Submitted', '${entry['createdAt'] ?? 'Unknown'}'),
+        _row('Platform', '${entry['platform'] ?? 'Unknown'}'),
+        _row('App version', '${entry['appVersion'] ?? 'Unknown'}'),
+        _row('Build number', '${entry['buildNumber'] ?? 'Unknown'}'),
+        _row('Anonymous user hash', '${entry['uidHash'] ?? 'Unknown'}'),
+        _row('Feedback record', '${entry['id'] ?? 'Unknown'}'),
+        const SizedBox(height: 16),
+        const Text(
+          'The user hash is an operator-safe identifier. The admin app does not expose the user’s raw Firebase UID or personal account data here.',
+        ),
+      ],
+    ),
+  );
+
+  static String _label(String? category) => switch (category) {
+    'bug' => 'Report a bug',
+    'idea' => 'Suggest an idea',
+    'confusing' => "Something's confusing",
+    'love_it' => "What's working",
+    _ => 'Other feedback',
+  };
+
+  Widget _row(String label, String value) => Padding(
+    padding: const EdgeInsets.only(top: 12),
+    child: Text('$label: $value'),
   );
 }
 

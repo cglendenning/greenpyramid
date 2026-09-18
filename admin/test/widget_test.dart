@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   final source = File('lib/main.dart').readAsStringSync();
   // D-165-AC-03
+  // D-165-AC-06
   // D-165-AC-04: the signed IPA was manually reviewed after this surface test.
   // D-165-AC-05: simulator controls and report terminology are explained.
   // D-162-AC-04: simulator controls and report output are exposed here.
@@ -17,6 +18,10 @@ void main() {
     expect(source, contains('Product pulse'));
     expect(source, contains('Screen utilization'));
     expect(source, contains('Top users by spend'));
+    expect(source, contains('/adminFeedback?limit=500'));
+    expect(source, contains('App feedback'));
+    expect(source, contains('AdminFeedbackDetailScreen'));
+    expect(source, contains('Anonymous user hash'));
     expect(source, contains('RefreshIndicator'));
     expect(source, contains('AlwaysScrollableScrollPhysics'));
     expect(source, contains('/adminSimulation'));
