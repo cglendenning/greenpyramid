@@ -6,8 +6,13 @@
 	<string>app-store-connect</string>
     <key>teamID</key>
     <string>MCALPSQ5P5</string>
-    <key>signingStyle</key>
-    <string>automatic</string>
+	<key>signingStyle</key>
+	<string>manual</string>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>com.cglendenning.lifeops</key>
+		<string>Green Pyramid Consumer App Store</string>
+	</dict>
     <key>stripSwiftSymbols</key>
     <true/>
     <key>compileBitcode</key>

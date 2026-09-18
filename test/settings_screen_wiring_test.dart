@@ -27,9 +27,12 @@ void main() {
       'reachable from needsSubscription, which is what a trialing account '
       'actually hits', () {
     final source = File('lib/screens/settings.dart').readAsStringSync();
-    final renewingStart = source.indexOf('SubscriptionPanelState.activeRenewing:');
-    final cancellingStart = source.indexOf('SubscriptionPanelState.activeCancelling:');
-    final needsSubStart = source.indexOf('SubscriptionPanelState.needsSubscription:');
+    final renewingStart =
+        source.indexOf('SubscriptionPanelState.activeRenewing:');
+    final cancellingStart =
+        source.indexOf('SubscriptionPanelState.activeCancelling:');
+    final needsSubStart =
+        source.indexOf('SubscriptionPanelState.needsSubscription:');
     expect(renewingStart, greaterThan(-1));
     expect(cancellingStart, greaterThan(renewingStart));
     expect(needsSubStart, greaterThan(cancellingStart));
@@ -45,6 +48,14 @@ void main() {
     expect(source, contains('isTestNotificationPending()'));
   });
 
+  test('settings identifies the installed release from native app metadata',
+      () {
+    final source = File('lib/screens/settings.dart').readAsStringSync();
+    expect(source, contains('PackageInfo.fromPlatform()'));
+    expect(source,
+        contains(r'Version ${info.version} (build ${info.buildNumber})'));
+  });
+
   test(
       'D-122: the settings test notification now uses a real newsfeed '
       "item's own headline/body, not a generic message — owner: \"the "
@@ -53,8 +64,8 @@ void main() {
       'you tap the notification it brings you to that headline in the '
       'newsfeed."', () {
     final source = File('lib/screens/settings.dart').readAsStringSync();
-    expect(source,
-        contains('NewsfeedService.instance.seedSampleCardsIfNeeded()'));
+    expect(
+        source, contains('NewsfeedService.instance.seedSampleCardsIfNeeded()'));
     expect(source, contains('scheduleNewsfeedTestNotification('));
   });
 
@@ -62,8 +73,7 @@ void main() {
       'D-090: notification.dart\'s test notification no longer routes to '
       'the deleted /morning, /afternoon, /evening screens (D-066) — '
       'regression test for the previous version\'s five-notification '
-      'burst that would throw on tap since those routes no longer exist',
-      () {
+      'burst that would throw on tap since those routes no longer exist', () {
     final source = File('lib/services/notification.dart').readAsStringSync();
     expect(source, isNot(contains("payload: '/morning'")));
     expect(source, isNot(contains("payload: '/afternoon'")));
@@ -77,21 +87,22 @@ void main() {
       'build — found live while building this change: they routed to '
       '/morning, /afternoon, /evening, screens D-066 already deleted, and '
       'ran regardless of push authorization, duplicating the real D-149 '
-      'fallback push_messaging_service.dart already implements correctly',
-      () {
+      'fallback push_messaging_service.dart already implements correctly', () {
     final source = File('lib/screens/homescreen.dart').readAsStringSync();
     expect(source, isNot(contains("payload: '/morning'")));
     expect(source, isNot(contains("payload: '/afternoon'")));
     expect(source, isNot(contains("payload: '/evening'")));
   });
 
-  group('D-144: the real OS notification-permission state is checked and '
+  group(
+      'D-144: the real OS notification-permission state is checked and '
       'surfaced, not just whether a test notification was accepted for '
       'scheduling — found live: "Send test notification" showed '
       '"Pending…" and the notification never arrived, with no error '
       'anywhere, because iOS accepts a schedule request and silently '
       'drops it at delivery time when permission is denied', () {
-    test('checks the real permission state via '
+    test(
+        'checks the real permission state via '
         'LocalNotificationService.areNotificationsEnabled(), not '
         'isTestNotificationPending() (which only confirms the plugin '
         'accepted the schedule request)', () {
@@ -99,7 +110,8 @@ void main() {
       expect(source, contains('widget.lns.areNotificationsEnabled()'));
     });
 
-    test('does not depend on package:permission_handler for this check — '
+    test(
+        'does not depend on package:permission_handler for this check — '
         'that package requires an iOS Podfile macro '
         '(PERMISSION_NOTIFICATIONS) this project has never enabled for '
         'any permission group, so it would silently report the wrong '
@@ -109,7 +121,8 @@ void main() {
       expect(source, isNot(contains('Permission.notification')));
     });
 
-    test('an off state shows a banner whose action requests permission '
+    test(
+        'an off state shows a banner whose action requests permission '
         'directly first — not just a bare "Open Settings" link — since an '
         'account that completed setup before D-050\'s permission screen '
         'existed has never called the OS request API at all, so iOS never '
@@ -123,19 +136,20 @@ void main() {
       expect(source, contains('Enable Notifications'));
     });
 
-    test('requestPermissions() returns whether permission was actually '
+    test(
+        'requestPermissions() returns whether permission was actually '
         'granted, so the banner can fall back to opening Settings only '
-        'when it was already asked and declined, not on a first-ever ask',
-        () {
+        'when it was already asked and declined, not on a first-ever ask', () {
       final source = File('lib/services/notification.dart').readAsStringSync();
       expect(source, contains('Future<bool> requestPermissions()'));
-      expect(source, contains('Future<bool> _requestNotificationPermissions()'));
+      expect(
+          source, contains('Future<bool> _requestNotificationPermissions()'));
     });
 
-    test('the permission state is rechecked on app resume, so returning '
+    test(
+        'the permission state is rechecked on app resume, so returning '
         'from the "Open Settings" button reflects a just-granted '
-        'permission without needing to leave and re-enter this screen',
-        () {
+        'permission without needing to leave and re-enter this screen', () {
       final source = File('lib/screens/settings.dart').readAsStringSync();
       expect(source, contains('with WidgetsBindingObserver'));
       expect(source, contains('didChangeAppLifecycleState'));
@@ -143,24 +157,27 @@ void main() {
     });
   });
 
-  group('D-144: LocalNotificationService.areNotificationsEnabled() reads '
+  group(
+      'D-144: LocalNotificationService.areNotificationsEnabled() reads '
       'the real OS state per platform', () {
     final source = File('lib/services/notification.dart').readAsStringSync();
 
-    test('iOS reads IOSFlutterLocalNotificationsPlugin.checkPermissions() '
+    test(
+        'iOS reads IOSFlutterLocalNotificationsPlugin.checkPermissions() '
         '— the same already-working plugin every other notification '
-        'call in this file already uses, not a second, unconfigured one',
-        () {
+        'call in this file already uses, not a second, unconfigured one', () {
       expect(source, contains('checkPermissions()'));
       expect(source, contains('options?.isEnabled'));
     });
 
-    test('Android reads AndroidFlutterLocalNotificationsPlugin.'
+    test(
+        'Android reads AndroidFlutterLocalNotificationsPlugin.'
         'areNotificationsEnabled(), the same call _requestNotificationPermissions() '
         'already makes for its own debug logging', () {
       final start = source.indexOf('Future<bool> areNotificationsEnabled()');
       final end = source.indexOf('\n  }', start);
-      expect(source.substring(start, end), contains('.areNotificationsEnabled()'));
+      expect(
+          source.substring(start, end), contains('.areNotificationsEnabled()'));
     });
   });
 }

@@ -3,6 +3,7 @@ import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:life_ops/screens/council_category_picker.dart';
 import 'package:life_ops/screens/cancel_subscription_screen.dart';
@@ -125,6 +126,7 @@ class Settings extends StatefulWidget {
 class _SettingsState extends State<Settings> {
   late final LocalNotificationService lns;
   bool? _lifetimeAccess;
+  String _appVersionLabel = 'Version';
 
   @override
   void initState() {
@@ -132,10 +134,20 @@ class _SettingsState extends State<Settings> {
     lns = LocalNotificationService();
     lns.intialize();
     _loadLifetimeAccess();
+    _loadAppVersion();
+  }
+
+  Future<void> _loadAppVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (!mounted) return;
+    setState(() {
+      _appVersionLabel = 'Version ${info.version} (build ${info.buildNumber})';
+    });
   }
 
   Future<void> _loadLifetimeAccess() async {
-    final value = await EntitlementService.instance.currentLocalLifetimeAccess();
+    final value =
+        await EntitlementService.instance.currentLocalLifetimeAccess();
     if (mounted) setState(() => _lifetimeAccess = value);
   }
 
@@ -175,8 +187,22 @@ class _SettingsState extends State<Settings> {
         body: ListView(
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
           children: [
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                _appVersionLabel,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
             _sectionLabel('SUBSCRIPTION'),
-            _card(child: _SubscriptionPanel(onLifetimeChanged: (value) => setState(() => _lifetimeAccess = value))),
+            _card(
+                child: _SubscriptionPanel(
+                    onLifetimeChanged: (value) =>
+                        setState(() => _lifetimeAccess = value))),
             const SizedBox(height: 12),
             _card(child: const _SpendAllowancePanel()),
             const SizedBox(height: 28),
@@ -237,7 +263,8 @@ class _SettingsState extends State<Settings> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: const [
                   Expanded(
-                    child: Text('Share calendar availability with Green Pyramid',
+                    child: Text(
+                        'Share calendar availability with Green Pyramid',
                         style: TextStyle(color: AppColors.textPrimary)),
                   ),
                   CalendarAccessSwitch(),
@@ -356,10 +383,15 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Revoke lifetime subscription?'),
-        content: const Text('This removes the lifetime gift from this account. Any active Apple or RevenueCat subscription remains active.'),
+        content: const Text(
+            'This removes the lifetime gift from this account. Any active Apple or RevenueCat subscription remains active.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Keep it')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Revoke gift')),
+          TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Keep it')),
+          FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Revoke gift')),
         ],
       ),
     );
@@ -369,7 +401,9 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
       await _load();
       widget.onLifetimeChanged?.call(false);
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('The lifetime gift could not be revoked.')));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('The lifetime gift could not be revoked.')));
     }
   }
 
@@ -390,8 +424,10 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
           Text('Lifetime subscription',
               style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
           SizedBox(height: 6),
-          const Text('Your access does not renew or expire. It is a gift entitlement and is separate from Apple billing.',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4)),
+          const Text(
+              'Your access does not renew or expire. It is a gift entitlement and is separate from Apple billing.',
+              style: TextStyle(
+                  color: AppColors.textSecondary, fontSize: 13, height: 1.4)),
           const SizedBox(height: 12),
           Align(
             alignment: Alignment.centerLeft,
@@ -518,19 +554,29 @@ class _LifetimeCodePanelState extends State<_LifetimeCodePanel> {
   Future<void> redeem() async {
     final code = controller.text.trim();
     if (code.isEmpty) {
-      setState(() { message = 'Enter a lifetime subscription code.'; success = false; });
+      setState(() {
+        message = 'Enter a lifetime subscription code.';
+        success = false;
+      });
       return;
     }
-    setState(() { submitting = true; message = null; });
+    setState(() {
+      submitting = true;
+      message = null;
+    });
     try {
       await EntitlementService.instance.redeemLifetimeCode(code);
       if (!mounted) return;
       controller.clear();
-      setState(() { message = 'Lifetime access activated.'; success = true; });
+      setState(() {
+        message = 'Lifetime access activated.';
+        success = true;
+      });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        message = 'That code is invalid, already redeemed, or cannot be used on this account.';
+        message =
+            'That code is invalid, already redeemed, or cannot be used on this account.';
         success = false;
       });
     } finally {
@@ -543,10 +589,13 @@ class _LifetimeCodePanelState extends State<_LifetimeCodePanel> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text('Have a gift code?',
-              style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+              style: TextStyle(
+                  color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
-          const Text('Enter a single-use code to activate a subscription that never expires. It does not change your Apple or RevenueCat purchase history.',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4)),
+          const Text(
+              'Enter a single-use code to activate a subscription that never expires. It does not change your Apple or RevenueCat purchase history.',
+              style: TextStyle(
+                  color: AppColors.textSecondary, fontSize: 13, height: 1.4)),
           const SizedBox(height: 12),
           TextField(
             controller: controller,
@@ -563,13 +612,18 @@ class _LifetimeCodePanelState extends State<_LifetimeCodePanel> {
             child: OutlinedButton(
               onPressed: submitting ? null : redeem,
               child: submitting
-                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  ? const SizedBox(
+                      height: 18,
+                      width: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2))
                   : const Text('Redeem code'),
             ),
           ),
           if (message != null) ...[
             const SizedBox(height: 8),
-            Text(message!, style: TextStyle(color: success ? AppColors.brandGreen : Colors.redAccent)),
+            Text(message!,
+                style: TextStyle(
+                    color: success ? AppColors.brandGreen : Colors.redAccent)),
           ],
         ],
       );
