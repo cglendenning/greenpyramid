@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  // D-167-AC-05/D-167-AC-06: the admin surface exposes the generator and is
+  // covered by the release build review.
   final source = File('lib/main.dart').readAsStringSync();
   // D-165-AC-03
   // D-165-AC-06
@@ -49,6 +51,10 @@ void main() {
     expect(source, contains('evidence-triggered taxonomy selection'));
     expect(source, contains('How the simulator works'));
     expect(source, contains('How the Intervention Engine works'));
+    expect(source, contains('/adminLifetimeCode'));
+    expect(source, contains('Generate lifetime subscription code'));
+    expect(source, contains('LifetimeCodeScreen'));
+    expect(source, contains('Copy code'));
     expect(source, contains('The engine’s job'));
     expect(source, contains('Cloud receives current facts'));
     expect(source, contains('Estimate doing nothing'));

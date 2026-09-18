@@ -60,6 +60,12 @@ test('D-044: subscribed and lapsed pass through unchanged', async () => {
   assert.equal(await resolveEntitlement('u2', store), 'lapsed');
 });
 
+test('D-167-AC-03: lifetime flag repairs and preserves subscribed capability', async () => {
+  const store = new FakeFirestore({ [path('u1')]: { entitlement: 'lapsed', lifetimeAccess: true } });
+  assert.equal(await resolveEntitlement('u1', store), 'subscribed');
+  assert.equal(store.data[path('u1')].entitlement, 'subscribed');
+});
+
 test('D-014: requireEntitlement passes for trialing and subscribed', async () => {
   const store = new FakeFirestore({
     [path('u1')]: { entitlement: 'trialing', trialExpiresAt: fakeTimestamp(new Date('2099-01-01')) },

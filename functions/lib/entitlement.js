@@ -32,6 +32,12 @@ export async function resolveEntitlement(uid, _store = db(), _now = new Date()) 
   const ref = profileDoc(_store, uid);
   const snap = await ref.get();
   const data = snap.data() ?? {};
+  if (data.lifetimeAccess === true) {
+    if (data.entitlement !== 'subscribed') {
+      await ref.set({ entitlement: 'subscribed' }, { merge: true });
+    }
+    return 'subscribed';
+  }
   const entitlement = data.entitlement ?? 'pre_trial';
   if (entitlement !== 'trialing') return entitlement;
 

@@ -173,6 +173,10 @@ class _SettingsState extends State<Settings> {
             _card(child: const _SpendAllowancePanel()),
             const SizedBox(height: 28),
 
+            _sectionLabel('GIFT SUBSCRIPTION'),
+            _card(child: const _LifetimeCodePanel()),
+            const SizedBox(height: 28),
+
             _sectionLabel('NOTIFICATIONS'),
             _card(child: _TestNotificationButton(lns: lns)),
             if (Platform.isIOS) ...[
@@ -294,6 +298,7 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
   CustomerInfo? _info;
   bool _loading = true;
   String? _localEntitlement;
+  bool _lifetimeAccess = false;
 
   @override
   void initState() {
@@ -305,10 +310,13 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
     final info = await SubscriptionService.syncAndGetCustomerInfo();
     final localEntitlement =
         await EntitlementService.instance.currentLocalEntitlement();
+    final lifetimeAccess =
+        await EntitlementService.instance.currentLocalLifetimeAccess();
     if (!mounted) return;
     setState(() {
       _info = info;
       _localEntitlement = localEntitlement;
+      _lifetimeAccess = lifetimeAccess;
       _loading = false;
     });
   }
@@ -342,6 +350,18 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
     }
 
     final entitlement = _info?.entitlements.active.values.firstOrNull;
+    if (_lifetimeAccess) {
+      return const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Lifetime subscription',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+          SizedBox(height: 6),
+          Text('Your access does not renew or expire. It is a gift entitlement and is separate from Apple billing.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4)),
+        ],
+      );
+    }
     final state = decideSubscriptionPanelState(
       isActive: entitlement?.isActive ?? false,
       willRenew: entitlement?.willRenew,
@@ -429,6 +449,88 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
         );
     }
   }
+}
+
+/// D-167: accepts a server-issued lifetime gift code on the same Settings
+/// page as calendar access and notification testing. The code is redeemed by
+/// the cloud service, never by RevenueCat or direct Firestore writes.
+class _LifetimeCodePanel extends StatefulWidget {
+  const _LifetimeCodePanel();
+
+  @override
+  State<_LifetimeCodePanel> createState() => _LifetimeCodePanelState();
+}
+
+class _LifetimeCodePanelState extends State<_LifetimeCodePanel> {
+  final controller = TextEditingController();
+  bool submitting = false;
+  String? message;
+  bool success = false;
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> redeem() async {
+    final code = controller.text.trim();
+    if (code.isEmpty) {
+      setState(() { message = 'Enter a lifetime subscription code.'; success = false; });
+      return;
+    }
+    setState(() { submitting = true; message = null; });
+    try {
+      await EntitlementService.instance.redeemLifetimeCode(code);
+      if (!mounted) return;
+      controller.clear();
+      setState(() { message = 'Lifetime access activated.'; success = true; });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        message = 'That code is invalid, already redeemed, or cannot be used on this account.';
+        success = false;
+      });
+    } finally {
+      if (mounted) setState(() => submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Have a gift code?',
+              style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 6),
+          const Text('Enter a single-use code to activate a subscription that never expires. It does not change your Apple or RevenueCat purchase history.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4)),
+          const SizedBox(height: 12),
+          TextField(
+            controller: controller,
+            enabled: !submitting,
+            textCapitalization: TextCapitalization.characters,
+            decoration: const InputDecoration(
+              labelText: 'Lifetime subscription code',
+              hintText: 'GP-LIFE-XXXX-XXXX-XXXX-XXXX',
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: submitting ? null : redeem,
+              child: submitting
+                  ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Text('Redeem code'),
+            ),
+          ),
+          if (message != null) ...[
+            const SizedBox(height: 8),
+            Text(message!, style: TextStyle(color: success ? AppColors.brandGreen : Colors.redAccent)),
+          ],
+        ],
+      );
 }
 
 /// D-090: schedules a single local test notification, mirroring Kansei's

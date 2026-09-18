@@ -17,7 +17,7 @@ before(async () => {
 
 after(async () => environment?.cleanup());
 
-test('D-146-AC-01: owned content operations succeed, protected fields fail', async () => {
+test('D-146-AC-01/D-167-AC-02: owned content operations succeed, protected fields fail', async () => {
   const db = environment.authenticatedContext('owner').firestore();
   const task = doc(db, 'users/owner/tasks/task-1');
   await assertSucceeds(setDoc(task, { category: 'Health', taskdescription: 'Walk' }));
@@ -27,7 +27,8 @@ test('D-146-AC-01: owned content operations succeed, protected fields fail', asy
   const profile = doc(db, 'users/owner/profile/main');
   await assertSucceeds(setDoc(profile, { categories: [], timezone: 'UTC' }));
   for (const field of [
-    'entitlement', 'trialExpiresAt', 'spendCapUsd', 'totalSpendUsd',
+    'entitlement', 'trialExpiresAt', 'lifetimeAccess', 'lifetimeCodeId',
+    'subscriptionSource', 'spendCapUsd', 'totalSpendUsd',
     'spendReservations', 'deliveryState', 'modelConfiguration',
   ]) {
     await assertFails(updateDoc(profile, { [field]: 'client-forged' }));

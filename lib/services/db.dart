@@ -9,7 +9,7 @@ import 'package:flutter/material.dart';
 
 class DatabaseHelper {
   static const _databaseName = "LifeOps.db";
-  static const _databaseVersion = 24; // 7: R3 schema — position, essences,
+  static const _databaseVersion = 25; // 7: R3 schema — position, essences,
   // account state (Part IV). 8: R6/D-048 — discards an
   // incomplete old-flow setup so the user starts the new Council setup
   // fresh instead of landing on a half-populated pyramid with no way back
@@ -159,6 +159,7 @@ class DatabaseHelper {
   static const columnTrialExpiresAt = 'trial_expires_at';
   static const columnAccountTimezone = 'timezone';
   static const columnEntitlementSyncedAt = 'entitlement_synced_at';
+  static const columnLifetimeAccess = 'lifetime_access';
   // D-138: single account-level personal-info fields, editable from the
   // Profile screen. columnProfilePhotoPath is a local file path only
   // (D-138: photo storage stays on-device for now, not cloud-backed) —
@@ -295,6 +296,7 @@ class DatabaseHelper {
         '$columnTrialExpiresAt TEXT, '
         '$columnAccountTimezone TEXT, '
         '$columnEntitlementSyncedAt TEXT, '
+        '$columnLifetimeAccess INTEGER NOT NULL DEFAULT 0, '
         '$columnFirstName TEXT, '
         '$columnEmail TEXT, '
         '$columnPhone TEXT, '
@@ -898,6 +900,10 @@ class DatabaseHelper {
           case 24:
             // Retire the removed domain-finding feature and its local data.
             await db.execute('DROP TABLE IF EXISTS domain_finding');
+            break;
+          case 25:
+            await db.execute('ALTER TABLE $accountStateTable ADD COLUMN '
+                '$columnLifetimeAccess INTEGER NOT NULL DEFAULT 0');
             break;
         }
       }
@@ -1914,6 +1920,7 @@ class DatabaseHelper {
           columnTrialExpiresAt: null,
           columnAccountTimezone: null,
           columnEntitlementSyncedAt: null,
+          columnLifetimeAccess: 0,
           columnFirstName: null,
           columnEmail: null,
           columnPhone: null,
@@ -2040,16 +2047,21 @@ class DatabaseHelper {
     required String entitlement,
     String? trialStartedAt,
     String? trialExpiresAt,
+    bool? lifetimeAccess,
   }) async {
     final db = await database;
+    final values = <String, dynamic>{
+      columnEntitlement: entitlement,
+      columnTrialStartedAt: trialStartedAt,
+      columnTrialExpiresAt: trialExpiresAt,
+      columnEntitlementSyncedAt: DateTime.now().toIso8601String(),
+    };
+    if (lifetimeAccess != null) {
+      values[columnLifetimeAccess] = lifetimeAccess ? 1 : 0;
+    }
     await db.update(
         accountStateTable,
-        {
-          columnEntitlement: entitlement,
-          columnTrialStartedAt: trialStartedAt,
-          columnTrialExpiresAt: trialExpiresAt,
-          columnEntitlementSyncedAt: DateTime.now().toIso8601String(),
-        },
+        values,
         where: '$columnAccountId = ?',
         whereArgs: [1]);
   }

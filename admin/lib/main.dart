@@ -230,6 +230,14 @@ class Dashboard extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const InterventionEngineGuideScreen()),
                 ),
               ),
+              ListTile(
+                leading: const Icon(Icons.card_giftcard_outlined),
+                title: const Text('Generate lifetime subscription code'),
+                subtitle: const Text('Create a single-use gift code'),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LifetimeCodeScreen()),
+                ),
+              ),
             ],
           ),
         ),
@@ -505,6 +513,92 @@ class AdminFeedbackDetailScreen extends StatelessWidget {
   Widget _row(String label, String value) => Padding(
     padding: const EdgeInsets.only(top: 12),
     child: Text('$label: $value'),
+  );
+}
+
+class LifetimeCodeScreen extends StatefulWidget {
+  const LifetimeCodeScreen({super.key});
+
+  @override
+  State<LifetimeCodeScreen> createState() => _LifetimeCodeScreenState();
+}
+
+class _LifetimeCodeScreenState extends State<LifetimeCodeScreen> {
+  String? code;
+  String? error;
+  bool generating = false;
+
+  Future<void> generate() async {
+    setState(() { generating = true; error = null; code = null; });
+    try {
+      final token = await FirebaseAuth.instance.currentUser!.getIdToken(true);
+      final response = await http.post(
+        Uri.parse('$apiBase/adminLifetimeCode'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode != 200) {
+        throw AdminMetricsException(response.statusCode);
+      }
+      final payload = jsonDecode(response.body) as Map<String, dynamic>;
+      final generated = payload['code'] as String?;
+      if (generated == null || generated.isEmpty) {
+        throw const AdminMetricsException(500);
+      }
+      if (mounted) setState(() => code = generated);
+    } catch (_) {
+      if (mounted) setState(() => error = 'The lifetime code could not be generated.');
+    } finally {
+      if (mounted) setState(() => generating = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Lifetime subscription code')),
+    body: ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        const Text(
+          'Generate a one-time gift code for lifetime Green Pyramid access. The code is shown only here and is never stored in readable form. Send it to the recipient securely.',
+        ),
+        const SizedBox(height: 20),
+        if (code != null) ...[
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: SelectableText(
+                code!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 1.4),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: () => Clipboard.setData(ClipboardData(text: code!)),
+            icon: const Icon(Icons.copy),
+            label: const Text('Copy code'),
+          ),
+          const SizedBox(height: 8),
+          const Text('This code can be redeemed once. Keep it private and treat it like a gift card.', textAlign: TextAlign.center),
+        ] else
+          FilledButton.icon(
+            onPressed: generating ? null : generate,
+            icon: generating
+                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Icon(Icons.add),
+            label: Text(generating ? 'Generating…' : 'Generate code'),
+          ),
+        if (error != null) ...[
+          const SizedBox(height: 12),
+          Text(error!, style: const TextStyle(color: Colors.red)),
+        ],
+      ],
+    ),
   );
 }
 

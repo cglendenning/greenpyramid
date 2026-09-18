@@ -52,6 +52,18 @@ export async function applyRevenueCatEvent(event, _store) {
         (eventTimestamp && currentTimestamp && eventTimestamp < currentTimestamp)) {
       return null;
     }
+    // D-167: Apple/RevenueCat controls paid subscription expiry, but it does
+    // not control a lifetime gift. Keep the normal subscribed capability and
+    // record the event for audit without allowing EXPIRATION to revoke it.
+    if (current.lifetimeAccess === true && next === 'lapsed') {
+      tx.set(profile, {
+        entitlement: 'subscribed',
+        subscriptionEventId: eventId,
+        subscriptionEventTimestampMs: eventTimestamp,
+        subscriptionExpiresAtMs: Number(event?.expiration_at_ms || current.subscriptionExpiresAtMs || 0),
+      }, { merge: true });
+      return null;
+    }
     tx.set(profile, {
       entitlement: next,
       subscriptionEventId: eventId,

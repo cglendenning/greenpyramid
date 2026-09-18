@@ -172,6 +172,7 @@ class EntitlementService {
         entitlement: entitlement,
         trialStartedAt: (data?['trialStartedAt'] as Timestamp?)?.toDate().toIso8601String(),
         trialExpiresAt: (data?['trialExpiresAt'] as Timestamp?)?.toDate().toIso8601String(),
+        lifetimeAccess: data?['lifetimeAccess'] == true,
       );
       return true;
     } catch (e, st) {
@@ -185,6 +186,14 @@ class EntitlementService {
   /// state instantly rather than waiting for the RevenueCat webhook to land
   /// in Firestore and get pulled back down on the next launch.
   Future<void> markSubscribedLocally() => _db.setAccountEntitlement(entitlement: 'subscribed');
+
+  /// D-167: redeems an admin-issued, single-use lifetime gift through the
+  /// authenticated cloud service. The response grants the normal subscribed
+  /// capability plus a separate lifetime flag; no RevenueCat purchase is
+  /// created or modified.
+  Future<void> redeemLifetimeCode(String code) async {
+    await _applyServerResult(await _post('redeemLifetimeCode', {'code': code.trim()}));
+  }
 
   /// D-142 (amended): the single shared gate (`ensureEntitled`, and
   /// through it every screen that calls it) now self-heals against
@@ -217,6 +226,11 @@ class EntitlementService {
     return account[DatabaseHelper.columnEntitlement] as String?;
   }
 
+  Future<bool> currentLocalLifetimeAccess() async {
+    final account = await _db.getAccountState();
+    return account[DatabaseHelper.columnLifetimeAccess] == 1;
+  }
+
   Future<void> _applyServerResult(Map<String, dynamic> result) async {
     final entitlement = result['entitlement'] as String?;
     if (entitlement == null) return;
@@ -226,6 +240,7 @@ class EntitlementService {
     await _db.setAccountEntitlement(
       entitlement: entitlement,
       trialExpiresAt: trialExpiresAt?.toIso8601String(),
+      lifetimeAccess: result['lifetimeAccess'] == true ? true : null,
     );
   }
 }

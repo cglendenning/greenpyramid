@@ -51,6 +51,14 @@ test('D-054: EXPIRATION transitions a subscribed account to lapsed', async () =>
   assert.equal(store.data[path('u1')].entitlement, 'lapsed');
 });
 
+test('D-167-AC-03: EXPIRATION never removes lifetime access', async () => {
+  const store = new FakeFirestore({ [path('u1')]: { entitlement: 'subscribed', lifetimeAccess: true } });
+  const result = await applyRevenueCatEvent({ id: 'gift-expiry', type: 'EXPIRATION', app_user_id: 'u1', event_timestamp_ms: 2 }, store);
+  assert.equal(result, null);
+  assert.equal(store.data[path('u1')].entitlement, 'subscribed');
+  assert.equal(store.data[path('u1')].lifetimeAccess, true);
+});
+
 test('D-054: CANCELLATION alone does not end access — no entitlement '
     + 'change until RevenueCat sends the later EXPIRATION', async () => {
   const store = new FakeFirestore({ [path('u1')]: { entitlement: 'subscribed' } });

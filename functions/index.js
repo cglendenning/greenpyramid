@@ -41,6 +41,7 @@ import { revalidateIntervention } from './lib/intervention_lifecycle.js';
 import { renderIntervention } from './lib/intervention_renderer.js';
 import { applySafetyConstraints } from './lib/safety_constraints.js';
 import { runSimulation, REQUIRED_SCENARIOS } from './lib/behavioral_simulator.js';
+import { generateLifetimeCode, redeemLifetimeCode, LifetimeCodeError } from './lib/lifetime_codes.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -325,6 +326,18 @@ app.post('/adminSimulation', requireAdmin, async (req, res) => {
   }
 });
 
+// D-167: admin-generated gifts are claim-gated and are returned only once to
+// the operator. The raw code is never written to Firestore.
+app.post('/adminLifetimeCode', requireAdmin, async (req, res) => {
+  try {
+    ensureAdmin();
+    res.json(await generateLifetimeCode(admin.firestore(), req.uid));
+  } catch (e) {
+    console.error('adminLifetimeCode error:', e.message);
+    res.status(500).json({ error: 'service_unavailable' });
+  }
+});
+
 // D-054: RevenueCat calls this directly from its own servers — never through
 // the app, so it carries no App Check token and must sit before that gate.
 // Auth is the shared-secret header check above, not App Check or Firebase
@@ -361,6 +374,24 @@ app.post('/revenuecatWebhook', async (req, res) => {
 });
 
 app.use(requireAppCheck);
+
+// D-167: the consumer redeems a one-time gift through the same authenticated
+// cloud boundary used for every entitlement change. This grants the normal
+// `subscribed` capability plus a protected lifetime flag; it does not create
+// or alter a RevenueCat product or Apple subscription.
+app.post('/redeemLifetimeCode', requireFirebaseAuth, async (req, res) => {
+  try {
+    ensureAdmin();
+    res.json(await redeemLifetimeCode(admin.firestore(), req.uid, req.body?.code));
+  } catch (e) {
+    if (e instanceof LifetimeCodeError) {
+      const status = e.code === 'authentication_required' ? 401 : 400;
+      return res.status(status).json({ error: e.code });
+    }
+    console.error('redeemLifetimeCode error:', e.message);
+    res.status(500).json({ error: 'service_unavailable' });
+  }
+});
 
 // D-147: all durable writes go through authenticated, transactional operation
 // processing.  The uid is taken from the verified token, never the payload.

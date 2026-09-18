@@ -29,6 +29,8 @@ service cloud.firestore {
         ? request.resource.data.diff({}).affectedKeys()
         : request.resource.data.diff(resource.data).affectedKeys()).hasAny([
         'entitlement', 'trialStartedAt', 'trialExpiresAt',
+        'lifetimeAccess', 'lifetimeAccessGrantedAt', 'lifetimeCodeId',
+        'subscriptionSource',
         'trialEligibility', 'spendCapUsd', 'baseCapUsd',
         'additionalCapUsd', 'totalSpendUsd', 'spendMonthKey',
         'spendByMonth', 'spendReservations', 'deliveryState',
@@ -45,6 +47,8 @@ service cloud.firestore {
       allow create: if isOwner(uid) &&
         request.resource.data.diff({}).affectedKeys().hasAny([
           'entitlement', 'trialStartedAt', 'trialExpiresAt',
+          'lifetimeAccess', 'lifetimeAccessGrantedAt', 'lifetimeCodeId',
+          'subscriptionSource',
           'trialEligibility', 'spendCapUsd', 'baseCapUsd',
           'additionalCapUsd', 'totalSpendUsd', 'spendMonthKey',
           'spendByMonth', 'spendReservations', 'deliveryState',
