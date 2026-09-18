@@ -49,7 +49,8 @@ void main() {
       expect(s.type, BoardSessionType.setup);
     });
 
-    test('D-075: a general session behaves like setup — no categoryId '
+    test(
+        'D-075: a general session behaves like setup — no categoryId '
         'required or allowed', () {
       final s = session(type: BoardSessionType.general, categoryId: null);
       expect(s.type, BoardSessionType.general);
@@ -95,6 +96,17 @@ void main() {
       expect(s.nextAdvisorKey, 'noa');
     });
 
+    test(
+        'D-075-AC-04: a direct follow-up question stays with the previous advisor',
+        () {
+      final s = session(
+        type: BoardSessionType.general,
+        messages: [msg('mira'), msg('kenji'), msg('user')],
+      );
+      expect(s.advisorKeyForUserMessage('what do you mean by that?'), 'kenji');
+      expect(s.advisorKeyForUserMessage('I tried the class again'), 'noa');
+    });
+
     test('user messages do not count toward round tracking', () {
       final s = session(
         type: BoardSessionType.category,
@@ -114,7 +126,8 @@ void main() {
   });
 
   group('Firestore round-trip', () {
-    test('toFirestore/fromFirestore-shaped map preserves type and categoryId '
+    test(
+        'toFirestore/fromFirestore-shaped map preserves type and categoryId '
         'for a category session', () {
       final s = session(type: BoardSessionType.category, categoryId: 4);
       final map = s.toFirestore();

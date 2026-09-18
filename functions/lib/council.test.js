@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { sanitize, biasInstruction, applyPacingReassurance, buildAdvisorTurnPrompt, buildGeneralCouncilTurnPrompt, buildSetupAdvisorTurnPrompt, countMiraTurns, extractReplyText, hasAskedWrapUpQuestion, SETUP_WRAP_UP_QUESTION, ADVISORS, SETUP_TURN_TOOL } from './council.js';
+import { sanitize, biasInstruction, applyPacingReassurance, buildAdvisorTurnPrompt, buildGeneralCouncilTurnPrompt, buildSetupAdvisorTurnPrompt, countMiraTurns, extractReplyText, hasAskedWrapUpQuestion, SETUP_WRAP_UP_QUESTION, ADVISORS, SETUP_TURN_TOOL, isDirectFollowUpQuestion, selectReplyAdvisorKey } from './council.js';
 
 test('D-023: exactly the four Council advisors exist', () => {
   assert.deepEqual(Object.keys(ADVISORS).sort(), ['eli', 'kenji', 'mira', 'noa']);
@@ -35,6 +35,21 @@ test('D-056: sliderValue at the default (0.5) reads as present-but-not-emphasize
 test('D-056: an out-of-range or missing sliderValue falls back to the 0.5 default', () => {
   assert.equal(biasInstruction('caring', undefined), biasInstruction('caring', 0.5));
   assert.equal(biasInstruction('caring', NaN), biasInstruction('caring', 0.5));
+});
+
+test('D-100-AC-03: follow-up questions stay with the advisor who just spoke and use the latest history', () => {
+  assert.equal(isDirectFollowUpQuestion('what do you mean by that'), true);
+  assert.equal(isDirectFollowUpQuestion('I went back to work yesterday'), false);
+  const history = [
+    { advisor: 'kenji', text: 'The work needs a foundation.' },
+    { advisor: 'user', text: 'what do you mean by the work?' },
+  ];
+  assert.equal(selectReplyAdvisorKey({ requestedAdvisorKey: 'mira', conversationHistory: history }), 'kenji');
+  const built = buildGeneralCouncilTurnPrompt({
+    advisorKey: 'mira',
+    conversationHistory: history,
+  });
+  assert.equal(built.advisor.name, 'Kenji');
 });
 
 test('D-145: buildAdvisorTurnPrompt returns null for an unknown advisorKey', () => {

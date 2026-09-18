@@ -38,6 +38,31 @@ export const ADVISORS = {
   },
 };
 
+// A direct question after an advisor turn is addressed to that advisor, even
+// when the normal four-advisor rotation would select someone else. The
+// question need not include a question mark: conversational follow-ups such
+// as "what do you mean" and "how so" are questions too.
+export function isDirectFollowUpQuestion(text) {
+  const value = String(text || '').trim().toLowerCase();
+  if (!value) return false;
+  if (/[?؟]$/.test(value)) return true;
+  return /^(what|why|how|when|where|who|which|can|could|would|should|is|are|do|does|did|will|may|might)\b/.test(value) ||
+    /\b(what do you mean|what does that mean|how so|can you explain|tell me more)\b/.test(value);
+}
+
+export function selectReplyAdvisorKey({ requestedAdvisorKey, conversationHistory = [] }) {
+  const history = Array.isArray(conversationHistory) ? conversationHistory : [];
+  const last = history[history.length - 1];
+  if (last?.advisor !== 'user' || !isDirectFollowUpQuestion(last.text)) {
+    return requestedAdvisorKey;
+  }
+  for (let i = history.length - 2; i >= 0; i -= 1) {
+    const advisorKey = history[i]?.advisor;
+    if (advisorKey && advisorKey !== 'user' && ADVISORS[advisorKey]) return advisorKey;
+  }
+  return requestedAdvisorKey;
+}
+
 // D-056: no slider UI exists yet — sliderValue is always the caller's
 // default (0.5) in practice, which is what makes each advisor's system
 // prompt fully static and therefore cacheable (D-145). The backend still
@@ -68,7 +93,8 @@ export function buildAdvisorTurnPrompt({
   conversationHistory = [],
   firstName = null,
 }) {
-  const advisor = ADVISORS[advisorKey];
+  const selectedAdvisorKey = selectReplyAdvisorKey({ requestedAdvisorKey: advisorKey, conversationHistory });
+  const advisor = ADVISORS[selectedAdvisorKey];
   if (!advisor) return null;
 
   const name = firstName ? sanitize(firstName, 40) : null;
@@ -79,7 +105,7 @@ export function buildAdvisorTurnPrompt({
     : null;
 
   const otherAdvisors = Object.entries(ADVISORS)
-    .filter(([k]) => k !== advisorKey)
+    .filter(([k]) => k !== selectedAdvisorKey)
     .map(([, v]) => `- ${v.name} (${v.title}): ${v.trait}`)
     .join('\n');
 
@@ -152,12 +178,13 @@ export function buildGeneralCouncilTurnPrompt({
   nudgeConvergence = false,
   firstName = null,
 }) {
-  const advisor = ADVISORS[advisorKey];
+  const selectedAdvisorKey = selectReplyAdvisorKey({ requestedAdvisorKey: advisorKey, conversationHistory });
+  const advisor = ADVISORS[selectedAdvisorKey];
   if (!advisor) return null;
 
   const name = firstName ? sanitize(firstName, 40) : null;
   const otherAdvisors = Object.entries(ADVISORS)
-    .filter(([k]) => k !== advisorKey)
+    .filter(([k]) => k !== selectedAdvisorKey)
     .map(([, v]) => `- ${v.name} (${v.title}): ${v.trait}`)
     .join('\n');
 
@@ -175,6 +202,9 @@ export function buildGeneralCouncilTurnPrompt({
     `the right move. Sometimes a full sentence or two. Max 2 sentences.\n` +
     `Respond to what was just said. If the person themselves wrote (shown as You:), speak to them ` +
     `directly.\n` +
+    `If their last message is a direct follow-up question, it is addressed to the advisor who just ` +
+    `spoke. Answer that advisor's question directly; do not hand it to another advisor because of ` +
+    `the normal rotation.\n` +
     // Found live 2026-09-10: a new advisor's first-ever turn in this
     // conversation opened with a formulaic self-introduction that ignored
     // whatever the person had just poured out — introducing yourself is

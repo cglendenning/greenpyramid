@@ -99,6 +99,24 @@ class BoardSession {
   bool get isRoundComplete => advisorMessageCount % 4 == 0;
   String get nextAdvisorKey => rotationOrder[advisorMessageCount % 4];
 
+  /// A direct question is a follow-up to the advisor who just spoke, even if
+  /// the normal rotation would select another advisor. This mirrors the
+  /// backend rule; the backend remains authoritative from persisted history.
+  String advisorKeyForUserMessage(String text) {
+    final value = text.trim().toLowerCase();
+    final isQuestion = value.endsWith('?') ||
+        RegExp(r'^(what|why|how|when|where|who|which|can|could|would|should|is|are|do|does|did|will|may|might)\b')
+            .hasMatch(value) ||
+        RegExp(r'\b(what do you mean|what does that mean|how so|can you explain|tell me more)\b')
+            .hasMatch(value);
+    if (!isQuestion) return nextAdvisorKey;
+    for (var i = messages.length - 1; i >= 0; i--) {
+      final key = messages[i].advisorKey;
+      if (key != 'user' && rotationOrder.contains(key)) return key;
+    }
+    return nextAdvisorKey;
+  }
+
   /// Decides how the Council screen should resume this session. An empty
   /// session (no advisor turns) must retry rather than fall through to a
   /// dead state with no button — see [BoardResumeAction.retryOpeningRound].

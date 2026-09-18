@@ -35,6 +35,18 @@ void main() {
   });
 
   test(
+      'Council follow-up questions use the previous advisor and include the '
+      'new user message in the response history', () {
+    final source =
+        File('lib/screens/general_council_screen.dart').readAsStringSync();
+    expect(source, contains('session.advisorKeyForUserMessage(text)'));
+    expect(source, contains("{'advisor': 'user', 'text': userMessage.text}"));
+    expect(
+        source, contains('conversationHistoryOverride: conversationHistory'));
+    expect(source, contains('_typingAdvisorKey = replyAdvisorKey'));
+  });
+
+  test(
       'D-029: _load() awaits sign-in before touching the Council session — '
       'regression test for a defect found live: "Could not open this '
       'conversation" on a fresh launch (a reinstall, or D-148\'s wipe). '

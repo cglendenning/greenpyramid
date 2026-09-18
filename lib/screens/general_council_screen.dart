@@ -36,6 +36,7 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
   BoardSession? _session;
   bool _busy = false;
   String? _error;
+  String? _typingAdvisorKey;
 
   // D-079: real grounding for the advisors' advice — replaces the
   // "their life" placeholder that produced disconnected, sometimes
@@ -106,7 +107,10 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
     }
   }
 
-  Future<void> _runAdvisorTurn(String advisorKey) async {
+  Future<void> _runAdvisorTurn(
+    String advisorKey, {
+    List<Map<String, String>>? conversationHistoryOverride,
+  }) async {
     final session = _session;
     if (session == null) return;
     try {
@@ -115,6 +119,7 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
         advisorKey: advisorKey,
         categoryName: _categoryName,
         pyramidContext: _pyramidContext,
+        conversationHistoryOverride: conversationHistoryOverride,
       );
       final refreshed =
           await _council.getActiveSession(type: BoardSessionType.general);
@@ -140,12 +145,30 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
     final session = _session;
     if (text.isEmpty || session == null || _busy) return;
     _textController.clear();
-    setState(() => _busy = true);
+    final replyAdvisorKey = session.advisorKeyForUserMessage(text);
+    setState(() {
+      _busy = true;
+      _typingAdvisorKey = replyAdvisorKey;
+    });
     try {
-      await _council.appendUserMessage(session.sessionId, text);
-      await _runAdvisorTurn(session.nextAdvisorKey);
+      final userMessage =
+          await _council.appendUserMessage(session.sessionId, text);
+      final conversationHistory = [
+        ...session.messages
+            .map((m) => {'advisor': m.advisorKey, 'text': m.text}),
+        {'advisor': 'user', 'text': userMessage.text},
+      ];
+      await _runAdvisorTurn(
+        replyAdvisorKey,
+        conversationHistoryOverride: conversationHistory,
+      );
     } finally {
-      if (mounted) setState(() => _busy = false);
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _typingAdvisorKey = null;
+        });
+      }
     }
   }
 
@@ -177,7 +200,9 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
                       // is meaningful here, unlike setup's solo-Mira turns —
                       // this is a genuine four-advisor rotation) while
                       // genuinely awaiting their reply.
-                      typingAdvisorKey: _busy ? session.nextAdvisorKey : null,
+                      typingAdvisorKey: _busy
+                          ? (_typingAdvisorKey ?? session.nextAdvisorKey)
+                          : null,
                     ),
             ),
             ChatInputBar(
