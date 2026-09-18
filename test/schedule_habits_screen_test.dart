@@ -328,6 +328,50 @@ void main() {
     });
   });
 
+  group('D-098: a successful drop updates the visible grid immediately', () {
+    test('scheduledAt preserves the habit identity, recurrence flags, and '
+        'duration while adding the new schedule', () {
+      final habit = HabitScheduleRow(
+        id: 7,
+        category: 'Health',
+        description: 'Walk 20 minutes',
+        sunday: false,
+        monday: true,
+        tuesday: false,
+        wednesday: true,
+        thursday: false,
+        friday: false,
+        saturday: false,
+        scheduledTime: null,
+        scheduledEventId: null,
+        scheduledDurationMinutes: 45,
+      );
+
+      final result = habit.scheduledAt('07:15', 'event-2');
+
+      expect(result.id, habit.id);
+      expect(result.description, habit.description);
+      expect(result.monday, isTrue);
+      expect(result.wednesday, isTrue);
+      expect(result.scheduledTime, '07:15');
+      expect(result.scheduledEventId, 'event-2');
+      expect(result.durationMinutes, 45);
+    });
+
+    test('drop handling updates _habits in memory instead of reloading the '
+        'native calendar immediately after a successful write', () {
+      final source =
+          File('lib/screens/schedule_habits_screen.dart').readAsStringSync();
+      final dropStart = source.indexOf('Future<void> _handleDrop(');
+      final dropEnd =
+          source.indexOf('\n  Future<void> _confirmUnschedule', dropStart);
+      final body = source.substring(dropStart, dropEnd);
+      expect(body, contains('habit.scheduledAt(timeStr, eventId)'));
+      expect(body, contains('_habits = _habits'));
+      expect(body, isNot(contains('await _loadAll();')));
+    });
+  });
+
   group('D-103: the iOS/Android edge-swipe-back gesture is disabled on this '
       'always-landscape screen', () {
     test('build() wraps its content in PopScope(canPop: false) — found '

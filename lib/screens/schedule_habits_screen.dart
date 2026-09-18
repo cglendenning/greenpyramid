@@ -411,6 +411,19 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
         DatabaseHelper.columnScheduledTime: timeStr,
         DatabaseHelper.columnScheduledCalendarEventId: eventId,
       });
+      // The native calendar write is complete and the grid renders scheduled
+      // habits from [_habits]. Update that in-memory list immediately so a
+      // successful drop is visible without leaving and reopening this screen.
+      // A full reload here can race the platform calendar's eventual read
+      // consistency and briefly make a just-created event look absent.
+      if (mounted) {
+        final updatedHabit = habit.scheduledAt(timeStr, eventId);
+        setState(() {
+          _habits = _habits
+              .map((h) => h.id == habit.id ? updatedHabit : h)
+              .toList();
+        });
+      }
       // D-099 Phase 3: the local "starting soon" reminder, kept in sync
       // with the calendar write above rather than a separate step the
       // user could forget or that could drift out of sync.
@@ -422,7 +435,6 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
         activeWeekdays: habit.activeDartWeekdays,
       );
       HapticFeedback.mediumImpact();
-      await _loadAll();
     } else if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text("Couldn't write to your calendar. Nothing changed.")));
@@ -1092,6 +1104,23 @@ class HabitScheduleRow {
         saturday: saturday,
         scheduledTime: null,
         scheduledEventId: null,
+        scheduledDurationMinutes: scheduledDurationMinutes,
+      );
+
+  HabitScheduleRow scheduledAt(String time, String? eventId) =>
+      HabitScheduleRow(
+        id: id,
+        category: category,
+        description: description,
+        sunday: sunday,
+        monday: monday,
+        tuesday: tuesday,
+        wednesday: wednesday,
+        thursday: thursday,
+        friday: friday,
+        saturday: saturday,
+        scheduledTime: time,
+        scheduledEventId: eventId,
         scheduledDurationMinutes: scheduledDurationMinutes,
       );
 
