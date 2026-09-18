@@ -5,16 +5,48 @@ import { sanitize } from './council.js';
 
 export const NOTIFICATION_TOOL = {
   name: 'send_notification',
-  description: 'Write one short, tailored push notification.',
+  description: 'Write one short, tailored push notification with an inspiring preview quip.',
   input_schema: {
     type: 'object',
     properties: {
-      title: { type: 'string', minLength: 1, maxLength: 60 },
+      title: { type: 'string', minLength: 1, maxLength: 48 },
       body: { type: 'string', minLength: 1, maxLength: 140 },
     },
     required: ['title', 'body'],
   },
 };
+
+export const MAX_NOTIFICATION_PREVIEW_WORDS = 5;
+
+function wordCount(value) {
+  return value.trim().split(/\s+/).filter(Boolean).length;
+}
+
+/**
+ * D-021: keep the lock-screen/list preview short even when a model ignores
+ * the wording instruction. The fallback is grounded in the same account
+ * context that was supplied to the generator; it never invents a result.
+ */
+export function normalizeNotificationPreview({
+  title,
+  categories = [],
+  recentActivity = [],
+  firstName,
+}) {
+  const candidate = sanitize(typeof title === 'string' ? title : '', 48)
+      .replace(/\s+/g, ' ')
+      .trim();
+  if (candidate && wordCount(candidate) <= MAX_NOTIFICATION_PREVIEW_WORDS) {
+    return candidate;
+  }
+
+  const category = categories.find((entry) => entry?.name)?.name;
+  const recent = recentActivity.find((entry) => entry?.category)?.category;
+  const subject = sanitize(category || recent || '', 40).trim();
+  if (subject) return `Keep ${subject} close`;
+  if (firstName) return `${sanitize(firstName, 24)} keep going`;
+  return 'Your next step matters';
+}
 
 // D-028 (amended for D-138 to add firstName): exactly this context, nothing else.
 // [categories] is [{name, tier, essence}] (essence null for cat4-cat6
@@ -52,7 +84,10 @@ export function buildNotificationPrompt({
     'a streak, or a deadline that is not real. Notice one true, specific ' +
     'thing — a pattern, a miss worth naming gently, or a completion worth ' +
     'acknowledging — never a generic reminder. Call send_notification with ' +
-    'a short title and a one-sentence body. No emojis.' +
+    'a title that is an inspiring quip of no more than five words, directly ' +
+    'grounded in one named category, value, goal, task, completion, miss, or ' +
+    'current pattern, plus a one-sentence body. No generic title, emojis, or ' +
+    'invented personal detail.' +
     (name
       ? ` The reader's name is ${name} — use it in the title or body when it reads naturally (e.g. ` +
         `"Nice work, ${name}"), not forced into every notification.`

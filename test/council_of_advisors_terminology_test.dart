@@ -108,6 +108,6 @@ void main() {
     final source =
         File('lib/services/lapsed_notification_pool.dart').readAsStringSync();
     expect(source, isNot(contains('The Council has been quiet')));
-    expect(source, contains('The Council of Advisors has been quiet'));
+      expect(source, contains('Council of Advisors'));
   });
 }

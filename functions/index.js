@@ -27,7 +27,7 @@ import { buildProgressAnalysisPrompt } from './lib/progress_analysis.js';
 import { buildNewsfeedAnalysisPrompt, parseArticleReply } from './lib/newsfeed_analysis.js';
 import { isEligibleForTailoredNotification } from './lib/notification_schedule.js';
 import { batchCheckinOccurrence, localDateParts, shouldSendBatchCheckin } from './lib/batch_checkin_schedule.js';
-import { buildNotificationPrompt, NOTIFICATION_TOOL } from './lib/notification_derivation.js';
+import { buildNotificationPrompt, normalizeNotificationPreview, NOTIFICATION_TOOL } from './lib/notification_derivation.js';
 import { requireEntitlement, EntitlementRequiredError } from './lib/entitlement.js';
 import { grantTrialIfEligible, grantMigrationTrial, DeviceTrialError } from './lib/device_trial.js';
 import { applyRevenueCatEvent, verifyWebhookAuth } from './lib/revenuecat_webhook.js';
@@ -888,7 +888,13 @@ async function sendTailoredNotification(uid, profileData) {
   });
   const toolUse = msg.content.find((b) => b.type === 'tool_use');
   if (!toolUse) throw new Error('no_tool_use_in_response');
-  const { title, body } = toolUse.input;
+  const body = toolUse.input.body;
+  const title = normalizeNotificationPreview({
+    title: toolUse.input.title,
+    categories,
+    recentActivity,
+    firstName: profileData.firstName,
+  });
   const messageKey = notificationMessageKey({
     type: 'tailored', occurrenceDate: local.dateString, slot,
   });
@@ -1058,7 +1064,7 @@ async function maybeSendBatchCheckin(uid, profileData, now) {
     type: 'batch_checkin',
     occurrenceDate: dateString,
     habitIds: habits.map((habit) => String(habit.id)),
-    title: 'Did you do it?',
+    title: 'Your next step matters',
     body,
   }, now);
 
@@ -1075,7 +1081,7 @@ async function maybeSendBatchCheckin(uid, profileData, now) {
   try {
     const response = await admin.messaging().sendEachForMulticast({
       tokens: installations.map((installation) => installation.token),
-      notification: { title: 'Did you do it?', body },
+      notification: { title: 'Your next step matters', body },
       // D-066's amendment noted real FCM pushes carry no `data` field at
       // all today — this is the first push that needs one, so it's added
       // here rather than for every push type at once.

@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildNotificationPrompt, NOTIFICATION_TOOL } from './notification_derivation.js';
+import { buildNotificationPrompt, MAX_NOTIFICATION_PREVIEW_WORDS,
+  normalizeNotificationPreview, NOTIFICATION_TOOL } from './notification_derivation.js';
 
 test('D-028: the prompt includes category names, tiers, and essences', () => {
   const { user } = buildNotificationPrompt({
@@ -78,4 +79,28 @@ test('D-138: injection characters in a first name cannot break out of '
 test('D-149: NOTIFICATION_TOOL requires a title and a body', () => {
   assert.deepEqual(Object.keys(NOTIFICATION_TOOL.input_schema.properties).sort(),
     ['body', 'title']);
+});
+
+test('D-021: the prompt requires a personalized preview quip of at most five words', () => {
+  const { system } = buildNotificationPrompt({});
+  assert.match(system, /inspiring quip of no more than five words/);
+  assert.equal(MAX_NOTIFICATION_PREVIEW_WORDS, 5);
+});
+
+test('D-021: an overlong model title is replaced with a context-grounded quip', () => {
+  assert.equal(normalizeNotificationPreview({
+    title: 'This is far too many words for a notification preview',
+    categories: [{ name: 'Health' }],
+  }), 'Keep Health close');
+  assert.ok(normalizeNotificationPreview({
+    title: 'This title is also too long',
+    firstName: 'Craig',
+  }).split(/\s+/).length <= MAX_NOTIFICATION_PREVIEW_WORDS);
+});
+
+test('D-021: a compliant model title remains personalized and unchanged', () => {
+  assert.equal(normalizeNotificationPreview({
+    title: 'Health is moving',
+    categories: [{ name: 'Health' }],
+  }), 'Health is moving');
 });

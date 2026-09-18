@@ -74,6 +74,7 @@ class PushMessagingService {
 
   static const _fallbackIds = {0: 100, 1: 101, 2: 102};
   static const _fallbackSlots = [(9, 0), (14, 0), (19, 0)];
+  static const _defaultFallbackTitle = 'Your next step matters';
   static const _defaultFallbackBody =
       'The Council of Advisors is here whenever you\'re ready.';
 
@@ -143,6 +144,8 @@ class PushMessagingService {
         await _scheduleLapsedPool();
       case NotificationFallbackAction.localFallback:
         await _scheduleFallback(
+          title: (data?['lastNotificationTitle'] as String?) ??
+              _defaultFallbackTitle,
           body: (data?['lastNotificationBody'] as String?) ??
               _defaultFallbackBody,
         );
@@ -175,13 +178,14 @@ class PushMessagingService {
     }
   }
 
-  Future<void> _scheduleFallback({required String body}) async {
+  Future<void> _scheduleFallback(
+      {required String title, required String body}) async {
     for (final entry in _fallbackIds.entries) {
       final (hour, minute) = _fallbackSlots[entry.key];
       await _local.cancelDailyNotification(entry.value);
       await _local.scheduleDailyNotification(
         id: entry.value,
-        title: 'Green Pyramid',
+        title: title,
         body: body,
         hour: hour,
         minute: minute,
@@ -204,8 +208,8 @@ class PushMessagingService {
       await _local.cancelDailyNotification(entry.value);
       await _local.scheduleDailyNotification(
         id: entry.value,
-        title: 'Green Pyramid',
-        body: body,
+        title: body,
+        body: 'Open Green Pyramid to continue.',
         hour: hour,
         minute: minute,
         payload: jsonEncode({

@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
 import 'package:flutter/material.dart' show MaterialPageRoute;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:rxdart/subjects.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:path_provider/path_provider.dart';
 import 'package:life_ops/main.dart';
 import 'package:life_ops/screens/batch_checkin_screen.dart';
 import 'package:life_ops/screens/newsfeed_screen.dart';
@@ -99,6 +101,34 @@ class LocalNotificationService {
   // they are data, not named routes — and let HomeScreenWidget consume them
   // after its navigator and account gate are ready.
   static String? _pendingInitialPayload;
+  String? _notificationArtworkPathCache;
+
+  /// D-149: copy the app's scenic brand image to a file location accepted by
+  /// iOS notification attachments and Android big-picture notifications.
+  /// Remote push notifications remain OS-rendered; this artwork is used for
+  /// local fallbacks and foreground-rendered pushes where the app controls
+  /// the notification details.
+  Future<String?> _notificationArtworkPath() async {
+    if (_notificationArtworkPathCache != null) {
+      return _notificationArtworkPathCache;
+    }
+    try {
+      final directory = await getApplicationSupportDirectory();
+      final file = File('${directory.path}/green_pyramid_notification.jpg');
+      if (!await file.exists()) {
+        final data = await rootBundle.load('images/jungle_bg.jpg');
+        await file.writeAsBytes(data.buffer.asUint8List(
+          data.offsetInBytes,
+          data.lengthInBytes,
+        ));
+      }
+      _notificationArtworkPathCache = file.path;
+      return file.path;
+    } catch (e) {
+      debugPrint('Notification artwork unavailable: $e');
+      return null;
+    }
+  }
 
   static String? takePendingInitialPayload() {
     final payload = _pendingInitialPayload;
@@ -530,14 +560,19 @@ class LocalNotificationService {
       // D-149: an explicit body (cached server content, or the D-049
       // static pool) overrides the built-in generic message pool.
       String dynamicBody = body ?? _generateNotificationMessage(id);
-      // Create iOS details with the question as the body
+      final artworkPath = await _notificationArtworkPath();
       final DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
         sound: 'doublebeep.aiff',
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
+        attachments: artworkPath == null
+            ? null
+            : <DarwinNotificationAttachment>[
+                DarwinNotificationAttachment(artworkPath),
+              ],
       );
-      const AndroidNotificationDetails androidNotificationDetails =
+      final AndroidNotificationDetails androidNotificationDetails =
           AndroidNotificationDetails(
         'green_pyramid_channel',
         'Green Pyramid Notifications',
@@ -557,6 +592,14 @@ class LocalNotificationService {
         category: AndroidNotificationCategory.reminder,
         visibility: NotificationVisibility.public,
         timeoutAfter: 30000,
+        styleInformation: artworkPath == null
+            ? null
+            : BigPictureStyleInformation(
+                FilePathAndroidBitmap(artworkPath),
+                contentTitle: title,
+                summaryText: dynamicBody,
+                hideExpandedLargeIcon: true,
+              ),
       );
       final NotificationDetails details = NotificationDetails(
         android: androidNotificationDetails,
@@ -628,13 +671,19 @@ class LocalNotificationService {
       leadMinutes: leadMinutes,
     );
 
-    const iosDetails = DarwinNotificationDetails(
+    final artworkPath = await _notificationArtworkPath();
+    final iosDetails = DarwinNotificationDetails(
       sound: 'doublebeep.aiff',
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
+      attachments: artworkPath == null
+          ? null
+          : <DarwinNotificationAttachment>[
+              DarwinNotificationAttachment(artworkPath),
+            ],
     );
-    const androidDetails = AndroidNotificationDetails(
+    final androidDetails = AndroidNotificationDetails(
       'green_pyramid_channel',
       'Green Pyramid Notifications',
       channelDescription: 'Notifications for Green Pyramid app',
@@ -644,14 +693,23 @@ class LocalNotificationService {
       playSound: true,
       category: AndroidNotificationCategory.reminder,
       visibility: NotificationVisibility.public,
+      styleInformation: artworkPath == null
+          ? null
+          : BigPictureStyleInformation(
+              FilePathAndroidBitmap(artworkPath),
+              contentTitle: 'Keep showing up',
+              summaryText:
+                  'Your $habitDescription starts in $leadMinutes minutes.',
+              hideExpandedLargeIcon: true,
+            ),
     );
-    const details =
+    final details =
         NotificationDetails(android: androidDetails, iOS: iosDetails);
 
     for (final slot in slots) {
       await _localNotificationService.zonedSchedule(
         slot.notificationId,
-        'Starting soon',
+        'Keep showing up',
         '$habitDescription — starts in $leadMinutes min.',
         tz.TZDateTime.from(slot.fireTime, tz.local),
         details,
@@ -682,23 +740,37 @@ class LocalNotificationService {
     required String body,
     String? payload,
   }) async {
-    const androidDetails = AndroidNotificationDetails(
+    final artworkPath = await _notificationArtworkPath();
+    final androidDetails = AndroidNotificationDetails(
       'green_pyramid_channel',
       'Green Pyramid Notifications',
       channelDescription: 'Notifications for Green Pyramid app',
       importance: Importance.max,
       priority: Priority.max,
+      styleInformation: artworkPath == null
+          ? null
+          : BigPictureStyleInformation(
+              FilePathAndroidBitmap(artworkPath),
+              contentTitle: title,
+              summaryText: body,
+              hideExpandedLargeIcon: true,
+            ),
     );
-    const iosDetails = DarwinNotificationDetails(
+    final iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
+      attachments: artworkPath == null
+          ? null
+          : <DarwinNotificationAttachment>[
+              DarwinNotificationAttachment(artworkPath),
+            ],
     );
     await _localNotificationService.show(
       DateTime.now().millisecondsSinceEpoch.remainder(100000),
       title,
       body,
-      const NotificationDetails(android: androidDetails, iOS: iosDetails),
+      NotificationDetails(android: androidDetails, iOS: iosDetails),
       payload: payload,
     );
   }
