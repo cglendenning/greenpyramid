@@ -7,7 +7,12 @@
 	<key>teamID</key>
 	<string>MCALPSQ5P5</string>
 	<key>signingStyle</key>
-	<string>automatic</string>
+	<string>manual</string>
+	<key>provisioningProfiles</key>
+	<dict>
+		<key>com.cglendenning.greenpyramid.admin</key>
+		<string>Green Pyramid Admin App Store</string>
+	</dict>
 	<key>stripSwiftSymbols</key>
 	<true/>
 	<key>compileBitcode</key>
