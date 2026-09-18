@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 // Lifetime gifts are account entitlements, not RevenueCat products. The
 // account still uses the normal `subscribed` capability, while this separate
@@ -13,6 +13,70 @@ export class LifetimeCodeError extends Error {
     super(code);
     this.code = code;
   }
+}
+
+function entitlementAfterLifetimeRevoke(profile, now) {
+  const expiry = Number(profile.subscriptionExpiresAtMs || 0);
+  if (expiry > now.getTime()) return 'subscribed';
+  return profile.lifetimeAccessPreviousEntitlement || 'lapsed';
+}
+
+async function updateLifetimeAccess(store, uid, actorUid, action, source, now) {
+  if (!store || !uid || !actorUid) throw new LifetimeCodeError('authentication_required');
+  const profileRef = profileDoc(store, uid);
+  const auditRef = store.collection('users').doc(uid).collection('lifetimeSubscriptionAudit').doc(randomUUID());
+  const apply = async (tx) => {
+    const snapshot = await tx.get(profileRef);
+    const profile = snapshot.data() || {};
+    if (action === 'grant' && profile.lifetimeAccess === true) {
+      throw new LifetimeCodeError('account_already_has_lifetime_access');
+    }
+    if (action === 'revoke' && profile.lifetimeAccess !== true) {
+      throw new LifetimeCodeError('lifetime_access_not_active');
+    }
+    const next = action === 'grant'
+      ? {
+          entitlement: 'subscribed',
+          lifetimeAccess: true,
+          lifetimeAccessGrantedAt: now,
+          lifetimeAccessGrantedBy: actorUid,
+          lifetimeAccessPreviousEntitlement: profile.entitlement || 'lapsed',
+          lifetimeAccessSource: source,
+          subscriptionSource: source,
+        }
+      : {
+          entitlement: entitlementAfterLifetimeRevoke(profile, now),
+          lifetimeAccess: false,
+          lifetimeAccessRevokedAt: now,
+          lifetimeAccessRevokedBy: actorUid,
+          lifetimeAccessSource: null,
+          lifetimeCodeId: null,
+          subscriptionSource: 'revoked_lifetime',
+        };
+    tx.set(profileRef, next, { merge: true });
+    tx.set(auditRef, {
+      action,
+      actorUid,
+      source,
+      previousEntitlement: profile.entitlement || null,
+      nextEntitlement: next.entitlement,
+      previousLifetimeAccess: profile.lifetimeAccess === true,
+      nextLifetimeAccess: next.lifetimeAccess,
+      codeId: profile.lifetimeCodeId || null,
+      createdAt: now,
+    });
+    return { entitlement: next.entitlement, lifetimeAccess: next.lifetimeAccess };
+  };
+  if (typeof store.runTransaction === 'function') return store.runTransaction(apply);
+  return apply({ get: (ref) => ref.get(), set: (ref, data, opts) => ref.set(data, opts) });
+}
+
+export function grantLifetimeAccess(store, uid, actorUid, now = new Date()) {
+  return updateLifetimeAccess(store, uid, actorUid, 'grant', 'admin', now);
+}
+
+export function revokeLifetimeAccess(store, uid, actorUid, now = new Date()) {
+  return updateLifetimeAccess(store, uid, actorUid, 'revoke', 'self_or_admin', now);
 }
 
 function profileDoc(store, uid) {
@@ -74,6 +138,9 @@ export async function redeemLifetimeCode(store, uid, rawCode, now = new Date()) 
       entitlement: 'subscribed',
       lifetimeAccess: true,
       lifetimeAccessGrantedAt: now,
+      lifetimeAccessGrantedBy: uid,
+      lifetimeAccessPreviousEntitlement: profile.entitlement || 'lapsed',
+      lifetimeAccessSource: 'lifetime_code',
       lifetimeCodeId: codeRef.path.split('/').pop(),
       subscriptionSource: 'lifetime_code',
     }, { merge: true });
@@ -90,4 +157,3 @@ export async function redeemLifetimeCode(store, uid, rawCode, now = new Date()) 
     set: (ref, data, opts) => ref.set(data, opts),
   });
 }
-

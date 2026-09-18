@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  // D-168-AC-03 / D-168-AC-04: admin user directory and detail controls.
   // D-167-AC-05/D-167-AC-06: the admin surface exposes the generator and is
   // covered by the release build review.
   final source = File('lib/main.dart').readAsStringSync();

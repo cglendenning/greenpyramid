@@ -29,7 +29,9 @@ service cloud.firestore {
         ? request.resource.data.diff({}).affectedKeys()
         : request.resource.data.diff(resource.data).affectedKeys()).hasAny([
         'entitlement', 'trialStartedAt', 'trialExpiresAt',
-        'lifetimeAccess', 'lifetimeAccessGrantedAt', 'lifetimeCodeId',
+        'lifetimeAccess', 'lifetimeAccessGrantedAt', 'lifetimeAccessGrantedBy',
+        'lifetimeAccessPreviousEntitlement', 'lifetimeAccessRevokedAt',
+        'lifetimeAccessRevokedBy', 'lifetimeCodeId',
         'subscriptionSource',
         'trialEligibility', 'spendCapUsd', 'baseCapUsd',
         'additionalCapUsd', 'totalSpendUsd', 'spendMonthKey',
@@ -38,7 +40,9 @@ service cloud.firestore {
         'model', 'modelConfiguration', 'installationId', 'uid', 'token',
         'enabled', 'revision', 'messageKey',
         'type', 'occurrenceDate', 'habitIds', 'title', 'body', 'read',
-        'readAt', 'createdAt', 'claimedAt', 'state'
+        'readAt', 'createdAt', 'claimedAt', 'state', 'action', 'actorUid',
+        'source', 'previousEntitlement', 'nextEntitlement',
+        'previousLifetimeAccess', 'nextLifetimeAccess', 'codeId'
       ]) == false;
     }
 
@@ -47,7 +51,9 @@ service cloud.firestore {
       allow create: if isOwner(uid) &&
         request.resource.data.diff({}).affectedKeys().hasAny([
           'entitlement', 'trialStartedAt', 'trialExpiresAt',
-          'lifetimeAccess', 'lifetimeAccessGrantedAt', 'lifetimeCodeId',
+          'lifetimeAccess', 'lifetimeAccessGrantedAt', 'lifetimeAccessGrantedBy',
+          'lifetimeAccessPreviousEntitlement', 'lifetimeAccessRevokedAt',
+          'lifetimeAccessRevokedBy', 'lifetimeCodeId',
           'subscriptionSource',
           'trialEligibility', 'spendCapUsd', 'baseCapUsd',
           'additionalCapUsd', 'totalSpendUsd', 'spendMonthKey',
@@ -56,7 +62,9 @@ service cloud.firestore {
           'model', 'modelConfiguration', 'installationId', 'uid', 'token',
           'enabled', 'revision', 'messageKey',
           'type', 'occurrenceDate', 'habitIds', 'title', 'body', 'read',
-          'readAt', 'createdAt', 'claimedAt', 'state'
+          'readAt', 'createdAt', 'claimedAt', 'state', 'action', 'actorUid',
+          'source', 'previousEntitlement', 'nextEntitlement',
+          'previousLifetimeAccess', 'nextLifetimeAccess', 'codeId'
         ]) == false;
       allow update: if isOwner(uid) && changesOnlyUserOwnedFields();
     }

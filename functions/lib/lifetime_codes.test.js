@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { generateLifetimeCode, hashLifetimeCode, redeemLifetimeCode, LifetimeCodeError } from './lifetime_codes.js';
+import { generateLifetimeCode, hashLifetimeCode, redeemLifetimeCode, grantLifetimeAccess, revokeLifetimeAccess, LifetimeCodeError } from './lifetime_codes.js';
+
+// D-168-AC-02 / D-168-AC-05 / D-168-AC-06: lifetime revoke/grant semantics,
+// billing preservation, and the focused backend verification suite.
 
 class FakeDoc {
   constructor(store, path) { this.store = store; this.path = path; }
@@ -50,6 +53,30 @@ test('D-167-AC-02: malformed codes do not touch account state', async () => {
   await assert.rejects(() => redeemLifetimeCode(store, 'user-1', 'not-a-code'),
     (error) => error instanceof LifetimeCodeError && error.code === 'lifetime_code_invalid');
   assert.equal(Object.keys(store.data).length, 0);
+});
+
+test('D-168-AC-02: self revoke removes lifetime access but preserves an active paid subscription', async () => {
+  const now = new Date('2026-09-18T00:00:00Z');
+  const store = new FakeFirestore({
+    'users/user-1/profile/main': {
+      entitlement: 'subscribed', lifetimeAccess: true,
+      subscriptionExpiresAtMs: now.getTime() + 86400000,
+      lifetimeAccessPreviousEntitlement: 'lapsed',
+    },
+  });
+  const result = await revokeLifetimeAccess(store, 'user-1', 'user-1', now);
+  assert.deepEqual(result, { entitlement: 'subscribed', lifetimeAccess: false });
+  assert.equal(store.data['users/user-1/profile/main'].lifetimeAccess, false);
+  assert.equal(store.data['users/user-1/profile/main'].entitlement, 'subscribed');
+  assert.equal(Object.values(store.data).some((v) => v.action === 'revoke' && v.actorUid === 'user-1'), true);
+});
+
+test('D-168-AC-05: admin grant and revoke are audited and restore the prior entitlement', async () => {
+  const now = new Date('2026-09-18T00:00:00Z');
+  const store = new FakeFirestore({ 'users/user-1/profile/main': { entitlement: 'lapsed' } });
+  assert.deepEqual(await grantLifetimeAccess(store, 'user-1', 'admin-1', now), { entitlement: 'subscribed', lifetimeAccess: true });
+  assert.deepEqual(await revokeLifetimeAccess(store, 'user-1', 'admin-1', now), { entitlement: 'lapsed', lifetimeAccess: false });
+  assert.equal(Object.values(store.data).filter((v) => v.action).length, 2);
 });
 
 // D-167-AC-06: the lifetime-code security and single-use behavior is covered

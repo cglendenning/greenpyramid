@@ -195,6 +195,12 @@ class EntitlementService {
     await _applyServerResult(await _post('redeemLifetimeCode', {'code': code.trim()}));
   }
 
+  /// D-168: removes only the lifetime gift. The cloud service preserves any
+  /// independently active Apple/RevenueCat entitlement.
+  Future<void> revokeLifetimeAccess() async {
+    await _applyServerResult(await _post('revokeLifetimeAccess', {}));
+  }
+
   /// D-142 (amended): the single shared gate (`ensureEntitled`, and
   /// through it every screen that calls it) now self-heals against
   /// Firestore before trusting the local cache — found live, the local
@@ -240,7 +246,9 @@ class EntitlementService {
     await _db.setAccountEntitlement(
       entitlement: entitlement,
       trialExpiresAt: trialExpiresAt?.toIso8601String(),
-      lifetimeAccess: result['lifetimeAccess'] == true ? true : null,
+      lifetimeAccess: result.containsKey('lifetimeAccess')
+          ? result['lifetimeAccess'] == true
+          : null,
     );
   }
 }

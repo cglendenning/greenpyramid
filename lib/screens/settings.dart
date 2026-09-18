@@ -123,12 +123,19 @@ class Settings extends StatefulWidget {
 
 class _SettingsState extends State<Settings> {
   late final LocalNotificationService lns;
+  bool? _lifetimeAccess;
 
   @override
   void initState() {
     super.initState();
     lns = LocalNotificationService();
     lns.intialize();
+    _loadLifetimeAccess();
+  }
+
+  Future<void> _loadLifetimeAccess() async {
+    final value = await EntitlementService.instance.currentLocalLifetimeAccess();
+    if (mounted) setState(() => _lifetimeAccess = value);
   }
 
   FirebaseAnalytics analytics = FirebaseAnalytics.instance;
@@ -168,14 +175,16 @@ class _SettingsState extends State<Settings> {
           padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
           children: [
             _sectionLabel('SUBSCRIPTION'),
-            _card(child: const _SubscriptionPanel()),
+            _card(child: _SubscriptionPanel(onLifetimeChanged: (value) => setState(() => _lifetimeAccess = value))),
             const SizedBox(height: 12),
             _card(child: const _SpendAllowancePanel()),
             const SizedBox(height: 28),
 
-            _sectionLabel('GIFT SUBSCRIPTION'),
-            _card(child: const _LifetimeCodePanel()),
-            const SizedBox(height: 28),
+            if (_lifetimeAccess != true) ...[
+              _sectionLabel('GIFT SUBSCRIPTION'),
+              _card(child: const _LifetimeCodePanel()),
+              const SizedBox(height: 28),
+            ],
 
             _sectionLabel('NOTIFICATIONS'),
             _card(child: _TestNotificationButton(lns: lns)),
@@ -288,7 +297,8 @@ class _SpendAllowancePanel extends StatelessWidget {
 /// subscription" link always opened a cancel-only screen, even for a
 /// trialing account with nothing to cancel.
 class _SubscriptionPanel extends StatefulWidget {
-  const _SubscriptionPanel();
+  const _SubscriptionPanel({this.onLifetimeChanged});
+  final ValueChanged<bool>? onLifetimeChanged;
 
   @override
   State<_SubscriptionPanel> createState() => _SubscriptionPanelState();
@@ -340,6 +350,28 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
     _load();
   }
 
+  Future<void> _revokeLifetime() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Revoke lifetime subscription?'),
+        content: const Text('This removes the lifetime gift from this account. Any active Apple or RevenueCat subscription remains active.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Keep it')),
+          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Revoke gift')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await EntitlementService.instance.revokeLifetimeAccess();
+      await _load();
+      widget.onLifetimeChanged?.call(false);
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('The lifetime gift could not be revoked.')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
@@ -351,14 +383,23 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
 
     final entitlement = _info?.entitlements.active.values.firstOrNull;
     if (_lifetimeAccess) {
-      return const Column(
+      return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('Lifetime subscription',
               style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
           SizedBox(height: 6),
-          Text('Your access does not renew or expire. It is a gift entitlement and is separate from Apple billing.',
+          const Text('Your access does not renew or expire. It is a gift entitlement and is separate from Apple billing.',
               style: TextStyle(color: AppColors.textSecondary, fontSize: 13, height: 1.4)),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              style: TextButton.styleFrom(padding: EdgeInsets.zero),
+              onPressed: _revokeLifetime,
+              child: const Text('Revoke my lifetime gift'),
+            ),
+          ),
         ],
       );
     }

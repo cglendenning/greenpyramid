@@ -41,7 +41,8 @@ import { revalidateIntervention } from './lib/intervention_lifecycle.js';
 import { renderIntervention } from './lib/intervention_renderer.js';
 import { applySafetyConstraints } from './lib/safety_constraints.js';
 import { runSimulation, REQUIRED_SCENARIOS } from './lib/behavioral_simulator.js';
-import { generateLifetimeCode, redeemLifetimeCode, LifetimeCodeError } from './lib/lifetime_codes.js';
+import { generateLifetimeCode, redeemLifetimeCode, grantLifetimeAccess, revokeLifetimeAccess, LifetimeCodeError } from './lib/lifetime_codes.js';
+import { buildAdminUserSummary, buildAdminUserDetail } from './lib/admin_users.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -338,6 +339,63 @@ app.post('/adminLifetimeCode', requireAdmin, async (req, res) => {
   }
 });
 
+// D-168: the private admin user directory is claim-gated and exposes account,
+// entitlement, and aggregate usage metadata without returning user content.
+app.get('/adminUsers', requireAdmin, async (_req, res) => {
+  try {
+    ensureAdmin();
+    const store = admin.firestore();
+    const authUsers = [];
+    let page;
+    do {
+      page = await admin.auth().listUsers(1000, page?.pageToken);
+      authUsers.push(...page.users);
+    } while (page.pageToken);
+    const profiles = (await store.collectionGroup('profile').get()).docs;
+    res.json(buildAdminUserSummary({ authUsers, profiles }));
+  } catch (e) {
+    console.error('adminUsers error:', e.message);
+    res.status(500).json({ error: 'service_unavailable' });
+  }
+});
+
+app.get('/adminUsers/:uid', requireAdmin, async (req, res) => {
+  try {
+    ensureAdmin();
+    const uid = req.params.uid;
+    const store = admin.firestore();
+    let authUser = null;
+    try { authUser = await admin.auth().getUser(uid); } catch (e) { if (e.code !== 'auth/user-not-found') throw e; }
+    const profileSnap = await store.collection('users').doc(uid).collection('profile').doc('main').get();
+    const collections = ['tasks', 'recentActivity', 'councilSessions', 'inbox', 'interventionDecisions', 'behavioralEvents', 'telemetry', 'feedback', 'categories', 'essenceVersions', 'visions', 'installations'];
+    const counts = Object.fromEntries(await Promise.all(collections.map(async (name) => [name, (await store.collection('users').doc(uid).collection(name).get()).size])));
+    const audit = (await store.collection('users').doc(uid).collection('lifetimeSubscriptionAudit').get()).docs.map((d) => d.data()).sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))).slice(0, 50);
+    res.json(buildAdminUserDetail({ uid, authUser, profile: profileSnap.data() || {}, usage: counts, audit }));
+  } catch (e) {
+    console.error('adminUserDetail error:', e.message);
+    res.status(500).json({ error: 'service_unavailable' });
+  }
+});
+
+async function applyAdminLifetimeMutation(req, res, action) {
+  try {
+    ensureAdmin();
+    const uid = req.params.uid;
+    const result = action === 'grant'
+      ? await grantLifetimeAccess(admin.firestore(), uid, req.uid)
+      : await revokeLifetimeAccess(admin.firestore(), uid, req.uid);
+    res.json(result);
+  } catch (e) {
+    const known = e instanceof LifetimeCodeError;
+    const status = e.code === 'account_already_has_lifetime_access' || e.code === 'lifetime_access_not_active' ? 409 : known ? 400 : 500;
+    console.error(`admin lifetime ${action} error:`, e.message);
+    res.status(status).json({ error: known ? e.code : 'service_unavailable' });
+  }
+}
+
+app.post('/adminUsers/:uid/lifetimeGrant', requireAdmin, (req, res) => applyAdminLifetimeMutation(req, res, 'grant'));
+app.post('/adminUsers/:uid/lifetimeRevoke', requireAdmin, (req, res) => applyAdminLifetimeMutation(req, res, 'revoke'));
+
 // D-054: RevenueCat calls this directly from its own servers — never through
 // the app, so it carries no App Check token and must sit before that gate.
 // Auth is the shared-secret header check above, not App Check or Firebase
@@ -390,6 +448,17 @@ app.post('/redeemLifetimeCode', requireFirebaseAuth, async (req, res) => {
     }
     console.error('redeemLifetimeCode error:', e.message);
     res.status(500).json({ error: 'service_unavailable' });
+  }
+});
+
+app.post('/revokeLifetimeAccess', requireFirebaseAuth, async (req, res) => {
+  try {
+    ensureAdmin();
+    res.json(await revokeLifetimeAccess(admin.firestore(), req.uid, req.uid));
+  } catch (e) {
+    const status = e.code === 'lifetime_access_not_active' ? 409 : e instanceof LifetimeCodeError ? 400 : 500;
+    console.error('revokeLifetimeAccess error:', e.message);
+    res.status(status).json({ error: e instanceof LifetimeCodeError ? e.code : 'service_unavailable' });
   }
 });
 

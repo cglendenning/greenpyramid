@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  // D-168-AC-01 / D-168-AC-06: consumer lifetime-card visibility and revoke wiring.
   // D-167-AC-04: the consumer Settings surface uses the authenticated
   // entitlement service and persists the server-owned lifetime result.
   test('D-167-AC-04: Settings exposes lifetime redemption and cache support', () {

@@ -217,6 +217,14 @@ class Dashboard extends StatelessWidget {
                 ),
               ),
               ListTile(
+                leading: const Icon(Icons.people_outline),
+                title: const Text('Users'),
+                subtitle: const Text('Accounts, subscriptions, and usage'),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AdminUsersScreen()),
+                ),
+              ),
+              ListTile(
                 leading: const Icon(Icons.science_outlined),
                 title: const Text('Intervention simulator'),
                 onTap: () => Navigator.of(context).push(
@@ -514,6 +522,127 @@ class AdminFeedbackDetailScreen extends StatelessWidget {
     padding: const EdgeInsets.only(top: 12),
     child: Text('$label: $value'),
   );
+}
+
+class AdminUsersScreen extends StatefulWidget {
+  const AdminUsersScreen({super.key});
+  @override
+  State<AdminUsersScreen> createState() => _AdminUsersScreenState();
+}
+
+class _AdminUsersScreenState extends State<AdminUsersScreen> {
+  late Future<Map<String, dynamic>> future;
+  @override
+  void initState() { super.initState(); future = _load(); }
+  Future<Map<String, dynamic>> _load() async {
+    final token = await FirebaseAuth.instance.currentUser!.getIdToken(true);
+    final response = await http.get(Uri.parse('$apiBase/adminUsers'), headers: {'Authorization': 'Bearer $token'});
+    if (response.statusCode != 200) throw AdminMetricsException(response.statusCode);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+  void refresh() => setState(() => future = _load());
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('Users'), actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: refresh)]),
+    body: FutureBuilder<Map<String, dynamic>>(
+      future: future,
+      builder: (context, snap) {
+        if (snap.hasError) return Center(child: Text('Users could not be loaded: ${snap.error}'));
+        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+        final summary = (snap.data!['summary'] as Map).cast<String, dynamic>();
+        final users = (snap.data!['users'] as List).cast<Map<String, dynamic>>();
+        return RefreshIndicator(
+          onRefresh: () async => refresh(),
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              Wrap(spacing: 8, runSpacing: 8, children: [
+                _metric('Users', summary['totalUsers']),
+                _metric('Subscribed', summary['subscribed']),
+                _metric('Lifetime', summary['lifetimeSubscribers']),
+                _metric('Trialing', summary['trialing']),
+                _metric('Lapsed', summary['lapsed']),
+                _metric('Setup complete', summary['setupComplete']),
+              ]),
+              const SizedBox(height: 20),
+              Text('${users.length} accounts', style: Theme.of(context).textTheme.titleLarge),
+              const SizedBox(height: 8),
+              ...users.map((user) => Card(child: ListTile(
+                title: Text(user['displayName']?.toString() ?? 'Unnamed user'),
+                subtitle: Text('${user['email'] ?? 'No email'} · ${user['entitlement'] ?? 'unknown'}${user['lifetimeAccess'] == true ? ' · Lifetime' : ''}'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AdminUserDetailScreen(uid: user['uid'] as String))),
+              ))),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+  Widget _metric(String label, dynamic value) => Chip(label: Text('$label: $value'));
+}
+
+class AdminUserDetailScreen extends StatefulWidget {
+  const AdminUserDetailScreen({super.key, required this.uid});
+  final String uid;
+  @override
+  State<AdminUserDetailScreen> createState() => _AdminUserDetailScreenState();
+}
+
+class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
+  late Future<Map<String, dynamic>> future;
+  bool mutating = false;
+  @override
+  void initState() { super.initState(); future = _load(); }
+  Future<Map<String, dynamic>> _load() async {
+    final token = await FirebaseAuth.instance.currentUser!.getIdToken(true);
+    final response = await http.get(Uri.parse('$apiBase/adminUsers/${widget.uid}'), headers: {'Authorization': 'Bearer $token'});
+    if (response.statusCode != 200) throw AdminMetricsException(response.statusCode);
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+  Future<void> _mutate(bool grant) async {
+    final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
+      title: Text(grant ? 'Grant lifetime access?' : 'Revoke lifetime access?'),
+      content: Text(grant ? 'This gives the account access that does not expire.' : 'This removes only the lifetime gift. An active Apple or RevenueCat subscription remains active.'),
+      actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(grant ? 'Grant' : 'Revoke'))],
+    ));
+    if (confirmed != true) return;
+    setState(() => mutating = true);
+    try {
+      final token = await FirebaseAuth.instance.currentUser!.getIdToken(true);
+      final response = await http.post(Uri.parse('$apiBase/adminUsers/${widget.uid}/${grant ? 'lifetimeGrant' : 'lifetimeRevoke'}'), headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'});
+      if (response.statusCode != 200) throw AdminMetricsException(response.statusCode);
+      if (mounted) { setState(() => future = _load()); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(grant ? 'Lifetime access granted.' : 'Lifetime access revoked.'))); }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('The lifetime access change could not be completed.')));
+    } finally { if (mounted) setState(() => mutating = false); }
+  }
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text('User details')),
+    body: FutureBuilder<Map<String, dynamic>>(
+      future: future,
+      builder: (context, snap) {
+        if (snap.hasError) return Center(child: Text('User details could not be loaded: ${snap.error}'));
+        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+        final user = snap.data!;
+        final usage = (user['usage'] as Map).cast<String, dynamic>();
+        final lifetime = user['lifetimeAccess'] == true;
+        return ListView(padding: const EdgeInsets.all(20), children: [
+          Text(user['displayName']?.toString() ?? 'Unnamed user', style: Theme.of(context).textTheme.headlineSmall),
+          _row('Email', user['email']), _row('User ID', user['uid']), _row('Providers', (user['providers'] as List).join(', ')),
+          _row('Entitlement', user['entitlement']), _row('Subscription source', user['subscriptionSource']), _row('Subscription expiry', user['subscriptionExpiresAtMs']),
+          _row('Lifetime access', lifetime ? 'Yes' : 'No'), _row('Setup complete', user['setupComplete'] == true ? 'Yes' : 'No'),
+          _row('Total AI spend', '\$${(user['totalSpendUsd'] ?? 0).toStringAsFixed(2)}'), _row('AI calls', user['aiCalls']),
+          const SizedBox(height: 16), Text('Usage', style: Theme.of(context).textTheme.titleLarge),
+          ...usage.entries.map((entry) => _row(entry.key, entry.value)),
+          const SizedBox(height: 20),
+          FilledButton(onPressed: mutating ? null : () => _mutate(!lifetime), child: Text(mutating ? 'Working…' : lifetime ? 'Revoke lifetime access' : 'Grant lifetime access')),
+        ]);
+      },
+    ),
+  );
+  Widget _row(String label, dynamic value) => Padding(padding: const EdgeInsets.only(top: 10), child: Text('$label: ${value ?? 'Not available'}'));
 }
 
 class LifetimeCodeScreen extends StatefulWidget {
