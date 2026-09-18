@@ -53,3 +53,29 @@ test('D-149-AC-01: clients cannot create installation or inbox delivery state', 
     messageKey: 'message1', type: 'tailored', title: 'forged', read: false,
   }));
 });
+
+test('D-047-AC-01: an owner can create and resume a category Council session', async () => {
+  const db = environment.authenticatedContext('owner').firestore();
+  const session = doc(db, 'users/owner/councilSessions/category-1');
+  await assertSucceeds(setDoc(session, {
+    type: 'category',
+    categoryId: 1,
+    createdAt: new Date(),
+    lastUpdatedAt: new Date(),
+    messages: [],
+    rotationOrder: ['mira', 'kenji', 'noa', 'eli'],
+    sliderSettings: { mira: 0.5, kenji: 0.5, noa: 0.5, eli: 0.5 },
+    isComplete: false,
+    totalInputTokens: 0,
+    totalOutputTokens: 0,
+  }));
+  await assertSucceeds(updateDoc(session, {
+    messages: [{ advisorKey: 'mira', text: 'hello' }],
+    lastUpdatedAt: new Date(),
+  }));
+  await assertFails(updateDoc(session, { type: 'setup' }));
+  await assertFails(setDoc(doc(db, 'users/other/councilSessions/category-1'), {
+    type: 'category',
+    categoryId: 1,
+  }));
+});

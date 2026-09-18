@@ -144,6 +144,11 @@ void main() {
     });
   });
 
+  test('D-145: active-session lookup copies Firestore docs before sorting', () {
+    final source = File('lib/services/council_service.dart').readAsStringSync();
+    expect(source, contains('final docs = [...snap.docs]'));
+  });
+
   group(
       'D-145: an advisor turn is persisted and category context reaches '
       'the client', () {

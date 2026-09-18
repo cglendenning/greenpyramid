@@ -68,8 +68,10 @@ class CouncilService {
     final snap = await query.get();
     if (snap.docs.isEmpty) return null;
     // Sort client-side — avoids a composite index on (type, isComplete, categoryId, createdAt).
-    final docs = snap.docs
-      ..sort((a, b) {
+    // QuerySnapshot.docs may be an unmodifiable platform list. Copy it before
+    // sorting; reopening a category with multiple active sessions must not
+    // turn a valid query into the generic "Could not open" screen.
+    final docs = [...snap.docs]..sort((a, b) {
         final aT = (a.data()['createdAt'] as Timestamp).toDate();
         final bT = (b.data()['createdAt'] as Timestamp).toDate();
         return bT.compareTo(aT);

@@ -46,6 +46,36 @@ service cloud.firestore {
       ]) == false;
     }
 
+    // Council sessions are user-owned conversation state. The client creates
+    // the session shell and appends its own transcript; keep this exception
+    // narrow so the recursive rule below continues to protect server-owned
+    // fields everywhere else under users/{uid}.
+    match /users/{uid}/councilSessions/{sessionId} {
+      allow read: if isOwner(uid);
+      allow create: if isOwner(uid)
+        && request.resource.data.keys().hasOnly([
+          'type', 'categoryId', 'createdAt', 'lastUpdatedAt', 'messages',
+          'rotationOrder', 'sliderSettings', 'isComplete',
+          'totalInputTokens', 'totalOutputTokens'
+        ])
+        && request.resource.data.keys().hasAll([
+          'type', 'createdAt', 'lastUpdatedAt', 'messages', 'rotationOrder',
+          'sliderSettings', 'isComplete', 'totalInputTokens',
+          'totalOutputTokens'
+        ])
+        && request.resource.data.type in ['setup', 'category', 'general']
+        && ((request.resource.data.type == 'category'
+              && request.resource.data.keys().hasAll(['categoryId'])
+              && request.resource.data.categoryId is int)
+            || (request.resource.data.type != 'category'
+              && !request.resource.data.keys().hasAny(['categoryId'])));
+      allow update: if isOwner(uid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'messages', 'lastUpdatedAt', 'totalInputTokens',
+          'totalOutputTokens', 'isComplete', 'setupDraft'
+        ]);
+    }
+
     match /users/{uid}/{document=**} {
       allow read: if isOwner(uid);
       allow create: if isOwner(uid) &&
