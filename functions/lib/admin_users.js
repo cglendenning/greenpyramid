@@ -9,7 +9,27 @@ function profileUid(doc) {
   return doc.ref.path.split('/')[1];
 }
 
-function userRecord(uid, authUser, profile = {}) {
+function realCategoryCount(profile = {}) {
+  return Array.isArray(profile.categories)
+    ? profile.categories.filter((category) => {
+        const name = typeof category?.cat === 'string' ? category.cat.trim() : '';
+        return name && !name.startsWith('Empty');
+      }).length
+    : 0;
+}
+
+function setupIsComplete(profile = {}, account = {}, usage = {}) {
+  if (profile.setupComplete === true || account.setupComplete === true) return true;
+  if (profile.setupCompletedAt || account.setupCompletedAt || account.setupCompletionId) return true;
+  // Legacy completed accounts predate the explicit flag. Their durable
+  // profile still contains the six real pyramid categories; when detail
+  // usage is available, require at least one task as D-001 does.
+  const hasPyramid = realCategoryCount(profile) >= 6;
+  const hasTask = usage.tasks == null || Number(usage.tasks) >= 1;
+  return hasPyramid && hasTask;
+}
+
+function userRecord(uid, authUser, profile = {}, account = {}, usage = {}) {
   const firstName = profile.firstName || authUser?.displayName?.split(/\s+/)[0] || null;
   return {
     uid,
@@ -19,7 +39,7 @@ function userRecord(uid, authUser, profile = {}) {
     providers: (authUser?.providerData || []).map((p) => p.providerId),
     entitlement: profile.entitlement || 'pre_trial',
     lifetimeAccess: profile.lifetimeAccess === true,
-    setupComplete: profile.setupComplete === true,
+    setupComplete: setupIsComplete(profile, account, usage),
     subscriptionExpiresAtMs: profile.subscriptionExpiresAtMs || null,
     subscriptionSource: profile.subscriptionSource || null,
     totalSpendUsd: Number(profile.totalSpendUsd || 0),
@@ -52,12 +72,12 @@ export function buildAdminUserSummary({ authUsers = [], profiles = [] }) {
   };
 }
 
-export function buildAdminUserDetail({ uid, authUser, profile = {}, usage = {}, audit = [] }) {
+export function buildAdminUserDetail({ uid, authUser, account = {}, profile = {}, usage = {}, audit = [] }) {
   return {
-    ...userRecord(uid, authUser, profile),
-    trialStartedAt: iso(profile.trialStartedAt),
-    trialExpiresAt: iso(profile.trialExpiresAt),
-    setupCompletedAt: iso(profile.setupCompletedAt),
+    ...userRecord(uid, authUser, profile, account, usage),
+    trialStartedAt: iso(profile.trialStartedAt || account.trialStartedAt),
+    trialExpiresAt: iso(profile.trialExpiresAt || account.trialExpiresAt),
+    setupCompletedAt: iso(profile.setupCompletedAt || account.setupCompletedAt),
     spendCapUsd: Number(profile.spendCapUsd || 0),
     subscriptionEventTimestampMs: profile.subscriptionEventTimestampMs || null,
     lifetimeAccessGrantedAt: iso(profile.lifetimeAccessGrantedAt),

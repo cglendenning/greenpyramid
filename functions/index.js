@@ -366,11 +366,22 @@ app.get('/adminUsers/:uid', requireAdmin, async (req, res) => {
     const store = admin.firestore();
     let authUser = null;
     try { authUser = await admin.auth().getUser(uid); } catch (e) { if (e.code !== 'auth/user-not-found') throw e; }
-    const profileSnap = await store.collection('users').doc(uid).collection('profile').doc('main').get();
+    const accountRef = store.collection('users').doc(uid);
+    const [accountSnap, profileSnap] = await Promise.all([
+      accountRef.get(),
+      accountRef.collection('profile').doc('main').get(),
+    ]);
+    const profile = profileSnap.data() || {};
     const collections = ['tasks', 'recentActivity', 'councilSessions', 'inbox', 'interventionDecisions', 'behavioralEvents', 'telemetry', 'feedback', 'categories', 'essenceVersions', 'visions', 'installations'];
     const counts = Object.fromEntries(await Promise.all(collections.map(async (name) => [name, (await store.collection('users').doc(uid).collection(name).get()).size])));
+    if (Array.isArray(profile.categories)) {
+      counts.categories = profile.categories.filter((category) => {
+        const name = typeof category?.cat === 'string' ? category.cat.trim() : '';
+        return name && !name.startsWith('Empty');
+      }).length;
+    }
     const audit = (await store.collection('users').doc(uid).collection('lifetimeSubscriptionAudit').get()).docs.map((d) => d.data()).sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || ''))).slice(0, 50);
-    res.json(buildAdminUserDetail({ uid, authUser, profile: profileSnap.data() || {}, usage: counts, audit }));
+    res.json(buildAdminUserDetail({ uid, authUser, account: accountSnap.data() || {}, profile, usage: counts, audit }));
   } catch (e) {
     console.error('adminUserDetail error:', e.message);
     res.status(500).json({ error: 'service_unavailable' });
