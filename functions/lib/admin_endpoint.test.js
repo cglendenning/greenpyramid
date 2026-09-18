@@ -13,6 +13,8 @@ test('D-165 admin endpoint is claim-gated and reads aggregate sources', () => {
   assert.match(source, /app\.get\('\/adminFeedback', requireAdmin/);
   assert.match(source, /collectionGroup\('feedback'\)/);
   assert.match(source, /uidHash/);
+  assert.match(source, /app\.get\('\/adminPlatformHealth', requireAdmin/);
+  assert.match(source, /getPlatformHealth/);
 });
 
 test('D-162/D-165 admin simulation fixes the sandbox and bounds client options', () => {

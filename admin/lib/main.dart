@@ -216,6 +216,15 @@ class Dashboard extends StatelessWidget {
                   MaterialPageRoute(builder: (_) => const AdminFeedbackScreen()),
                 ),
               ),
+              // D-165-AC-07: read-only billing, budget, and Functions diagnostic.
+              ListTile(
+                leading: const Icon(Icons.cloud_done_outlined),
+                title: const Text('Platform health'),
+                subtitle: const Text('Billing, budgets, quotas, and Functions'),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const PlatformHealthScreen()),
+                ),
+              ),
               ListTile(
                 leading: const Icon(Icons.people_outline),
                 title: const Text('Users'),
@@ -521,6 +530,162 @@ class AdminFeedbackDetailScreen extends StatelessWidget {
   Widget _row(String label, String value) => Padding(
     padding: const EdgeInsets.only(top: 12),
     child: Text('$label: $value'),
+  );
+}
+
+class PlatformHealthScreen extends StatefulWidget {
+  const PlatformHealthScreen({super.key});
+
+  @override
+  State<PlatformHealthScreen> createState() => _PlatformHealthScreenState();
+}
+
+class _PlatformHealthScreenState extends State<PlatformHealthScreen> {
+  late Future<Map<String, dynamic>> healthFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    healthFuture = _load();
+  }
+
+  Future<Map<String, dynamic>> _load() async {
+    final token = await FirebaseAuth.instance.currentUser!.getIdToken(true);
+    final response = await http.get(
+      Uri.parse('$apiBase/adminPlatformHealth'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode != 200) {
+      throw AdminMetricsException(response.statusCode);
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  void refresh() => setState(() => healthFuture = _load());
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: const Text('Platform health'),
+      actions: [
+        IconButton(
+          tooltip: 'Refresh platform health',
+          icon: const Icon(Icons.refresh),
+          onPressed: refresh,
+        ),
+      ],
+    ),
+    body: FutureBuilder<Map<String, dynamic>>(
+      future: healthFuture,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(child: Text('Platform health could not be loaded: ${snapshot.error}'));
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final health = snapshot.data!;
+        final billing = _map(health['billing']);
+        final budgets = _map(health['budgets']);
+        final functions = _map(health['functions']);
+        final functionRows = (functions['functions'] as List? ?? const [])
+            .cast<Map<String, dynamic>>();
+        return RefreshIndicator(
+          onRefresh: () async => refresh(),
+          child: ListView(
+            padding: const EdgeInsets.all(20),
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              Text('Google Cloud checks', style: Theme.of(context).textTheme.headlineSmall),
+              Text('Project: ${health['projectId'] ?? 'unknown'}'),
+              const SizedBox(height: 16),
+              _healthCard(
+                context,
+                icon: Icons.account_balance_outlined,
+                title: 'Billing account',
+                state: '${billing['state'] ?? 'unknown'}',
+                body: billing['state'] == 'enabled'
+                    ? 'Billing is enabled for ${billing['billingAccount'] ?? 'the project'}.'
+                    : 'Billing status could not be confirmed. This must be resolved before treating a runtime failure as an app defect.',
+              ),
+              _healthCard(
+                context,
+                icon: Icons.savings_outlined,
+                title: 'Budget visibility',
+                state: '${budgets['state'] ?? 'unknown'}',
+                body: _budgetDescription(budgets),
+              ),
+              _healthCard(
+                context,
+                icon: Icons.functions_outlined,
+                title: 'Firebase Functions',
+                state: '${functions['state'] ?? 'unknown'}',
+                body: functions['state'] == 'healthy'
+                    ? '${functions['count'] ?? 0} deployed Functions report ACTIVE.'
+                    : 'One or more Function states need operator review, or the Functions API could not be read.',
+              ),
+              if (functionRows.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                const Text('Deployed Functions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                ...functionRows.map((fn) => ListTile(
+                  dense: true,
+                  title: Text('${fn['name'] ?? 'unknown'}'),
+                  subtitle: Text('${fn['region'] ?? 'unknown region'}'),
+                  trailing: Text('${fn['state'] ?? 'UNKNOWN'}'),
+                )),
+              ],
+              const SizedBox(height: 16),
+              const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Text(
+                    'These checks are read-only. A Google Cloud budget is normally an alert threshold, not an automatic execution stop. The app’s per-account AI spend cap and external-provider credit balance are separate from Firebase/Google Cloud billing. Unknown budget visibility never means “no budget.”',
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text('Checked ${health['checkedAt'] ?? 'unknown'}', style: Theme.of(context).textTheme.bodySmall),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+
+  Map<String, dynamic> _map(dynamic value) => value is Map
+      ? value.cast<String, dynamic>()
+      : <String, dynamic>{'state': 'unknown'};
+
+  String _budgetDescription(Map<String, dynamic> budgets) {
+    if (budgets['state'] == 'available') {
+      return '${budgets['count'] ?? 0} budget(s) are visible. Review their thresholds in Google Cloud Billing.';
+    }
+    if (budgets['reason'] == 'api_disabled') {
+      return 'The Cloud Billing Budget API is disabled, so the app cannot inspect budget thresholds. This does not prove that no budget exists and is not itself a Functions execution cap.';
+    }
+    if (budgets['reason'] == 'permission_denied') {
+      return 'The runtime identity cannot read budget thresholds. Grant read-only Billing Budget Viewer access if operators need this check in the app.';
+    }
+    return 'Budget state is not currently readable (${budgets['reason'] ?? 'unknown reason'}).';
+  }
+
+  Widget _healthCard(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String state,
+    required String body,
+  }) => Card(
+    child: ListTile(
+      leading: Icon(icon),
+      title: Text(title),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(top: 6),
+        child: Text(body),
+      ),
+      trailing: Text(state.toUpperCase()),
+      isThreeLine: true,
+    ),
   );
 }
 

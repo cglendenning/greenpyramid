@@ -43,6 +43,7 @@ import { applySafetyConstraints } from './lib/safety_constraints.js';
 import { runSimulation, REQUIRED_SCENARIOS } from './lib/behavioral_simulator.js';
 import { generateLifetimeCode, redeemLifetimeCode, grantLifetimeAccess, revokeLifetimeAccess, LifetimeCodeError } from './lib/lifetime_codes.js';
 import { buildAdminUserSummary, buildAdminUserDetail } from './lib/admin_users.js';
+import { getPlatformHealth } from './lib/platform_health.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // OPENAI_API_KEY / ANTHROPIC_API_KEY), never in source. OpenAI backs the
@@ -262,6 +263,20 @@ app.get('/adminMetrics', requireAdmin, async (_req, res) => {
     res.json(buildAdminMetrics({ profiles, telemetry }));
   } catch (e) {
     console.error('adminMetrics error:', e.message);
+    res.status(500).json({ error: 'service_unavailable' });
+  }
+});
+
+// D-164: operator-triggered, read-only visibility into the project billing
+// association, Cloud Billing budget API, and deployed Functions. This is
+// deliberately best-effort: lack of permission or a disabled budget API is
+// reported as unknown, never as "no budget" and never as a user-facing AI
+// spend-limit decision.
+app.get('/adminPlatformHealth', requireAdmin, async (_req, res) => {
+  try {
+    res.json(await getPlatformHealth({ projectId: admin.app().options.projectId || process.env.GCLOUD_PROJECT }));
+  } catch (e) {
+    console.error('adminPlatformHealth error:', e.message);
     res.status(500).json({ error: 'service_unavailable' });
   }
 });
