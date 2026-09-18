@@ -120,8 +120,11 @@ void handlePushDataTap(Map<String, dynamic> data) {
       // result; the selected surface is retained in the payload for the
       // eventual destination without letting the client choose policy.
       if (data['surface'] == 'council') {
-        navigatorKey.currentState?.push(
-            MaterialPageRoute(builder: (_) => const GeneralCouncilScreen()));
+        navigatorKey.currentState?.push(MaterialPageRoute(
+            builder: (_) => GeneralCouncilScreen(
+                  notificationMessageKey:
+                      messageKey is String ? messageKey : null,
+                )));
       } else {
         LocalNotificationService().onNotificationClick.add('/');
       }

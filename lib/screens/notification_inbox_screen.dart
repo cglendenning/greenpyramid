@@ -68,8 +68,12 @@ class NotificationInboxScreen extends StatelessWidget {
         // surface is metadata for the destination; opening it never selects
         // a new policy.
         if (item['surface'] == 'council') {
-          await Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const GeneralCouncilScreen()));
+          await Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => GeneralCouncilScreen(
+                    notificationMessageKey: key,
+                    notificationTitle: item['title'] as String?,
+                    notificationBody: item['body'] as String?,
+                  )));
         } else {
           LocalNotificationService().onNotificationClick.add('/');
         }

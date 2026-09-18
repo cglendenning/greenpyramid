@@ -47,6 +47,18 @@ void main() {
   });
 
   test(
+      'notification-driven Council opens retain the originating message key '
+      'and render its notification context', () {
+    final source =
+        File('lib/screens/general_council_screen.dart').readAsStringSync();
+    expect(source, contains('this.notificationMessageKey'));
+    expect(source, contains('this.notificationTitle'));
+    expect(source, contains('this.notificationBody'));
+    expect(source, contains("Opened from your notification"));
+    expect(source, contains("where('messageKey', isEqualTo: key)"));
+  });
+
+  test(
       'D-029: _load() awaits sign-in before touching the Council session — '
       'regression test for a defect found live: "Could not open this '
       'conversation" on a fresh launch (a reinstall, or D-148\'s wipe). '

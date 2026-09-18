@@ -98,7 +98,15 @@ test('D-149: shared delivery writes the inbox before provider delivery', async (
   const key = notificationMessageKey({ type: 'intervention', occurrenceDate: '2026-09-15', slot: '09:00' });
   const result = await deliverNotification({
     store,
-    messaging: { sendEachForMulticast: async () => ({ successCount: 1 }) },
+    messaging: {
+      sendEachForMulticast: async () => {
+        assert.equal(
+            Object.keys(store.data).filter((path) => path.includes('/inbox/')).length,
+            1,
+            'provider delivery must observe the durable inbox record');
+        return { successCount: 1 };
+      },
+    },
     uid: 'u',
     item: { messageKey: key, type: 'intervention', occurrenceDate: '2026-09-15', title: 'Keep going', body: 'A bounded message.' },
     payload: { type: 'intervention', messageKey: key, accountUid: 'u' },

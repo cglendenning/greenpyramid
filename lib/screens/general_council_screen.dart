@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
 
@@ -23,7 +25,19 @@ import '../widgets/council_transcript.dart';
 /// used to run during setup now lives — moved here, not deleted, when
 /// D-074 made setup a solo conversation with Mira alone.
 class GeneralCouncilScreen extends StatefulWidget {
-  const GeneralCouncilScreen({super.key});
+  const GeneralCouncilScreen({
+    super.key,
+    this.notificationMessageKey,
+    this.notificationTitle,
+    this.notificationBody,
+  });
+
+  /// The stable key from a notification payload. When Council is opened
+  /// from a push, the rendered copy is loaded from the account inbox rather
+  /// than copied into the push payload.
+  final String? notificationMessageKey;
+  final String? notificationTitle;
+  final String? notificationBody;
 
   @override
   State<GeneralCouncilScreen> createState() => _GeneralCouncilScreenState();
@@ -37,6 +51,7 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
   bool _busy = false;
   String? _error;
   String? _typingAdvisorKey;
+  Map<String, dynamic>? _notificationItem;
 
   // D-079: real grounding for the advisors' advice — replaces the
   // "their life" placeholder that produced disconnected, sometimes
@@ -87,6 +102,7 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
       // and never got it. signInSilently() is a no-op once already
       // signed in, so awaiting it here is always cheap.
       await AuthService.instance.signInSilently();
+      await _loadNotificationContext();
       _pyramidContext = await DatabaseHelper.instance.queryPyramidSummary();
       var session =
           await _council.getActiveSession(type: BoardSessionType.general);
@@ -105,6 +121,69 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _loadNotificationContext() async {
+    final key = widget.notificationMessageKey;
+    if (key == null || key.isEmpty) return;
+
+    final title = widget.notificationTitle;
+    final body = widget.notificationBody;
+    if (title != null || body != null) {
+      _notificationItem = {'title': title, 'body': body};
+      return;
+    }
+
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    try {
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('inbox')
+          .where('messageKey', isEqualTo: key)
+          .limit(1)
+          .get();
+      if (snapshot.docs.isNotEmpty) {
+        _notificationItem = snapshot.docs.first.data();
+      }
+    } catch (e, st) {
+      // Notification context is explanatory, not a prerequisite for Council.
+      // A missing inbox record or transient read failure must not make the
+      // destination itself fail to open.
+      debugPrint('GeneralCouncilScreen: notification context unavailable: $e\n$st');
+    }
+  }
+
+  Widget _buildNotificationContext() {
+    final item = _notificationItem;
+    if (item == null) return const SizedBox.shrink();
+    final title = item['title'] as String?;
+    final body = item['body'] as String?;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
+      child: Card(
+        color: AppColors.surface,
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Opened from your notification',
+                  style: Theme.of(context).textTheme.labelMedium),
+              if (title != null && title.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(title, style: Theme.of(context).textTheme.titleMedium),
+              ],
+              if (body != null && body.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(body),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _runAdvisorTurn(
@@ -190,6 +269,7 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
                 child: Text(_error!,
                     style: const TextStyle(color: Colors.redAccent)),
               ),
+            _buildNotificationContext(),
             Expanded(
               child: session == null
                   ? const Center(child: CircularProgressIndicator())

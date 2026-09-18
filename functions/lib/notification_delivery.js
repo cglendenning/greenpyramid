@@ -140,10 +140,12 @@ export async function deliverNotification({
   payload = {},
   now = new Date(),
 }) {
-  const claimed = await claimNotificationDispatch(store, uid, item.messageKey, now);
-  if (!claimed) return { state: 'duplicate', inbox: false, delivered: false };
-
+  // Persist the user-facing record before any claim or provider operation.
+  // The inbox is the durable source of truth: a transient transaction or
+  // transport failure must not leave only profile.lastNotification* behind.
   await upsertInboxItem(store, uid, item, now);
+  const claimed = await claimNotificationDispatch(store, uid, item.messageKey, now);
+  if (!claimed) return { state: 'duplicate', inbox: true, delivered: false };
   const installationSnap = await store.collection('users').doc(uid)
       .collection('installations').where('enabled', '==', true).get();
   const installations = installationSnap.docs.map((doc) => doc.data())
