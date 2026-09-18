@@ -2,9 +2,10 @@
 # Usage: scripts/serve-ota.sh [ios|android]
 # Serves the freshly built IPA or APK over a Cloudflare tunnel and prints an
 # OTA install link for the phone. Mirrors the goal-executor OTA workflow.
-# ios (default): run `flutter build ipa --export-options-plist ios/ExportOptions.plist`
-#   first; prints an itms-services:// manifest link.
-# android: run `flutter build apk --release` first; prints a direct APK link.
+# ios (default): run `scripts/build-ota.sh ios` first; this produces a
+#   release IPA using production App Attest, then prints an itms-services://
+#   manifest link. Never pass FORCE_APP_CHECK_DEBUG for an OTA build.
+# android: run `scripts/build-ota.sh android` first; prints a direct APK link.
 # Refuses to serve if the expected build artifact is not present.
 
 MODE="${1:-ios}"
