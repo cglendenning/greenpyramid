@@ -849,11 +849,12 @@ class InterventionEngineGuideScreen extends StatelessWidget {
               'condition and a way for burden to recover.',
             ),
             Text(
-              '6. Safety gate — approved safety boundaries run before rendering '
-              'and delivery. Safety is a hard prohibition boundary, not a score '
-              'about whether a person is safe and not the same thing as completion '
-              'risk. A prohibited candidate is constrained or suppressed and the '
-              'action is auditable without unnecessary sensitive content.',
+              '6. Safety check — five approved stop categories are checked before '
+              'rendering and delivery: self_harm, medical_crisis, illegal_activity, '
+              'abuse_or_coercion, and privacy_or_security. If one is present, the '
+              'proposed intervention is replaced with NONE and is not sent. The '
+              'category is recorded for audit without saving sensitive trigger text. '
+              'This is separate from completion risk.',
             ),
             Text(
               '7. Render, deliver and learn — a permitted intervention decision is '
@@ -871,7 +872,7 @@ class InterventionEngineGuideScreen extends StatelessWidget {
           children: [
             Text(
               'NONE is an intentional policy decision. Safety suppression means '
-              'a safety boundary prevented a prohibited path. Delivery failure '
+              'one of the five safety stop categories prevented an intervention. Delivery failure '
               'means a permitted decision was selected but transport did not '
               'complete. These are different causes and must not be combined.',
             ),
@@ -935,11 +936,11 @@ class SimulationGuideScreen extends StatelessWidget {
           title: 'Safety: what it means here',
           children: [
             Text(
-              'Safety is a hard boundary around the Intervention Engine. It '
-              'means the engine must not create or deliver a prohibited '
-              'intervention when an approved safety trigger is present. Safety '
-              'is not a score about whether a person is safe, and it is not a '
-              'claim that a simulation predicts real-world outcomes.',
+              'Safety means a specific stop rule. If an approved category is present, the engine '
+              'stops the proposed intervention before it is written or sent, '
+              'returns NONE, and records the category without storing sensitive '
+              'trigger text. This is different from completion risk, which is '
+              'only evidence that a checkbox may be missed.',
             ),
             SizedBox(height: 8),
             Text(
