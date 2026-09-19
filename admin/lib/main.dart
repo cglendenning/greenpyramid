@@ -2693,6 +2693,11 @@ class _DebuggerDayTile extends StatelessWidget {
           _section(context, 'Decision', [
             Text('${decision['type']} — ${decision['rationale']}'),
             Text('Target: ${decision['target'] ?? 'none'}'),
+            // D-174-AC-06: why this missed task rather than another one.
+            Text(
+              'Pyramid tier: ${signals?['pyramidTier'] ?? 'unresolved'} '
+              '(lift weight ${signals?['pyramidTierWeight'] ?? 1.0})',
+            ),
             Text('Objective: ${decision['objective'] ?? 'none'}'),
           ]),
           if (policy != null)
@@ -2705,7 +2710,8 @@ class _DebuggerDayTile extends StatelessWidget {
                       '${candidate['type']}'
                       '${candidate['type'] == decision['type'] ? ' (selected)' : ''}'
                       ' — utility ${(candidate['utilityScore'] as num?)?.toStringAsFixed(3)}'
-                      ', lift ${(candidate['predictedLift'] as num?)?.toStringAsFixed(2)}'
+                      ', lift ${(candidate['predictedLift'] as num?)?.toStringAsFixed(3)}'
+                      '${candidate['tierWeight'] != null && candidate['tierWeight'] != 1 ? ' (tier-weighted ×${candidate['tierWeight']})' : ''}'
                       ', burden ${(candidate['burden'] as num?)?.toStringAsFixed(2)}'
                       '${candidate['cooldownBlocked'] == true ? ', cooldown-blocked' : ''}'
                       ' — ${candidate['rationale']}',

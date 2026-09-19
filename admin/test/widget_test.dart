@@ -140,6 +140,11 @@ void main() {
     ]) {
       expect(source, contains("'$category'"));
     }
+    // D-174-AC-06: the trace shows the resolved tier and the applied weight.
+    expect(source, contains('Pyramid tier:'));
+    expect(source, contains("signals?['pyramidTier']"));
+    expect(source, contains("signals?['pyramidTierWeight']"));
+    expect(source, contains('tier-weighted'));
     // Additive: the existing simulator screen and endpoint are untouched.
     expect(source, contains('/adminSimulation'));
     expect(source, contains('class SimulationScreen'));
