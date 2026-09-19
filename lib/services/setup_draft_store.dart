@@ -76,7 +76,140 @@ class SetupDraftStore {
     );
   }
 
+  /// Copies an in-flight setup draft to the account selected by a provider
+  /// sign-in that collided with an existing Firebase account.
+  ///
+  /// This is deliberately copy-only: the anonymous source draft is never
+  /// deleted, so a failed or interrupted account switch cannot destroy the
+  /// user's work. The destination receives both the resumable local payload
+  /// and a complete Council session document, because [CouncilService]
+  /// discovers active sessions from the latter before [recover] hydrates the
+  /// draft state.
+  ///
+  /// A completed destination account is left untouched. A destination draft
+  /// is replaced only when this source draft is further along, preventing a
+  /// retry from regressing an already recovered setup.
+  Future<bool> transferForAccountSwitch({
+    required String fromUid,
+    required String toUid,
+  }) async {
+    if (fromUid == toUid) return false;
+    final source = await load(fromUid);
+    if (source == null) return false;
+
+    final destinationRoot = cloud.collection('users').doc(toUid);
+    final snapshots = await Future.wait([
+      destinationRoot.get(),
+      destinationRoot.collection('profile').doc('main').get(),
+    ]);
+    final root = snapshots[0].data();
+    final profile = snapshots[1].data();
+    final destinationComplete = root?['setupComplete'] == true ||
+        root?['setupCompletionId'] != null ||
+        profile?['setupComplete'] == true ||
+        profile?['setupCompletedAt'] != null;
+    if (destinationComplete) return false;
+
+    final session = Map<String, dynamic>.from(
+        (source['session'] as Map).cast<String, dynamic>());
+    final sessionId = session['sessionId'] as String?;
+    if (sessionId == null || sessionId.isEmpty) return false;
+
+    final existing = await load(toUid);
+    if (existing == null || progressOf(source) > progressOf(existing)) {
+      final database = await db.database;
+      await database.insert(
+        'setup_drafts',
+        {
+          'uid': toUid,
+          'session_id': sessionId,
+          'payload': jsonEncode(source),
+        },
+        conflictAlgorithm: ConflictAlgorithm.replace,
+      );
+    }
+
+    final messages = ((session['messages'] as List?) ?? const []).map((raw) {
+      final message =
+          Map<String, dynamic>.from((raw as Map).cast<String, dynamic>());
+      return {
+        'advisorKey': message['advisorKey'],
+        'text': message['text'],
+        'timestamp':
+            Timestamp.fromDate(DateTime.parse(message['timestamp'] as String)),
+      };
+    }).toList();
+    final sessionData = <String, dynamic>{
+      'type': 'setup',
+      'createdAt':
+          Timestamp.fromDate(DateTime.parse(session['createdAt'] as String)),
+      'lastUpdatedAt': Timestamp.fromDate(
+          DateTime.parse(session['lastUpdatedAt'] as String)),
+      'messages': messages,
+      'rotationOrder': session['rotationOrder'],
+      'sliderSettings': session['sliderSettings'],
+      'isComplete': false,
+      'totalInputTokens': session['totalInputTokens'] ?? 0,
+      'totalOutputTokens': session['totalOutputTokens'] ?? 0,
+      'setupDraft': source,
+      'recoveredFromAnonymousUid': fromUid,
+      'recoveredAt': FieldValue.serverTimestamp(),
+    };
+    await withRemoteDeadline(
+      destinationRoot.collection('councilSessions').doc(sessionId).set(
+            sessionData,
+            SetOptions(merge: true),
+          ),
+      timeout: remoteWriteTimeout,
+    );
+    return true;
+  }
+
+  /// A monotonic comparison used when local and cloud recovery race. It is
+  /// intentionally coarse: any later setup phase outranks an earlier one,
+  /// with the materialized proposal counts and transcript breaking ties.
+  static int progressOf(Map<String, dynamic> payload) {
+    final state = (payload['state'] as Map?)?.cast<String, dynamic>() ?? {};
+    final session = (payload['session'] as Map?)?.cast<String, dynamic>() ?? {};
+    final messages = (session['messages'] as List?)?.length ?? 0;
+    final categories = (state['categories'] as List?)?.length ?? 0;
+    final foundational = (state['foundational'] as List?)?.length ?? 0;
+    final habits = (state['habits'] as Map?)?.length ?? 0;
+    final phase = state['phase'] as String?;
+    const phases = [
+      'opening',
+      'openingRound',
+      'openingVision',
+      'tierIntro',
+      'categories',
+      'refining',
+      'essenceIntro',
+      'essences',
+      'habits',
+      'closing',
+      'reveal',
+      'permission',
+      'finished',
+    ];
+    final phaseScore = phase == null ? -1 : phases.indexOf(phase);
+    return phaseScore * 100000 +
+        categories * 1000 +
+        foundational * 100 +
+        habits * 10 +
+        messages;
+  }
+
   Future<Map<String, dynamic>?> recover(String uid, String sessionId) async {
+    final result = await loadRemote(uid, sessionId);
+    if (result == null) return null;
+    final database = await db.database;
+    await database.insert('setup_drafts',
+        {'uid': uid, 'session_id': sessionId, 'payload': jsonEncode(result)},
+        conflictAlgorithm: ConflictAlgorithm.replace);
+    return result;
+  }
+
+  Future<Map<String, dynamic>?> loadRemote(String uid, String sessionId) async {
     final doc = await withRemoteDeadline(
       cloud
           .collection('users')
@@ -87,12 +220,7 @@ class SetupDraftStore {
     );
     final payload = doc.data()?['setupDraft'];
     if (payload == null) return null;
-    final result = Map<String, dynamic>.from(payload as Map);
-    final database = await db.database;
-    await database.insert('setup_drafts',
-        {'uid': uid, 'session_id': sessionId, 'payload': jsonEncode(result)},
-        conflictAlgorithm: ConflictAlgorithm.replace);
-    return result;
+    return Map<String, dynamic>.from(payload as Map);
   }
 
   Future<Map<String, dynamic>?> recoverCompletion(String uid) async {

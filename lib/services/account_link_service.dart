@@ -12,6 +12,7 @@ import 'auth_service.dart';
 import 'sync_service.dart';
 import 'telemetry_service.dart';
 import 'push_messaging_service.dart';
+import 'setup_draft_store.dart';
 
 /// D-148: thin wrapper around the two native sign-in SDKs, kept separate
 /// from [AuthService] because AuthService is deliberately UI/SDK-agnostic
@@ -22,10 +23,12 @@ class AccountLinkService {
       {FirebaseAuth? auth,
       AuthService? authService,
       SyncService? sync,
+      SetupDraftStore? drafts,
       PushMessagingService? push})
       : _auth = auth ?? FirebaseAuth.instance,
         _authService = authService ?? AuthService.instance,
         _syncOverride = sync,
+        _draftsOverride = drafts,
         _pushOverride = push;
 
   static final AccountLinkService instance = AccountLinkService();
@@ -33,6 +36,7 @@ class AccountLinkService {
   final FirebaseAuth _auth;
   final AuthService _authService;
   final SyncService? _syncOverride;
+  final SetupDraftStore? _draftsOverride;
   final PushMessagingService? _pushOverride;
 
   // Resolved lazily, not in the constructor: SyncService.instance touches
@@ -41,6 +45,7 @@ class AccountLinkService {
   // that resolution before signOut() actually needs it (and there, only
   // inside the try/catch that already tolerates the failure).
   SyncService get _sync => _syncOverride ?? SyncService.instance;
+  SetupDraftStore get _drafts => _draftsOverride ?? SetupDraftStore();
   PushMessagingService get _push =>
       _pushOverride ?? PushMessagingService.instance;
 
@@ -130,6 +135,10 @@ class AccountLinkService {
   /// exercised directly in tests with a synthetic credential — the real
   /// Apple/Google SDK calls can't run in a unit test.
   Future<User?> linkWithCredentialOrSwitch(AuthCredential credential) async {
+    // Read through AuthService rather than the FirebaseAuth field directly;
+    // this keeps the collision path testable when the fallback auth object is
+    // a narrow wrapper that only implements signInWithCredential.
+    final previousUid = _authService.currentUid;
     try {
       return await _authService.linkWithCredential(credential);
     } on FirebaseAuthException catch (e) {
@@ -148,6 +157,27 @@ class AccountLinkService {
       // flow has no nonce and has never needed this).
       final result =
           await _auth.signInWithCredential(e.credential ?? credential);
+      final switchedUid = result.user?.uid;
+      if (previousUid != null &&
+          switchedUid != null &&
+          previousUid != switchedUid) {
+        // The old anonymous account is still intact. Copy its in-flight setup
+        // before any caller replaces the local cache for the destination
+        // account; this makes an existing provider identity a safe recovery
+        // path instead of a data-loss path.
+        try {
+          await _drafts.transferForAccountSwitch(
+            fromUid: previousUid,
+            toUid: switchedUid,
+          );
+        } catch (error, stack) {
+          // The source remains untouched, so a transient recovery failure is
+          // retryable on the next launch and must not turn a successful
+          // provider sign-in into a misleading authentication error.
+          debugPrint('AccountLinkService: setup draft recovery deferred: '
+              '$error\n$stack');
+        }
+      }
       return result.user;
     }
   }

@@ -68,6 +68,27 @@ class SetupService {
     if (uid != null) {
       final local = await drafts.load(uid);
       if (local != null && local['state']['phase'] != 'finished') {
+        // An account switch can recover a fuller cloud draft after this
+        // device has already cached the destination account's shorter draft.
+        // Compare before returning the local copy so the recovered work is
+        // visible immediately and never gets hidden by stale local state.
+        final active =
+            await _council.getActiveSession(type: BoardSessionType.setup);
+        if (active != null) {
+          final remote = await drafts.loadRemote(uid, active.sessionId);
+          if (remote != null &&
+              SetupDraftStore.progressOf(remote) >
+                  SetupDraftStore.progressOf(local)) {
+            await drafts.save(
+              uid,
+              SetupDraftStore.decodeSession(
+                  Map<String, dynamic>.from(remote['session'])),
+              Map<String, dynamic>.from(remote['state']),
+            );
+            return SetupDraftStore.decodeSession(
+                Map<String, dynamic>.from(remote['session']));
+          }
+        }
         return SetupDraftStore.decodeSession(
             Map<String, dynamic>.from(local['session']));
       }

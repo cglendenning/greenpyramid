@@ -254,6 +254,31 @@ void main() {
     expect(await recreated.load('another-user'), isNull);
     expect((await setup.startOrResumeSetup()).sessionId, session.sessionId);
   });
+  test('D-148: existing provider account receives the anonymous setup draft',
+      () async {
+    final sourceUid = 'anonymous-source';
+    final destinationUid = 'existing-provider-account';
+    final saved = state('closing')..['firstName'] = 'Craig';
+    await drafts.save(sourceUid, session, saved);
+
+    expect(
+        await drafts.transferForAccountSwitch(
+            fromUid: sourceUid, toUid: destinationUid),
+        isTrue);
+    expect((await drafts.load(sourceUid))!['state']['phase'], 'closing');
+    expect((await drafts.load(destinationUid))!['state']['phase'], 'closing');
+
+    final recovered = await cloud
+        .collection('users')
+        .doc(destinationUid)
+        .collection('councilSessions')
+        .doc(session.sessionId)
+        .get();
+    expect(recovered.data()!['type'], 'setup');
+    expect(recovered.data()!['isComplete'], isFalse);
+    expect(recovered.data()!['setupDraft']['state']['firstName'], 'Craig');
+    expect(recovered.data()!['recoveredFromAnonymousUid'], sourceUid);
+  });
   test('D-001-AC-01: acknowledged cloud draft restores after local loss',
       () async {
     await drafts.save(auth.currentUid, session, state('categories'));
