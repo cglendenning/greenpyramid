@@ -91,6 +91,36 @@ class SyncService {
   /// the account_state fields D-147 lists (entitlement, trial window).
   /// Every version of essence lives separately in `essenceVersions` — this
   /// doc only ever holds the current one per category.
+  /// D-177: erase this account's cloud pyramid so a confirmed "Set up again"
+  /// is genuinely irreversible.
+  ///
+  /// Clears exactly what [restoreFromCloud] reads — the profile's categories
+  /// and vision statement, plus the `tasks` and `recentActivity` collections
+  /// — and the separately synced `essenceVersions`, so no later launch,
+  /// sign-in or account switch can bring the old pyramid back.
+  ///
+  /// Server-owned fields are deliberately untouched: entitlement, trial and
+  /// spending state belong to the account, not the pyramid, and a user
+  /// rebuilding must not lose the subscription they paid for. Firestore
+  /// rules enforce that boundary independently.
+  ///
+  /// Throws if the erase cannot be completed, so the caller can abort before
+  /// wiping anything locally rather than leaving the two halves disagreeing.
+  Future<void> eraseCloudPyramid(String uid) async {
+    final userDoc = _firestore.collection('users').doc(uid);
+    for (final name in ['tasks', 'recentActivity', 'essenceVersions']) {
+      final snapshot = await withRemoteDeadline(userDoc.collection(name).get());
+      for (final doc in snapshot.docs) {
+        await withRemoteDeadline(doc.reference.delete());
+      }
+    }
+    await withRemoteDeadline(userDoc.collection('profile').doc('main').set({
+      'categories': <Map<String, dynamic>>[],
+      'visionStatement': null,
+      'setupComplete': false,
+    }, SetOptions(merge: true)));
+  }
+
   Future<void> _syncProfile(
       DocumentReference<Map<String, dynamic>> userDoc) async {
     final categoryRows = await _db.queryCategories();

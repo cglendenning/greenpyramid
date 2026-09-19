@@ -5,7 +5,7 @@ import 'package:life_ops/screens/setup_screen.dart';
 import 'package:life_ops/services/account_link_service.dart';
 import 'package:life_ops/services/auth_service.dart';
 import 'package:life_ops/services/local_pyramid_reset_service.dart';
-import 'package:life_ops/services/setup_rebuild_intent.dart';
+import 'package:life_ops/services/setup_rebuild_service.dart';
 import 'package:life_ops/services/notification.dart';
 import 'package:life_ops/services/db.dart';
 import 'package:life_ops/services/dbtools.dart';
@@ -668,12 +668,36 @@ class CustomAppBarState extends State<CustomAppBar> {
     );
     if (confirmed != true || !context.mounted) return;
 
-    // D-177: record the rebuild before wiping. The wipe is local-only (D-105
-    // deliberately leaves Firestore intact so a sign-out stays recoverable),
-    // so without this marker setup sees "signed in, no local pyramid", treats
-    // it as a reinstall, restores the cloud copy and reports the pyramid
-    // already built -- landing the user right back where they started.
-    await SetupRebuildIntent.instance.record();
+    // D-177: the cloud pyramid is erased first and the local one only if
+    // that succeeded, so the dialog's "this can't be undone" is true and the
+    // two halves can never disagree. D-105's wipe is local-only by design
+    // (written for sign-out, where the cloud copy must survive), so on its
+    // own it left the account looking exactly like a reinstall.
+    try {
+      await SetupRebuildService.instance.prepareRebuild();
+    } on SetupRebuildFailed catch (e) {
+      debugPrint('Set up again aborted, cloud pyramid not erased: $e');
+      if (!context.mounted) return;
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text('Could not start over',
+              style: TextStyle(color: AppColors.textPrimary)),
+          content: const Text(
+            'Your pyramid could not be erased, so nothing has been changed. '
+            'Check your connection and try again.',
+            style: TextStyle(color: AppColors.textSecondary),
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('OK')),
+          ],
+        ),
+      );
+      return;
+    }
     await LocalPyramidResetService.instance.wipeLocalPyramid();
     if (!context.mounted) return;
     utils.Utils().changeSystemColor(Brightness.dark);
