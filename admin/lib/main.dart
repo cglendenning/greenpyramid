@@ -4,6 +4,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 
 const apiBase = 'https://us-central1-life-ops.cloudfunctions.net/api';
 
@@ -1964,6 +1965,53 @@ String? _debuggerServerError(String body) {
   return null;
 }
 
+/// Debugger sessions live on this device only — never in Firestore — so the
+/// debugger keeps its guarantee of touching no cloud data. They survive
+/// leaving the screen, restarting the app, and installing a newer OTA build
+/// over the top; deleting the app discards them.
+class DebuggerSessionStore {
+  static const storageKey = 'intervention_debugger_sessions_v1';
+
+  Future<List<Map<String, dynamic>>> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(storageKey);
+    if (raw == null || raw.isEmpty) return [];
+    try {
+      return (jsonDecode(raw) as List)
+          .map((entry) => Map<String, dynamic>.from(entry as Map))
+          .toList();
+    } catch (e) {
+      // Never let one unreadable blob lock the operator out of the debugger.
+      debugPrint('Discarding unreadable debugger sessions: $e');
+      return [];
+    }
+  }
+
+  Future<void> save(Map<String, dynamic> session) async {
+    final sessions = await load();
+    final index = sessions.indexWhere((item) => item['id'] == session['id']);
+    if (index >= 0) {
+      sessions[index] = session;
+    } else {
+      sessions.insert(0, session);
+    }
+    await _write(sessions);
+  }
+
+  Future<void> delete(String id) async {
+    final sessions = await load();
+    sessions.removeWhere((item) => item['id'] == id);
+    await _write(sessions);
+  }
+
+  Future<void> _write(List<Map<String, dynamic>> sessions) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(storageKey, jsonEncode(sessions));
+  }
+}
+
+/// Lists saved debugger sessions and starts new ones. Opening a session
+/// resumes it on whatever virtual day it was left on.
 class InterventionDebuggerScreen extends StatefulWidget {
   const InterventionDebuggerScreen({super.key});
   @override
@@ -1973,17 +2021,17 @@ class InterventionDebuggerScreen extends StatefulWidget {
 
 class _InterventionDebuggerScreenState
     extends State<InterventionDebuggerScreen> {
+  final store = DebuggerSessionStore();
   final seedController = TextEditingController(text: '1');
-  List<Map<String, dynamic>>? categories;
-  List<Map<String, dynamic>>? tasks;
-  final List<Map<String, dynamic>> recentActivity = [];
-  final List<Map<String, dynamic>> priorInterventions = [];
-  final List<Map<String, dynamic>> timeline = [];
-  int currentDay = 0;
-  DateTime currentDate = DateTime.utc(2026, 1, 1, 12);
-  bool generating = false;
-  bool evaluating = false;
+  List<Map<String, dynamic>>? sessions;
+  bool creating = false;
   String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    refresh();
+  }
 
   @override
   void dispose() {
@@ -1991,27 +2039,28 @@ class _InterventionDebuggerScreenState
     super.dispose();
   }
 
-  Future<String> _authToken() async {
-    final user = FirebaseAuth.instance.currentUser!;
-    final token = await user.getIdToken(true);
-    if (token == null || token.isEmpty) {
-      throw const DebuggerException(null, 'authentication_required');
-    }
-    return token;
+  Future<void> refresh() async {
+    final loaded = await store.load();
+    if (!mounted) return;
+    setState(() => sessions = loaded);
   }
 
-  Future<void> generatePyramid() async {
+  Future<void> createSession() async {
     final seed = int.tryParse(seedController.text.trim());
     if (seed == null || seed < 0) {
       setState(() => error = 'Enter a valid seed.');
       return;
     }
     setState(() {
-      generating = true;
+      creating = true;
       error = null;
     });
     try {
-      final token = await _authToken();
+      final user = FirebaseAuth.instance.currentUser!;
+      final token = await user.getIdToken(true);
+      if (token == null || token.isEmpty) {
+        throw const DebuggerException(null, 'authentication_required');
+      }
       final response = await http.post(
         Uri.parse('$apiBase/adminInterventionDebuggerPyramid'),
         headers: {
@@ -2028,30 +2077,244 @@ class _InterventionDebuggerScreenState
         );
       }
       final payload = jsonDecode(response.body) as Map<String, dynamic>;
+      final now = DateTime.now();
+      final session = <String, dynamic>{
+        'id': 'session-${now.microsecondsSinceEpoch}',
+        'name': 'Session ${(sessions?.length ?? 0) + 1}',
+        'seed': seed,
+        'createdAt': now.toIso8601String(),
+        'updatedAt': now.toIso8601String(),
+        'categories': payload['categories'],
+        'tasks': payload['tasks'],
+        'recentActivity': <Map<String, dynamic>>[],
+        'priorInterventions': <Map<String, dynamic>>[],
+        'timeline': <Map<String, dynamic>>[],
+        'currentDay': 0,
+        'currentDate': DateTime.utc(2026, 1, 1, 12).toIso8601String(),
+      };
+      await store.save(session);
       if (!mounted) return;
-      setState(() {
-        categories = (payload['categories'] as List)
-            .cast<Map<String, dynamic>>();
-        tasks = (payload['tasks'] as List)
-            .map((task) => Map<String, dynamic>.from(task as Map))
-            .toList();
-        recentActivity.clear();
-        priorInterventions.clear();
-        timeline.clear();
-        currentDay = 0;
-        currentDate = DateTime.utc(2026, 1, 1, 12);
-      });
+      setState(() => creating = false);
+      await openSession(session);
     } catch (e) {
       if (!mounted) return;
       final detail = e is DebuggerException ? e.userMessage : null;
-      setState(() => error = detail ?? 'The pyramid could not be generated.');
-    } finally {
-      if (mounted) setState(() => generating = false);
+      setState(() {
+        error = detail ?? 'The session could not be created.';
+        creating = false;
+      });
     }
   }
 
+  Future<void> openSession(Map<String, dynamic> session) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DebuggerSessionScreen(session: session, store: store),
+      ),
+    );
+    await refresh();
+  }
+
+  Future<void> confirmDelete(Map<String, dynamic> session) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Delete ${session['name']}?'),
+        content: const Text(
+          'This discards that session and its whole decision timeline. It '
+          'cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await store.delete(session['id'] as String);
+    await refresh();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final saved = sessions;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Intervention engine debugger'),
+        actions: [
+          IconButton(
+            tooltip: 'How the intervention engine works',
+            icon: const Icon(Icons.help_outline),
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const InterventionEngineGuideScreen(),
+              ),
+            ),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          const Text(
+            'Sandbox only. No production data is read or written. Each session '
+            'is one synthetic pyramid you author a day at a time; leave a '
+            'session whenever you like and reopen it to carry on from the day '
+            'you stopped.',
+          ),
+          const SizedBox(height: 12),
+          const _ExplanationCard(
+            title: 'How this differs from the simulator',
+            body:
+                'The simulator auto-generates a check-in pattern for a named '
+                'scenario and reports a whole run at once. This debugger '
+                'starts from one realistic pyramid — six categories, two or '
+                'three tasks each, the same fields the production engine reads '
+                '— and lets you decide what happens each day, one day at a '
+                'time, so you can build a novel behavior pattern and watch the '
+                'engine reason about it as it happens.',
+          ),
+          const SizedBox(height: 20),
+          Text('Saved sessions', style: Theme.of(context).textTheme.titleLarge),
+          const Text('Stored on this device only. Tap one to resume it.'),
+          const SizedBox(height: 8),
+          if (saved == null)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 16),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (saved.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 8),
+              child: Text('No saved sessions yet. Start one below.'),
+            )
+          else
+            ...saved.map(
+              (session) => Card(
+                child: ListTile(
+                  title: Text('${session['name']}'),
+                  subtitle: Text(
+                    'Day ${session['currentDay']} · seed ${session['seed']} · '
+                    'updated ${'${session['updatedAt']}'.substring(0, 16).replaceFirst('T', ' ')}',
+                  ),
+                  trailing: IconButton(
+                    tooltip: 'Delete session',
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: () => confirmDelete(session),
+                  ),
+                  onTap: () => openSession(session),
+                ),
+              ),
+            ),
+          const SizedBox(height: 24),
+          Text('New session', style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 8),
+          TextField(
+            controller: seedController,
+            enabled: !creating,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Pyramid seed'),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'The seed chooses the stock category/task pattern. The same seed '
+            'always produces the same pyramid.',
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: creating ? null : createSession,
+            icon: creating
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.auto_fix_high_outlined),
+            label: Text(creating ? 'Generating…' : 'Start new session'),
+          ),
+          if (error != null) ...[
+            const SizedBox(height: 12),
+            Text(error!, style: const TextStyle(color: Colors.red)),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// One debugger session: steps a synthetic pyramid forward a virtual day at a
+/// time and shows the full decision trace for each day. Progress is written
+/// back to the store after every evaluated day and when the screen is left,
+/// so reopening the session resumes on the day it stopped.
+class DebuggerSessionScreen extends StatefulWidget {
+  const DebuggerSessionScreen({
+    super.key,
+    required this.session,
+    required this.store,
+  });
+  final Map<String, dynamic> session;
+  final DebuggerSessionStore store;
+
+  @override
+  State<DebuggerSessionScreen> createState() => _DebuggerSessionScreenState();
+}
+
+class _DebuggerSessionScreenState extends State<DebuggerSessionScreen> {
+  late List<Map<String, dynamic>> categories;
+  late List<Map<String, dynamic>> tasks;
+  late List<Map<String, dynamic>> recentActivity;
+  late List<Map<String, dynamic>> priorInterventions;
+  late List<Map<String, dynamic>> timeline;
+  late int currentDay;
+  late DateTime currentDate;
+  bool evaluating = false;
+  String? error;
+
+  static List<Map<String, dynamic>> _mapList(dynamic value) =>
+      (value as List? ?? const [])
+          .map((entry) => Map<String, dynamic>.from(entry as Map))
+          .toList();
+
+  @override
+  void initState() {
+    super.initState();
+    final session = widget.session;
+    categories = _mapList(session['categories']);
+    tasks = _mapList(session['tasks']);
+    recentActivity = _mapList(session['recentActivity']);
+    priorInterventions = _mapList(session['priorInterventions']);
+    timeline = _mapList(session['timeline']);
+    currentDay = (session['currentDay'] as num?)?.toInt() ?? 0;
+    currentDate =
+        DateTime.tryParse('${session['currentDate']}') ??
+        DateTime.utc(2026, 1, 1, 12);
+  }
+
+  /// Snapshots current progress synchronously, so this stays correct even
+  /// when called as the screen is being popped.
+  Future<void> persist() async {
+    final updated = <String, dynamic>{
+      ...widget.session,
+      'categories': categories,
+      'tasks': tasks,
+      'recentActivity': recentActivity,
+      'priorInterventions': priorInterventions,
+      'timeline': timeline,
+      'currentDay': currentDay,
+      'currentDate': currentDate.toIso8601String(),
+      'updatedAt': DateTime.now().toIso8601String(),
+    };
+    await widget.store.save(updated);
+  }
+
   Future<void> nextDay(Map<String, Map<String, dynamic>> outcomes) async {
-    final activeTasks = tasks!
+    final activeTasks = tasks
         .where((task) => task['active'] != false)
         .toList();
     final todaysActivity = activeTasks.map((task) {
@@ -2084,7 +2347,11 @@ class _InterventionDebuggerScreenState
       error = null;
     });
     try {
-      final token = await _authToken();
+      final user = FirebaseAuth.instance.currentUser!;
+      final token = await user.getIdToken(true);
+      if (token == null || token.isEmpty) {
+        throw const DebuggerException(null, 'authentication_required');
+      }
       final response = await http.post(
         Uri.parse('$apiBase/adminInterventionDebuggerEvaluate'),
         headers: {
@@ -2121,6 +2388,7 @@ class _InterventionDebuggerScreenState
         currentDay += 1;
         currentDate = currentDate.add(const Duration(days: 1));
       });
+      await persist();
     } catch (e) {
       if (!mounted) return;
       final detail = e is DebuggerException ? e.userMessage : null;
@@ -2131,118 +2399,49 @@ class _InterventionDebuggerScreenState
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(
-      title: const Text('Intervention engine debugger'),
-      actions: [
-        IconButton(
-          tooltip: 'How the intervention engine works',
-          icon: const Icon(Icons.help_outline),
-          onPressed: () => Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const InterventionEngineGuideScreen(),
-            ),
-          ),
-        ),
-      ],
-    ),
-    body: ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        const Text(
-          'Sandbox only. No production data is read or written. Generate a '
-          'stock synthetic pyramid, then author each virtual day yourself — '
-          'mark every task checked or missed, optionally explain a miss, and '
-          'advance one day at a time to watch the same production policy used '
-          'by the simulator above decide what it would do.',
-        ),
-        const SizedBox(height: 12),
-        const _ExplanationCard(
-          title: 'How this differs from the simulator',
-          body:
-              'The simulator above auto-generates a check-in pattern for a '
-              'named scenario and reports a whole run at once. This debugger '
-              'starts from one realistic pyramid — six categories, two or '
-              'three tasks each, the same fields the production engine reads '
-              '— and lets you decide what happens each day, one day at a '
-              'time, so you can build a novel behavior pattern and watch the '
-              'engine reason about it as it happens.',
-        ),
-        const SizedBox(height: 16),
-        if (categories == null) ...[
-          TextField(
-            controller: seedController,
-            enabled: !generating,
-            keyboardType: TextInputType.number,
-            decoration: const InputDecoration(labelText: 'Pyramid seed'),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'The seed chooses the stock category/task pattern. The same seed '
-            'always produces the same pyramid.',
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: generating ? null : generatePyramid,
-            icon: generating
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.auto_fix_high_outlined),
-            label: Text(
-              generating ? 'Generating…' : 'Generate stock pyramid',
-            ),
-          ),
-        ] else ...[
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Day $currentDay',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              OutlinedButton.icon(
-                onPressed: generating || evaluating
-                    ? null
-                    : () => setState(() {
-                        categories = null;
-                        tasks = null;
-                      }),
-                icon: const Icon(Icons.restart_alt),
-                label: const Text('Reset session'),
-              ),
-            ],
-          ),
+  Widget build(BuildContext context) => PopScope(
+    // Task attribute edits mutate the task maps without advancing a day, so
+    // save on the way out as well as after each evaluated day.
+    onPopInvokedWithResult: (didPop, result) {
+      if (didPop) persist();
+    },
+    child: Scaffold(
+      appBar: AppBar(title: Text('${widget.session['name']}')),
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
           Text(
-            currentDate.toIso8601String().substring(0, 10),
-            style: Theme.of(context).textTheme.bodyMedium,
+            'Day $currentDay · ${currentDate.toIso8601String().substring(0, 10)}',
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+          const Text(
+            'Progress saves automatically. Leave whenever you like and reopen '
+            'this session to carry on from here.',
           ),
           const SizedBox(height: 12),
           _DayForm(
             key: ValueKey('day-$currentDay'),
-            categories: categories!,
-            tasks: tasks!,
+            categories: categories,
+            tasks: tasks,
             evaluating: evaluating,
             onNextDay: nextDay,
           ),
+          if (error != null) ...[
+            const SizedBox(height: 12),
+            Text(error!, style: const TextStyle(color: Colors.red)),
+          ],
+          if (timeline.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            Text('Timeline', style: Theme.of(context).textTheme.titleLarge),
+            const Text(
+              'Most recent day first. Each card is the full decision trace for '
+              'that day.',
+            ),
+            const SizedBox(height: 8),
+            ...timeline.map((entry) => _DebuggerDayTile(entry: entry)),
+          ],
         ],
-        if (error != null) ...[
-          const SizedBox(height: 12),
-          Text(error!, style: const TextStyle(color: Colors.red)),
-        ],
-        if (timeline.isNotEmpty) ...[
-          const SizedBox(height: 24),
-          Text('Timeline', style: Theme.of(context).textTheme.titleLarge),
-          const Text(
-            'Most recent day first. Each card is the full decision trace for '
-            'that day.',
-          ),
-          const SizedBox(height: 8),
-          ...timeline.map((entry) => _DebuggerDayTile(entry: entry)),
-        ],
-      ],
+      ),
     ),
   );
 }

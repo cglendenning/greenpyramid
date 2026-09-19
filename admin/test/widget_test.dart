@@ -105,14 +105,24 @@ void main() {
     expect(source, contains('/adminInterventionDebuggerPyramid'));
     expect(source, contains('/adminInterventionDebuggerEvaluate'));
     expect(source, contains('Pyramid seed'));
-    expect(source, contains('Generate stock pyramid'));
+    expect(source, contains('Start new session'));
     expect(source, contains('Next day'));
     expect(source, contains('Miss reason (optional, free text)'));
     expect(source, contains('Safety trigger (optional)'));
     expect(source, contains('Commitment required'));
     expect(source, contains('Candidates considered (decision tree)'));
     expect(source, contains('Derived signals'));
-    expect(source, contains('Reset session'));
+    // D-173-AC-09: multiple sessions persisted on-device and resumable.
+    expect(source, contains('class DebuggerSessionStore'));
+    expect(source, contains('intervention_debugger_sessions_v1'));
+    expect(source, contains('SharedPreferences.getInstance()'));
+    expect(source, contains('class DebuggerSessionScreen'));
+    expect(source, contains('Saved sessions'));
+    expect(source, contains('Future<void> persist() async'));
+    expect(source, contains('onPopInvokedWithResult'));
+    expect(source, contains('Delete session'));
+    // Sessions are device-local: the debugger still writes no cloud data.
+    expect(source, isNot(contains('FirebaseFirestore')));
     // D-173-AC-08: bulk day controls, and safety flags scoped to missed tasks.
     expect(source, contains('All missed'));
     expect(source, contains('All checked'));

@@ -37,6 +37,9 @@ dependencies:
   firebase_core: ^4.0.0
   firebase_auth: ^6.6.1
   http: ^1.2.0
+  # D-173: debugger sessions persist on-device only, so the debugger keeps
+  # its guarantee of never reading or writing cloud data.
+  shared_preferences: ^2.3.2
 
 dev_dependencies:
   flutter_test:
