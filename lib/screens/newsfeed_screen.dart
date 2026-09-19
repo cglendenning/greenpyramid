@@ -92,10 +92,16 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
     if (uid != null) {
       await EntitlementService.instance.pullFromServer(uid);
     }
+    // D-142: do not infer access from the raw cached `subscribed` value.
+    // A lifetime-gift revocation can leave that capability string in place
+    // until the paid entitlement is revalidated. Use the same shared gate as
+    // Analysis and Council so the button reflects the actual access state.
     final account = await _db.getAccountState();
-    final entitlement = account[DatabaseHelper.columnEntitlement] as String?;
-    final entitled = entitlement == 'trialing' || entitlement == 'subscribed';
-    final remaining = await _service.onDemandArticlesRemainingToday();
+    final entitled = await EntitlementService.instance.isEntitled();
+    // Fail closed if the local account row is unavailable while the shared
+    // gate is reconciling the account.
+    final remaining =
+        account.isEmpty ? 0 : await _service.onDemandArticlesRemainingToday();
     if (!mounted) return;
     setState(() {
       _entitled = entitled;
@@ -178,6 +184,13 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
   /// article, just user-triggered and capped separately.
   Future<void> _onGenerateTapped() async {
     if (_generating || _onDemandRemaining <= 0) return;
+    // The screen may have remained mounted while Settings revoked access.
+    // Recheck the shared gate immediately before allowing the expensive
+    // on-demand path; a cached button state is never authorization.
+    if (!await EntitlementService.instance.isEntitled()) {
+      if (mounted) setState(() => _entitled = false);
+      return;
+    }
     setState(() => _generating = true);
     final outcome = await _service.generateArticleOnDemand();
     if (!mounted) return;
@@ -203,8 +216,10 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
         _showSnack("You've used today's on-demand analyses. More tomorrow.");
         break;
       case OnDemandArticleOutcome.notEntitled:
-        // Not reachable in practice — this control is hidden entirely
-        // for a non-entitled account — handled defensively regardless.
+        // The account may have been revoked while this screen was open.
+        // Hide the control immediately rather than leaving a stale button
+        // visible after the authoritative generation gate refused it.
+        setState(() => _entitled = false);
         break;
       case OnDemandArticleOutcome.failed:
         _showSnack(
