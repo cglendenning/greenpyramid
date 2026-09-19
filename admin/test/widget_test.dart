@@ -92,4 +92,38 @@ void main() {
       expect(source, contains("'$scenario':"));
     }
   });
+
+  // D-173-AC-02: per-day outcome, reason and safety-trigger controls, plus
+  // editable task attributes.
+  // D-173-AC-03: the day form drives the separate debugger evaluate endpoint.
+  // D-173-AC-04: the decision-trace view exposes candidates and signals.
+  // D-173-AC-05: additive companion screen; the simulator above is untouched.
+  // This test only adds coverage for the new surface; it does not modify the
+  // test above.
+  test('intervention engine debugger is additive and exposes the decision trace', () {
+    expect(source, contains('Intervention engine debugger'));
+    expect(source, contains('/adminInterventionDebuggerPyramid'));
+    expect(source, contains('/adminInterventionDebuggerEvaluate'));
+    expect(source, contains('Pyramid seed'));
+    expect(source, contains('Generate stock pyramid'));
+    expect(source, contains('Next day'));
+    expect(source, contains('Miss reason (optional, free text)'));
+    expect(source, contains('Safety trigger (optional)'));
+    expect(source, contains('Commitment required'));
+    expect(source, contains('Candidates considered (decision tree)'));
+    expect(source, contains('Derived signals'));
+    expect(source, contains('Reset session'));
+    for (final category in [
+      'self_harm',
+      'medical_crisis',
+      'illegal_activity',
+      'abuse_or_coercion',
+      'privacy_or_security',
+    ]) {
+      expect(source, contains("'$category'"));
+    }
+    // Additive: the existing simulator screen and endpoint are untouched.
+    expect(source, contains('/adminSimulation'));
+    expect(source, contains('class SimulationScreen'));
+  });
 }

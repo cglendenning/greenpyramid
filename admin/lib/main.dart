@@ -241,6 +241,16 @@ class Dashboard extends StatelessWidget {
                 ),
               ),
               ListTile(
+                leading: const Icon(Icons.bug_report_outlined),
+                title: const Text('Intervention engine debugger'),
+                subtitle: const Text('Step through a synthetic pyramid day by day'),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => const InterventionDebuggerScreen(),
+                  ),
+                ),
+              ),
+              ListTile(
                 leading: const Icon(Icons.account_tree_outlined),
                 title: const Text('How the intervention engine works'),
                 onTap: () => Navigator.of(context).push(
@@ -1905,3 +1915,613 @@ const requiredScenarios = [
   'difficult',
   'mature',
 ];
+
+// D-173: interactive companion to the named-scenario simulator above. It does
+// not touch SimulationScreen, its scenarios, or /adminSimulation — it is a
+// separate screen backed by separate endpoints. Instead of an auto-generated
+// check-in pattern, the operator authors a stock pyramid's outcomes one
+// virtual day at a time and inspects the full decision trace the shared
+// production policy produced for that day.
+
+const safetyTriggerCategories = [
+  'self_harm',
+  'medical_crisis',
+  'illegal_activity',
+  'abuse_or_coercion',
+  'privacy_or_security',
+];
+
+class DebuggerException implements Exception {
+  const DebuggerException(this.statusCode, [this.serverError]);
+  final int? statusCode;
+  final String? serverError;
+
+  String get userMessage {
+    switch (serverError) {
+      case 'authentication_required':
+        return 'Your admin session expired. Sign in again and retry.';
+      case 'admin_required':
+        return 'Admin authorization is required for the debugger.';
+      case 'seed_invalid':
+        return 'Enter a valid whole-number seed.';
+      default:
+        return statusCode == null
+            ? 'Authentication could not be completed.'
+            : 'Debugger service returned HTTP $statusCode.';
+    }
+  }
+}
+
+String? _debuggerServerError(String body) {
+  try {
+    final payload = jsonDecode(body);
+    if (payload is Map<String, dynamic> && payload['error'] is String) {
+      return payload['error'] as String;
+    }
+  } catch (_) {
+    // Keep the HTTP status when the service did not return JSON.
+  }
+  return null;
+}
+
+class InterventionDebuggerScreen extends StatefulWidget {
+  const InterventionDebuggerScreen({super.key});
+  @override
+  State<InterventionDebuggerScreen> createState() =>
+      _InterventionDebuggerScreenState();
+}
+
+class _InterventionDebuggerScreenState
+    extends State<InterventionDebuggerScreen> {
+  final seedController = TextEditingController(text: '1');
+  List<Map<String, dynamic>>? categories;
+  List<Map<String, dynamic>>? tasks;
+  final List<Map<String, dynamic>> recentActivity = [];
+  final List<Map<String, dynamic>> priorInterventions = [];
+  final List<Map<String, dynamic>> timeline = [];
+  int currentDay = 0;
+  DateTime currentDate = DateTime.utc(2026, 1, 1, 12);
+  bool generating = false;
+  bool evaluating = false;
+  String? error;
+
+  @override
+  void dispose() {
+    seedController.dispose();
+    super.dispose();
+  }
+
+  Future<String> _authToken() async {
+    final user = FirebaseAuth.instance.currentUser!;
+    final token = await user.getIdToken(true);
+    if (token == null || token.isEmpty) {
+      throw const DebuggerException(null, 'authentication_required');
+    }
+    return token;
+  }
+
+  Future<void> generatePyramid() async {
+    final seed = int.tryParse(seedController.text.trim());
+    if (seed == null || seed < 0) {
+      setState(() => error = 'Enter a valid seed.');
+      return;
+    }
+    setState(() {
+      generating = true;
+      error = null;
+    });
+    try {
+      final token = await _authToken();
+      final response = await http.post(
+        Uri.parse('$apiBase/adminInterventionDebuggerPyramid'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'seed': seed}),
+      );
+      if (response.statusCode != 200) {
+        throw DebuggerException(
+          response.statusCode,
+          _debuggerServerError(response.body),
+        );
+      }
+      final payload = jsonDecode(response.body) as Map<String, dynamic>;
+      if (!mounted) return;
+      setState(() {
+        categories = (payload['categories'] as List)
+            .cast<Map<String, dynamic>>();
+        tasks = (payload['tasks'] as List)
+            .map((task) => Map<String, dynamic>.from(task as Map))
+            .toList();
+        recentActivity.clear();
+        priorInterventions.clear();
+        timeline.clear();
+        currentDay = 0;
+        currentDate = DateTime.utc(2026, 1, 1, 12);
+      });
+    } catch (e) {
+      if (!mounted) return;
+      final detail = e is DebuggerException ? e.userMessage : null;
+      setState(() => error = detail ?? 'The pyramid could not be generated.');
+    } finally {
+      if (mounted) setState(() => generating = false);
+    }
+  }
+
+  Future<void> nextDay(Map<String, Map<String, dynamic>> outcomes) async {
+    final activeTasks = tasks!
+        .where((task) => task['active'] != false)
+        .toList();
+    final todaysActivity = activeTasks.map((task) {
+      final outcome =
+          outcomes[task['id']] ?? const {'checked': true, 'reason': ''};
+      final entry = <String, dynamic>{
+        'taskdate': currentDate.toIso8601String(),
+        'taskdescription': task['description'],
+        'checked': outcome['checked'],
+      };
+      final reason = (outcome['reason'] as String?)?.trim();
+      if (outcome['checked'] != true && reason != null && reason.isNotEmpty) {
+        entry['missreason'] = reason;
+      }
+      return entry;
+    }).toList();
+    final safetyTriggers = activeTasks
+        .map((task) => outcomes[task['id']]?['safetyType'])
+        .whereType<String>()
+        .toSet()
+        .map((type) => {'type': type})
+        .toList();
+
+    setState(() {
+      evaluating = true;
+      error = null;
+    });
+    try {
+      final token = await _authToken();
+      final response = await http.post(
+        Uri.parse('$apiBase/adminInterventionDebuggerEvaluate'),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'profile': {'categories': categories},
+          'tasks': tasks,
+          'recentActivity': [...recentActivity, ...todaysActivity],
+          'priorInterventions': priorInterventions,
+          'safetyTriggers': safetyTriggers,
+          'now': currentDate.toIso8601String(),
+        }),
+      );
+      if (response.statusCode != 200) {
+        throw DebuggerException(
+          response.statusCode,
+          _debuggerServerError(response.body),
+        );
+      }
+      final decision = jsonDecode(response.body) as Map<String, dynamic>;
+      if (!mounted) return;
+      setState(() {
+        timeline.insert(0, {
+          'day': currentDay,
+          'date': currentDate.toIso8601String(),
+          'activity': todaysActivity,
+          'decision': decision,
+        });
+        recentActivity.addAll(todaysActivity);
+        priorInterventions.add(decision);
+        currentDay += 1;
+        currentDate = currentDate.add(const Duration(days: 1));
+      });
+    } catch (e) {
+      if (!mounted) return;
+      final detail = e is DebuggerException ? e.userMessage : null;
+      setState(() => error = detail ?? 'The day could not be evaluated.');
+    } finally {
+      if (mounted) setState(() => evaluating = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: const Text('Intervention engine debugger'),
+      actions: [
+        IconButton(
+          tooltip: 'How the intervention engine works',
+          icon: const Icon(Icons.help_outline),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const InterventionEngineGuideScreen(),
+            ),
+          ),
+        ),
+      ],
+    ),
+    body: ListView(
+      padding: const EdgeInsets.all(20),
+      children: [
+        const Text(
+          'Sandbox only. No production data is read or written. Generate a '
+          'stock synthetic pyramid, then author each virtual day yourself — '
+          'mark every task checked or missed, optionally explain a miss, and '
+          'advance one day at a time to watch the same production policy used '
+          'by the simulator above decide what it would do.',
+        ),
+        const SizedBox(height: 12),
+        const _ExplanationCard(
+          title: 'How this differs from the simulator',
+          body:
+              'The simulator above auto-generates a check-in pattern for a '
+              'named scenario and reports a whole run at once. This debugger '
+              'starts from one realistic pyramid — six categories, two or '
+              'three tasks each, the same fields the production engine reads '
+              '— and lets you decide what happens each day, one day at a '
+              'time, so you can build a novel behavior pattern and watch the '
+              'engine reason about it as it happens.',
+        ),
+        const SizedBox(height: 16),
+        if (categories == null) ...[
+          TextField(
+            controller: seedController,
+            enabled: !generating,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(labelText: 'Pyramid seed'),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'The seed chooses the stock category/task pattern. The same seed '
+            'always produces the same pyramid.',
+          ),
+          const SizedBox(height: 16),
+          FilledButton.icon(
+            onPressed: generating ? null : generatePyramid,
+            icon: generating
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.auto_fix_high_outlined),
+            label: Text(
+              generating ? 'Generating…' : 'Generate stock pyramid',
+            ),
+          ),
+        ] else ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Day $currentDay',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+              OutlinedButton.icon(
+                onPressed: generating || evaluating
+                    ? null
+                    : () => setState(() {
+                        categories = null;
+                        tasks = null;
+                      }),
+                icon: const Icon(Icons.restart_alt),
+                label: const Text('Reset session'),
+              ),
+            ],
+          ),
+          Text(
+            currentDate.toIso8601String().substring(0, 10),
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          const SizedBox(height: 12),
+          _DayForm(
+            key: ValueKey('day-$currentDay'),
+            categories: categories!,
+            tasks: tasks!,
+            evaluating: evaluating,
+            onNextDay: nextDay,
+          ),
+        ],
+        if (error != null) ...[
+          const SizedBox(height: 12),
+          Text(error!, style: const TextStyle(color: Colors.red)),
+        ],
+        if (timeline.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          Text('Timeline', style: Theme.of(context).textTheme.titleLarge),
+          const Text(
+            'Most recent day first. Each card is the full decision trace for '
+            'that day.',
+          ),
+          const SizedBox(height: 8),
+          ...timeline.map((entry) => _DebuggerDayTile(entry: entry)),
+        ],
+      ],
+    ),
+  );
+}
+
+/// One virtual day's input form: every active task's outcome, plus an
+/// attribute editor so the operator can deliberately steer which candidate
+/// branch a later miss will exercise. Rebuilt fresh (via the parent's
+/// ValueKey) at the start of every day so outcomes never leak across days;
+/// task attribute edits persist because they mutate the shared task map.
+class _DayForm extends StatefulWidget {
+  const _DayForm({
+    super.key,
+    required this.categories,
+    required this.tasks,
+    required this.evaluating,
+    required this.onNextDay,
+  });
+  final List<Map<String, dynamic>> categories;
+  final List<Map<String, dynamic>> tasks;
+  final bool evaluating;
+  final void Function(Map<String, Map<String, dynamic>> outcomes) onNextDay;
+
+  @override
+  State<_DayForm> createState() => _DayFormState();
+}
+
+class _DayFormState extends State<_DayForm> {
+  late final Map<String, Map<String, dynamic>> outcomes = {
+    for (final task in widget.tasks)
+      task['id'] as String: {'checked': true, 'reason': '', 'safetyType': null},
+  };
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      for (final category in widget.categories) ...[
+        Padding(
+          padding: const EdgeInsets.only(top: 12, bottom: 4),
+          child: Text(
+            '${category['cat']}',
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ),
+        for (final task in widget.tasks.where(
+          (t) => t['categoryId'] == category['position'],
+        ))
+          _TaskOutcomeCard(
+            task: task,
+            outcome: outcomes[task['id']]!,
+            onOutcomeChanged: () => setState(() {}),
+          ),
+      ],
+      const SizedBox(height: 16),
+      FilledButton.icon(
+        onPressed: widget.evaluating ? null : () => widget.onNextDay(outcomes),
+        icon: widget.evaluating
+            ? const SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            : const Icon(Icons.arrow_forward),
+        label: Text(widget.evaluating ? 'Evaluating…' : 'Next day'),
+      ),
+    ],
+  );
+}
+
+class _TaskOutcomeCard extends StatefulWidget {
+  const _TaskOutcomeCard({
+    required this.task,
+    required this.outcome,
+    required this.onOutcomeChanged,
+  });
+  final Map<String, dynamic> task;
+  final Map<String, dynamic> outcome;
+  final VoidCallback onOutcomeChanged;
+
+  @override
+  State<_TaskOutcomeCard> createState() => _TaskOutcomeCardState();
+}
+
+class _TaskOutcomeCardState extends State<_TaskOutcomeCard> {
+  bool get checked => widget.outcome['checked'] == true;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    margin: const EdgeInsets.only(bottom: 8),
+    child: ExpansionTile(
+      title: Text(widget.task['description'] as String),
+      subtitle: Text(checked ? 'Checked' : 'Missed'),
+      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      children: [
+        SegmentedButton<bool>(
+          segments: const [
+            ButtonSegment(
+              value: true,
+              label: Text('Checked'),
+              icon: Icon(Icons.check),
+            ),
+            ButtonSegment(
+              value: false,
+              label: Text('Missed'),
+              icon: Icon(Icons.close),
+            ),
+          ],
+          selected: {checked},
+          onSelectionChanged: (selection) => setState(() {
+            widget.outcome['checked'] = selection.first;
+            widget.onOutcomeChanged();
+          }),
+        ),
+        if (!checked) ...[
+          const SizedBox(height: 12),
+          TextFormField(
+            decoration: const InputDecoration(
+              labelText: 'Miss reason (optional, free text)',
+            ),
+            onChanged: (value) => widget.outcome['reason'] = value,
+          ),
+          const SizedBox(height: 8),
+          DropdownButtonFormField<String>(
+            initialValue: widget.outcome['safetyType'] as String?,
+            decoration: const InputDecoration(
+              labelText: 'Safety trigger (optional)',
+            ),
+            items: [
+              const DropdownMenuItem(value: null, child: Text('None')),
+              for (final category in safetyTriggerCategories)
+                DropdownMenuItem(value: category, child: Text(category)),
+            ],
+            onChanged: (value) => setState(() {
+              widget.outcome['safetyType'] = value;
+              widget.onOutcomeChanged();
+            }),
+          ),
+        ],
+        const Divider(height: 24),
+        Text(
+          'Task attributes (persist across days)',
+          style: Theme.of(context).textTheme.labelLarge,
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          initialValue: widget.task['scheduledTime'] as String? ?? '',
+          decoration: const InputDecoration(labelText: 'Scheduled time'),
+          onChanged: (value) => widget.task['scheduledTime'] =
+              value.trim().isEmpty ? null : value.trim(),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          initialValue: widget.task['cue'] as String? ?? '',
+          decoration: const InputDecoration(labelText: 'Cue'),
+          onChanged: (value) =>
+              widget.task['cue'] = value.trim().isEmpty ? null : value.trim(),
+        ),
+        const SizedBox(height: 8),
+        TextFormField(
+          initialValue: widget.task['plan'] as String? ?? '',
+          decoration: const InputDecoration(labelText: 'Plan'),
+          onChanged: (value) =>
+              widget.task['plan'] = value.trim().isEmpty ? null : value.trim(),
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Commitment required'),
+          value: widget.task['commitmentRequired'] == true,
+          onChanged: (value) =>
+              setState(() => widget.task['commitmentRequired'] = value),
+        ),
+      ],
+    ),
+  );
+}
+
+/// The full decision trace for one evaluated virtual day: the exact
+/// intervention delivered (or NONE and why), every candidate the policy
+/// compared, the derived signals behind that comparison, the safety audit
+/// and the lifecycle status. This is the "decision tree" view.
+class _DebuggerDayTile extends StatelessWidget {
+  const _DebuggerDayTile({required this.entry});
+  final Map<String, dynamic> entry;
+
+  @override
+  Widget build(BuildContext context) {
+    final decision = entry['decision'] as Map<String, dynamic>;
+    final activity = (entry['activity'] as List).cast<Map<String, dynamic>>();
+    final policy = (decision['policy'] as Map?)?.cast<String, dynamic>();
+    final signals = (policy?['derivedSignals'] as Map?)
+        ?.cast<String, dynamic>();
+    final candidates = (policy?['candidates'] as List?)
+        ?.cast<Map<String, dynamic>>();
+    final safety = (decision['safety'] as Map?)?.cast<String, dynamic>();
+    final lifecycle = (decision['lifecycle'] as Map?)?.cast<String, dynamic>();
+    final rendered = (decision['rendered'] as Map?)?.cast<String, dynamic>();
+    final missed = activity.where((a) => a['checked'] != true).toList();
+
+    return Card(
+      child: ExpansionTile(
+        title: Text('Day ${entry['day']} · ${decision['type']}'),
+        subtitle: Text(
+          missed.isEmpty
+              ? 'All ${activity.length} tasks checked'
+              : '${missed.length} of ${activity.length} tasks missed',
+        ),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          _section(context, 'What happened', [
+            for (final a in activity)
+              Text(
+                '${a['taskdescription']}: ${a['checked'] == true ? 'checked' : 'missed'}'
+                '${a['missreason'] != null ? ' — "${a['missreason']}"' : ''}',
+              ),
+          ]),
+          _section(context, 'Decision', [
+            Text('${decision['type']} — ${decision['rationale']}'),
+            Text('Target: ${decision['target'] ?? 'none'}'),
+            Text('Objective: ${decision['objective'] ?? 'none'}'),
+          ]),
+          if (policy != null)
+            _section(context, 'Candidates considered (decision tree)', [
+              if (candidates != null)
+                for (final candidate in candidates)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      '${candidate['type']}'
+                      '${candidate['type'] == decision['type'] ? ' (selected)' : ''}'
+                      ' — utility ${(candidate['utilityScore'] as num?)?.toStringAsFixed(3)}'
+                      ', lift ${(candidate['predictedLift'] as num?)?.toStringAsFixed(2)}'
+                      ', burden ${(candidate['burden'] as num?)?.toStringAsFixed(2)}'
+                      '${candidate['cooldownBlocked'] == true ? ', cooldown-blocked' : ''}'
+                      ' — ${candidate['rationale']}',
+                    ),
+                  ),
+              if (policy['suppressionReason'] != null)
+                Text('Suppression reason: ${policy['suppressionReason']}'),
+              Text('Support tier: ${policy['burdenAssumptions']?['supportTier']}'),
+            ]),
+          if (signals != null)
+            _section(context, 'Derived signals', [
+              Text('Reason class: ${signals['reasonClass']}'),
+              Text(
+                'Missed streak: ${signals['missedStreak']} · Completed streak: ${signals['completedStreak']}',
+              ),
+              Text(
+                'Has cue: ${signals['hasCue']} · Has plan: ${signals['hasPlan']} · '
+                'Value context: ${signals['hasValueContext']} · Mixed history: ${signals['mixedHistory']}',
+              ),
+              Text('Commitment needed: ${signals['commitmentNeeded']}'),
+            ]),
+          if (safety != null)
+            _section(context, 'Safety', [
+              Text(
+                'Action: ${safety['action']}'
+                '${safety['triggerType'] != null ? ' (${safety['triggerType']})' : ''}',
+              ),
+            ]),
+          if (lifecycle != null)
+            _section(context, 'Lifecycle', [
+              Text('Status: ${lifecycle['status']}${lifecycle['reason'] != null ? ' (${lifecycle['reason']})' : ''}'),
+            ]),
+          if (rendered != null && (rendered['title'] as String).isNotEmpty)
+            _section(context, 'Rendered copy', [
+              Text('${rendered['title']}'),
+              Text('${rendered['body']}'),
+            ]),
+        ],
+      ),
+    );
+  }
+
+  Widget _section(BuildContext context, String title, List<Widget> children) =>
+      Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: Theme.of(context).textTheme.labelLarge),
+            const SizedBox(height: 4),
+            ...children,
+          ],
+        ),
+      );
+}
