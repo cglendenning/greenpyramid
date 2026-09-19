@@ -2754,6 +2754,12 @@ class _DebuggerDayTile extends StatelessWidget {
               ),
               Text('Commitment needed: ${signals['commitmentNeeded']}'),
               // D-175: why a high overall completion rate did not mean silence.
+              // D-176: this day on its own terms, not the 14-day average.
+              Text(
+                'This day: ${signals['latestDayMissed'] ?? 0} of '
+                '${signals['latestDayObserved'] ?? 0} missed'
+                '${signals['dayCollapse'] == true ? ' — COLLAPSE' : ''}',
+              ),
               Text(
                 'Worst single-task miss streak: ${signals['worstTaskMissStreak'] ?? 0}',
               ),

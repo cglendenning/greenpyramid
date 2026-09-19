@@ -1,6 +1,7 @@
 import { INTERVENTION_TYPES, SURFACE_BY_TYPE } from './intervention_taxonomy.js';
 import { resolveTier, tierWeight } from './pyramid_tier.js';
 import { neglectedTasks, worstMissStreak } from './task_neglect.js';
+import { latestDaySummary } from './day_collapse.js';
 
 const MAX_CANDIDATES = 4;
 const BURDEN_WINDOW_DAYS = 7;
@@ -150,10 +151,8 @@ function deriveSignals({ baseline, target, context = {}, priorInterventions = []
   // D-175: the trailing run of checked entries belongs to the other tasks
   // recorded that same day, so it must not read as a clean day. Success
   // language requires the most recent day to be genuinely complete.
-  const latestDay = history.reduce(
-    (latest, entry) => (entry.date && (latest === null || entry.date > latest) ? entry.date : latest), null);
-  const latestDayFullyChecked = latestDay !== null &&
-    history.filter((entry) => entry.date === latestDay).every((entry) => entry.checked === true);
+  const latestDay = latestDaySummary(history);
+  const latestDayFullyChecked = latestDay.observed > 0 && latestDay.missed === 0;
   const completedStreak = trailingStreak(history, true);
   const missedStreak = trailingStreak(history, false);
   const mixedHistory = baseline.completedCount > 0 && baseline.missedCount > 0;
@@ -171,8 +170,12 @@ function deriveSignals({ baseline, target, context = {}, priorInterventions = []
   const supportTier = effectiveMissedStreak >= 3 ||
       (observedCount >= 3 && completionRate !== null && completionRate <= 0.5)
     ? 'persistent'
-    : effectiveMissedStreak >= 2 ||
+    : effectiveMissedStreak >= 2 || latestDay.collapse ||
         (observedCount >= 2 && completionRate !== null && completionRate < 0.8)
+      // D-176: a collapsed day is credible difficulty in its own right. Without
+      // this the week's single stable-tier allowance can already have been
+      // spent on an acknowledgment, leaving the engine silent on the day it
+      // most needs to respond.
       ? 'emerging'
       : 'stable';
   const needsImplementationIntention = reasonClass === 'planning' &&
@@ -189,6 +192,10 @@ function deriveSignals({ baseline, target, context = {}, priorInterventions = []
     target,
     neglectedTasks: neglected.map(({ task: name, tier, missStreak }) => ({ task: name, tier, missStreak })),
     worstTaskMissStreak,
+    latestDayCompletion: latestDay.completion,
+    latestDayMissed: latestDay.missed,
+    latestDayObserved: latestDay.observed,
+    dayCollapse: latestDay.collapse,
     pyramidTier,
     pyramidTierWeight: tierWeight(pyramidTier),
     latestReason,
@@ -277,8 +284,17 @@ export function generateInterventionCandidates({
   // The pooled baseline cannot see it, and the interleaved "latest entry"
   // is usually one of the other tasks being checked.
   const isNeglect = signals.neglectedTasks.length > 0;
+  // D-176: a day where most of the pyramid was missed is evidence on its own.
+  // The lookback average cannot fall far enough on one day to show it.
+  const isCollapse = signals.dayCollapse === true;
   const hasMissOpportunity = Boolean(
-    target && (isNeglect || (baseline?.opportunity && !signals.latestChecked)));
+    target && (isNeglect || isCollapse || (baseline?.opportunity && !signals.latestChecked)));
+
+  // D-176: a collapsed day is a disruption. RECOVERY is the taxonomy's type
+  // for restarting after one, so offer it rather than letting a day-wide
+  // collapse fall through to a generic reminder. It is added beside any
+  // reason-driven candidate; utility scoring still picks between them.
+  if (isCollapse && target) add('RECOVERY', 'same_day_collapse');
   if (hasMissOpportunity) {
     switch (signals.reasonClass) {
       case 'target_change':
@@ -315,14 +331,14 @@ export function generateInterventionCandidates({
     }
     if (signals.reasonClass === 'motivation' && signals.hasValueContext) add('VALUE_REFRAME', 'reconnect_to_stated_value');
     if (signals.reasonClass === 'planning' && !signals.needsImplementationIntention) add('PLAN_PROMPT', 'missing_action_plan');
-  } else if (!isNeglect && signals.latestDayFullyChecked && signals.completedStreak >= 3) {
+  } else if (!isNeglect && !isCollapse && signals.latestDayFullyChecked && signals.completedStreak >= 3) {
     if (signals.completedStreak % 2 === 1) add('CELEBRATION', 'success_cadence_acknowledgment');
     else add('SUCCESS_REFLECTION', 'success_cadence_learning');
-  } else if (!isNeglect && signals.latestDayFullyChecked && signals.mixedHistory) {
+  } else if (!isNeglect && !isCollapse && signals.latestDayFullyChecked && signals.mixedHistory) {
     add('REFLECTION', 'mixed_pattern_learning');
   }
 
-  if (candidates.length === 1 && target && (baseline?.opportunity || isNeglect)) {
+  if (candidates.length === 1 && target && (baseline?.opportunity || isNeglect || isCollapse)) {
     add('REMINDER', isNeglect ? 'sustained_single_task_neglect' : 'recent_completion_risk');
   }
   return {

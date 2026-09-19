@@ -146,6 +146,10 @@ void main() {
     expect(source, contains("signals?['pyramidTierWeight']"));
     expect(source, contains('tier-weighted'));
     // D-174-AC-06: each task and category shows the tier it sits in.
+    // D-176-AC-01: the trace shows the day on its own terms.
+    expect(source, contains('This day:'));
+    expect(source, contains('COLLAPSE'));
+    expect(source, contains("signals['dayCollapse']"));
     // D-175-AC-05: the trace shows the per-task neglect behind the decision.
     expect(source, contains('Worst single-task miss streak:'));
     expect(source, contains('Neglected tasks:'));
