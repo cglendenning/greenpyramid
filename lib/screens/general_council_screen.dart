@@ -11,6 +11,7 @@ import '../services/auth_service.dart';
 import '../services/council_client.dart';
 import '../services/council_service.dart';
 import '../services/db.dart';
+import '../services/entitlement_gate.dart';
 import '../theme/app_colors.dart';
 import '../widgets/chat_backdrop.dart';
 import '../widgets/chat_input_bar.dart';
@@ -102,6 +103,15 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
       // and never got it. signInSilently() is a no-op once already
       // signed in, so awaiting it here is always cheap.
       await AuthService.instance.signInSilently();
+      if (!mounted) return;
+      if (!await ensureEntitled(
+          context, reason: 'Talk to the Council of Advisors')) {
+        if (mounted) {
+          setState(() => _error =
+              'The Council of Advisors is available with an active subscription.');
+        }
+        return;
+      }
       await _loadNotificationContext();
       _pyramidContext = await DatabaseHelper.instance.queryPyramidSummary();
       var session =

@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 
 import '../services/auth_service.dart';
 import '../services/db.dart';
+import '../services/entitlement_gate.dart';
 import '../services/entitlement_service.dart';
 import '../services/newsfeed_service.dart';
 import '../theme/app_colors.dart';
@@ -46,6 +47,7 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
   bool _loadingMore = false;
   bool _hasMore = true;
   bool _initialLoad = true;
+  bool _accessDenied = false;
   String? _highlighted;
 
   // D-122: the "Generate new analysis" control is hidden entirely for a
@@ -62,8 +64,22 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
     _analytics.logEvent(name: 'newsfeed');
     _highlighted = widget.highlightDedupeKey;
     _scrollController.addListener(_onScroll);
-    _loadInitial();
-    _loadEntitlementState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    await AuthService.instance.signInSilently();
+    if (!mounted) return;
+    if (!await ensureEntitled(context, reason: 'Read your personal Newsfeed')) {
+      if (mounted) {
+        setState(() {
+          _accessDenied = true;
+          _initialLoad = false;
+        });
+      }
+      return;
+    }
+    await Future.wait<void>([_loadInitial(), _loadEntitlementState()]);
   }
 
   /// D-142: found live — the local `account_state.entitlement` cache can
@@ -289,6 +305,19 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
   }
 
   Widget _body() {
+    if (_accessDenied) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Text(
+            'Your Newsfeed is available with an active subscription.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+                color: AppColors.textSecondary, fontFamily: 'Exo2'),
+          ),
+        ),
+      );
+    }
     return _initialLoad
         ? const Center(
             child: CircularProgressIndicator(color: AppColors.brandGreen))

@@ -11,6 +11,8 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'db.dart';
+import 'secrets.dart';
+import 'subscription_service.dart';
 import 'timeouts.dart';
 
 /// D-044/D-148/D-045/D-055: requests and caches the server-authoritative
@@ -235,7 +237,39 @@ class EntitlementService {
       await pullFromServer(uid);
     }
     final entitlement = await currentLocalEntitlement();
-    return entitlement == 'trialing' || entitlement == 'subscribed';
+    if (entitlement == 'trialing') return true;
+    if (entitlement != 'subscribed') return false;
+
+    // A paid subscription is different from a lifetime gift. The server
+    // webhook is authoritative for durable account state, but a webhook can
+    // lag behind a RevenueCat expiration or a local lifetime-gift revoke.
+    // Revalidate the paid entitlement before allowing a protected surface to
+    // open, otherwise a stale `subscribed` cache can keep every gate open.
+    if (await currentLocalLifetimeAccess()) return true;
+    final paidEntitlement = await _currentPaidEntitlement();
+    if (paidEntitlement == false) {
+      await _db.setAccountEntitlement(
+        entitlement: 'lapsed',
+        lifetimeAccess: false,
+      );
+      return false;
+    }
+    // A failed RevenueCat read is treated as an offline condition. Preserve
+    // the last known paid state so an already-entitled user is not locked out
+    // solely because the device cannot reach the store.
+    return true;
+  }
+
+  Future<bool?> _currentPaidEntitlement() async {
+    try {
+      final info = await SubscriptionService.syncAndGetCustomerInfo()
+          .timeout(remoteReadTimeout);
+      if (info == null) return null;
+      return info.entitlements.active.containsKey(revenueCatEntitlementId);
+    } catch (e) {
+      debugPrint('EntitlementService paid revalidation unavailable: $e');
+      return null;
+    }
   }
 
   /// D-090: the raw local entitlement string — 'trialing', 'subscribed',

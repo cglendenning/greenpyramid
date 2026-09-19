@@ -736,9 +736,9 @@ class CustomAppBarState extends State<CustomAppBar> {
     setState(() {});
   }
 
-  // D-122: unlike the Council (entitlement-gated, D-075), the newsfeed is
-  // generated entirely from data already local to the device — no AI
-  // call, no server round trip — so it carries no paywall.
+  // D-122/D-172: the NewsfeedScreen owns the shared entitlement gate before
+  // it loads local rows or starts any article work. Keep this navigation
+  // helper thin so menu and notification entry paths share the same guard.
   void navigateToNewsfeed(BuildContext context) async {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(context,
