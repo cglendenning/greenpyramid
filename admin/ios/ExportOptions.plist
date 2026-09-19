@@ -8,10 +8,17 @@
 	<string>MCALPSQ5P5</string>
 	<key>signingStyle</key>
 	<string>manual</string>
+	<!-- SHA-1 of the Apple Distribution cert in the dedicated CI keychain.
+	     Several same-named "Apple Distribution: Craig Glendenning" certs exist
+	     across keychains and only this one has a usable private key, so the
+	     export must be pinned by hash rather than by display name. See
+	     scripts/ensure_ci_signing_keychain.sh. -->
+	<key>signingCertificate</key>
+	<string>66F1F59CE546829AA563FE01BF325E9BC197584A</string>
 	<key>provisioningProfiles</key>
 	<dict>
 		<key>com.cglendenning.greenpyramid.admin</key>
-		<string>Green Pyramid Admin Ad Hoc</string>
+		<string>Green Pyramid Admin Ad Hoc CI</string>
 	</dict>
 	<key>stripSwiftSymbols</key>
 	<true/>

@@ -17,7 +17,9 @@ TUNNEL_LOG="/tmp/gp_cloudflared_${LOG_SUFFIX}.log"
 
 case "$MODE" in
   ios)
-    SERVE_DIR="/Users/craig/greenpyramid/admin/build/ios/ipa"
+    # SERVE_DIR is overridable so a build made in a git worktree can be served
+    # without copying the artifact back into the main checkout.
+    SERVE_DIR="${SERVE_DIR:-/Users/craig/greenpyramid/admin/build/ios/ipa}"
     ARTIFACT=$(ls -t "${SERVE_DIR}"/*.ipa 2>/dev/null | head -1)
     [ -z "$ARTIFACT" ] && { echo "ERROR: no .ipa in ${SERVE_DIR} — run flutter build ipa first" >&2; exit 1; }
     ;;
