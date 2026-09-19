@@ -5,6 +5,7 @@ import 'package:life_ops/screens/setup_screen.dart';
 import 'package:life_ops/services/account_link_service.dart';
 import 'package:life_ops/services/auth_service.dart';
 import 'package:life_ops/services/local_pyramid_reset_service.dart';
+import 'package:life_ops/services/setup_rebuild_intent.dart';
 import 'package:life_ops/services/notification.dart';
 import 'package:life_ops/services/db.dart';
 import 'package:life_ops/services/dbtools.dart';
@@ -667,6 +668,12 @@ class CustomAppBarState extends State<CustomAppBar> {
     );
     if (confirmed != true || !context.mounted) return;
 
+    // D-177: record the rebuild before wiping. The wipe is local-only (D-105
+    // deliberately leaves Firestore intact so a sign-out stays recoverable),
+    // so without this marker setup sees "signed in, no local pyramid", treats
+    // it as a reinstall, restores the cloud copy and reports the pyramid
+    // already built -- landing the user right back where they started.
+    await SetupRebuildIntent.instance.record();
     await LocalPyramidResetService.instance.wipeLocalPyramid();
     if (!context.mounted) return;
     utils.Utils().changeSystemColor(Brightness.dark);
