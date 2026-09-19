@@ -95,6 +95,28 @@ void main() {
           reason: 'the server pull must happen before the local read it is '
               'meant to freshen');
     });
+
+    test(
+        'the Newsfeed uses the shared revalidating entitlement gate rather '
+        'than trusting the raw cached subscribed string', () {
+      final start = source.indexOf('Future<void> _loadEntitlementState()');
+      final end = source.indexOf('\n  @override', start);
+      final body = source.substring(start, end);
+      expect(body, contains('EntitlementService.instance.isEntitled()'));
+    });
+
+    test(
+        'the final Generate tap rechecks entitlement before the AI request, '
+        'so revocation while the screen is open cannot authorize generation',
+        () {
+      final start = source.indexOf('Future<void> _onGenerateTapped()');
+      final end = source.indexOf('\n  void _showSnack', start);
+      final body = source.substring(start, end);
+      final gateIdx = body.indexOf('EntitlementService.instance.isEntitled()');
+      final generateIdx = body.indexOf('generateArticleOnDemand');
+      expect(gateIdx, greaterThan(-1));
+      expect(generateIdx, greaterThan(gateIdx));
+    });
   });
 
   group(

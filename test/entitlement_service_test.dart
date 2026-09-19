@@ -143,6 +143,33 @@ void main() {
     expect(account[DatabaseHelper.columnEntitlement], 'lapsed');
   });
 
+  test(
+      'D-142: a revoked lifetime gift cannot leave a stale subscribed cache '
+      'authorized when paid entitlement revalidation says inactive', () async {
+    final firestore = FakeFirebaseFirestore();
+    // The capability string can still be subscribed while the separate
+    // lifetime flag is false; the paid-store check is the deciding signal.
+    await seedProfile(firestore, {
+      'entitlement': 'subscribed',
+      'lifetimeAccess': false,
+    });
+    await db.setAccountEntitlement(
+        entitlement: 'subscribed', lifetimeAccess: false);
+    final auth = MockFirebaseAuth(
+        signedIn: true, mockUser: MockUser(uid: uid, isAnonymous: false));
+    final service = EntitlementService(
+      db: db,
+      firestore: firestore,
+      auth: auth,
+      paidEntitlementReader: () async => false,
+    );
+
+    expect(await service.isEntitled(), isFalse);
+    final account = await db.getAccountState();
+    expect(account[DatabaseHelper.columnEntitlement], 'lapsed');
+    expect(account[DatabaseHelper.columnLifetimeAccess], 0);
+  });
+
   test('markSubscribedLocally sets the local cache to subscribed '
       'immediately, without touching Firestore', () async {
     final service = EntitlementService(

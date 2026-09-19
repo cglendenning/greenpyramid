@@ -21,11 +21,15 @@ import 'timeouts.dart';
 /// class only asks for a grant and mirrors the answer into the local
 /// account_state cache. It never decides entitlement on-device.
 class EntitlementService {
-  EntitlementService(
-      {DatabaseHelper? db, FirebaseFirestore? firestore, FirebaseAuth? auth})
-      : _db = db ?? DatabaseHelper.instance,
+  EntitlementService({
+    DatabaseHelper? db,
+    FirebaseFirestore? firestore,
+    FirebaseAuth? auth,
+    Future<bool?> Function()? paidEntitlementReader,
+  })  : _db = db ?? DatabaseHelper.instance,
         _firestore = firestore ?? FirebaseFirestore.instance,
-        _authOverride = auth;
+        _authOverride = auth,
+        _paidEntitlementReader = paidEntitlementReader;
 
   static final EntitlementService instance = EntitlementService();
 
@@ -35,6 +39,7 @@ class EntitlementService {
   final DatabaseHelper _db;
   final FirebaseFirestore _firestore;
   final FirebaseAuth? _authOverride;
+  final Future<bool?> Function()? _paidEntitlementReader;
 
   // Resolved lazily, not in the constructor: FirebaseAuth.instance throws
   // in a unit test with no Firebase app initialized, and many existing
@@ -262,6 +267,10 @@ class EntitlementService {
 
   Future<bool?> _currentPaidEntitlement() async {
     try {
+      final reader = _paidEntitlementReader;
+      if (reader != null) {
+        return await reader().timeout(remoteReadTimeout);
+      }
       final info = await SubscriptionService.syncAndGetCustomerInfo()
           .timeout(remoteReadTimeout);
       if (info == null) return null;
