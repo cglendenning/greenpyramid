@@ -5,6 +5,7 @@ import 'auth_service.dart';
 import 'council_client.dart';
 import 'council_service.dart';
 import 'db.dart';
+import 'setup_rebuild_intent.dart';
 import 'sync_service.dart';
 import 'setup_draft_store.dart';
 import 'entitlement_service.dart';
@@ -64,6 +65,11 @@ class SetupService {
     final hasRealLocalPyramid = rows.any(
         (r) => !(r[DatabaseHelper.columnCat] as String).startsWith('Empty'));
 
+    // D-177: a deliberate "Set up again" must not be mistaken for a
+    // reinstall. Consumed once, before any cloud read, so the restore path
+    // below cannot resurrect the pyramid the user just confirmed erasing.
+    final rebuilding = await SetupRebuildIntent.instance.consume();
+
     final uid = _auth.currentUid;
     if (uid != null) {
       final local = await drafts.load(uid);
@@ -101,7 +107,7 @@ class SetupService {
       return active;
     }
 
-    if (!hasRealLocalPyramid && uid != null && !_auth.isAnonymous) {
+    if (!rebuilding && !hasRealLocalPyramid && uid != null && !_auth.isAnonymous) {
       final completed = await drafts.recoverCompletion(uid);
       if (completed != null && completed['state']['phase'] != 'finished')
         return SetupDraftStore.decodeSession(
@@ -110,7 +116,7 @@ class SetupService {
         throw SetupAlreadyCompleteException();
     }
 
-    if (hasRealLocalPyramid && await _council.hasEverCreatedSetupSession()) {
+    if (!rebuilding && hasRealLocalPyramid && await _council.hasEverCreatedSetupSession()) {
       throw SetupAlreadyCompleteException();
     }
 
