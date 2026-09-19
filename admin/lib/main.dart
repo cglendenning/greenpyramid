@@ -2753,6 +2753,16 @@ class _DebuggerDayTile extends StatelessWidget {
                 'Value context: ${signals['hasValueContext']} · Mixed history: ${signals['mixedHistory']}',
               ),
               Text('Commitment needed: ${signals['commitmentNeeded']}'),
+              // D-175: why a high overall completion rate did not mean silence.
+              Text(
+                'Worst single-task miss streak: ${signals['worstTaskMissStreak'] ?? 0}',
+              ),
+              Text(
+                'Neglected tasks: '
+                '${(signals['neglectedTasks'] as List?)?.isEmpty ?? true
+                    ? 'none'
+                    : (signals['neglectedTasks'] as List).map((n) => '${n['task']} (${n['tier']}, ${n['missStreak']} in a row)').join('; ')}',
+              ),
             ]),
           if (safety != null)
             _section(context, 'Safety', [

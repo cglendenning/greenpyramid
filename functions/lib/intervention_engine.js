@@ -4,6 +4,7 @@ import { estimateBaseline } from './baseline_estimator.js';
 import { validateInterventionDecision } from './intervention_taxonomy.js';
 import { chooseIntervention } from './utility_policy.js';
 import { resolveTier, tierRank } from './pyramid_tier.js';
+import { neglectedTasks } from './task_neglect.js';
 
 const LOOKBACK_DAYS = 14;
 const AUTONOMOUS_COMPLETION_THRESHOLD = 0.8;
@@ -133,10 +134,17 @@ export function evaluateIntervention({
       return latest === null || day > latest ? day : latest;
     }, null)
     : null;
-  const missed = missedEntries
+  const sameDayMiss = missedEntries
     .filter((entry) => dayKey(entry) === latestMissDay)
     .sort((a, b) => tierRank(tierOf(context, a)) - tierRank(tierOf(context, b)))[0];
-  const target = missed?.taskdescription || activeTasks[0]?.description || activeTasks[0]?.taskdescription || null;
+  // D-175: a task being dropped day after day outranks whatever happened to
+  // be missed today — that sustained neglect is the stronger evidence.
+  const neglected = neglectedTasks(context.checkboxHistory)[0] || null;
+  const target = neglected?.task
+    || sameDayMiss?.taskdescription
+    || activeTasks[0]?.description
+    || activeTasks[0]?.taskdescription
+    || null;
   const state = { observedCount, completedCount, completionRate, target };
   const policy = chooseIntervention({
     baseline, target, objective: 'support_next_checkbox', priorInterventions, now: current, context,
@@ -151,7 +159,10 @@ export function evaluateIntervention({
   if (!observedCount && policy.selectedType !== 'COMMITMENT_REQUEST') {
     return validateInterventionDecision(noneDecision({ accountUid, now: current, reason: 'insufficient_history', state, decisionId, context, baseline, policy }));
   }
-  if (completionRate >= AUTONOMOUS_COMPLETION_THRESHOLD &&
+  // D-175: a high pooled rate is not autonomy while one habit is being
+  // dropped. Eleven of twelve checked reads as 92% however long the twelfth
+  // has gone unchecked, which previously silenced the engine indefinitely.
+  if (completionRate >= AUTONOMOUS_COMPLETION_THRESHOLD && !neglected &&
       !['CELEBRATION', 'SUCCESS_REFLECTION'].includes(policy.selectedType)) {
     return validateInterventionDecision(noneDecision({ accountUid, now: current, reason: 'autonomous_completion', state, decisionId, context, baseline, policy }));
   }
