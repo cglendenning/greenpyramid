@@ -25,6 +25,16 @@ test('D-162/D-165 admin simulation fixes the sandbox and bounds client options',
   assert.match(source, /simulation_options_invalid/);
 });
 
+test('D-173-AC-05/D-173-AC-06: the debugger endpoints are additive, claim-gated and never touch production data', () => {
+  const source = fs.readFileSync(new URL('../index.js', import.meta.url), 'utf8');
+  // Additive: D-162's simulator endpoint is still present and untouched.
+  assert.match(source, /app\.post\('\/adminSimulation', requireAdmin/);
+  assert.match(source, /app\.post\('\/adminInterventionDebuggerPyramid', requireAdmin/);
+  assert.match(source, /app\.post\('\/adminInterventionDebuggerEvaluate', requireAdmin/);
+  assert.match(source, /generateStockPyramid/);
+  assert.match(source, /evaluateDebuggerDay/);
+});
+
 test('D-168-AC-04: admin detail reads root completion metadata and embedded profile categories', () => {
   const source = fs.readFileSync(new URL('../index.js', import.meta.url), 'utf8');
   assert.match(source, /const \[accountSnap, profileSnap\] = await Promise\.all/);

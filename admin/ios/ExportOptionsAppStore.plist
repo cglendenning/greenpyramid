@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
 	<key>method</key>
-	<string>ad-hoc</string>
+	<string>app-store-connect</string>
 	<key>teamID</key>
 	<string>MCALPSQ5P5</string>
 	<key>signingStyle</key>
@@ -11,7 +11,7 @@
 	<key>provisioningProfiles</key>
 	<dict>
 		<key>com.cglendenning.greenpyramid.admin</key>
-		<string>Green Pyramid Admin Ad Hoc</string>
+		<string>Green Pyramid Admin App Store</string>
 	</dict>
 	<key>stripSwiftSymbols</key>
 	<true/>
