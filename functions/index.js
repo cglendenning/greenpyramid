@@ -41,6 +41,7 @@ import { revalidateIntervention } from './lib/intervention_lifecycle.js';
 import { renderIntervention } from './lib/intervention_renderer.js';
 import { applySafetyConstraints } from './lib/safety_constraints.js';
 import { runSimulation, REQUIRED_SCENARIOS } from './lib/behavioral_simulator.js';
+import { generateStockPyramid, evaluateDebuggerDay } from './lib/intervention_debugger.js';
 import { generateLifetimeCode, redeemLifetimeCode, grantLifetimeAccess, revokeLifetimeAccess, LifetimeCodeError } from './lib/lifetime_codes.js';
 import { buildAdminUserSummary, buildAdminUserDetail } from './lib/admin_users.js';
 import { getPlatformHealth } from './lib/platform_health.js';
@@ -338,6 +339,42 @@ app.post('/adminSimulation', requireAdmin, async (req, res) => {
   } catch (e) {
     const status = /invalid|rejected|required/.test(e.message) ? 400 : 500;
     console.error('adminSimulation error:', e.message);
+    res.status(status).json({ error: status === 400 ? e.message : 'service_unavailable' });
+  }
+});
+
+// D-173: an interactive debugger companion to D-162's named-scenario
+// simulator. It generates a stock, real-shaped synthetic pyramid so an
+// operator can step through virtual days by hand, and evaluates each day
+// through the unmodified production sequence. It is additive: D-162's
+// simulator, scenarios and `/adminSimulation` endpoint are untouched, and
+// this endpoint fixes the sandbox target the same way — no client-supplied
+// project or credentials, no production Firestore access.
+app.post('/adminInterventionDebuggerPyramid', requireAdmin, async (req, res) => {
+  try {
+    const seed = Number(req.body?.seed ?? 1);
+    res.json(generateStockPyramid({ seed }));
+  } catch (e) {
+    const status = /invalid/.test(e.message) ? 400 : 500;
+    console.error('adminInterventionDebuggerPyramid error:', e.message);
+    res.status(status).json({ error: status === 400 ? e.message : 'service_unavailable' });
+  }
+});
+
+app.post('/adminInterventionDebuggerEvaluate', requireAdmin, async (req, res) => {
+  try {
+    const body = req.body || {};
+    res.json(evaluateDebuggerDay({
+      profile: body.profile || {},
+      tasks: body.tasks,
+      recentActivity: body.recentActivity,
+      priorInterventions: body.priorInterventions,
+      safetyTriggers: body.safetyTriggers,
+      now: body.now ? new Date(body.now) : new Date(),
+    }));
+  } catch (e) {
+    const status = /invalid/.test(e.message) ? 400 : 500;
+    console.error('adminInterventionDebuggerEvaluate error:', e.message);
     res.status(status).json({ error: status === 400 ? e.message : 'service_unavailable' });
   }
 });

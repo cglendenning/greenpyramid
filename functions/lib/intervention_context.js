@@ -1,3 +1,5 @@
+import { resolveTier, tierForPosition } from './pyramid_tier.js';
+
 function text(value) {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
@@ -8,6 +10,13 @@ function boolean(value) {
 
 function categoryName(category) {
   return text(category?.name) || text(category?.cat);
+}
+
+// D-174: a task and a check-in each inherit the pyramid tier of their
+// category. Derived from the user's own category position; no new subject
+// classification and no new field from the consumer app (D-154-AC-02).
+function tierFor(categories, { categoryId, categoryName: name }) {
+  return resolveTier({ categoryId, categoryName: name, categories });
 }
 
 /**
@@ -23,6 +32,7 @@ export function buildInterventionContext({ profile = {}, tasks = [], recentActiv
       name: categoryName(category),
       valueDescription: text(category.description),
       essence: text(category.activeEssence),
+      tier: tierForPosition(category.position ?? category.id),
     }))
     .filter((category) => category.name);
 
@@ -51,6 +61,10 @@ export function buildInterventionContext({ profile = {}, tasks = [], recentActiv
         cue: text(task.cue) || text(task.implementationIntention),
         commitmentRequired: boolean(task.commitmentRequired),
         challengeLevel: text(task.challengeLevel),
+        tier: tierFor(categories, {
+          categoryId: task.categoryId ?? null,
+          categoryName: text(task.category),
+        }),
       })),
     checkboxHistory: recentActivity.map((entry) => ({
       date: text(entry.taskdate) || text(entry.date),
@@ -58,6 +72,10 @@ export function buildInterventionContext({ profile = {}, tasks = [], recentActiv
       task: text(entry.taskdescription) || text(entry.description),
       checked: boolean(entry.checked),
       missReason: text(entry.missreason) || text(entry.missReason),
+      tier: tierFor(categories, {
+        categoryId: entry.categoryId ?? null,
+        categoryName: text(entry.category),
+      }),
     })),
     commitmentNeeded: boolean(profile.commitmentNeeded),
   };

@@ -92,4 +92,67 @@ void main() {
       expect(source, contains("'$scenario':"));
     }
   });
+
+  // D-173-AC-02: per-day outcome, reason and safety-trigger controls, plus
+  // editable task attributes.
+  // D-173-AC-03: the day form drives the separate debugger evaluate endpoint.
+  // D-173-AC-04: the decision-trace view exposes candidates and signals.
+  // D-173-AC-05: additive companion screen; the simulator above is untouched.
+  // This test only adds coverage for the new surface; it does not modify the
+  // test above.
+  test('intervention engine debugger is additive and exposes the decision trace', () {
+    expect(source, contains('Intervention engine debugger'));
+    expect(source, contains('/adminInterventionDebuggerPyramid'));
+    expect(source, contains('/adminInterventionDebuggerEvaluate'));
+    expect(source, contains('Pyramid seed'));
+    expect(source, contains('Start new session'));
+    expect(source, contains('Next day'));
+    expect(source, contains('Miss reason (optional, free text)'));
+    expect(source, contains('Safety trigger (optional)'));
+    expect(source, contains('Commitment required'));
+    expect(source, contains('Candidates considered (decision tree)'));
+    expect(source, contains('Derived signals'));
+    // D-173-AC-09: multiple sessions persisted on-device and resumable.
+    expect(source, contains('class DebuggerSessionStore'));
+    expect(source, contains('intervention_debugger_sessions_v1'));
+    expect(source, contains('SharedPreferences.getInstance()'));
+    expect(source, contains('class DebuggerSessionScreen'));
+    expect(source, contains('Saved sessions'));
+    expect(source, contains('Future<void> persist() async'));
+    expect(source, contains('onPopInvokedWithResult'));
+    expect(source, contains('Delete session'));
+    // Sessions are device-local: the debugger still writes no cloud data.
+    expect(source, isNot(contains('FirebaseFirestore')));
+    // D-173-AC-08: bulk day controls, and safety flags scoped to missed tasks.
+    expect(source, contains('All missed'));
+    expect(source, contains('All checked'));
+    expect(source, contains('void setAll(bool checked)'));
+    expect(
+      source,
+      contains(".where((task) => outcomes[task['id']]?['checked'] != true)"),
+    );
+    for (final category in [
+      'self_harm',
+      'medical_crisis',
+      'illegal_activity',
+      'abuse_or_coercion',
+      'privacy_or_security',
+    ]) {
+      expect(source, contains("'$category'"));
+    }
+    // D-174-AC-06: the trace shows the resolved tier and the applied weight.
+    expect(source, contains('Pyramid tier:'));
+    expect(source, contains("signals?['pyramidTier']"));
+    expect(source, contains("signals?['pyramidTierWeight']"));
+    expect(source, contains('tier-weighted'));
+    // D-174-AC-06: each task and category shows the tier it sits in.
+    expect(source, contains('String tierLabelFor('));
+    expect(source, contains('required this.tierLabel'));
+    expect(source, contains("'foundational'"));
+    expect(source, contains("'essential'"));
+    expect(source, contains("'peak'"));
+    // Additive: the existing simulator screen and endpoint are untouched.
+    expect(source, contains('/adminSimulation'));
+    expect(source, contains('class SimulationScreen'));
+  });
 }

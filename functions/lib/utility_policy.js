@@ -1,4 +1,5 @@
 import { INTERVENTION_TYPES, SURFACE_BY_TYPE } from './intervention_taxonomy.js';
+import { resolveTier, tierWeight } from './pyramid_tier.js';
 
 const MAX_CANDIDATES = 4;
 const BURDEN_WINDOW_DAYS = 7;
@@ -161,10 +162,17 @@ function deriveSignals({ baseline, target, context = {}, priorInterventions = []
   const needsImplementationIntention = reasonClass === 'planning' &&
     /\b(time|when|cue|trigger|situation|after|before)\b/.test(normalized(latestReason));
   const failedTypeCountsByType = failedTypeCounts(priorInterventions, history, now);
+  const pyramidTier = task?.tier ?? resolveTier({
+    categoryId: task?.categoryId ?? null,
+    categoryName: task?.category ?? null,
+    categories: Array.isArray(context.categories) ? context.categories : [],
+  });
 
   return {
     task,
     target,
+    pyramidTier,
+    pyramidTierWeight: tierWeight(pyramidTier),
     latestReason,
     reasonClass,
     hasValueContext,
@@ -181,8 +189,11 @@ function deriveSignals({ baseline, target, context = {}, priorInterventions = []
   };
 }
 
-function candidate({ type, target, objective, rationale, baseline, burden }) {
-  const lift = LIFT_BY_TYPE[type];
+function candidate({ type, target, objective, rationale, baseline, burden, weight = 1 }) {
+  // D-174: the tier weight scales only the modeled lift of a proposed
+  // intervention, never the baseline or any reported completion figure, so
+  // D-018-AC-02's ban on a tier-weighted progress score still holds.
+  const lift = LIFT_BY_TYPE[type] * weight;
   return {
     type,
     target: target ?? null,
@@ -191,6 +202,7 @@ function candidate({ type, target, objective, rationale, baseline, burden }) {
     rationale,
     predictedCheckboxCompletion: Math.min(1, (baseline ?? 0) + lift),
     predictedLift: lift,
+    tierWeight: weight,
     secondaryUtility: SECONDARY_UTILITY_BY_TYPE[type] || 0,
     burden,
   };
@@ -236,6 +248,7 @@ export function generateInterventionCandidates({
       objective: explicitObjective,
       rationale: alternativeType ? 'alternate_after_repeated_failure' : reason,
       baseline: baselineValue, burden,
+      weight: signals.pyramidTierWeight,
     }));
   };
 

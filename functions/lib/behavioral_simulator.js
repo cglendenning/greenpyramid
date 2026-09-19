@@ -1,5 +1,6 @@
 import { evaluateIntervention } from './intervention_engine.js';
 import { INTERVENTION_TYPES } from './intervention_taxonomy.js';
+import { seededRandom } from './deterministic_random.js';
 
 export const REQUIRED_SCENARIOS = Object.freeze([
   'autonomous', 'responsive', 'fatigue', 'sequence', 'changing', 'difficult', 'mature',
@@ -13,14 +14,6 @@ export function assertSandboxTarget({ projectId, credentials = false } = {}) {
   }
   if (!projectId.endsWith('-sandbox')) throw new Error('sandbox_project_required');
   return true;
-}
-
-function random(seed) {
-  let value = seed >>> 0;
-  return () => {
-    value = (1664525 * value + 1013904223) >>> 0;
-    return value / 4294967296;
-  };
 }
 
 function checkedForScenario(name, day, draw) {
@@ -53,7 +46,7 @@ function missReasonForScenario(name, day, checked) {
 export function runScenario({ name, days = 180, seed = 1, start = '2026-01-01T12:00:00Z', failureMode = 'default' }) {
   if (!REQUIRED_SCENARIOS.includes(name)) throw new Error('scenario_invalid');
   if (!Number.isInteger(days) || days < 1 || days > 3650) throw new Error('days_invalid');
-  const draw = random(seed);
+  const draw = seededRandom(seed);
   const timeline = [];
   const decisions = [];
   const tasks = [{ id: 'habit-1', description: name === 'changing' ? 'Current practice' : 'Daily practice', active: true }];

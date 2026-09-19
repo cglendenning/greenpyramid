@@ -3,6 +3,7 @@ import { buildInterventionContext } from './intervention_context.js';
 import { estimateBaseline } from './baseline_estimator.js';
 import { validateInterventionDecision } from './intervention_taxonomy.js';
 import { chooseIntervention } from './utility_policy.js';
+import { resolveTier, tierRank } from './pyramid_tier.js';
 
 const LOOKBACK_DAYS = 14;
 const AUTONOMOUS_COMPLETION_THRESHOLD = 0.8;
@@ -16,6 +17,20 @@ function asDate(value) {
 
 function isChecked(value) {
   return value === true || value === 'true' || value === 1;
+}
+
+/** Day granularity, matching how check-ins are actually recorded (D-174). */
+function dayKey(entry) {
+  const date = asDate(entry.taskdate || entry.date);
+  return date ? date.toISOString().slice(0, 10) : '';
+}
+
+function tierOf(context, entry) {
+  return resolveTier({
+    categoryId: entry.categoryId ?? null,
+    categoryName: entry.category ?? null,
+    categories: context.categories || [],
+  });
 }
 
 function stableDecisionId(accountUid, now, state) {
@@ -107,7 +122,20 @@ export function evaluateIntervention({
   const completionRate = observedCount ? completedCount / observedCount : null;
   const baseline = estimateBaseline({ recentActivity: observed });
   const context = buildInterventionContext({ profile, tasks, recentActivity: observed });
-  const missed = [...observed].reverse().find((entry) => !isChecked(entry.checked));
+  // D-174: check-ins are recorded with day granularity, so several misses
+  // normally share the most recent date. Recency still decides first; the
+  // pyramid tier then decides which of that day's misses the single decision
+  // addresses, replacing what was previously an arbitrary ordering tiebreak.
+  const missedEntries = observed.filter((entry) => !isChecked(entry.checked));
+  const latestMissDay = missedEntries.length
+    ? missedEntries.reduce((latest, entry) => {
+      const day = dayKey(entry);
+      return latest === null || day > latest ? day : latest;
+    }, null)
+    : null;
+  const missed = missedEntries
+    .filter((entry) => dayKey(entry) === latestMissDay)
+    .sort((a, b) => tierRank(tierOf(context, a)) - tierRank(tierOf(context, b)))[0];
   const target = missed?.taskdescription || activeTasks[0]?.description || activeTasks[0]?.taskdescription || null;
   const state = { observedCount, completedCount, completionRate, target };
   const policy = chooseIntervention({
