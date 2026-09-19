@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import 'calendar_service.dart';
 import 'db.dart';
+import 'timeouts.dart';
 
 /// D-027/D-147: uploads exactly the enumerated local dataset to Firestore
 /// under the signed-in uid, in the layout IV-D prescribes:
@@ -142,16 +143,18 @@ class SyncService {
     // profile photo is deliberately excluded: it stays local-only
     // (owner's own choice — cloud photo storage would mean adding
     // Firebase Storage, a new integration not approved yet).
-    await userDoc.collection('profile').doc('main').set({
-      'categories': categories,
-      if (vision != null) 'visionStatement': vision,
-      'timezone': account[DatabaseHelper.columnAccountTimezone],
-      'calendarContext': calendarContext ?? FieldValue.delete(),
-      'firstName':
-          account[DatabaseHelper.columnFirstName] ?? FieldValue.delete(),
-      'email': account[DatabaseHelper.columnEmail] ?? FieldValue.delete(),
-      'phone': account[DatabaseHelper.columnPhone] ?? FieldValue.delete(),
-    }, SetOptions(merge: true));
+    await withRemoteDeadline(
+        userDoc.collection('profile').doc('main').set({
+          'categories': categories,
+          if (vision != null) 'visionStatement': vision,
+          'timezone': account[DatabaseHelper.columnAccountTimezone],
+          'calendarContext': calendarContext ?? FieldValue.delete(),
+          'firstName':
+              account[DatabaseHelper.columnFirstName] ?? FieldValue.delete(),
+          'email': account[DatabaseHelper.columnEmail] ?? FieldValue.delete(),
+          'phone': account[DatabaseHelper.columnPhone] ?? FieldValue.delete(),
+        }, SetOptions(merge: true)),
+        timeout: remoteWriteTimeout);
   }
 
   /// IV-D `essenceVersions/{id}`: every version of every category's essence
@@ -175,7 +178,7 @@ class SyncService {
           },
           SetOptions(merge: true));
     }
-    await batch.commit();
+    await withRemoteDeadline(batch.commit(), timeout: remoteWriteTimeout);
   }
 
   /// IV-D `recentActivity/{id}`: D-147 — every task_log row now syncs, not
@@ -194,7 +197,7 @@ class SyncService {
     final localIds =
         rows.map((r) => r[DatabaseHelper.columnTLId].toString()).toSet();
 
-    final existing = await col.get();
+    final existing = await withRemoteDeadline(col.get());
     final batch = _firestore.batch();
     for (final doc in existing.docs) {
       if (!localIds.contains(doc.id)) {
@@ -218,7 +221,7 @@ class SyncService {
           },
           SetOptions(merge: true));
     }
-    await batch.commit();
+    await withRemoteDeadline(batch.commit(), timeout: remoteWriteTimeout);
   }
 
   /// IV-D `tasks/{id}`: every habit/task currently defined, keyed by its
@@ -235,7 +238,7 @@ class SyncService {
     final localIds =
         rows.map((r) => r[DatabaseHelper.columnId].toString()).toSet();
 
-    final existing = await col.get();
+    final existing = await withRemoteDeadline(col.get());
     final batch = _firestore.batch();
     for (final doc in existing.docs) {
       if (!localIds.contains(doc.id)) {
@@ -268,7 +271,7 @@ class SyncService {
           },
           SetOptions(merge: true));
     }
-    await batch.commit();
+    await withRemoteDeadline(batch.commit(), timeout: remoteWriteTimeout);
   }
 
   /// D-147: the pull direction — brings a device with no real local
@@ -311,7 +314,9 @@ class SyncService {
   /// reconcile against.
   Future<bool> restoreFromCloud(String uid) async {
     final userDoc = _firestore.collection('users').doc(uid);
-    final profileSnap = await userDoc.collection('profile').doc('main').get();
+    final profileSnap = await withRemoteDeadline(
+      userDoc.collection('profile').doc('main').get(),
+    );
     final profile = profileSnap.data();
     final categories = (profile?['categories'] as List<dynamic>?) ?? const [];
 
@@ -369,7 +374,8 @@ class SyncService {
       await _db.setPhone(phone);
     }
 
-    final tasksSnap = await userDoc.collection('tasks').get();
+    final tasksSnap =
+        await withRemoteDeadline(userDoc.collection('tasks').get());
     for (final doc in tasksSnap.docs) {
       final t = doc.data();
       final stableId = int.tryParse(doc.id);
@@ -404,7 +410,9 @@ class SyncService {
     // pushed — as of D-147, that's full history, not a bounded window.
     // Preserve the Firestore document id so repeated restore is idempotent
     // and the next push reconciles the same logical occurrence document.
-    final activitySnap = await userDoc.collection('recentActivity').get();
+    final activitySnap = await withRemoteDeadline(
+      userDoc.collection('recentActivity').get(),
+    );
     for (final doc in activitySnap.docs) {
       final a = doc.data();
       final stableId = int.tryParse(doc.id);
@@ -467,10 +475,15 @@ class SyncService {
       return;
     }
 
-    final existing = await userDoc.get();
+    final existing = await withRemoteDeadline(userDoc.get());
     if (existing.data()?['ttlAt'] != null) return;
     final window = lapsedEligible ? lapsedRetentionWindow : pruneEligibleWindow;
-    await userDoc.set({'ttlAt': Timestamp.fromDate(DateTime.now().add(window))},
-        SetOptions(merge: true));
+    await withRemoteDeadline(
+      userDoc.set(
+        {'ttlAt': Timestamp.fromDate(DateTime.now().add(window))},
+        SetOptions(merge: true),
+      ),
+      timeout: remoteWriteTimeout,
+    );
   }
 }

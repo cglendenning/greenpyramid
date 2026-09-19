@@ -8,6 +8,7 @@ import '../models/board_session.dart';
 import 'ai_guard.dart';
 import 'council_client.dart';
 import 'db.dart';
+import 'timeouts.dart';
 
 /// D-145/D-148: orchestrates Council sessions, ported from Kansei's
 /// `BoardService`. Sessions live flat under `users/{uid}/councilSessions`
@@ -65,7 +66,7 @@ class CouncilService {
     if (categoryId != null) {
       query = query.where('categoryId', isEqualTo: categoryId);
     }
-    final snap = await query.get();
+    final snap = await withRemoteDeadline(query.get());
     if (snap.docs.isEmpty) return null;
     // Sort client-side — avoids a composite index on (type, isComplete, categoryId, createdAt).
     // QuerySnapshot.docs may be an unmodifiable platform list. Copy it before
@@ -89,7 +90,7 @@ class CouncilService {
     if (categoryId != null) {
       query = query.where('categoryId', isEqualTo: categoryId);
     }
-    final snap = await query.get();
+    final snap = await withRemoteDeadline(query.get());
     final sessions = snap.docs.map(BoardSession.fromFirestore).toList();
     sessions.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     return sessions;
@@ -115,7 +116,10 @@ class CouncilService {
       totalInputTokens: 0,
       totalOutputTokens: 0,
     );
-    await _sessionsCol.doc(id).set(session.toFirestore());
+    await withRemoteDeadline(
+      _sessionsCol.doc(id).set(session.toFirestore()),
+      timeout: remoteWriteTimeout,
+    );
     return session;
   }
 
@@ -277,25 +281,31 @@ class CouncilService {
     required int outputTokens,
   }) async {
     final ref = _sessionsCol.doc(sessionId);
-    await _db.runTransaction((tx) async {
-      final snap = await tx.get(ref);
-      final raw = (snap.data()?['messages'] as List<dynamic>?) ?? [];
-      if (raw.isNotEmpty &&
-          raw.last['advisorKey'] == msg.advisorKey &&
-          raw.last['text'] == msg.text) return;
-      tx.update(ref, {
-        'messages': [...raw, msg.toMap()],
-        'lastUpdatedAt': Timestamp.fromDate(DateTime.now()),
-        if (inputTokens > 0)
-          'totalInputTokens': FieldValue.increment(inputTokens),
-        if (outputTokens > 0)
-          'totalOutputTokens': FieldValue.increment(outputTokens),
-      });
-    });
+    await withRemoteDeadline(
+      _db.runTransaction((tx) async {
+        final snap = await tx.get(ref);
+        final raw = (snap.data()?['messages'] as List<dynamic>?) ?? [];
+        if (raw.isNotEmpty &&
+            raw.last['advisorKey'] == msg.advisorKey &&
+            raw.last['text'] == msg.text) return;
+        tx.update(ref, {
+          'messages': [...raw, msg.toMap()],
+          'lastUpdatedAt': Timestamp.fromDate(DateTime.now()),
+          if (inputTokens > 0)
+            'totalInputTokens': FieldValue.increment(inputTokens),
+          if (outputTokens > 0)
+            'totalOutputTokens': FieldValue.increment(outputTokens),
+        });
+      }),
+      timeout: remoteWriteTimeout,
+    );
   }
 
   Future<void> endSession(String sessionId) async {
-    await _sessionsCol.doc(sessionId).update({'isComplete': true});
+    await withRemoteDeadline(
+      _sessionsCol.doc(sessionId).update({'isComplete': true}),
+      timeout: remoteWriteTimeout,
+    );
   }
 }
 

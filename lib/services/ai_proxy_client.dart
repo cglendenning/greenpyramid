@@ -4,6 +4,8 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import 'timeouts.dart';
+
 // Thrown when the AI proxy call fails (network, auth/App Check, or a
 // backend error). The message is user-presentable.
 class AiProxyException implements Exception {
@@ -37,16 +39,16 @@ class AiProxy {
     int maxTokens = 400,
     double? temperature,
     double? topP,
-    Duration timeout = const Duration(seconds: 30),
+    Duration timeout = providerRequestTimeout,
   }) async {
     String? appCheckToken;
     try {
-      appCheckToken = await FirebaseAppCheck.instance.getToken();
+      appCheckToken =
+          await FirebaseAppCheck.instance.getToken().timeout(remoteReadTimeout);
     } catch (e) {
       debugPrint('AiProxy: App Check token acquisition failed: $e');
       throw AiProxyException(
-          'Could not verify the app. Please check your connection and try'
-          ' again.');
+          'This feature needs an internet connection. Reconnect and try again.');
     }
     if (appCheckToken == null) {
       throw AiProxyException('App verification unavailable. Try again.');
@@ -72,7 +74,8 @@ class AiProxy {
           .timeout(timeout);
     } catch (e) {
       debugPrint('AiProxy: request failed: $e');
-      throw AiProxyException('The servers seem busy. Please try again.');
+      throw AiProxyException(
+          'This feature needs an internet connection. Reconnect and try again.');
     }
 
     if (resp.statusCode != 200) {
@@ -82,8 +85,7 @@ class AiProxy {
 
     try {
       final data = jsonDecode(resp.body) as Map<String, dynamic>;
-      final content =
-          data['choices'][0]['message']['content'] as String?;
+      final content = data['choices'][0]['message']['content'] as String?;
       return (content ?? '').trim();
     } catch (e) {
       debugPrint('AiProxy: bad response shape: $e');

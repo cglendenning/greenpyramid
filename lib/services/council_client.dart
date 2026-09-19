@@ -8,6 +8,7 @@ import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 
 import 'model_output_guard.dart';
+import 'timeouts.dart';
 
 /// Thrown when a Council backend call fails (network, App Check, or a
 /// backend error). The message is user-presentable.
@@ -128,7 +129,8 @@ class CouncilClient {
   Future<Map<String, String>> _headers() async {
     String? appCheckToken;
     try {
-      appCheckToken = await FirebaseAppCheck.instance.getToken();
+      appCheckToken =
+          await FirebaseAppCheck.instance.getToken().timeout(remoteReadTimeout);
     } catch (e) {
       debugPrint('CouncilClient: App Check token acquisition failed: $e');
       throw CouncilClientException(
@@ -138,7 +140,9 @@ class CouncilClient {
     if (appCheckToken == null) {
       throw CouncilClientException('App verification unavailable. Try again.');
     }
-    final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+    final idToken = await FirebaseAuth.instance.currentUser
+        ?.getIdToken()
+        .timeout(remoteReadTimeout);
     if (idToken == null) {
       throw CouncilClientException('Not signed in yet. Try again in a moment.');
     }
@@ -152,7 +156,7 @@ class CouncilClient {
   Future<Map<String, dynamic>> _post(
     String path,
     Map<String, dynamic> body, {
-    Duration timeout = const Duration(seconds: 30),
+    Duration timeout = providerRequestTimeout,
   }) async {
     final payload = Map<String, dynamic>.from(body);
     if (body['sessionId'] != null && path != 'completeSetup') {
@@ -170,7 +174,8 @@ class CouncilClient {
           .timeout(timeout);
     } catch (e) {
       debugPrint('CouncilClient: request to $path failed: $e');
-      throw CouncilClientException('The servers seem busy. Please try again.');
+      throw CouncilClientException(
+          'This feature needs an internet connection. Reconnect and try again.');
     }
 
     if (resp.statusCode == 402) {

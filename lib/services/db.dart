@@ -1274,21 +1274,19 @@ class DatabaseHelper {
         .format(DateTime.now().subtract(Duration(days: days)))
         .toString();
     final table = getTaskLogTable();
-    print('[RADAR][PCT] Using table: $table for category: $cat');
-    var q1 = "select * from $table where category = ? and taskdate >= ?";
-    final res1 = await db.rawQuery(q1, [cat, fromDate]);
-    var total = res1.length;
-    print('[RADAR][PCT] Total logs for $cat: $total');
-    var q2 =
-        "select * from $table where category = ? and taskdate >= ? and checked = 'true'";
-    final res2 = await db.rawQuery(q2, [cat, fromDate]);
-    var checked = res2.length;
-    print('[RADAR][PCT] Checked logs for $cat: $checked');
+    final result = await db.rawQuery(
+      "SELECT COUNT(*) AS total, "
+      "COALESCE(SUM(CASE WHEN checked = 'true' THEN 1 ELSE 0 END), 0) AS checked "
+      "FROM $table WHERE category = ? AND taskdate >= ?",
+      [cat, fromDate],
+    );
+    final aggregate = result.single;
+    final total = (aggregate['total'] as num?)?.toInt() ?? 0;
+    final checked = (aggregate['checked'] as num?)?.toInt() ?? 0;
     if (total == 0) {
       return -2; // Tasks exist for this category, but none due in this window
     }
     var percentage = ((checked / total) * 100).toInt();
-    print('[RADAR][PCT] Percentage for $cat: $percentage');
     return percentage;
   }
 
@@ -2144,10 +2142,9 @@ class DatabaseHelper {
   /// shape the general Council conversation (D-075) needs to ground its
   /// advice in the user's actual pyramid, not a placeholder. Tier follows
   /// the same position convention used throughout setup (1-3 foundational,
-  /// 4-5 essential, 6 peak). Reuses [getLatestEssenceForCategory] per
-  /// category rather than re-deriving "latest essence" with a second
-  /// reduction over every essence row (SyncService._syncProfile already
-  /// has one; this isn't a third).
+  /// 4-5 essential, 6 peak). Reads essence history once and reduces it in
+  /// memory rather than issuing one query per category, avoiding an N+1
+  /// query pattern on the Council/newsfeed hot path.
   Future<List<Map<String, dynamic>>> queryPyramidSummary() async {
     final rows = await queryCategories();
     // db.query()'s result is sqflite's own read-only list — sort a copy,
@@ -2156,6 +2153,18 @@ class DatabaseHelper {
     final sorted = List<Map<String, dynamic>>.from(rows)
       ..sort((a, b) =>
           (a[columnPosition] as int).compareTo(b[columnPosition] as int));
+
+    final essenceRows = await queryAllCategoryEssences();
+    final latestEssenceByCategory = <int, Map<String, dynamic>>{};
+    for (final essence in essenceRows) {
+      final categoryId = essence[columnEssenceCategoryId] as int;
+      final created = essence[columnEssenceCreated] as String;
+      final current = latestEssenceByCategory[categoryId];
+      if (current == null ||
+          created.compareTo(current[columnEssenceCreated] as String) > 0) {
+        latestEssenceByCategory[categoryId] = essence;
+      }
+    }
 
     final summary = <Map<String, dynamic>>[];
     for (final row in sorted) {
@@ -2168,7 +2177,7 @@ class DatabaseHelper {
         'id': id,
         'name': row[columnCat] as String,
         'tier': tier,
-        'essence': await getLatestEssenceForCategory(id),
+        'essence': latestEssenceByCategory[id]?[columnEssenceText],
       });
     }
     return summary;

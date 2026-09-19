@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sqflite/sqflite.dart';
 import '../models/board_session.dart';
 import 'db.dart';
+import 'timeouts.dart';
 
 /// D-001-AC-01: account-isolated restart recovery, independent of connectivity.
 class SetupDraftStore {
@@ -50,32 +51,40 @@ class SetupDraftStore {
   Future<void> delete(String uid, String sessionId) async {
     final database = await db.database;
     await database.delete('setup_drafts', where: 'uid = ?', whereArgs: [uid]);
-    await cloud
-        .collection('users')
-        .doc(uid)
-        .collection('councilSessions')
-        .doc(sessionId)
-        .delete();
+    await withRemoteDeadline(
+      cloud
+          .collection('users')
+          .doc(uid)
+          .collection('councilSessions')
+          .doc(sessionId)
+          .delete(),
+      timeout: remoteWriteTimeout,
+    );
   }
 
   Future<void> publish(String uid, String sessionId) async {
     final payload = await load(uid);
     if (payload == null || payload['session']['sessionId'] != sessionId) return;
-    await cloud
-        .collection('users')
-        .doc(uid)
-        .collection('councilSessions')
-        .doc(sessionId)
-        .set({'setupDraft': payload}, SetOptions(merge: true));
+    await withRemoteDeadline(
+      cloud
+          .collection('users')
+          .doc(uid)
+          .collection('councilSessions')
+          .doc(sessionId)
+          .set({'setupDraft': payload}, SetOptions(merge: true)),
+      timeout: remoteWriteTimeout,
+    );
   }
 
   Future<Map<String, dynamic>?> recover(String uid, String sessionId) async {
-    final doc = await cloud
-        .collection('users')
-        .doc(uid)
-        .collection('councilSessions')
-        .doc(sessionId)
-        .get();
+    final doc = await withRemoteDeadline(
+      cloud
+          .collection('users')
+          .doc(uid)
+          .collection('councilSessions')
+          .doc(sessionId)
+          .get(),
+    );
     final payload = doc.data()?['setupDraft'];
     if (payload == null) return null;
     final result = Map<String, dynamic>.from(payload as Map);
@@ -87,7 +96,8 @@ class SetupDraftStore {
   }
 
   Future<Map<String, dynamic>?> recoverCompletion(String uid) async {
-    final root = await cloud.collection('users').doc(uid).get();
+    final root =
+        await withRemoteDeadline(cloud.collection('users').doc(uid).get());
     final id = root.data()?['setupCompletionId'] as String?;
     return id == null ? null : recover(uid, id);
   }

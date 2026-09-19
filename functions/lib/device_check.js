@@ -19,6 +19,7 @@ const PROD_BASE = 'https://api.devicecheck.apple.com/v1';
 // been confirmed against a live Xcode debug run yet; verify with a real
 // device before relying on it for anything but production traffic.
 const DEV_BASE = 'https://api.development.devicecheck.apple.com/v1';
+const DEVICECHECK_TIMEOUT_MS = 15_000;
 
 let cachedJwt = null;
 let cachedJwtExpiresAt = 0;
@@ -47,11 +48,18 @@ export function _resetJwtCacheForTest() {
 async function post(path, body, { privateKeyPem, isDevelopmentBuild, _fetch = fetch }) {
   const base = isDevelopmentBuild ? DEV_BASE : PROD_BASE;
   const token = signedJwt(privateKeyPem);
-  return _fetch(`${base}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), DEVICECHECK_TIMEOUT_MS);
+  try {
+    return await _fetch(`${base}${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 // { bit0, bit1 }, both false if Apple has never recorded state for this

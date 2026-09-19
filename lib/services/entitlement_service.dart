@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import 'db.dart';
+import 'timeouts.dart';
 
 /// D-044/D-148/D-045/D-055: requests and caches the server-authoritative
 /// trial/subscription state. `functions/lib/device_trial.js` and
@@ -42,8 +43,11 @@ class EntitlementService {
   FirebaseAuth get _auth => _authOverride ?? FirebaseAuth.instance;
 
   Future<Map<String, String>> _headers() async {
-    final appCheckToken = await FirebaseAppCheck.instance.getToken();
-    final idToken = await FirebaseAuth.instance.currentUser?.getIdToken();
+    final appCheckToken =
+        await FirebaseAppCheck.instance.getToken().timeout(remoteReadTimeout);
+    final idToken = await FirebaseAuth.instance.currentUser
+        ?.getIdToken()
+        .timeout(remoteReadTimeout);
     if (appCheckToken == null || idToken == null) {
       throw StateError(
           'EntitlementService: not ready (missing App Check or ID token)');
@@ -61,7 +65,7 @@ class EntitlementService {
     final resp = await http
         .post(Uri.parse('$_baseUrl/$path'),
             headers: headers, body: jsonEncode(body))
-        .timeout(const Duration(seconds: 20));
+        .timeout(remoteWriteTimeout);
     if (resp.statusCode != 200) {
       throw StateError(
           'EntitlementService: $path backend ${resp.statusCode}: ${resp.body}');
@@ -151,12 +155,14 @@ class EntitlementService {
   /// that cache never fires.
   Future<bool> pullFromServer(String uid) async {
     try {
-      final doc = await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('profile')
-          .doc('main')
-          .get();
+      final doc = await withRemoteDeadline(
+        _firestore
+            .collection('users')
+            .doc(uid)
+            .collection('profile')
+            .doc('main')
+            .get(),
+      );
       final data = doc.data();
       final entitlement = data?['entitlement'] as String?;
       if (entitlement == null) return false;
