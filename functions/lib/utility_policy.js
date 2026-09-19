@@ -1,5 +1,6 @@
 import { INTERVENTION_TYPES, SURFACE_BY_TYPE } from './intervention_taxonomy.js';
 import { resolveTier, tierWeight } from './pyramid_tier.js';
+import { neglectedTasks, worstMissStreak } from './task_neglect.js';
 
 const MAX_CANDIDATES = 4;
 const BURDEN_WINDOW_DAYS = 7;
@@ -130,7 +131,10 @@ function deriveSignals({ baseline, target, context = {}, priorInterventions = []
   const history = Array.isArray(context.checkboxHistory) ? context.checkboxHistory : [];
   const tasks = Array.isArray(context.tasks) ? context.tasks : [];
   const task = tasks.find((candidate) => candidate.description === target) || tasks[0] || null;
-  const latestMiss = [...history].reverse().find((entry) => entry.checked !== true) || null;
+  const neglectedForReason = neglectedTasks(history)[0] || null;
+  const latestMiss = neglectedForReason
+    ? [...history].reverse().find((entry) => entry.task === neglectedForReason.task && entry.checked !== true)
+    : [...history].reverse().find((entry) => entry.checked !== true);
   const latestReason = latestMiss?.missReason || null;
   const reasonClass = classifyMissReason(latestReason);
   const category = normalized(task?.category);
@@ -143,6 +147,13 @@ function deriveSignals({ baseline, target, context = {}, priorInterventions = []
   const hasCue = Boolean(task?.cue || task?.scheduledTime);
   const hasPlan = Boolean(task?.plan || hasCue);
   const latestChecked = history.at(-1)?.checked === true;
+  // D-175: the trailing run of checked entries belongs to the other tasks
+  // recorded that same day, so it must not read as a clean day. Success
+  // language requires the most recent day to be genuinely complete.
+  const latestDay = history.reduce(
+    (latest, entry) => (entry.date && (latest === null || entry.date > latest) ? entry.date : latest), null);
+  const latestDayFullyChecked = latestDay !== null &&
+    history.filter((entry) => entry.date === latestDay).every((entry) => entry.checked === true);
   const completedStreak = trailingStreak(history, true);
   const missedStreak = trailingStreak(history, false);
   const mixedHistory = baseline.completedCount > 0 && baseline.missedCount > 0;
@@ -152,10 +163,15 @@ function deriveSignals({ baseline, target, context = {}, priorInterventions = []
   const completionRate = Number.isFinite(baseline.desiredCheckboxCompletion)
     ? baseline.desiredCheckboxCompletion
     : null;
-  const supportTier = missedStreak >= 3 ||
+  // D-175: one habit dropped for days is persistent difficulty even when the
+  // pooled rate looks healthy, so cadence keys off the worst single task too.
+  const neglected = neglectedTasks(history);
+  const worstTaskMissStreak = worstMissStreak(history);
+  const effectiveMissedStreak = Math.max(missedStreak, worstTaskMissStreak);
+  const supportTier = effectiveMissedStreak >= 3 ||
       (observedCount >= 3 && completionRate !== null && completionRate <= 0.5)
     ? 'persistent'
-    : missedStreak >= 2 ||
+    : effectiveMissedStreak >= 2 ||
         (observedCount >= 2 && completionRate !== null && completionRate < 0.8)
       ? 'emerging'
       : 'stable';
@@ -171,6 +187,8 @@ function deriveSignals({ baseline, target, context = {}, priorInterventions = []
   return {
     task,
     target,
+    neglectedTasks: neglected.map(({ task: name, tier, missStreak }) => ({ task: name, tier, missStreak })),
+    worstTaskMissStreak,
     pyramidTier,
     pyramidTierWeight: tierWeight(pyramidTier),
     latestReason,
@@ -179,6 +197,7 @@ function deriveSignals({ baseline, target, context = {}, priorInterventions = []
     hasCue,
     hasPlan,
     latestChecked,
+    latestDayFullyChecked,
     completedStreak,
     missedStreak,
     mixedHistory,
@@ -254,7 +273,12 @@ export function generateInterventionCandidates({
 
   if (signals.commitmentNeeded && target) add('COMMITMENT_REQUEST', 'commitment_needed');
 
-  const hasMissOpportunity = Boolean(baseline?.opportunity && target && !signals.latestChecked);
+  // D-175: a task dropped for days is an opportunity on its own evidence.
+  // The pooled baseline cannot see it, and the interleaved "latest entry"
+  // is usually one of the other tasks being checked.
+  const isNeglect = signals.neglectedTasks.length > 0;
+  const hasMissOpportunity = Boolean(
+    target && (isNeglect || (baseline?.opportunity && !signals.latestChecked)));
   if (hasMissOpportunity) {
     switch (signals.reasonClass) {
       case 'target_change':
@@ -291,14 +315,16 @@ export function generateInterventionCandidates({
     }
     if (signals.reasonClass === 'motivation' && signals.hasValueContext) add('VALUE_REFRAME', 'reconnect_to_stated_value');
     if (signals.reasonClass === 'planning' && !signals.needsImplementationIntention) add('PLAN_PROMPT', 'missing_action_plan');
-  } else if (signals.latestChecked && signals.completedStreak >= 3) {
+  } else if (!isNeglect && signals.latestDayFullyChecked && signals.completedStreak >= 3) {
     if (signals.completedStreak % 2 === 1) add('CELEBRATION', 'success_cadence_acknowledgment');
     else add('SUCCESS_REFLECTION', 'success_cadence_learning');
-  } else if (signals.latestChecked && signals.mixedHistory) {
+  } else if (!isNeglect && signals.latestDayFullyChecked && signals.mixedHistory) {
     add('REFLECTION', 'mixed_pattern_learning');
   }
 
-  if (candidates.length === 1 && target && baseline?.opportunity) add('REMINDER', 'recent_completion_risk');
+  if (candidates.length === 1 && target && (baseline?.opportunity || isNeglect)) {
+    add('REMINDER', isNeglect ? 'sustained_single_task_neglect' : 'recent_completion_risk');
+  }
   return {
     candidates: candidates.slice(0, MAX_CANDIDATES),
     signals,

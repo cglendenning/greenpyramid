@@ -57,3 +57,18 @@ export function resolveTier({ categoryId = null, categoryName = null, categories
   const byName = categories.find((category) => normalizedName(category.name) === name);
   return byName ? tierForPosition(byName.position ?? byName.id) : null;
 }
+
+/**
+ * D-175: how many consecutive misses of one task constitute neglect. A
+ * foundational habit earns attention sooner than a peak one; an unresolved
+ * tier uses the middle threshold so it is never the hardest to notice.
+ */
+const NEGLECT_THRESHOLDS = Object.freeze({
+  [TIER_FOUNDATIONAL]: 2,
+  [TIER_ESSENTIAL]: 3,
+  [TIER_PEAK]: 4,
+});
+
+export function neglectThresholdForTier(tier) {
+  return NEGLECT_THRESHOLDS[tier] ?? 3;
+}

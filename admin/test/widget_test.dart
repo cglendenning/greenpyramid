@@ -146,6 +146,11 @@ void main() {
     expect(source, contains("signals?['pyramidTierWeight']"));
     expect(source, contains('tier-weighted'));
     // D-174-AC-06: each task and category shows the tier it sits in.
+    // D-175-AC-05: the trace shows the per-task neglect behind the decision.
+    expect(source, contains('Worst single-task miss streak:'));
+    expect(source, contains('Neglected tasks:'));
+    expect(source, contains("signals['worstTaskMissStreak']"));
+    expect(source, contains("signals['neglectedTasks']"));
     expect(source, contains('String tierLabelFor('));
     expect(source, contains('required this.tierLabel'));
     expect(source, contains("'foundational'"));
