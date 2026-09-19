@@ -2275,6 +2275,30 @@ class DatabaseHelper {
     return rows.isNotEmpty;
   }
 
+  /// D-122: identifies whether the feed contains a real article or another
+  /// content type without loading the feed rows into memory.
+  Future<bool> newsfeedItemTypeExists(String type) async {
+    final db = await database;
+    final rows = await db.query(
+      newsfeedItemTable,
+      columns: [columnNewsfeedId],
+      where: '$columnNewsfeedType = ?',
+      whereArgs: [type],
+      limit: 1,
+    );
+    return rows.isNotEmpty;
+  }
+
+  /// D-122: removes placeholder cards after the first real article exists.
+  Future<int> deleteNewsfeedItemsByType(String type) async {
+    final db = await database;
+    return db.delete(
+      newsfeedItemTable,
+      where: '$columnNewsfeedType = ?',
+      whereArgs: [type],
+    );
+  }
+
   /// D-122: how many on-demand articles have already been generated
   /// today — [prefix] is the day's own `article-<date>-manual-` stem, so
   /// this only ever counts today's on-demand generations, never the

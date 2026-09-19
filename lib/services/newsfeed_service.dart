@@ -91,13 +91,18 @@ class NewsfeedService {
 
   /// D-132: the newsfeed's only remaining "ambient" content — seeds the
   /// five sample cards the first time the newsfeed has nothing else in
-  /// it yet. Idempotent and safe to call repeatedly (checks the first
+  /// it yet. Once the first real article exists, placeholders are deleted.
+  /// Idempotent and safe to call repeatedly (checks the first
   /// sample card's own existence directly, the same self-limiting
   /// pattern D-122 originally established for the welcome cards this
   /// replaced). Streak and essence generation used to run here too —
   /// removed outright, not merely stopped, per the owner's explicit "I
   /// don't want essence cards AT ALL... get rid of both #1 and #2."
   Future<void> seedSampleCardsIfNeeded() async {
+    if (await _db.newsfeedItemTypeExists('article')) {
+      await _db.deleteNewsfeedItemsByType('sample');
+      return;
+    }
     if (!await _db.newsfeedItemExists('sample-1')) {
       await _seedSampleCards();
     }
@@ -186,13 +191,14 @@ class NewsfeedService {
       final article = await _client.deriveNewsfeedArticle(
           categories: categories, firstName: firstName);
       if (article.headline.isEmpty || article.body.isEmpty) return false;
-      await _db.insertNewsfeedItem(
+      final inserted = await _db.insertNewsfeedItem(
         type: 'article',
         title: article.headline,
         body: article.body,
         dedupeKey: dedupeKey,
       );
-      return true;
+      if (inserted) await _db.deleteNewsfeedItemsByType('sample');
+      return inserted;
     } catch (e) {
       debugPrint('NewsfeedService: article generation skipped: $e');
       return false;
