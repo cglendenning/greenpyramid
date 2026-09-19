@@ -8,10 +8,16 @@
     <string>MCALPSQ5P5</string>
 	<key>signingStyle</key>
 	<string>manual</string>
+	<!-- D-177 delivery: same SHA-1 pin the admin app uses. Several same-named
+	     "Apple Distribution: Craig Glendenning" certs exist across keychains
+	     and only this one has a usable private key, so name-based selection
+	     picks a cert that cannot sign. See scripts/ensure_ci_signing_keychain.sh. -->
+	<key>signingCertificate</key>
+	<string>66F1F59CE546829AA563FE01BF325E9BC197584A</string>
 	<key>provisioningProfiles</key>
 	<dict>
 		<key>com.cglendenning.lifeops</key>
-		<string>Green Pyramid Consumer Ad Hoc</string>
+		<string>Green Pyramid Consumer Ad Hoc CI</string>
 	</dict>
     <key>stripSwiftSymbols</key>
     <true/>
