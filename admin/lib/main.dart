@@ -2068,7 +2068,11 @@ class _InterventionDebuggerScreenState
       }
       return entry;
     }).toList();
+    // Only a task still marked missed carries its safety flag, matching how
+    // the miss reason is treated. Otherwise a flag set before the task was
+    // flipped back to checked would silently keep suppressing the day.
     final safetyTriggers = activeTasks
+        .where((task) => outcomes[task['id']]?['checked'] != true)
         .map((task) => outcomes[task['id']]?['safetyType'])
         .whereType<String>()
         .toSet()
@@ -2271,10 +2275,43 @@ class _DayFormState extends State<_DayForm> {
       task['id'] as String: {'checked': true, 'reason': '', 'safetyType': null},
   };
 
+  // The cards read `checked` straight out of this shared map, so flipping the
+  // values and rebuilding is enough to update every segmented control.
+  void setAll(bool checked) {
+    setState(() {
+      for (final outcome in outcomes.values) {
+        outcome['checked'] = checked;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
+      Row(
+        children: [
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: widget.evaluating ? null : () => setAll(false),
+              icon: const Icon(Icons.close),
+              label: const Text('All missed'),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: OutlinedButton.icon(
+              onPressed: widget.evaluating ? null : () => setAll(true),
+              icon: const Icon(Icons.check),
+              label: const Text('All checked'),
+            ),
+          ),
+        ],
+      ),
+      const Text(
+        'Sets every task for this day at once; individual tasks can still be '
+        'changed afterwards.',
+      ),
       for (final category in widget.categories) ...[
         Padding(
           padding: const EdgeInsets.only(top: 12, bottom: 4),

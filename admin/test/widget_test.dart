@@ -113,6 +113,14 @@ void main() {
     expect(source, contains('Candidates considered (decision tree)'));
     expect(source, contains('Derived signals'));
     expect(source, contains('Reset session'));
+    // D-173-AC-08: bulk day controls, and safety flags scoped to missed tasks.
+    expect(source, contains('All missed'));
+    expect(source, contains('All checked'));
+    expect(source, contains('void setAll(bool checked)'));
+    expect(
+      source,
+      contains(".where((task) => outcomes[task['id']]?['checked'] != true)"),
+    );
     for (final category in [
       'self_harm',
       'medical_crisis',
