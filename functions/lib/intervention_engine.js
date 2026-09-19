@@ -5,6 +5,7 @@ import { validateInterventionDecision } from './intervention_taxonomy.js';
 import { chooseIntervention } from './utility_policy.js';
 import { resolveTier, tierRank } from './pyramid_tier.js';
 import { neglectedTasks } from './task_neglect.js';
+import { latestDaySummary } from './day_collapse.js';
 
 const LOOKBACK_DAYS = 14;
 const AUTONOMOUS_COMPLETION_THRESHOLD = 0.8;
@@ -140,6 +141,7 @@ export function evaluateIntervention({
   // D-175: a task being dropped day after day outranks whatever happened to
   // be missed today — that sustained neglect is the stronger evidence.
   const neglected = neglectedTasks(context.checkboxHistory)[0] || null;
+  const latestDay = latestDaySummary(context.checkboxHistory);
   const target = neglected?.task
     || sameDayMiss?.taskdescription
     || activeTasks[0]?.description
@@ -162,7 +164,9 @@ export function evaluateIntervention({
   // D-175: a high pooled rate is not autonomy while one habit is being
   // dropped. Eleven of twelve checked reads as 92% however long the twelfth
   // has gone unchecked, which previously silenced the engine indefinitely.
-  if (completionRate >= AUTONOMOUS_COMPLETION_THRESHOLD && !neglected &&
+  // D-176: nor is a high average autonomy on a day most of the pyramid was
+  // missed; one bad day cannot move a 14-day mean below the threshold.
+  if (completionRate >= AUTONOMOUS_COMPLETION_THRESHOLD && !neglected && !latestDay.collapse &&
       !['CELEBRATION', 'SUCCESS_REFLECTION'].includes(policy.selectedType)) {
     return validateInterventionDecision(noneDecision({ accountUid, now: current, reason: 'autonomous_completion', state, decisionId, context, baseline, policy }));
   }
