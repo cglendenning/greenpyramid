@@ -919,17 +919,23 @@ class _BottomNavBarState extends State<BottomNavBar> {
         ),
         child: NavigationBar(
           onDestinationSelected: (int index) {
-            switch (index) {
-              case 0:
-              case 1:
-              case 2:
-              case 3:
-                if (currentScreenIndex != index) {
-                  currentScreenIndex = index;
-                }
-                break;
-            }
-            homeScreenCallback();
+            () async {
+              // D-171: Analysis is a paid value surface. Check entitlement
+              // before selecting the tab so a locked user never sees the
+              // page or causes its local history snapshot to load.
+              if (index == 3) {
+                final allowed = await ensureEntitled(
+                  context,
+                  reason: 'See your personal Analysis journey',
+                );
+                if (!mounted || !allowed) return;
+              }
+              if (!mounted) return;
+              if (currentScreenIndex != index) {
+                currentScreenIndex = index;
+              }
+              homeScreenCallback();
+            }();
           },
           indicatorColor: Colors.transparent,
           selectedIndex: currentScreenIndex,
