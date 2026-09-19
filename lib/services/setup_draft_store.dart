@@ -115,6 +115,21 @@ class SetupDraftStore {
     final sessionId = session['sessionId'] as String?;
     if (sessionId == null || sessionId.isEmpty) return false;
 
+    final activeSessions = await destinationRoot
+        .collection('councilSessions')
+        .where('type', isEqualTo: 'setup')
+        .where('isComplete', isEqualTo: false)
+        .get();
+    final sourceProgress = progressOf(source);
+    for (final doc in activeSessions.docs) {
+      if (doc.id == sessionId) continue;
+      final existingDraft = doc.data()['setupDraft'];
+      if (existingDraft is Map<String, dynamic> &&
+          progressOf(existingDraft) >= sourceProgress) {
+        return false;
+      }
+    }
+
     final existing = await load(toUid);
     if (existing == null || progressOf(source) > progressOf(existing)) {
       final database = await db.database;
@@ -162,6 +177,22 @@ class SetupDraftStore {
           ),
       timeout: remoteWriteTimeout,
     );
+    // Keep the shorter destination draft as an audit/recovery record, but
+    // remove it from the active-session set so exactly one setup flow can be
+    // resumed. This update happens only after the recovered copy exists.
+    final supersededAt = <String, dynamic>{
+      'isComplete': true,
+      'supersededBy': sessionId,
+      'supersededAt': FieldValue.serverTimestamp(),
+    };
+    for (final doc in activeSessions.docs) {
+      if (doc.id != sessionId) {
+        await withRemoteDeadline(
+          doc.reference.set(supersededAt, SetOptions(merge: true)),
+          timeout: remoteWriteTimeout,
+        );
+      }
+    }
     return true;
   }
 
