@@ -145,6 +145,12 @@ void main() {
     expect(source, contains("signals?['pyramidTier']"));
     expect(source, contains("signals?['pyramidTierWeight']"));
     expect(source, contains('tier-weighted'));
+    // D-174-AC-06: each task and category shows the tier it sits in.
+    expect(source, contains('String tierLabelFor('));
+    expect(source, contains('required this.tierLabel'));
+    expect(source, contains("'foundational'"));
+    expect(source, contains("'essential'"));
+    expect(source, contains("'peak'"));
     // Additive: the existing simulator screen and endpoint are untouched.
     expect(source, contains('/adminSimulation'));
     expect(source, contains('class SimulationScreen'));

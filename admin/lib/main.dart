@@ -1924,6 +1924,18 @@ const requiredScenarios = [
 // virtual day at a time and inspects the full decision trace the shared
 // production policy produced for that day.
 
+/// D-174: the server sends each category and task its pyramid tier. Sessions
+/// saved before that shipped have only the category position, so fall back to
+/// the same 1–3 / 4–5 / 6 split rather than showing nothing for them.
+String tierLabelFor({String? tier, Object? position}) {
+  if (tier != null && tier.isNotEmpty) return tier;
+  final slot = position is num ? position.toInt() : null;
+  if (slot == null || slot < 1 || slot > 6) return 'unresolved';
+  if (slot <= 3) return 'foundational';
+  if (slot <= 5) return 'essential';
+  return 'peak';
+}
+
 const safetyTriggerCategories = [
   'self_harm',
   'medical_crisis',
@@ -2515,7 +2527,8 @@ class _DayFormState extends State<_DayForm> {
         Padding(
           padding: const EdgeInsets.only(top: 12, bottom: 4),
           child: Text(
-            '${category['cat']}',
+            '${category['cat']} · '
+            '${tierLabelFor(tier: category['tier'] as String?, position: category['position'])}',
             style: Theme.of(context).textTheme.titleMedium,
           ),
         ),
@@ -2525,6 +2538,10 @@ class _DayFormState extends State<_DayForm> {
           _TaskOutcomeCard(
             task: task,
             outcome: outcomes[task['id']]!,
+            tierLabel: tierLabelFor(
+              tier: task['tier'] as String?,
+              position: category['position'],
+            ),
             onOutcomeChanged: () => setState(() {}),
           ),
       ],
@@ -2548,10 +2565,12 @@ class _TaskOutcomeCard extends StatefulWidget {
   const _TaskOutcomeCard({
     required this.task,
     required this.outcome,
+    required this.tierLabel,
     required this.onOutcomeChanged,
   });
   final Map<String, dynamic> task;
   final Map<String, dynamic> outcome;
+  final String tierLabel;
   final VoidCallback onOutcomeChanged;
 
   @override
@@ -2566,7 +2585,9 @@ class _TaskOutcomeCardState extends State<_TaskOutcomeCard> {
     margin: const EdgeInsets.only(bottom: 8),
     child: ExpansionTile(
       title: Text(widget.task['description'] as String),
-      subtitle: Text(checked ? 'Checked' : 'Missed'),
+      subtitle: Text(
+        '${checked ? 'Checked' : 'Missed'} · ${widget.tierLabel}',
+      ),
       childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       children: [
         SegmentedButton<bool>(

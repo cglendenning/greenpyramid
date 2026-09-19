@@ -3,6 +3,7 @@ import { applySafetyConstraints } from './safety_constraints.js';
 import { revalidateIntervention } from './intervention_lifecycle.js';
 import { renderIntervention } from './intervention_renderer.js';
 import { seededRandom } from './deterministic_random.js';
+import { tierForPosition } from './pyramid_tier.js';
 
 export const DEBUGGER_ACCOUNT_UID = 'debugger-sandbox';
 
@@ -28,6 +29,8 @@ export function generateStockPyramid({ seed = 1 } = {}) {
     cat: source.cat,
     description: source.description,
     activeEssence: null,
+    // D-174-AC-06: the operator can see which tier each task sits in.
+    tier: tierForPosition(index + 1),
   }));
   const tasks = STOCK_CATEGORIES.flatMap((source, categoryIndex) => {
     const count = 2 + (draw() > 0.5 ? 1 : 0);
@@ -36,6 +39,7 @@ export function generateStockPyramid({ seed = 1 } = {}) {
       description,
       category: source.cat,
       categoryId: categoryIndex + 1,
+      tier: tierForPosition(categoryIndex + 1),
       active: true,
       scheduledTime: null,
       cue: null,
