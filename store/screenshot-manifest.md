@@ -17,14 +17,32 @@ within the 1–10 screenshot upload limit for a supported iPhone size class.
 
 The phone set contains five portrait screenshots, each 1080x1920 pixels. It is
 within the phone-set limit and uses the same English copy/story order as Apple.
-Tablet and large-screen assets are intentionally not claimed as submitted
-Android targets until a current Android tablet capture is available.
+
+## Apple iPad / large screen
+
+The current-build iPad simulator set contains six portrait screenshots at
+1640x2360 pixels. They are the six Analysis journey stories, captured from the
+release code path with seeded local demo data and no debug banner or overlay.
+
+| File | Story | Alt text |
+|---|---|---|
+| `screenshots/apple-ipad/01-analysis-showing-up.png` | Showing up | Six-page Analysis journey showing completed check-ins |
+| `screenshots/apple-ipad/02-analysis-strength.png` | Strength | Analysis page describing the strongest area |
+| `screenshots/apple-ipad/03-analysis-rhythm.png` | Rhythm | Analysis page describing recent rhythm |
+| `screenshots/apple-ipad/04-analysis-return.png` | Return | Analysis page describing returning activity |
+| `screenshots/apple-ipad/05-analysis-care.png` | Gentle care | Analysis page showing one gentle opportunity |
+| `screenshots/apple-ipad/06-analysis-close.png` | Takeaway | Analysis closing page with a practical takeaway |
 
 ## Accuracy note
 
-The checked-in artwork is from the repository's existing current-dimension set.
-The attempted live capture runner is retained at
-`scripts/capture_store_screenshots.sh`; its physical-device run was blocked by
-wireless local-network access to Flutter's VM. Replace the fallback set with
-successful current-build captures before final upload if any visible behavior
-has changed.
+The phone artwork is the repository's existing current-dimension set. The
+iPad Analysis set was captured on the current build using the iPad (A16)
+simulator after a gesture-settle pass; the physical iPad release smoke check
+separately verified the same app at 1536x2048. The capture runner remains at
+`scripts/capture_store_screenshots.sh`; it requires local-network access only
+when pointed at a physical device.
+
+The Google phone set is complete. This release package targets the Google Play
+phone form factor; no Android tablet/large-screen upload set is claimed in the
+submission record. The Apple iPad set is included because the Apple binary is
+configured and reviewed for iPad.

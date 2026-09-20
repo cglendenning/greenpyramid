@@ -34,11 +34,23 @@ import 'package:timezone/data/latest.dart' as tz show initializeTimeZones;
 const String _ackDir = '/private/tmp/gp-shot-acks';
 
 Future<void> _shot(WidgetTester tester, String name) async {
+  // Let synthetic gestures and platform touch indicators fully disappear
+  // before the host captures the frame.
+  await _settle(tester, total: const Duration(seconds: 2));
   final ack = File('$_ackDir/$name');
   // A leftover ack from an earlier run would let the test race past the
   // screen before the watcher captures it — clear it before signalling.
   if (ack.existsSync()) ack.deleteSync();
   debugPrint('MARKER_SHOT:$name');
+  // The host-side ack directory is shared with iOS simulators/physical
+  // runners, but an Android integration test sees `/private/tmp` inside the
+  // emulator rather than on the host. The host watcher captures Android via
+  // adb, so allow one settled frame instead of waiting for an unreachable
+  // host file.
+  if (Platform.isAndroid) {
+    await _settle(tester, total: const Duration(seconds: 1));
+    return;
+  }
   final deadline = DateTime.now().add(const Duration(seconds: 30));
   while (!ack.existsSync() && DateTime.now().isBefore(deadline)) {
     await _settle(tester, total: const Duration(milliseconds: 500));

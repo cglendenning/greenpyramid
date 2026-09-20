@@ -1,8 +1,7 @@
 # Data safety review worksheet
 
-This is a release-specific review worksheet for the signed 1.44.2 (build 64)
-candidate; the Play Console questionnaire must still be filed from these
-verified facts.
+This is the release-specific review worksheet for Green Pyramid 1.44.2 (build
+64). The exact reviewed declaration set is recorded in `store/release-review.md`.
 
 Privacy policy and external account-deletion resource:
 https://greenpyramid-privacy.cglendenning.chatgpt.site
@@ -15,7 +14,8 @@ https://greenpyramid-privacy.cglendenning.chatgpt.site
 - Purchase and entitlement state: used to unlock paid surfaces and enforce
   server-owned billing/trial rules.
 - Calendar context: optional and requested only after the user enables it.
-- Diagnostics/analytics: review the final release configuration before filing.
+- Analytics events and device/app diagnostics: used for product measurement and
+  reliability; review the final console labels against the exact platform form.
 
 ## Controls verified in code
 
@@ -27,8 +27,9 @@ https://greenpyramid-privacy.cglendenning.chatgpt.site
 - Account deletion is available in-app at Settings → Account → Delete account
   and through the public privacy-policy resource above.
 
-## Required before submission
+## Submission control
 
 File the Data safety and Data deletion answers in Play Console using the exact
-signed artifact, then confirm the publisher contact identity and any limited
-provider/legal retention wording before submission.
+artifact and declaration set above, then confirm the publisher contact identity
+and any limited provider/legal retention wording before submission. This package
+does not claim that an external console form has been submitted.
