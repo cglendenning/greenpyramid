@@ -32,6 +32,34 @@ void main() {
     });
   });
 
+  group('D-181-AC-04: a route named after its widget reads as the screen', () {
+    test('the names D-181 puts on the app\'s routes read as screens', () {
+      const expected = <String, String>{
+        // Stacked plumbing suffixes both come off.
+        'HomeScreenWidget': 'Home',
+        'PaywallScreen': 'Paywall',
+        'GeneralCouncilScreen': 'General council',
+        'ScheduleHabitsScreen': 'Schedule habits',
+        'NotificationInboxScreen': 'Notification inbox',
+        'TrialDisclosureScreen': 'Trial disclosure',
+        'CancelSubscriptionScreen': 'Cancel subscription',
+        'SetupCompletionScreen': 'Setup completion',
+        'HomescreenErrorScreen': 'Homescreen error',
+        'CouncilCategoryPicker': 'Council category picker',
+        'EditTaskDetail': 'Edit task detail',
+        'TaskList': 'Task list',
+        'FAQ': 'FAQ',
+        // The one route that already carried a hand-written slug.
+        'setup-account-link': 'Setup account link',
+      };
+      expected.forEach((key, want) {
+        final label = ScreenLabel.parse(key);
+        expect(label.name, want, reason: key);
+        expect(label.identifies, isTrue, reason: key);
+      });
+    });
+  });
+
   group('D-180-AC-02: a generic that names nothing is marked unattributed',
       () {
     test('MaterialPageRoute<dynamic> does not pretend to name a screen', () {

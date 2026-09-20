@@ -241,7 +241,7 @@ class _SettingsState extends State<Settings> {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(
+                          MaterialPageRoute(settings: const RouteSettings(name: 'CouncilCategoryPicker'), 
                               builder: (context) =>
                                   const CouncilCategoryPicker()),
                         );
@@ -362,7 +362,7 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
   Future<void> _openPaywall() async {
     final result = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute(settings: const RouteSettings(name: 'PaywallScreen'), 
         builder: (context) =>
             const PaywallScreen(reason: 'Subscribe to Green Pyramid'),
       ),
@@ -373,7 +373,7 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
   Future<void> _openManage() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => const CancelSubscriptionScreen()),
+      MaterialPageRoute(settings: const RouteSettings(name: 'CancelSubscriptionScreen'), builder: (context) => const CancelSubscriptionScreen()),
     );
     _load();
   }
@@ -891,7 +891,7 @@ class _AccountSectionState extends State<_AccountSection> {
     await AccountLinkService.instance.signOut();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+      MaterialPageRoute(settings: const RouteSettings(name: 'WelcomeScreen'), builder: (_) => const WelcomeScreen()),
       (route) => false,
     );
   }

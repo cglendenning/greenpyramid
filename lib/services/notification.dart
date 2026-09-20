@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/foundation.dart' show kDebugMode, debugPrint;
-import 'package:flutter/material.dart' show MaterialPageRoute;
+import 'package:flutter/material.dart' show MaterialPageRoute, RouteSettings;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:rxdart/subjects.dart';
@@ -981,7 +981,7 @@ class LocalNotificationService {
           }
           final habits =
               (jsonDecode(habitsJson) as List).cast<Map<String, dynamic>>();
-          navigatorKey.currentState?.push(MaterialPageRoute(
+          navigatorKey.currentState?.push(MaterialPageRoute(settings: const RouteSettings(name: 'BatchCheckinScreen'), 
               builder: (_) => BatchCheckinScreen(habits: habits)));
         case 'tailored':
         case 'intervention':
@@ -994,7 +994,7 @@ class LocalNotificationService {
           // highlighting the exact item the notification was about.
           final dedupeKey = data['dedupeKey'] as String?;
           if (dedupeKey == null) return;
-          navigatorKey.currentState?.push(MaterialPageRoute(
+          navigatorKey.currentState?.push(MaterialPageRoute(settings: const RouteSettings(name: 'NewsfeedScreen'), 
               builder: (_) => NewsfeedScreen(highlightDedupeKey: dedupeKey)));
       }
     } catch (e, st) {

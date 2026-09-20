@@ -34,7 +34,7 @@ class NotificationInboxScreen extends StatelessWidget {
     if (!context.mounted) return;
     switch (item['type']) {
       case 'upgrade':
-        await Navigator.of(context).push(MaterialPageRoute(
+        await Navigator.of(context).push(MaterialPageRoute(settings: const RouteSettings(name: 'PaywallScreen'), 
             builder: (_) => const PaywallScreen(reason: 'notification')));
       case 'batch_checkin':
         final ids = (item['habitIds'] as List<dynamic>? ?? const [])
@@ -53,7 +53,7 @@ class NotificationInboxScreen extends StatelessWidget {
         if (habits.isNotEmpty) {
           final date =
               DateTime.tryParse(item['occurrenceDate'] as String? ?? '');
-          await Navigator.of(context).push(MaterialPageRoute(
+          await Navigator.of(context).push(MaterialPageRoute(settings: const RouteSettings(name: 'BatchCheckinScreen'), 
               builder: (_) => BatchCheckinScreen(
                     habits: habits,
                     occurrenceDate: date,
@@ -68,7 +68,7 @@ class NotificationInboxScreen extends StatelessWidget {
         // surface is metadata for the destination; opening it never selects
         // a new policy.
         if (item['surface'] == 'council') {
-          await Navigator.of(context).push(MaterialPageRoute(
+          await Navigator.of(context).push(MaterialPageRoute(settings: const RouteSettings(name: 'GeneralCouncilScreen'), 
               builder: (_) => GeneralCouncilScreen(
                     notificationMessageKey: key,
                     notificationTitle: item['title'] as String?,

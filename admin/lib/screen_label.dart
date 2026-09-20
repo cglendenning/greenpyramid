@@ -130,11 +130,24 @@ class ScreenLabel {
     while (text.endsWith('?')) {
       text = text.substring(0, text.length - 1);
     }
-    // Drop suffixes that describe the plumbing rather than the screen.
-    for (final suffix in const ['Route', 'Outcome', 'Result', 'Screen']) {
-      if (text.length > suffix.length && text.endsWith(suffix)) {
-        text = text.substring(0, text.length - suffix.length);
-        break;
+    // Drop suffixes that describe the plumbing rather than the screen, and
+    // keep dropping: D-181 names routes after their widget, so the home
+    // screen arrives as `HomeScreenWidget` and needs both taken off.
+    var stripping = true;
+    while (stripping) {
+      stripping = false;
+      for (final suffix in const [
+        'Widget',
+        'Route',
+        'Outcome',
+        'Result',
+        'Screen',
+      ]) {
+        if (text.length > suffix.length && text.endsWith(suffix)) {
+          text = text.substring(0, text.length - suffix.length);
+          stripping = true;
+          break;
+        }
       }
     }
     if (text.isEmpty) return _stripPrivate(type);

@@ -615,7 +615,7 @@ class _NewsfeedCard extends StatelessWidget {
                 // on a completed purchase, `false` on manual dismissal —
                 // simplest and most correct either way is to just re-read
                 // the account's real current state).
-                await Navigator.of(context).push(MaterialPageRoute(
+                await Navigator.of(context).push(MaterialPageRoute(settings: const RouteSettings(name: 'PaywallScreen'), 
                   builder: (_) => const PaywallScreen(
                       reason: 'Get analysis tailored to your own trends'),
                 ));

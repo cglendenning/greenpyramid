@@ -249,7 +249,7 @@ class _Pyramid extends State<Pyramid> {
       BuildContext context, String cat, String today) async {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(context,
-            MaterialPageRoute(builder: (context) => TaskList(cat, today)))
+            MaterialPageRoute(settings: const RouteSettings(name: 'TaskList'), builder: (context) => TaskList(cat, today)))
         .then((_) {
       setState(() {
         utils.Utils().changeSystemColor(Brightness.light);

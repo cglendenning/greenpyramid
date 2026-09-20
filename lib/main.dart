@@ -120,7 +120,7 @@ void handlePushDataTap(Map<String, dynamic> data) {
       // result; the selected surface is retained in the payload for the
       // eventual destination without letting the client choose policy.
       if (data['surface'] == 'council') {
-        navigatorKey.currentState?.push(MaterialPageRoute(
+        navigatorKey.currentState?.push(MaterialPageRoute(settings: const RouteSettings(name: 'GeneralCouncilScreen'), 
             builder: (_) => GeneralCouncilScreen(
                   notificationMessageKey:
                       messageKey is String ? messageKey : null,
@@ -130,7 +130,7 @@ void handlePushDataTap(Map<String, dynamic> data) {
       }
       break;
     case 'upgrade':
-      navigatorKey.currentState?.push(MaterialPageRoute(
+      navigatorKey.currentState?.push(MaterialPageRoute(settings: const RouteSettings(name: 'PaywallScreen'), 
           builder: (_) => const PaywallScreen(reason: 'notification')));
   }
 }
@@ -164,7 +164,7 @@ Future<void> openBatchCheckinFromPayload(Map<String, dynamic> data) async {
     if (habits.isEmpty) return; // deleted habits are harmless.
     final occurrenceDate =
         DateTime.tryParse(data['occurrenceDate'] as String? ?? '');
-    navigatorKey.currentState?.push(MaterialPageRoute(
+    navigatorKey.currentState?.push(MaterialPageRoute(settings: const RouteSettings(name: 'BatchCheckinScreen'), 
         builder: (_) => BatchCheckinScreen(
               habits: habits,
               occurrenceDate: occurrenceDate,

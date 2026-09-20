@@ -76,7 +76,7 @@ class _AccountCreationScreenState extends State<AccountCreationScreen> {
   ) async {
     setState(() => _error = null);
     final outcome = await Navigator.of(context).push<SignInOutcome>(
-      MaterialPageRoute(
+      MaterialPageRoute(settings: const RouteSettings(name: 'SigningInScreen'), 
         builder: (_) => SigningInScreen(
           signIn: signIn,
           provider: provider,

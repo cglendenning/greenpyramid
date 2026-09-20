@@ -102,6 +102,7 @@ class WelcomeScreen extends StatelessWidget {
 
   Future<void> _signIn(BuildContext context) async {
     await Navigator.of(context).push(MaterialPageRoute(
+      settings: const RouteSettings(name: 'AccountCreationScreen'),
       builder: (_) => AccountCreationScreen(
         headline: 'Welcome back.',
         subhead:
@@ -131,7 +132,7 @@ class WelcomeScreen extends StatelessWidget {
           await LocalPyramidResetService.instance.wipeLocalPyramid();
           if (!context.mounted) return;
           Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => const SetupScreen()));
+              MaterialPageRoute(settings: const RouteSettings(name: 'SetupScreen'), builder: (_) => const SetupScreen()));
         },
       ),
     ));
@@ -144,7 +145,7 @@ class WelcomeScreen extends StatelessWidget {
     // D-001: Begin also resumes an existing draft; never reset it here.
     if (!context.mounted) return;
     Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const SetupScreen()));
+        MaterialPageRoute(settings: const RouteSettings(name: 'SetupScreen'), builder: (_) => const SetupScreen()));
   }
 
   @override
@@ -242,7 +243,7 @@ class WelcomeScreen extends StatelessWidget {
                       child: TextButton(
                         style: TextButton.styleFrom(padding: EdgeInsets.zero),
                         onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(
+                          MaterialPageRoute(settings: const RouteSettings(name: 'TermsScreen'), 
                               builder: (_) => const TermsScreen()),
                         ),
                         child: Text(

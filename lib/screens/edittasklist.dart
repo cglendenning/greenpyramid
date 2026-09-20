@@ -244,7 +244,7 @@ class _EditTaskListState extends State<EditTaskList> {
 
   void navigateToEditTaskDetail(String cat, String desc) async {
     await Navigator.push(context,
-        MaterialPageRoute(builder: (context) => EditTaskDetail(cat, desc)));
+        MaterialPageRoute(settings: const RouteSettings(name: 'EditTaskDetail'), builder: (context) => EditTaskDetail(cat, desc)));
     setState(() {});
   }
 }

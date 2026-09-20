@@ -13,7 +13,7 @@ Future<bool> ensureEntitled(BuildContext context, {required String reason}) asyn
   if (!context.mounted) return false;
   final subscribed = await Navigator.push<bool>(
     context,
-    MaterialPageRoute(builder: (context) => PaywallScreen(reason: reason)),
+    MaterialPageRoute(settings: const RouteSettings(name: 'PaywallScreen'), builder: (context) => PaywallScreen(reason: reason)),
   );
   return subscribed == true;
 }
