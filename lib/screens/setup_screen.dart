@@ -326,7 +326,7 @@ class _SetupScreenState extends State<SetupScreen> {
       await _setup.drafts.delete(uid, sessionId);
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+          MaterialPageRoute(settings: const RouteSettings(name: 'WelcomeScreen'), builder: (_) => const WelcomeScreen()),
           (route) => false);
     } catch (e) {
       if (mounted) {
@@ -1079,7 +1079,7 @@ class _SetupScreenState extends State<SetupScreen> {
       return;
     }
     if (!mounted) return;
-    await Navigator.of(context).push(MaterialPageRoute(
+    await Navigator.of(context).push(MaterialPageRoute(settings: const RouteSettings(name: 'FirstNameScreen'), 
       builder: (context) => FirstNameScreen(onDone: () {
         Navigator.of(context).pop();
         _confirmHabitsAndClose();
@@ -1204,6 +1204,7 @@ class _SetupScreenState extends State<SetupScreen> {
       await _saveDraft();
       if (!navigator.mounted) return;
       navigator.pushReplacement(MaterialPageRoute(
+          settings: const RouteSettings(name: 'SetupPermissionScreen'),
           builder: (_) => _permissionScreen(() async {
                 _phase = _Phase.finished;
                 await _saveDraft();
@@ -1217,8 +1218,9 @@ class _SetupScreenState extends State<SetupScreen> {
       return;
     }
     navigator.pushReplacement(MaterialPageRoute(
+        settings: const RouteSettings(name: 'SetupCompletionScreen'),
         builder: (_) => _completionScreen(() => navigator.pushReplacement(
-            MaterialPageRoute(
+            MaterialPageRoute(settings: const RouteSettings(name: 'TrialDisclosureScreen'), 
                 builder: (_) => TrialDisclosureScreen(
                     entitlement: entitlement, onDone: permissions))))));
   }

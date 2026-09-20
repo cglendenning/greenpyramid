@@ -133,7 +133,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     if (!mounted) return;
     await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute(settings: const RouteSettings(name: 'PaywallScreen'), 
         builder: (context) =>
             const PaywallScreen(reason: 'Continue with Green Pyramid'),
       ),

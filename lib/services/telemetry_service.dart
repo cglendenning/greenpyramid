@@ -77,16 +77,30 @@ class TelemetryNavigatorObserver extends NavigatorObserver {
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
     super.didPush(route, previousRoute);
-    final key = route.settings.name ?? route.runtimeType.toString();
-    unawaited(TelemetryService.instance.screenOpened(key));
+    _record(route);
   }
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
     super.didReplace(newRoute: newRoute, oldRoute: oldRoute);
-    if (newRoute != null) {
-      final key = newRoute.settings.name ?? newRoute.runtimeType.toString();
-      unawaited(TelemetryService.instance.screenOpened(key));
-    }
+    if (newRoute != null) _record(newRoute);
+  }
+
+  /// D-181: only a full page counts as a screen.
+  ///
+  /// Every route used to be recorded, and the fallback for an unnamed one was
+  /// its Dart type — so the dashboard's largest row by far was
+  /// `MaterialPageRoute<dynamic>`, every unnamed push in the app added
+  /// together, and its second largest was `_PopupMenuRoute<String?>`, which
+  /// is the hamburger menu opening. Dialogs, bottom sheets and popup menus
+  /// are not screens and answering "which screens get the most attention"
+  /// does not want them counted as such. Every page route now carries an
+  /// explicit name, so the type fallback should no longer be reachable; it
+  /// stays because a route arriving unnamed is worth seeing in the dashboard
+  /// rather than silently dropping.
+  void _record(Route<dynamic> route) {
+    if (route is! PageRoute) return;
+    final key = route.settings.name ?? route.runtimeType.toString();
+    unawaited(TelemetryService.instance.screenOpened(key));
   }
 }

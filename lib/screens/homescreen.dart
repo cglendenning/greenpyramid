@@ -62,7 +62,12 @@ class HomeScreen extends StatelessWidget {
       // one route actually requested.
       onGenerateInitialRoutes: (String initialRouteName) {
         if (initialRouteName == '/') {
-          return [MaterialPageRoute(builder: (_) => _home)];
+          return [
+            MaterialPageRoute(
+              settings: const RouteSettings(name: 'HomeScreenWidget'),
+              builder: (_) => _home,
+            )
+          ];
         }
         return [_generateRoute(RouteSettings(name: initialRouteName)) ?? _errorRoute()];
       },
@@ -79,7 +84,7 @@ class HomeScreen extends StatelessWidget {
   static Route<dynamic>? _generateRoute(RouteSettings settings) {
     switch (settings.name) {
       case '/':
-        return MaterialPageRoute(
+        return MaterialPageRoute(settings: const RouteSettings(name: 'HomeScreenWidget'), 
           builder: (_) => const HomeScreenWidget(),
         );
       // D-066: morning/afternoon/evening are deleted, replaced by
@@ -90,13 +95,15 @@ class HomeScreen extends StatelessWidget {
       case '/morning':
       case '/afternoon':
       case '/evening':
-        return MaterialPageRoute(
+        return MaterialPageRoute(settings: const RouteSettings(name: 'HomeScreenWidget'), 
           builder: (_) => const HomeScreenWidget(),
         );
       case '/setup':
         // D-001/D-148: a process restart with an in-flight draft returns to
         // the persisted setup phase. Only fresh setup needs the welcome.
         return MaterialPageRoute(
+            settings: RouteSettings(
+                name: resumePendingSetup ? 'SetupScreen' : 'WelcomeScreen'),
             builder: (_) => resumePendingSetup
                 ? const SetupScreen()
                 : const WelcomeScreen());
@@ -106,9 +113,11 @@ class HomeScreen extends StatelessWidget {
   }
 
   static Route<dynamic> _errorRoute() {
-    return MaterialPageRoute(builder: (_) {
-      return const Scaffold(body: Text('Homescreen Error.'));
-    });
+    return MaterialPageRoute(
+        settings: const RouteSettings(name: 'HomescreenErrorScreen'),
+        builder: (_) {
+          return const Scaffold(body: Text('Homescreen Error.'));
+        });
   }
 }
 
@@ -199,7 +208,7 @@ class _HomeScreen extends State<HomeScreenWidget> {
     await AuthService.instance.signInSilently();
     if (!mounted || !AuthService.instance.isAnonymous) return;
     var accountWasSwitched = false;
-    await Navigator.of(context).push(MaterialPageRoute(
+    await Navigator.of(context).push(MaterialPageRoute(settings: const RouteSettings(name: 'AccountCreationScreen'), 
       builder: (_) => AccountCreationScreen(
         onDone: ({required bool switchedToExistingAccount}) {
           accountWasSwitched = switchedToExistingAccount;
@@ -396,7 +405,7 @@ class _HomeScreen extends State<HomeScreenWidget> {
       case '/paywall':
         Navigator.push(
           context,
-          MaterialPageRoute(
+          MaterialPageRoute(settings: const RouteSettings(name: 'PaywallScreen'), 
             builder: (context) =>
                 const PaywallScreen(reason: 'Continue with Green Pyramid'),
           ),
@@ -504,7 +513,7 @@ class CustomAppBarState extends State<CustomAppBar> {
             navigateToNewsfeed(context);
             break;
           case 'inbox':
-            Navigator.of(context).push(MaterialPageRoute(builder: (_) => const NotificationInboxScreen()));
+            Navigator.of(context).push(MaterialPageRoute(settings: const RouteSettings(name: 'NotificationInboxScreen'), builder: (_) => const NotificationInboxScreen()));
             break;
           case 'philosophy':
             navigateToPhilosophy(context);
@@ -625,7 +634,7 @@ class CustomAppBarState extends State<CustomAppBar> {
   void navigateToFeedback(BuildContext context) async {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const FeedbackScreen()))
+            MaterialPageRoute(settings: const RouteSettings(name: 'FeedbackScreen'), builder: (context) => const FeedbackScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
@@ -702,7 +711,7 @@ class CustomAppBarState extends State<CustomAppBar> {
     if (!context.mounted) return;
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const SetupScreen()))
+            MaterialPageRoute(settings: const RouteSettings(name: 'SetupScreen'), builder: (context) => const SetupScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
@@ -736,7 +745,7 @@ class CustomAppBarState extends State<CustomAppBar> {
     await AccountLinkService.instance.signOut();
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const WelcomeScreen()),
+      MaterialPageRoute(settings: const RouteSettings(name: 'WelcomeScreen'), builder: (_) => const WelcomeScreen()),
       (route) => false,
     );
   }
@@ -761,7 +770,7 @@ class CustomAppBarState extends State<CustomAppBar> {
 
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const GeneralCouncilScreen()))
+            MaterialPageRoute(settings: const RouteSettings(name: 'GeneralCouncilScreen'), builder: (context) => const GeneralCouncilScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
@@ -773,7 +782,7 @@ class CustomAppBarState extends State<CustomAppBar> {
   void navigateToNewsfeed(BuildContext context) async {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const NewsfeedScreen()))
+            MaterialPageRoute(settings: const RouteSettings(name: 'NewsfeedScreen'), builder: (context) => const NewsfeedScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
@@ -784,7 +793,7 @@ class CustomAppBarState extends State<CustomAppBar> {
   void navigateToPhilosophy(BuildContext context) async {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const PhilosophyScreen()))
+            MaterialPageRoute(settings: const RouteSettings(name: 'PhilosophyScreen'), builder: (context) => const PhilosophyScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
@@ -793,7 +802,7 @@ class CustomAppBarState extends State<CustomAppBar> {
   void navigateToFAQ(BuildContext context) async {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(
-            context, MaterialPageRoute(builder: (context) => const FAQ()))
+            context, MaterialPageRoute(settings: const RouteSettings(name: 'FAQ'), builder: (context) => const FAQ()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});
@@ -802,7 +811,7 @@ class CustomAppBarState extends State<CustomAppBar> {
   void navigateToProfile(BuildContext context) async {
     utils.Utils().changeSystemColor(Brightness.dark);
     await Navigator.push(
-            context, MaterialPageRoute(builder: (context) => ProfileScreen()))
+            context, MaterialPageRoute(settings: const RouteSettings(name: 'ProfileScreen'), builder: (context) => ProfileScreen()))
         .then((value) {});
     utils.Utils().changeSystemColor(Brightness.light);
     setState(() {});

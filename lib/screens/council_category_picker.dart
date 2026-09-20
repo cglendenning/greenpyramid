@@ -48,7 +48,7 @@ class _CouncilCategoryPickerState extends State<CouncilCategoryPicker> {
 
     await Navigator.push(
       context,
-      MaterialPageRoute(
+      MaterialPageRoute(settings: const RouteSettings(name: 'CouncilScreen'), 
         builder: (context) => CouncilScreen(
           categoryId: categoryId,
           categoryName: categoryName,

@@ -333,7 +333,7 @@ class _TaskListState extends State<TaskList> {
                           onPressed: () {
                             Navigator.push(
                               context,
-                              MaterialPageRoute(
+                              MaterialPageRoute(settings: const RouteSettings(name: 'ScheduleHabitsScreen'), 
                                   builder: (context) => const ScheduleHabitsScreen()),
                             );
                           },
@@ -434,7 +434,7 @@ class _TaskListState extends State<TaskList> {
   void navigateToEditTaskList() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (context) => EditTaskList(category)),
+      MaterialPageRoute(settings: const RouteSettings(name: 'EditTaskList'), builder: (context) => EditTaskList(category)),
     );
     setState(() {
       // _taskLogFuture = getTaskLog();
