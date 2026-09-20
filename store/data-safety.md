@@ -1,7 +1,11 @@
 # Data safety review worksheet
 
-This is a release-specific working sheet, not a substitute for the Play
-Console questionnaire.
+This is a release-specific review worksheet for the signed 1.44.2 (build 64)
+candidate; the Play Console questionnaire must still be filed from these
+verified facts.
+
+Privacy policy and external account-deletion resource:
+https://greenpyramid-privacy.cglendenning.chatgpt.site
 
 ## Identified data surfaces
 
@@ -20,8 +24,11 @@ Console questionnaire.
 - Local tracker writes work offline where specified.
 - There are no advertising SDKs or public rankings in the release package.
 - The client does not authoritatively grant subscriptions or trials.
+- Account deletion is available in-app at Settings → Account → Delete account
+  and through the public privacy-policy resource above.
 
 ## Required before submission
 
-Confirm the final privacy URL, deletion workflow, retention wording, contact
-identity and exact SDK/data disclosures against the signed artifact.
+File the Data safety and Data deletion answers in Play Console using the exact
+signed artifact, then confirm the publisher contact identity and any limited
+provider/legal retention wording before submission.
