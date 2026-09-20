@@ -103,7 +103,8 @@ class _CouncilScreenState extends State<CouncilScreen> {
     }
   }
 
-  Future<void> _runAdvisorTurn(String advisorKey) async {
+  Future<void> _runAdvisorTurn(String advisorKey,
+      {List<Map<String, String>>? conversationHistoryOverride}) async {
     final session = _session;
     if (session == null) return;
     try {
@@ -113,6 +114,7 @@ class _CouncilScreenState extends State<CouncilScreen> {
         categoryName: widget.categoryName,
         categoryTier: widget.categoryTier,
         priorEssence: _priorEssence,
+        conversationHistoryOverride: conversationHistoryOverride,
       );
       final refreshed = await _council.getActiveSession(
           type: BoardSessionType.category, categoryId: widget.categoryId);
@@ -142,22 +144,60 @@ class _CouncilScreenState extends State<CouncilScreen> {
     _textController.clear();
     setState(() => _busy = true);
     try {
-      await _council.appendUserMessage(session.sessionId, text);
-      final next = session.nextAdvisorKey;
-      await _runAdvisorTurn(next);
+      // D-178: the advisor must answer what was just said. `session` was
+      // captured before this append and appendUserMessage does not mutate
+      // it, so passing the session's own history sent every advisor a
+      // transcript one message stale -- they replied to the previous turn,
+      // and an advisor who had not yet spoken in that truncated view
+      // introduced themselves mid-conversation. general_council_screen
+      // already composes the history this way.
+      final userMessage =
+          await _council.appendUserMessage(session.sessionId, text);
+      final conversationHistory = [
+        ...session.messages
+            .map((m) => {'advisor': m.advisorKey, 'text': m.text}),
+        {'advisor': 'user', 'text': userMessage.text},
+      ];
+      // D-178: a direct question belongs to the advisor who just spoke,
+      // not to whoever is next in the rotation.
+      final replyAdvisorKey = session.advisorKeyForUserMessage(text);
+      await _runAdvisorTurn(replyAdvisorKey,
+          conversationHistoryOverride: conversationHistory);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
+  /// D-178: the essence is chosen deliberately, from one clearly labelled
+  /// action, rather than by tapping an unexplained link attached to one of
+  /// your own messages. The sheet says what an essence is, shows exactly
+  /// what will be saved, and states that choosing one ends the conversation
+  /// -- none of which the inline link conveyed.
+  Future<void> _openEssenceSheet() async {
+    final session = _session;
+    if (session == null) return;
+    final candidates = session.messages
+        .where((m) => m.advisorKey == 'user')
+        .map((m) => m.text)
+        .where(ResonanceService.qualifies)
+        .toList()
+        .reversed
+        .toList();
+
+    final chosen = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      builder: (sheetContext) => _EssenceSheet(
+        categoryName: widget.categoryName,
+        candidates: candidates,
+      ),
+    );
+    if (chosen == null) return;
+    await _acceptAsEssence(chosen);
+  }
+
   Future<void> _acceptAsEssence(String text) async {
-    if (!ResonanceService.qualifies(text)) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-        content:
-            Text('Say a little more before accepting this as your essence.'),
-      ));
-      return;
-    }
     final session = _session;
     if (session == null) return;
 
@@ -188,6 +228,15 @@ class _CouncilScreenState extends State<CouncilScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         title: Text(widget.categoryName),
+        actions: [
+          // D-178: one deliberate, labelled way to set the essence, replacing
+          // the unexplained link that sat under every message the user sent.
+          TextButton(
+            onPressed: (_busy || session == null) ? null : _openEssenceSheet,
+            child: const Text('Set essence',
+                style: TextStyle(color: AppColors.brandGreen)),
+          ),
+        ],
       ),
       body: ChatBackdrop(
         child: Column(
@@ -204,7 +253,6 @@ class _CouncilScreenState extends State<CouncilScreen> {
                   : CouncilTranscript(
                       messages: session.messages,
                       scrollController: _scrollController,
-                      onAcceptEssence: _acceptAsEssence,
                       // D-083: session.nextAdvisorKey is the real next
                       // speaker for this category-scoped rotation.
                       typingAdvisorKey: _busy ? session.nextAdvisorKey : null,
@@ -214,6 +262,116 @@ class _CouncilScreenState extends State<CouncilScreen> {
               controller: _textController,
               enabled: !_busy,
               onSubmit: _sendUserMessage,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
+/// D-178: explains what an essence is, shows exactly what will be saved, and
+/// states the consequence, before anything is written. Only messages that
+/// pass [ResonanceService.qualifies] are offered — short replies like "What?!"
+/// could never become an essence, and previously still displayed the control.
+class _EssenceSheet extends StatefulWidget {
+  const _EssenceSheet({required this.categoryName, required this.candidates});
+  final String categoryName;
+  final List<String> candidates;
+
+  @override
+  State<_EssenceSheet> createState() => _EssenceSheetState();
+}
+
+class _EssenceSheetState extends State<_EssenceSheet> {
+  late String? selected =
+      widget.candidates.isEmpty ? null : widget.candidates.first;
+
+  @override
+  Widget build(BuildContext context) {
+    final empty = widget.candidates.isEmpty;
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 20,
+          right: 20,
+          top: 20,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Your essence for ${widget.categoryName}',
+                style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text(
+              'An essence is your own words for why this category matters to '
+              'you. It is what the app returns to when it talks to you about '
+              'this part of your life.',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            if (empty)
+              const Text(
+                'Nothing you have said here yet stands on its own as an '
+                'essence. Keep talking, then come back — a sentence or two '
+                'about why this matters is enough.',
+                style: TextStyle(color: AppColors.textSecondary),
+              )
+            else ...[
+              const Text('Choose what to save:',
+                  style: TextStyle(color: AppColors.textSecondary)),
+              const SizedBox(height: 8),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      for (final candidate in widget.candidates)
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          onTap: () => setState(() => selected = candidate),
+                          title: Text(candidate,
+                              style: const TextStyle(
+                                  color: AppColors.textPrimary, fontSize: 14)),
+                          trailing: selected == candidate
+                              ? const Icon(Icons.check,
+                                  color: AppColors.brandGreen)
+                              : null,
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Saving your essence ends this conversation. You can come '
+                'back and deepen it any time.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel',
+                      style: TextStyle(color: AppColors.textSecondary)),
+                ),
+                if (!empty)
+                  TextButton(
+                    onPressed: selected == null
+                        ? null
+                        : () => Navigator.of(context).pop(selected),
+                    child: const Text('Save essence',
+                        style: TextStyle(color: AppColors.brandGreen)),
+                  ),
+              ],
             ),
           ],
         ),
