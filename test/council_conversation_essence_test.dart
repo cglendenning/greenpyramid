@@ -7,11 +7,17 @@ import 'package:life_ops/services/resonance_service.dart';
 /// D-178: the category Council replied to a transcript one message stale and
 /// ignored direct questions, and the essence control sat unexplained under
 /// every user message.
+///
+/// The first two groups also carry D-100-AC-01 and D-100-AC-03, the general
+/// rule D-178 turned out to be a violation of. D-100 was recorded as verified
+/// on a manual review that did not reach this screen, so these are the first
+/// automated checks that the rule holds on the category Council specifically.
 void main() {
   final councilScreen = File('lib/screens/council_screen.dart').readAsStringSync();
   final transcript = File('lib/widgets/council_transcript.dart').readAsStringSync();
 
-  group('D-178-AC-01: the advisor answers what was just said', () {
+  group('D-178-AC-01 (also D-100-AC-01): the advisor answers what was just '
+      'said', () {
     test('the turn is given the history including the new user message', () {
       // The defect was passing session.messages, captured before the append.
       expect(councilScreen, contains('appendUserMessage'));
@@ -27,7 +33,8 @@ void main() {
     });
   });
 
-  group('D-178-AC-02: a direct question goes to the advisor who just spoke', () {
+  group('D-178-AC-02 (also D-100-AC-03): a direct question goes to the '
+      'advisor who just spoke', () {
     test('the screen routes through advisorKeyForUserMessage', () {
       expect(councilScreen, contains('session.advisorKeyForUserMessage(text)'));
       expect(councilScreen, isNot(contains('final next = session.nextAdvisorKey;')));
