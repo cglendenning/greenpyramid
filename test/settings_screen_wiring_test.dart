@@ -57,6 +57,18 @@ void main() {
   });
 
   test(
+      'entitlement state is refreshed from the server before Settings reads '
+      'the local lifetime cache, so an admin revocation is reflected without '
+      'a reinstall', () {
+    final source = File('lib/screens/settings.dart').readAsStringSync();
+    final refresh = source.indexOf('refreshCurrentAccount()');
+    final localRead = source.indexOf('currentLocalLifetimeAccess()');
+    expect(refresh, greaterThan(-1));
+    expect(localRead, greaterThan(refresh));
+    expect(source, contains('cannot grant access on-device'));
+  });
+
+  test(
       'D-122: the settings test notification now uses a real newsfeed '
       "item's own headline/body, not a generic message — owner: \"the "
       'button to send a test notification [should] behave the same way '

@@ -42,11 +42,18 @@ void main() {
     if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
   });
 
-  Future<void> seedProfile(FirebaseFirestore firestore, Map<String, dynamic> data) {
-    return firestore.collection('users').doc(uid).collection('profile').doc('main').set(data);
+  Future<void> seedProfile(
+      FirebaseFirestore firestore, Map<String, dynamic> data) {
+    return firestore
+        .collection('users')
+        .doc(uid)
+        .collection('profile')
+        .doc('main')
+        .set(data);
   }
 
-  test('D-044: pullFromServer mirrors a trialing entitlement, with its '
+  test(
+      'D-044: pullFromServer mirrors a trialing entitlement, with its '
       'trial window, into the local cache', () async {
     final firestore = FakeFirebaseFirestore();
     await seedProfile(firestore, {
@@ -61,11 +68,54 @@ void main() {
     expect(found, isTrue);
     final account = await db.getAccountState();
     expect(account[DatabaseHelper.columnEntitlement], 'trialing');
-    final storedExpiry = DateTime.parse(account[DatabaseHelper.columnTrialExpiresAt] as String);
+    final storedExpiry =
+        DateTime.parse(account[DatabaseHelper.columnTrialExpiresAt] as String);
     expect(storedExpiry.toUtc(), DateTime.utc(2026, 6, 4));
   });
 
-  test('D-044: pullFromServer is a no-op when profile/main has no '
+  test(
+      'refreshCurrentAccount mirrors the authenticated account and removes '
+      'stale local lifetime access', () async {
+    final firestore = FakeFirebaseFirestore();
+    await seedProfile(firestore, {
+      'entitlement': 'subscribed',
+      'lifetimeAccess': false,
+    });
+    final auth = MockFirebaseAuth(
+      signedIn: true,
+      mockUser: MockUser(uid: uid, isAnonymous: false),
+    );
+    await db.setAccountEntitlement(
+      entitlement: 'subscribed',
+      lifetimeAccess: true,
+    );
+    final service = EntitlementService(
+      db: db,
+      firestore: firestore,
+      auth: auth,
+    );
+
+    expect(await service.refreshCurrentAccount(), isTrue);
+    expect(await service.currentLocalLifetimeAccess(), isFalse);
+  });
+
+  test('refreshCurrentAccount does not query for an anonymous session',
+      () async {
+    final auth = MockFirebaseAuth(
+      signedIn: true,
+      mockUser: MockUser(uid: uid, isAnonymous: true),
+    );
+    final service = EntitlementService(
+      db: db,
+      firestore: FakeFirebaseFirestore(),
+      auth: auth,
+    );
+
+    expect(await service.refreshCurrentAccount(), isFalse);
+  });
+
+  test(
+      'D-044: pullFromServer is a no-op when profile/main has no '
       'entitlement field yet (a brand-new, not-yet-synced account) — the '
       'local default is left alone rather than cleared', () async {
     final firestore = FakeFirebaseFirestore();
@@ -98,7 +148,8 @@ void main() {
     expect(found, isFalse);
   });
 
-  test('D-044: pullFromServer reflects a subscribed account (as written by '
+  test(
+      'D-044: pullFromServer reflects a subscribed account (as written by '
       'the RevenueCat webhook) into the local cache', () async {
     final firestore = FakeFirebaseFirestore();
     await seedProfile(firestore, {'entitlement': 'subscribed'});
@@ -107,8 +158,8 @@ void main() {
     // below, not isEntitled()'s own new auto-pull (covered separately);
     // isEntitled() here just reads back what that explicit call already
     // wrote locally.
-    final service =
-        EntitlementService(db: db, firestore: firestore, auth: MockFirebaseAuth());
+    final service = EntitlementService(
+        db: db, firestore: firestore, auth: MockFirebaseAuth());
 
     await service.pullFromServer(uid);
 
@@ -116,7 +167,8 @@ void main() {
   });
 
   // D-142-AC-01: purchase/restore capability must survive the webhook gap.
-  test('D-142/D-054: a stale pre-trial server snapshot cannot overwrite a '
+  test(
+      'D-142/D-054: a stale pre-trial server snapshot cannot overwrite a '
       'confirmed local subscription while the RevenueCat webhook catches up',
       () async {
     final firestore = FakeFirebaseFirestore();
@@ -170,7 +222,8 @@ void main() {
     expect(account[DatabaseHelper.columnLifetimeAccess], 0);
   });
 
-  test('markSubscribedLocally sets the local cache to subscribed '
+  test(
+      'markSubscribedLocally sets the local cache to subscribed '
       'immediately, without touching Firestore', () async {
     final service = EntitlementService(
         db: db, firestore: FakeFirebaseFirestore(), auth: MockFirebaseAuth());
@@ -180,7 +233,8 @@ void main() {
     expect(account[DatabaseHelper.columnEntitlement], 'subscribed');
   });
 
-  test('D-014: isEntitled is true for trialing and subscribed, false for '
+  test(
+      'D-014: isEntitled is true for trialing and subscribed, false for '
       'pre_trial and lapsed', () async {
     final service = EntitlementService(
         db: db, firestore: FakeFirebaseFirestore(), auth: MockFirebaseAuth());
@@ -198,7 +252,8 @@ void main() {
     expect(await service.isEntitled(), isTrue);
   });
 
-  test('D-142: isEntitled pulls from the server before trusting the '
+  test(
+      'D-142: isEntitled pulls from the server before trusting the '
       'local cache — found live: local account_state.entitlement can sit '
       'stale (a purchase whose optimistic local write never landed) '
       'while Firestore already has the true value, and nothing but a '
@@ -207,7 +262,8 @@ void main() {
     await seedProfile(firestore, {'entitlement': 'subscribed'});
     final auth = MockFirebaseAuth(
         signedIn: true, mockUser: MockUser(uid: uid, isAnonymous: false));
-    final service = EntitlementService(db: db, firestore: firestore, auth: auth);
+    final service =
+        EntitlementService(db: db, firestore: firestore, auth: auth);
 
     // The local cache still says pre_trial — nothing has pulled the real,
     // already-correct server value down into it yet.
@@ -221,7 +277,8 @@ void main() {
         reason: 'the pull should also have corrected the local cache in place');
   });
 
-  test('D-142: a signed-out account (no current user) skips the server '
+  test(
+      'D-142: a signed-out account (no current user) skips the server '
       'pull and falls back to whatever the local cache holds, rather '
       'than throwing', () async {
     final service = EntitlementService(

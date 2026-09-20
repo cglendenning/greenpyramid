@@ -204,6 +204,17 @@ class EntitlementService {
     }
   }
 
+  /// Refreshes the authenticated account's server-owned entitlement state.
+  ///
+  /// This is deliberately a one-way mirror: a successful refresh can remove
+  /// stale local lifetime access, but it never grants access based on local
+  /// state or on a client-supplied value.
+  Future<bool> refreshCurrentAccount() async {
+    final user = _auth.currentUser;
+    if (user == null || user.isAnonymous) return false;
+    return pullFromServer(user.uid);
+  }
+
   /// Optimistic local write immediately after a purchase/restore confirms —
   /// mirrors Kansei's markSubscribed pattern, so the app reflects the new
   /// state instantly rather than waiting for the RevenueCat webhook to land

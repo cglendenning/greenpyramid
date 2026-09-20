@@ -150,6 +150,7 @@ class _SettingsState extends State<Settings> {
   }
 
   Future<void> _loadLifetimeAccess() async {
+    await EntitlementService.instance.refreshCurrentAccount();
     final value =
         await EntitlementService.instance.currentLocalLifetimeAccess();
     if (mounted) setState(() => _lifetimeAccess = value);
@@ -367,6 +368,9 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
   }
 
   Future<void> _load() async {
+    // Pull the server-owned state before reading the local cache. This can
+    // revoke stale local lifetime access, but cannot grant access on-device.
+    await EntitlementService.instance.refreshCurrentAccount();
     final info = await SubscriptionService.syncAndGetCustomerInfo();
     final localEntitlement =
         await EntitlementService.instance.currentLocalEntitlement();

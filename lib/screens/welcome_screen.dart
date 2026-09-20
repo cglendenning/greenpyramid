@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../services/local_pyramid_reset_service.dart';
+import '../services/entitlement_service.dart';
 import '../services/sync_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/onboarding_backdrop.dart';
@@ -112,6 +113,10 @@ class WelcomeScreen extends StatelessWidget {
             final uid = FirebaseAuth.instance.currentUser?.uid;
             if (uid != null) {
               await SyncService.instance.replaceLocalCacheFromCloud(uid);
+              // Entitlement is server-owned and is not part of the content
+              // cache restored above. Refresh it before rebuilding the app
+              // so revoked lifetime access cannot remain visible locally.
+              await EntitlementService.instance.refreshCurrentAccount();
             }
             if (!context.mounted) return;
             Navigator.of(context)
@@ -124,6 +129,7 @@ class WelcomeScreen extends StatelessWidget {
           // into setup as this newly-linked user.
           final uid = FirebaseAuth.instance.currentUser?.uid;
           if (uid != null && await SyncService.instance.restoreFromCloud(uid)) {
+            await EntitlementService.instance.refreshCurrentAccount();
             if (!context.mounted) return;
             Navigator.of(context)
                 .pushNamedAndRemoveUntil('/', (route) => false);
@@ -131,8 +137,9 @@ class WelcomeScreen extends StatelessWidget {
           }
           await LocalPyramidResetService.instance.wipeLocalPyramid();
           if (!context.mounted) return;
-          Navigator.of(context).pushReplacement(
-              MaterialPageRoute(settings: const RouteSettings(name: 'SetupScreen'), builder: (_) => const SetupScreen()));
+          Navigator.of(context).pushReplacement(MaterialPageRoute(
+              settings: const RouteSettings(name: 'SetupScreen'),
+              builder: (_) => const SetupScreen()));
         },
       ),
     ));
@@ -144,8 +151,9 @@ class WelcomeScreen extends StatelessWidget {
     // nothing here that isn't already recoverable by signing back in.
     // D-001: Begin also resumes an existing draft; never reset it here.
     if (!context.mounted) return;
-    Navigator.of(context).pushReplacement(
-        MaterialPageRoute(settings: const RouteSettings(name: 'SetupScreen'), builder: (_) => const SetupScreen()));
+    Navigator.of(context).pushReplacement(MaterialPageRoute(
+        settings: const RouteSettings(name: 'SetupScreen'),
+        builder: (_) => const SetupScreen()));
   }
 
   @override
@@ -243,7 +251,9 @@ class WelcomeScreen extends StatelessWidget {
                       child: TextButton(
                         style: TextButton.styleFrom(padding: EdgeInsets.zero),
                         onPressed: () => Navigator.of(context).push(
-                          MaterialPageRoute(settings: const RouteSettings(name: 'TermsScreen'), 
+                          MaterialPageRoute(
+                              settings:
+                                  const RouteSettings(name: 'TermsScreen'),
                               builder: (_) => const TermsScreen()),
                         ),
                         child: Text(
