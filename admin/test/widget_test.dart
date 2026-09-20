@@ -20,6 +20,14 @@ void main() {
     expect(source, contains('FirebaseAuth.instance.signOut()'));
     expect(source, contains("/adminMetrics"));
     expect(source, contains('Product pulse'));
+    expect(source, contains('Setup abandoned'));
+    expect(source, contains('Free trial'));
+    expect(source, contains('Lapsed'));
+    expect(source, contains('Subscribed'));
+    expect(source, contains('meanDownloadToSubscriptionDays'));
+    expect(source, contains('Claude usage ledger'));
+    expect(source, contains('All-services total'));
+    expect(source, contains('Cloud Billing export'));
     expect(source, contains('Screen utilization'));
     expect(source, contains('Top users by spend'));
     expect(source, contains('/adminFeedback?limit=500'));

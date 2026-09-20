@@ -169,8 +169,12 @@ class Dashboard extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
-    final f = data['funnel'] as Map<String, dynamic>;
     final c = data['cost'] as Map<String, dynamic>;
+    final cohorts = _map(data['cohorts']);
+    final conversion = _map(data['conversion']);
+    final claude = _map(c['claude']);
+    final firebase = _map(c['firebase']);
+    final allServices = _map(c['allServices']);
     final screens = (data['screenUsage'] as List).cast<Map<String, dynamic>>();
     return Scaffold(
       appBar: AppBar(
@@ -216,7 +220,9 @@ class Dashboard extends StatelessWidget {
                 title: const Text('App feedback'),
                 subtitle: const Text('Read user-submitted feedback'),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const AdminFeedbackScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const AdminFeedbackScreen(),
+                  ),
                 ),
               ),
               // D-165-AC-07: read-only billing, budget, and Functions diagnostic.
@@ -225,7 +231,9 @@ class Dashboard extends StatelessWidget {
                 title: const Text('Platform health'),
                 subtitle: const Text('Billing, budgets, quotas, and Functions'),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const PlatformHealthScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const PlatformHealthScreen(),
+                  ),
                 ),
               ),
               ListTile(
@@ -246,7 +254,9 @@ class Dashboard extends StatelessWidget {
               ListTile(
                 leading: const Icon(Icons.bug_report_outlined),
                 title: const Text('Intervention engine debugger'),
-                subtitle: const Text('Step through a synthetic pyramid day by day'),
+                subtitle: const Text(
+                  'Step through a synthetic pyramid day by day',
+                ),
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => const InterventionDebuggerScreen(),
@@ -257,7 +267,9 @@ class Dashboard extends StatelessWidget {
                 leading: const Icon(Icons.account_tree_outlined),
                 title: const Text('How the intervention engine works'),
                 onTap: () => Navigator.of(context).push(
-                  MaterialPageRoute(builder: (_) => const InterventionEngineGuideScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const InterventionEngineGuideScreen(),
+                  ),
                 ),
               ),
               ListTile(
@@ -290,20 +302,84 @@ class Dashboard extends StatelessWidget {
               spacing: 12,
               runSpacing: 12,
               children: [
-                _metric('Setup starts', '${f['anonymousStarts']}'),
-                _metric('Account links', '${f['accountLinks']}'),
-                _metric('Completions', '${f['setupCompletions']}'),
+                _metric('Accounts', '${cohorts['downloadedUsers'] ?? 0}'),
                 _metric(
-                  'Monthly cost',
-                  '\$${(c['totalUsd'] as num).toStringAsFixed(2)}',
+                  'Setup abandoned',
+                  '${cohorts['setupAbandonedUsers'] ?? 0}',
                 ),
+                _metric('Free trial', '${cohorts['trialingUsers'] ?? 0}'),
+                _metric('Lapsed', '${cohorts['lapsedUsers'] ?? 0}'),
+                _metric('Subscribed', '${cohorts['subscribedUsers'] ?? 0}'),
               ],
             ),
             const SizedBox(height: 24),
-            const Text('Conversion'),
-            _bar('Link rate', f['linkRate'] as num),
-            _bar('Completion rate', f['completionRate'] as num),
-            _bar('Subscription rate', f['subscriptionRate'] as num),
+            const Text(
+              'Conversion',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            _bar('Download → setup', _number(conversion['setupStartRate'])),
+            _bar(
+              'Setup completion',
+              _number(conversion['setupCompletionRate']),
+            ),
+            _bar(
+              'Trial → subscription',
+              _number(conversion['trialToSubscriptionRate']),
+            ),
+            _bar(
+              'Download → subscription',
+              _number(conversion['downloadToSubscriptionRate']),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Mean download → subscription: ${_days(conversion['meanDownloadToSubscriptionDays'])}',
+            ),
+            Text(
+              'Mean trial → subscription: ${_days(conversion['meanTrialToSubscriptionDays'])}',
+            ),
+            Text(
+              'Timing sample: ${conversion['downloadToSubscriptionSample'] ?? 0} subscribed account(s)',
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'Billing',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Claude usage ledger: ${_money(claude['allTimeUsd'])}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text('Current month: ${_money(claude['currentMonthUsd'])}'),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'This is the server token ledger at configured model rates, not the Anthropic invoice.',
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Firebase / Google Cloud: ${firebase['state'] == 'not_connected' ? 'not connected' : firebase['state']}',
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'All-services total: ${allServices['state'] == 'complete' ? _money(allServices['amountUsd']) : 'not available'}',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'The dashboard will not invent a Firebase total. Google Cloud Billing export data must be connected before this becomes an authoritative all-services number.',
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const SizedBox(height: 24),
             const Text('Screen utilization'),
             if (screens.isEmpty)
@@ -316,7 +392,7 @@ class Dashboard extends StatelessWidget {
             else
               ..._screenRows(context, screens),
             const SizedBox(height: 24),
-            const Text('Top users by spend'),
+            const Text('Top users by spend (Claude ledger)'),
             if ((data['topUsers'] as List).isEmpty)
               const Card(
                 child: Padding(
@@ -358,6 +434,18 @@ class Dashboard extends StatelessWidget {
       ),
     ),
   );
+
+  Map<String, dynamic> _map(dynamic value) =>
+      value is Map ? value.cast<String, dynamic>() : <String, dynamic>{};
+
+  double _number(dynamic value) => value is num ? value.toDouble() : 0;
+
+  String _money(dynamic value) =>
+      value is num ? '\$${value.toStringAsFixed(2)}' : 'Not available';
+
+  String _days(dynamic value) =>
+      value is num ? '${value.toStringAsFixed(1)} days' : 'Not available';
+
   Widget _bar(String label, num value) => Padding(
     padding: const EdgeInsets.only(bottom: 10),
     child: Row(
@@ -373,10 +461,11 @@ class Dashboard extends StatelessWidget {
   /// D-180: the rows are ordered by traffic and share one scale, so the bars
   /// compare against the busiest screen rather than against nothing.
   List<Widget> _screenRows(
-      BuildContext context, List<Map<String, dynamic>> screens) {
-    final rows = [...screens]..sort(
-        (a, b) => ((b['opens'] as num)).compareTo(a['opens'] as num),
-      );
+    BuildContext context,
+    List<Map<String, dynamic>> screens,
+  ) {
+    final rows = [...screens]
+      ..sort((a, b) => ((b['opens'] as num)).compareTo(a['opens'] as num));
     final busiest = rows
         .map((s) => (s['opens'] as num).toDouble())
         .fold<double>(1, (a, b) => a > b ? a : b);
@@ -386,7 +475,10 @@ class Dashboard extends StatelessWidget {
   }
 
   Widget _screenRow(
-      BuildContext context, Map<String, dynamic> screen, double busiest) {
+    BuildContext context,
+    Map<String, dynamic> screen,
+    double busiest,
+  ) {
     final label = ScreenLabel.parse(screen['screenKey'] as String);
     final opens = (screen['opens'] as num).toDouble();
     final muted = Theme.of(context).textTheme.bodySmall?.color;
@@ -510,14 +602,18 @@ class _AdminFeedbackScreenState extends State<AdminFeedbackScreen> {
       future: feedbackFuture,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return Center(child: Text('Feedback could not be loaded: ${snapshot.error}'));
+          return Center(
+            child: Text('Feedback could not be loaded: ${snapshot.error}'),
+          );
         }
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
         }
         final entries = snapshot.data!;
         if (entries.isEmpty) {
-          return const Center(child: Text('No user feedback has been submitted yet.'));
+          return const Center(
+            child: Text('No user feedback has been submitted yet.'),
+          );
         }
         return RefreshIndicator(
           onRefresh: () async => refresh(),
@@ -601,7 +697,10 @@ class AdminFeedbackDetailScreen extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 16),
-        const Text('Submission details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text(
+          'Submission details',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         _row('Submitted', '${entry['createdAt'] ?? 'Unknown'}'),
         _row('Platform', '${entry['platform'] ?? 'Unknown'}'),
         _row('App version', '${entry['appVersion'] ?? 'Unknown'}'),
@@ -676,7 +775,11 @@ class _PlatformHealthScreenState extends State<PlatformHealthScreen> {
       future: healthFuture,
       builder: (context, snapshot) {
         if (snapshot.hasError) {
-          return Center(child: Text('Platform health could not be loaded: ${snapshot.error}'));
+          return Center(
+            child: Text(
+              'Platform health could not be loaded: ${snapshot.error}',
+            ),
+          );
         }
         if (!snapshot.hasData) {
           return const Center(child: CircularProgressIndicator());
@@ -693,7 +796,10 @@ class _PlatformHealthScreenState extends State<PlatformHealthScreen> {
             padding: const EdgeInsets.all(20),
             physics: const AlwaysScrollableScrollPhysics(),
             children: [
-              Text('Google Cloud checks', style: Theme.of(context).textTheme.headlineSmall),
+              Text(
+                'Google Cloud checks',
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
               Text('Project: ${health['projectId'] ?? 'unknown'}'),
               const SizedBox(height: 16),
               _healthCard(
@@ -723,13 +829,18 @@ class _PlatformHealthScreenState extends State<PlatformHealthScreen> {
               ),
               if (functionRows.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                const Text('Deployed Functions', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                ...functionRows.map((fn) => ListTile(
-                  dense: true,
-                  title: Text('${fn['name'] ?? 'unknown'}'),
-                  subtitle: Text('${fn['region'] ?? 'unknown region'}'),
-                  trailing: Text('${fn['state'] ?? 'UNKNOWN'}'),
-                )),
+                const Text(
+                  'Deployed Functions',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                ...functionRows.map(
+                  (fn) => ListTile(
+                    dense: true,
+                    title: Text('${fn['name'] ?? 'unknown'}'),
+                    subtitle: Text('${fn['region'] ?? 'unknown region'}'),
+                    trailing: Text('${fn['state'] ?? 'UNKNOWN'}'),
+                  ),
+                ),
               ],
               const SizedBox(height: 16),
               const Card(
@@ -741,7 +852,10 @@ class _PlatformHealthScreenState extends State<PlatformHealthScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text('Checked ${health['checkedAt'] ?? 'unknown'}', style: Theme.of(context).textTheme.bodySmall),
+              Text(
+                'Checked ${health['checkedAt'] ?? 'unknown'}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ],
           ),
         );
@@ -795,53 +909,96 @@ class AdminUsersScreen extends StatefulWidget {
 class _AdminUsersScreenState extends State<AdminUsersScreen> {
   late Future<Map<String, dynamic>> future;
   @override
-  void initState() { super.initState(); future = _load(); }
+  void initState() {
+    super.initState();
+    future = _load();
+  }
+
   Future<Map<String, dynamic>> _load() async {
     final token = await FirebaseAuth.instance.currentUser!.getIdToken(true);
-    final response = await http.get(Uri.parse('$apiBase/adminUsers'), headers: {'Authorization': 'Bearer $token'});
-    if (response.statusCode != 200) throw AdminMetricsException(response.statusCode);
+    final response = await http.get(
+      Uri.parse('$apiBase/adminUsers'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode != 200) {
+      throw AdminMetricsException(response.statusCode);
+    }
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
+
   void refresh() => setState(() => future = _load());
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Users'), actions: [IconButton(icon: const Icon(Icons.refresh), onPressed: refresh)]),
+    appBar: AppBar(
+      title: const Text('Users'),
+      actions: [
+        IconButton(icon: const Icon(Icons.refresh), onPressed: refresh),
+      ],
+    ),
     body: FutureBuilder<Map<String, dynamic>>(
       future: future,
       builder: (context, snap) {
-        if (snap.hasError) return Center(child: Text('Users could not be loaded: ${snap.error}'));
-        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+        if (snap.hasError) {
+          return Center(
+            child: Text('Users could not be loaded: ${snap.error}'),
+          );
+        }
+        if (!snap.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
         final summary = (snap.data!['summary'] as Map).cast<String, dynamic>();
-        final users = (snap.data!['users'] as List).cast<Map<String, dynamic>>();
+        final users = (snap.data!['users'] as List)
+            .cast<Map<String, dynamic>>();
         return RefreshIndicator(
           onRefresh: () async => refresh(),
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              Wrap(spacing: 8, runSpacing: 8, children: [
-                _metric('Users', summary['totalUsers']),
-                _metric('Subscribed', summary['subscribed']),
-                _metric('Lifetime', summary['lifetimeSubscribers']),
-                _metric('Trialing', summary['trialing']),
-                _metric('Lapsed', summary['lapsed']),
-                _metric('Setup complete', summary['setupComplete']),
-              ]),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _metric('Users', summary['totalUsers']),
+                  _metric('Subscribed', summary['subscribed']),
+                  _metric('Lifetime', summary['lifetimeSubscribers']),
+                  _metric('Trialing', summary['trialing']),
+                  _metric('Lapsed', summary['lapsed']),
+                  _metric('Setup complete', summary['setupComplete']),
+                ],
+              ),
               const SizedBox(height: 20),
-              Text('${users.length} accounts', style: Theme.of(context).textTheme.titleLarge),
+              Text(
+                '${users.length} accounts',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
               const SizedBox(height: 8),
-              ...users.map((user) => Card(child: ListTile(
-                title: Text(user['displayName']?.toString() ?? 'Unnamed user'),
-                subtitle: Text('${user['email'] ?? 'No email'} · ${user['entitlement'] ?? 'unknown'}${user['lifetimeAccess'] == true ? ' · Lifetime' : ''}'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AdminUserDetailScreen(uid: user['uid'] as String))),
-              ))),
+              ...users.map(
+                (user) => Card(
+                  child: ListTile(
+                    title: Text(
+                      user['displayName']?.toString() ?? 'Unnamed user',
+                    ),
+                    subtitle: Text(
+                      '${user['email'] ?? 'No email'} · ${user['entitlement'] ?? 'unknown'}${user['lifetimeAccess'] == true ? ' · Lifetime' : ''}',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            AdminUserDetailScreen(uid: user['uid'] as String),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         );
       },
     ),
   );
-  Widget _metric(String label, dynamic value) => Chip(label: Text('$label: $value'));
+  Widget _metric(String label, dynamic value) =>
+      Chip(label: Text('$label: $value'));
 }
 
 class AdminUserDetailScreen extends StatefulWidget {
@@ -855,56 +1012,149 @@ class _AdminUserDetailScreenState extends State<AdminUserDetailScreen> {
   late Future<Map<String, dynamic>> future;
   bool mutating = false;
   @override
-  void initState() { super.initState(); future = _load(); }
+  void initState() {
+    super.initState();
+    future = _load();
+  }
+
   Future<Map<String, dynamic>> _load() async {
     final token = await FirebaseAuth.instance.currentUser!.getIdToken(true);
-    final response = await http.get(Uri.parse('$apiBase/adminUsers/${widget.uid}'), headers: {'Authorization': 'Bearer $token'});
-    if (response.statusCode != 200) throw AdminMetricsException(response.statusCode);
+    final response = await http.get(
+      Uri.parse('$apiBase/adminUsers/${widget.uid}'),
+      headers: {'Authorization': 'Bearer $token'},
+    );
+    if (response.statusCode != 200) {
+      throw AdminMetricsException(response.statusCode);
+    }
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
+
   Future<void> _mutate(bool grant) async {
-    final confirmed = await showDialog<bool>(context: context, builder: (context) => AlertDialog(
-      title: Text(grant ? 'Grant lifetime access?' : 'Revoke lifetime access?'),
-      content: Text(grant ? 'This gives the account access that does not expire.' : 'This removes only the lifetime gift. An active Apple or RevenueCat subscription remains active.'),
-      actions: [TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, true), child: Text(grant ? 'Grant' : 'Revoke'))],
-    ));
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          grant ? 'Grant lifetime access?' : 'Revoke lifetime access?',
+        ),
+        content: Text(
+          grant
+              ? 'This gives the account access that does not expire.'
+              : 'This removes only the lifetime gift. An active Apple or RevenueCat subscription remains active.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(grant ? 'Grant' : 'Revoke'),
+          ),
+        ],
+      ),
+    );
     if (confirmed != true) return;
     setState(() => mutating = true);
     try {
       final token = await FirebaseAuth.instance.currentUser!.getIdToken(true);
-      final response = await http.post(Uri.parse('$apiBase/adminUsers/${widget.uid}/${grant ? 'lifetimeGrant' : 'lifetimeRevoke'}'), headers: {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'});
-      if (response.statusCode != 200) throw AdminMetricsException(response.statusCode);
-      if (mounted) { setState(() => future = _load()); ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(grant ? 'Lifetime access granted.' : 'Lifetime access revoked.'))); }
+      final response = await http.post(
+        Uri.parse(
+          '$apiBase/adminUsers/${widget.uid}/${grant ? 'lifetimeGrant' : 'lifetimeRevoke'}',
+        ),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+      );
+      if (response.statusCode != 200) {
+        throw AdminMetricsException(response.statusCode);
+      }
+      if (mounted) {
+        setState(() => future = _load());
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              grant ? 'Lifetime access granted.' : 'Lifetime access revoked.',
+            ),
+          ),
+        );
+      }
     } catch (_) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('The lifetime access change could not be completed.')));
-    } finally { if (mounted) setState(() => mutating = false); }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('The lifetime access change could not be completed.'),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => mutating = false);
+    }
   }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(title: const Text('User details')),
     body: FutureBuilder<Map<String, dynamic>>(
       future: future,
       builder: (context, snap) {
-        if (snap.hasError) return Center(child: Text('User details could not be loaded: ${snap.error}'));
-        if (!snap.hasData) return const Center(child: CircularProgressIndicator());
+        if (snap.hasError) {
+          return Center(
+            child: Text('User details could not be loaded: ${snap.error}'),
+          );
+        }
+        if (!snap.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
         final user = snap.data!;
         final usage = (user['usage'] as Map).cast<String, dynamic>();
         final lifetime = user['lifetimeAccess'] == true;
-        return ListView(padding: const EdgeInsets.all(20), children: [
-          Text(user['displayName']?.toString() ?? 'Unnamed user', style: Theme.of(context).textTheme.headlineSmall),
-          _row('Email', user['email']), _row('User ID', user['uid']), _row('Providers', (user['providers'] as List).join(', ')),
-          _row('Entitlement', user['entitlement']), _row('Subscription source', user['subscriptionSource']), _row('Subscription expiry', user['subscriptionExpiresAtMs']),
-          _row('Lifetime access', lifetime ? 'Yes' : 'No'), _row('Setup complete', user['setupComplete'] == true ? 'Yes' : 'No'),
-          _row('Total AI spend', '\$${(user['totalSpendUsd'] ?? 0).toStringAsFixed(2)}'), _row('AI calls', user['aiCalls']),
-          const SizedBox(height: 16), Text('Usage', style: Theme.of(context).textTheme.titleLarge),
-          ...usage.entries.map((entry) => _row(entry.key, entry.value)),
-          const SizedBox(height: 20),
-          FilledButton(onPressed: mutating ? null : () => _mutate(!lifetime), child: Text(mutating ? 'Working…' : lifetime ? 'Revoke lifetime access' : 'Grant lifetime access')),
-        ]);
+        return ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            Text(
+              user['displayName']?.toString() ?? 'Unnamed user',
+              style: Theme.of(context).textTheme.headlineSmall,
+            ),
+            _row('Email', user['email']),
+            _row('User ID', user['uid']),
+            _row('Providers', (user['providers'] as List).join(', ')),
+            _row('Entitlement', user['entitlement']),
+            _row('Subscription source', user['subscriptionSource']),
+            _row('Subscription expiry', user['subscriptionExpiresAtMs']),
+            _row('Lifetime access', lifetime ? 'Yes' : 'No'),
+            _row(
+              'Setup complete',
+              user['setupComplete'] == true ? 'Yes' : 'No',
+            ),
+            _row(
+              'Total AI spend',
+              '\$${(user['totalSpendUsd'] ?? 0).toStringAsFixed(2)}',
+            ),
+            _row('AI calls', user['aiCalls']),
+            const SizedBox(height: 16),
+            Text('Usage', style: Theme.of(context).textTheme.titleLarge),
+            ...usage.entries.map((entry) => _row(entry.key, entry.value)),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: mutating ? null : () => _mutate(!lifetime),
+              child: Text(
+                mutating
+                    ? 'Working…'
+                    : lifetime
+                    ? 'Revoke lifetime access'
+                    : 'Grant lifetime access',
+              ),
+            ),
+          ],
+        );
       },
     ),
   );
-  Widget _row(String label, dynamic value) => Padding(padding: const EdgeInsets.only(top: 10), child: Text('$label: ${value ?? 'Not available'}'));
+  Widget _row(String label, dynamic value) => Padding(
+    padding: const EdgeInsets.only(top: 10),
+    child: Text('$label: ${value ?? 'Not available'}'),
+  );
 }
 
 class LifetimeCodeScreen extends StatefulWidget {
@@ -920,7 +1170,11 @@ class _LifetimeCodeScreenState extends State<LifetimeCodeScreen> {
   bool generating = false;
 
   Future<void> generate() async {
-    setState(() { generating = true; error = null; code = null; });
+    setState(() {
+      generating = true;
+      error = null;
+      code = null;
+    });
     try {
       final token = await FirebaseAuth.instance.currentUser!.getIdToken(true);
       final response = await http.post(
@@ -941,7 +1195,9 @@ class _LifetimeCodeScreenState extends State<LifetimeCodeScreen> {
       }
       if (mounted) setState(() => code = generated);
     } catch (_) {
-      if (mounted) setState(() => error = 'The lifetime code could not be generated.');
+      if (mounted) {
+        setState(() => error = 'The lifetime code could not be generated.');
+      }
     } finally {
       if (mounted) setState(() => generating = false);
     }
@@ -964,7 +1220,11 @@ class _LifetimeCodeScreenState extends State<LifetimeCodeScreen> {
               child: SelectableText(
                 code!,
                 textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 1.4),
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.4,
+                ),
               ),
             ),
           ),
@@ -975,12 +1235,19 @@ class _LifetimeCodeScreenState extends State<LifetimeCodeScreen> {
             label: const Text('Copy code'),
           ),
           const SizedBox(height: 8),
-          const Text('This code can be redeemed once. Keep it private and treat it like a gift card.', textAlign: TextAlign.center),
+          const Text(
+            'This code can be redeemed once. Keep it private and treat it like a gift card.',
+            textAlign: TextAlign.center,
+          ),
         ] else
           FilledButton.icon(
             onPressed: generating ? null : generate,
             icon: generating
-                ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
                 : const Icon(Icons.add),
             label: Text(generating ? 'Generating…' : 'Generate code'),
           ),
@@ -1855,13 +2122,15 @@ class _EngineFlow extends StatelessWidget {
           _FlowStep(
             number: '1',
             title: 'Cloud receives current facts',
-            body: 'Tasks, check-ins, values, goals, schedules and prior decisions.',
+            body:
+                'Tasks, check-ins, values, goals, schedules and prior decisions.',
           ),
           _FlowArrow(),
           _FlowStep(
             number: '2',
             title: 'Estimate doing nothing',
-            body: 'Estimate future checkbox completion without sending support.',
+            body:
+                'Estimate future checkbox completion without sending support.',
           ),
           _FlowArrow(),
           _FlowStep(
@@ -2412,9 +2681,7 @@ class _DebuggerSessionScreenState extends State<DebuggerSessionScreen> {
   }
 
   Future<void> nextDay(Map<String, Map<String, dynamic>> outcomes) async {
-    final activeTasks = tasks
-        .where((task) => task['active'] != false)
-        .toList();
+    final activeTasks = tasks.where((task) => task['active'] != false).toList();
     final todaysActivity = activeTasks.map((task) {
       final outcome =
           outcomes[task['id']] ?? const {'checked': true, 'reason': ''};
@@ -2671,9 +2938,7 @@ class _TaskOutcomeCardState extends State<_TaskOutcomeCard> {
     margin: const EdgeInsets.only(bottom: 8),
     child: ExpansionTile(
       title: Text(widget.task['description'] as String),
-      subtitle: Text(
-        '${checked ? 'Checked' : 'Missed'} · ${widget.tierLabel}',
-      ),
+      subtitle: Text('${checked ? 'Checked' : 'Missed'} · ${widget.tierLabel}'),
       childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       children: [
         SegmentedButton<bool>(
@@ -2826,7 +3091,9 @@ class _DebuggerDayTile extends StatelessWidget {
                   ),
               if (policy['suppressionReason'] != null)
                 Text('Suppression reason: ${policy['suppressionReason']}'),
-              Text('Support tier: ${policy['burdenAssumptions']?['supportTier']}'),
+              Text(
+                'Support tier: ${policy['burdenAssumptions']?['supportTier']}',
+              ),
             ]),
           if (signals != null)
             _section(context, 'Derived signals', [
@@ -2851,9 +3118,7 @@ class _DebuggerDayTile extends StatelessWidget {
               ),
               Text(
                 'Neglected tasks: '
-                '${(signals['neglectedTasks'] as List?)?.isEmpty ?? true
-                    ? 'none'
-                    : (signals['neglectedTasks'] as List).map((n) => '${n['task']} (${n['tier']}, ${n['missStreak']} in a row)').join('; ')}',
+                '${(signals['neglectedTasks'] as List?)?.isEmpty ?? true ? 'none' : (signals['neglectedTasks'] as List).map((n) => '${n['task']} (${n['tier']}, ${n['missStreak']} in a row)').join('; ')}',
               ),
             ]),
           if (safety != null)
@@ -2865,7 +3130,9 @@ class _DebuggerDayTile extends StatelessWidget {
             ]),
           if (lifecycle != null)
             _section(context, 'Lifecycle', [
-              Text('Status: ${lifecycle['status']}${lifecycle['reason'] != null ? ' (${lifecycle['reason']})' : ''}'),
+              Text(
+                'Status: ${lifecycle['status']}${lifecycle['reason'] != null ? ' (${lifecycle['reason']})' : ''}',
+              ),
             ]),
           if (rendered != null && (rendered['title'] as String).isNotEmpty)
             _section(context, 'Rendered copy', [

@@ -9,6 +9,9 @@ test('D-165 admin endpoint is claim-gated and reads aggregate sources', () => {
   assert.match(source, /app\.get\('\/adminMetrics', requireAdmin/);
   assert.match(source, /collectionGroup\('profile'\)/);
   assert.match(source, /collectionGroup\('telemetry'\)/);
+  assert.match(source, /listAllAdminAuthUsers/);
+  assert.match(source, /collection\('users'\)\.get\(\)/);
+  assert.match(source, /occurredAt: data\.occurredAt/);
   assert.match(source, /buildAdminMetrics/);
   assert.match(source, /app\.get\('\/adminFeedback', requireAdmin/);
   assert.match(source, /collectionGroup\('feedback'\)/);

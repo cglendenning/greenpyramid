@@ -223,29 +223,80 @@ app.use(express.json({ limit: '256kb' }));
 
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
+async function listAllAdminAuthUsers() {
+  const users = [];
+  let pageToken;
+  do {
+    const page = await admin.auth().listUsers(1000, pageToken);
+    users.push(...page.users);
+    pageToken = page.pageToken;
+  } while (pageToken);
+  return users;
+}
+
+function adminUidHash(uid) {
+  return createHash('sha256').update(uid).digest('hex');
+}
+
 // D-165: read-only aggregate endpoint for the separate OTA admin app. It is
 // intentionally before the consumer App Check gate: the admin bundle has its
-// own distribution and relies on Firebase Auth plus the custom claim.
+// own distribution and relies on Firebase Auth plus the custom claim. The
+// additional account/Auth reads below are reporting-only and do not touch any
+// consumer write path or entitlement behavior.
 app.get('/adminMetrics', requireAdmin, async (_req, res) => {
   try {
     const store = admin.firestore();
-    const profileSnap = await store.collectionGroup('profile').get();
-    const profiles = profileSnap.docs.map((doc) => {
-      const uid = doc.ref.path.split('/')[1];
+    const [authUsers, accountSnap, profileSnap, telemetrySnap] = await Promise.all([
+      listAllAdminAuthUsers(),
+      store.collection('users').get(),
+      store.collectionGroup('profile').get(),
+      store.collectionGroup('telemetry').get(),
+    ]);
+    const accounts = accountSnap.docs.map((doc) => {
+      const data = doc.data() || {};
       return {
-        uidHash: createHash('sha256').update(uid).digest('hex'),
-        totalSpendUsd: doc.data()?.totalSpendUsd,
-        aiCalls: doc.data()?.aiCalls,
-        entitlement: doc.data()?.entitlement,
-        setupComplete: doc.data()?.setupComplete,
+        uidHash: adminUidHash(doc.id),
+        setupComplete: data.setupComplete,
+        setupCompletedAt: data.setupCompletedAt,
+        setupCompletionId: data.setupCompletionId,
+        trialStartedAt: data.trialStartedAt,
       };
     });
-    const telemetrySnap = await store.collectionGroup('telemetry').get();
+    const profiles = profileSnap.docs.map((doc) => {
+      const uid = doc.ref.path.split('/')[1];
+      const data = doc.data() || {};
+      return {
+        uidHash: adminUidHash(uid),
+        totalSpendUsd: data.totalSpendUsd,
+        spendByMonth: data.spendByMonth,
+        spendMonthKey: data.spendMonthKey,
+        aiCalls: data.aiCalls,
+        entitlement: data.entitlement,
+        setupComplete: data.setupComplete,
+        setupCompletedAt: data.setupCompletedAt,
+        createdAt: data.createdAt,
+        trialStartedAt: data.trialStartedAt,
+        subscriptionEventTimestampMs: data.subscriptionEventTimestampMs,
+      };
+    });
     const telemetry = telemetrySnap.docs.map((doc) => {
       const data = doc.data() || {};
-      return { eventName: data.eventName, screenKey: data.screenKey, uidHash: data.uidHash };
+      return {
+        eventName: data.eventName,
+        screenKey: data.screenKey,
+        uidHash: data.uidHash,
+        occurredAt: data.occurredAt,
+      };
     });
-    res.json(buildAdminMetrics({ profiles, telemetry }));
+    res.json(buildAdminMetrics({
+      accounts,
+      profiles,
+      authUsers: authUsers.map((user) => ({
+        uidHash: adminUidHash(user.uid),
+        createdAt: user.metadata?.creationTime,
+      })),
+      telemetry,
+    }));
   } catch (e) {
     console.error('adminMetrics error:', e.message);
     res.status(500).json({ error: 'service_unavailable' });

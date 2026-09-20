@@ -36,3 +36,48 @@ test('admin aggregate contains no raw profile or message content', () => {
   assert.equal(serialized.includes('raw-user'), false);
   assert.equal(serialized.includes('message'), false);
 });
+
+test('admin metrics deduplicates lifecycle events and computes conversion timing', () => {
+  const result = buildAdminMetrics({
+    authUsers: [
+      { uidHash: 'u1', createdAt: '2026-09-01T00:00:00.000Z' },
+      { uidHash: 'u2', createdAt: '2026-09-01T00:00:00.000Z' },
+      { uidHash: 'u3', createdAt: '2026-09-01T00:00:00.000Z' },
+    ],
+    profiles: [
+      {
+        uidHash: 'u1',
+        entitlement: 'subscribed',
+        subscriptionEventTimestampMs: Date.parse('2026-09-03T00:00:00.000Z'),
+        spendByMonth: { '2026-09': 1.25 },
+      },
+      { uidHash: 'u2', entitlement: 'lapsed' },
+      { uidHash: 'u3', entitlement: 'pre_trial' },
+    ],
+    telemetry: [
+      { uidHash: 'u1', eventName: 'setup_begin', occurredAt: '2026-09-01T00:01:00.000Z' },
+      { uidHash: 'u1', eventName: 'setup_begin', occurredAt: '2026-09-01T00:02:00.000Z' },
+      { uidHash: 'u1', eventName: 'setup_complete', occurredAt: '2026-09-01T00:03:00.000Z' },
+      { uidHash: 'u1', eventName: 'trial_started', occurredAt: '2026-09-01T00:04:00.000Z' },
+      { uidHash: 'u1', eventName: 'subscription_started', occurredAt: '2026-09-03T00:00:00.000Z' },
+      { uidHash: 'u2', eventName: 'setup_begin', occurredAt: '2026-09-01T00:01:00.000Z' },
+      { uidHash: 'u2', eventName: 'trial_started', occurredAt: '2026-09-01T00:04:00.000Z' },
+    ],
+  });
+
+  assert.deepEqual(result.cohorts, {
+    downloadedUsers: 3,
+    setupStartedUsers: 2,
+    setupAbandonedUsers: 1,
+    setupCompleteUsers: 1,
+    preTrialUsers: 1,
+    trialingUsers: 0,
+    lapsedUsers: 1,
+    subscribedUsers: 1,
+  });
+  assert.equal(result.conversion.trialToSubscriptionRate, 0.5);
+  assert.equal(result.conversion.downloadToSubscriptionRate, 1 / 3);
+  assert.equal(result.conversion.meanDownloadToSubscriptionDays, 2);
+  assert.equal(result.cost.claude.allTimeUsd, 1.25);
+  assert.equal(result.cost.allServices.state, 'incomplete');
+});
