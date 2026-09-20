@@ -61,6 +61,11 @@ lib/services/secrets.dart
 # Locally staged OTA artifacts are generated and must not be committed.
 /hosting/admin/
 
+# Local screenshot-runner output is generated evidence, not store artwork.
+/screenshots/current-android/
+/screenshots/android-current/
+/screenshots/current-ios/
+
 # Private product specification — pricing, monetization strategy, compliance
 # analysis and sibling-app internals. Deliberately not published: this repo is
 # public. Rendered artifact lives on claude.ai instead.
