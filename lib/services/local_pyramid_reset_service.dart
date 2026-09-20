@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:sqflite/sqflite.dart';
 
 import 'db.dart';
+import 'notification.dart';
 
 /// D-105: the one genuinely destructive piece of "sign out, then start
 /// fresh" — wipes this device's local pyramid so `SetupScreen` runs
@@ -12,20 +14,30 @@ import 'db.dart';
 /// heuristic. This is a distinct, explicit, user-confirmed action on the
 /// *local* database only, gated entirely by the confirmation dialog the
 /// caller shows before invoking it, never by any account-state check
-/// here. It touches only SQLite — Firestore data under the account being
-/// signed out of is untouched, since it may still belong to a real,
-/// recoverable account the user signs back into later.
+/// here. Firestore data under the account being signed out of is
+/// untouched, since it may still belong to a real, recoverable account the
+/// user signs back into later.
+///
+/// D-179: besides SQLite it also cancels the scheduled habits' pending
+/// reminders. Deleting the habit rows alone left those reminders pending
+/// forever against habit ids that no longer existed — unreachable by
+/// `cancelHabitReminders`, which is only ever called with a live habit's
+/// id, and still occupying the 64 pending notifications iOS allows.
 ///
 /// Uses the real table name constants directly, not `DatabaseHelper`'s
 /// `getXTable()` demo-aware getters — this must always wipe the real
 /// pyramid regardless of whether Demo Mode happens to be toggled on.
 class LocalPyramidResetService {
-  LocalPyramidResetService({DatabaseHelper? dbHelper})
-      : _dbHelper = dbHelper ?? DatabaseHelper.instance;
+  LocalPyramidResetService({
+    DatabaseHelper? dbHelper,
+    LocalNotificationService? notificationService,
+  })  : _dbHelper = dbHelper ?? DatabaseHelper.instance,
+        _notificationService = notificationService ?? LocalNotificationService();
 
   static final LocalPyramidResetService instance = LocalPyramidResetService();
 
   final DatabaseHelper _dbHelper;
+  final LocalNotificationService _notificationService;
 
   /// Every table setup produces, deleted, then re-seeded to the exact
   /// state a fresh install starts in (`populateCategory()`'s six
@@ -34,6 +46,16 @@ class LocalPyramidResetService {
   /// place, so this must reproduce that state exactly, not just delete
   /// rows.
   Future<void> wipeLocalPyramid() async {
+    // D-179: before the habit rows go, cancel every habit reminder the OS
+    // still holds. No habit survives this wipe, so every habit-reminder id
+    // pending afterwards would be an orphan. Reported rather than fatal:
+    // an unreachable notification plugin must not abort the wipe the user
+    // explicitly confirmed, and leaves only stale reminders behind.
+    try {
+      await _notificationService.pruneOrphanHabitReminders(const <int>{});
+    } catch (e) {
+      debugPrint('Habit reminders were not cancelled during the wipe: $e');
+    }
     final Database db = await _dbHelper.database;
     await db.delete(DatabaseHelper.taskTable);
     await db.delete(DatabaseHelper.taskLogTable);
