@@ -1,7 +1,9 @@
 # Staged release and rollback record
 
-Reviewed 2026-09-20 for consumer `1.44.2+64` at commit
-`4385e6075e93b96afa783e432ec694c06b31bf0e`.
+Reviewed 2026-09-20 for consumer `1.44.2+64`. The app payload was built from
+source commit `4385e6075e93b96afa783e432ec694c06b31bf0e`; the signed-release,
+screenshot and store-package wrapper changes are in packaging commit
+`dc54589`.
 
 ## Smoke matrix
 
@@ -14,6 +16,11 @@ Reviewed 2026-09-20 for consumer `1.44.2+64` at commit
 | Purchase/restore and entitlement lapse | `test/r8_monetization_test.dart`, `test/analysis_entitlement_test.dart`, Functions entitlement tests | Passed automated; store sandbox still needs console credentials |
 | Notification scheduling/tap path | `test/habit_reminder_delivery_test.dart`, `test/settings_screen_wiring_test.dart` | Passed automated |
 | Accessibility/reduced-motion behavior | semantics assertions in analysis and screen tests; release source review | Passed source/test review; physical accessibility audit remains owner check |
+
+The focused release-critical Flutter run on 2026-09-20 passed 50 tests:
+`test/r8_monetization_test.dart`, `test/analysis_entitlement_test.dart`,
+`test/habit_reminder_delivery_test.dart`, `test/account_link_service_test.dart`
+and `test/settings_screen_wiring_test.dart`.
 
 ## Rollout controls
 
