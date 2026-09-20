@@ -40,20 +40,23 @@ void main() {
     expect(find.text('Use as my essence'), findsNothing);
   });
 
-  testWidgets('onAcceptEssence set: the action appears under user messages '
-      'and fires with that message\'s text', (tester) async {
-    String? accepted;
+  // D-178-AC-03: the per-message essence action was removed entirely. It read as
+  // an annotation on the user's own words rather than a deliberate,
+  // conversation-ending choice, and it rendered on messages that could never
+  // qualify. Choosing an essence is now one explained action on the category
+  // Council screen, so the transcript must never offer it.
+  testWidgets('the transcript never renders an essence action, whatever it '
+      'is given', (tester) async {
     await tester.pumpWidget(MaterialApp(
-      home: CouncilTranscript(
-        messages: [msg('user', 'my body carries me')],
-        onAcceptEssence: (text) => accepted = text,
-      ),
+      home: CouncilTranscript(messages: [
+        msg('user', 'my body carries me and I want to treat it that way'),
+        msg('mira', 'say more about that'),
+      ]),
     ));
     await tester.pump();
 
-    expect(find.text('Use as my essence'), findsOneWidget);
-    await tester.tap(find.text('Use as my essence'));
-    expect(accepted, 'my body carries me');
+    expect(find.text('Use as my essence'), findsNothing);
+    expect(find.byType(TextButton), findsNothing);
   });
 
   testWidgets('D-083: typingAdvisorKey null (the default): no typing '

@@ -11,9 +11,10 @@ import 'typing_indicator.dart';
 /// general Council chat) — extracted here rather than left duplicated a
 /// third time across `setup_screen.dart` and `council_screen.dart`.
 ///
-/// [onAcceptEssence], when non-null, adds an "accept as essence" action
-/// under the user's own messages — only `council_screen.dart`'s
-/// category-scoped conversation uses this; every other caller omits it.
+/// D-178: the transcript renders messages only. Choosing an essence moved to
+/// a single explained action on the category Council screen, because an
+/// unlabelled link under every user message read as an annotation on what
+/// the person had said rather than a deliberate, conversation-ending choice.
 ///
 /// D-083: [typingAdvisorKey], when non-null, renders a [TypingIndicator]
 /// as the trailing item — every caller passes it only while genuinely
@@ -24,14 +25,12 @@ import 'typing_indicator.dart';
 class CouncilTranscript extends StatelessWidget {
   final List<BoardMessage> messages;
   final ScrollController? scrollController;
-  final void Function(String text)? onAcceptEssence;
   final String? typingAdvisorKey;
 
   const CouncilTranscript({
     super.key,
     required this.messages,
     this.scrollController,
-    this.onAcceptEssence,
     this.typingAdvisorKey,
   });
 
@@ -75,11 +74,6 @@ class CouncilTranscript extends StatelessWidget {
                           fontSize: 12,
                           fontWeight: FontWeight.bold)),
                 Text(m.text, style: const TextStyle(color: AppColors.textPrimary)),
-                if (isUser && onAcceptEssence != null)
-                  TextButton(
-                    onPressed: () => onAcceptEssence!(m.text),
-                    child: const Text('Use as my essence'),
-                  ),
               ],
             ),
           ),
