@@ -46,4 +46,12 @@ void main() {
     final nextBuilderIdx = source.indexOf('HomeScreenWidget()', morningIdx);
     expect(nextBuilderIdx, greaterThan(morningIdx));
   });
+
+  test('D-030/D-014/D-016: the retired OpenAI quote transport and client '
+      'dependency are absent', () {
+    expect(File('lib/services/quote.dart').existsSync(), isFalse);
+    expect(File('lib/services/ai_proxy_client.dart').existsSync(), isFalse);
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    expect(pubspec, isNot(contains('dart_openai')));
+  });
 }

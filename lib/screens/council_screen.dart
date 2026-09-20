@@ -46,6 +46,7 @@ class _CouncilScreenState extends State<CouncilScreen> {
   final _scrollController = ScrollController();
   BoardSession? _session;
   String? _priorEssence;
+  String? _typingAdvisorKey;
   bool _busy = false;
   String? _error;
 
@@ -107,6 +108,7 @@ class _CouncilScreenState extends State<CouncilScreen> {
       {List<Map<String, String>>? conversationHistoryOverride}) async {
     final session = _session;
     if (session == null) return;
+    if (mounted) setState(() => _typingAdvisorKey = advisorKey);
     try {
       await _council.runAdvisorTurn(
         session: session,
@@ -134,6 +136,8 @@ class _CouncilScreenState extends State<CouncilScreen> {
       }
     } on CouncilClientException catch (e) {
       if (mounted) setState(() => _error = e.message);
+    } finally {
+      if (mounted) setState(() => _typingAdvisorKey = null);
     }
   }
 
@@ -255,7 +259,9 @@ class _CouncilScreenState extends State<CouncilScreen> {
                       scrollController: _scrollController,
                       // D-083: session.nextAdvisorKey is the real next
                       // speaker for this category-scoped rotation.
-                      typingAdvisorKey: _busy ? session.nextAdvisorKey : null,
+                      typingAdvisorKey: _busy
+                          ? (_typingAdvisorKey ?? session.nextAdvisorKey)
+                          : null,
                     ),
             ),
             ChatInputBar(

@@ -5,6 +5,13 @@ import { readFileSync } from 'node:fs';
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url)));
 const indexSource = readFileSync(new URL('../index.js', import.meta.url), 'utf8');
 
+test('D-030/D-014/D-016: retired OpenAI proxy has no route, SDK, or server secret', () => {
+  assert.equal(pkg.dependencies.openai, undefined);
+  assert.doesNotMatch(indexSource, /from ['"]openai['"]/);
+  assert.doesNotMatch(indexSource, /OPENAI_API_KEY|sOpenAI/);
+  assert.doesNotMatch(indexSource, /app\.post\(['"]\/v1\/chat\/completions/);
+});
+
 test('D-037: the Anthropic SDK is a direct dependency; no routing/proxy '
   + 'layer package is present', () => {
   assert.ok(pkg.dependencies['@anthropic-ai/sdk'], 'expected @anthropic-ai/sdk as a direct dependency');

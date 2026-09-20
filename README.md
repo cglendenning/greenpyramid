@@ -68,10 +68,9 @@ lib/
    ```
 
 3. **Configure secrets:**
-   - Copy `lib/secrets.dart.example` to `lib/secrets.dart` (if provided), or create your own:
+   - Configure platform Firebase files and RevenueCat settings as required by the release environment. Provider API keys must remain in server-side secret storage and must never be placed in the Flutter app:
      ```dart
      // lib/secrets.dart
-     const String openAIApiKey = 'YOUR_OPENAI_API_KEY';
      const String revenuecatAndroidKey = 'YOUR_REVENUECAT_ANDROID_KEY';
      const String revenuecatIOSKey = 'YOUR_REVENUECAT_IOS_KEY';
      // ...Firebase keys as in the codebase...

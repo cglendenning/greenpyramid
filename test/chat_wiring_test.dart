@@ -69,7 +69,7 @@ void main() {
       'lib/screens/general_council_screen.dart',
     ]) {
       final source = File(path).readAsStringSync();
-      expect(source, contains('_busy ? session.nextAdvisorKey : null'),
+      expect(source, contains('_typingAdvisorKey ?? session.nextAdvisorKey'),
           reason: path);
     }
   });

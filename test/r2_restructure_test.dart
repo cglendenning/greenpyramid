@@ -62,6 +62,20 @@ void main() {
           reason: 'raw SQL belongs in a service, parameterized');
     });
 
+    test('D-025: screens do not query Firestore directly', () {
+      final offenders = dartsIn('lib/screens')
+          .where(survivesR6)
+          .where((f) {
+            final b = f.readAsStringSync();
+            return b.contains('package:cloud_firestore') ||
+                b.contains('FirebaseFirestore.instance');
+          })
+          .map((f) => f.path)
+          .toList();
+      expect(offenders, isEmpty,
+          reason: 'Firestore ownership belongs in account-scoped services');
+    });
+
     test('D-024: models hold no Flutter widget imports', () {
       final offenders = dartsIn('lib/models')
           .where((f) =>

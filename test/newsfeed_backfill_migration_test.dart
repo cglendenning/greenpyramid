@@ -39,6 +39,14 @@ Future<void> _createV12SchemaWithEssence(Database db) async {
       'trial_expires_at TEXT, '
       'timezone TEXT, '
       'entitlement_synced_at TEXT)');
+  await db.execute('CREATE TABLE IF NOT EXISTS tasklog ('
+      'id INTEGER PRIMARY KEY, '
+      'category TEXT NOT NULL, '
+      'taskdescription TEXT NOT NULL, '
+      'checked TEXT NOT NULL, '
+      'taskdate TEXT NOT NULL, '
+      'missreason TEXT, '
+      'UNIQUE(category, taskdescription, taskdate))');
 }
 
 /// D-122: found live on the owner's own device — newsfeed_item rows

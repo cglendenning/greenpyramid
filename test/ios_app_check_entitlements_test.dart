@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Regression test for a startup defect that shipped to a physical device
-/// as "Could not verify the app. Please try again." (council_client.dart /
-/// ai_proxy_client.dart's App Check token acquisition).
+/// as "Could not verify the app. Please try again." (CouncilClient's App
+/// Check token acquisition).
 ///
 /// main.dart activates Firebase App Check with `AppleProvider.appAttest`
 /// for every non-debug iOS build (see the `kForceAppCheckDebug` comment).

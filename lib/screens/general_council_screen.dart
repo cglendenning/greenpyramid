@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
 
@@ -12,6 +10,7 @@ import '../services/council_client.dart';
 import '../services/council_service.dart';
 import '../services/db.dart';
 import '../services/entitlement_gate.dart';
+import '../services/notification_inbox_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/chat_backdrop.dart';
 import '../widgets/chat_input_bar.dart';
@@ -144,19 +143,9 @@ class _GeneralCouncilScreenState extends State<GeneralCouncilScreen> {
       return;
     }
 
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
     try {
-      final snapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .doc(uid)
-          .collection('inbox')
-          .where('messageKey', isEqualTo: key)
-          .limit(1)
-          .get();
-      if (snapshot.docs.isNotEmpty) {
-        _notificationItem = snapshot.docs.first.data();
-      }
+      _notificationItem =
+          await NotificationInboxService.instance.findByMessageKey(key);
     } catch (e, st) {
       // Notification context is explanatory, not a prerequisite for Council.
       // A missing inbox record or transient read failure must not make the

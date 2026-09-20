@@ -137,7 +137,7 @@ export function buildAdvisorTurnPrompt({
     priorEssence ? `What this category has meant to them before: '${priorEssence}'` : null,
   ].filter(Boolean).join('\n');
 
-  const safeHistory = (conversationHistory || []).slice(-30);
+  const safeHistory = (conversationHistory || []).slice(-16);
   // D-073: found live — with no history, the system prompt's "respond to
   // what was just said" has nothing to anchor to, and an empty history
   // was previously indistinguishable from "say something in this
@@ -244,7 +244,7 @@ export function buildGeneralCouncilTurnPrompt({
       }).join('\n')
     : '(no pyramid yet)';
 
-  const safeHistory = (conversationHistory || []).slice(-30);
+  const safeHistory = (conversationHistory || []).slice(-16);
   const historyText = safeHistory.length > 0
     ? safeHistory.map(m => {
         const name = m.advisor === 'user' ? 'You' : (ADVISORS[m.advisor]?.name || String(m.advisor));
@@ -287,7 +287,7 @@ export function buildSetupAdvisorTurnPrompt({
 }) {
   const advisor = ADVISORS.mira;
 
-  const safeHistory = (conversationHistory || []).slice(-30);
+  const safeHistory = (conversationHistory || []).slice(-16);
   const historyText = safeHistory.length > 0
     ? safeHistory.map((m) => {
         const name = m.advisor === 'user' ? 'You' : advisor.name;

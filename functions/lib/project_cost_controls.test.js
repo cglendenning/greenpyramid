@@ -38,8 +38,8 @@ test('D-164-AC-04: kill switch blocks external calls while telemetry remains rea
 
 test('D-164-AC-05: allowlists, bounds and required guards reject unsafe configuration', () => {
   assert.throws(() => validateCostConfiguration({ ...request, provider: 'unknown' }), /not_allowlisted/);
+  assert.throws(() => validateCostConfiguration({ ...request, provider: 'openai' }), /not_allowlisted/);
   assert.throws(() => validateCostConfiguration({ ...request, maxOutputTokens: 0 }), /cost_guard_missing/);
   assert.throws(() => validateScheduleConfig({ intervalMinutes: 61, concurrency: 1, timeoutSeconds: 30, maxOutbound: 10 }), /schedule_unbounded/);
   assert.throws(() => new ProjectCostLedger().reserve({ ...request, model: 'gpt-9' }), /not_allowlisted/);
 });
-

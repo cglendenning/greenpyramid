@@ -82,8 +82,8 @@ class CategoryProposal {
 
 /// D-030/D-037: the transport for every Council backend call. Calls Green
 /// Pyramid's own Cloud Function (not Kansei's), authenticated with both a
-/// Firebase App Check token (proves the genuine app binary — same as
-/// [AiProxy]) and a Firebase ID token (proves which account, so D-061's
+/// Firebase App Check token (proves the genuine app binary) and a Firebase
+/// ID token (proves which account, so D-061's
 /// spend cap and D-148's setup call count charge the right one). D-145's
 /// model identifier lives entirely on the backend; this client never names
 /// a model.

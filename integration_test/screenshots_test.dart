@@ -1,4 +1,4 @@
-// Captures App Store screenshots on a booted simulator.
+// Captures current-build App Store screenshots on a paired iOS device.
 //
 // Run with:
 //   flutter drive --driver=test_driver/integration_test.dart \
@@ -118,7 +118,18 @@ Future<void> main() async {
 
     nav.push(MaterialPageRoute(builder: (_) => const VisualizationsScreen()));
     await _settle(tester, total: const Duration(seconds: 6));
-    await _shot(tester, '04-visualizations');
+    await _shot(tester, '04-analysis-showing-up');
+    for (final name in [
+      '05-analysis-strength',
+      '06-analysis-rhythm',
+      '07-analysis-return',
+      '08-analysis-care',
+      '09-analysis-close',
+    ]) {
+      await tester.fling(find.byType(PageView), const Offset(-520, 0), 1200);
+      await _settle(tester, total: const Duration(seconds: 2));
+      await _shot(tester, name);
+    }
     nav.pop();
     await _settle(tester, total: const Duration(seconds: 1));
   });

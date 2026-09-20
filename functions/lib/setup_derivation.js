@@ -6,7 +6,7 @@
 import { sanitize } from './council.js';
 
 function transcriptText(transcript) {
-  return (transcript || [])
+  return (transcript || []).slice(-16)
     .map((m) => `${m.advisor === 'user' ? 'User' : m.advisor}: ${sanitize(m.text, 500)}`)
     .join('\n');
 }

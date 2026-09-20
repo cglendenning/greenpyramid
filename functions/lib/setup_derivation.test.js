@@ -16,6 +16,17 @@ test('D-038: the category-derivation prompt embeds the full transcript', () => {
   assert.match(user, /What does that bring up/);
 });
 
+test('D-004-AC-03: setup derivation transcript is capped at the prompt-history limit', () => {
+  const transcript = Array.from({ length: 20 }, (_, i) => ({
+    advisor: 'user',
+    text: `setup-message-${i}`,
+  }));
+  const { user } = buildDeriveCategoriesPrompt(transcript);
+  assert.doesNotMatch(user, /setup-message-0/);
+  assert.match(user, /setup-message-4/);
+  assert.match(user, /setup-message-19/);
+});
+
 test('D-038: no preset category list appears in the system prompt — it '
   + 'instructs deriving from the user\'s own words', () => {
   const { system } = buildDeriveCategoriesPrompt([]);

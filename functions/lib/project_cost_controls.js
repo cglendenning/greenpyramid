@@ -1,9 +1,8 @@
 import { createHash } from 'node:crypto';
 
-export const ALLOWED_PROVIDERS = Object.freeze(['anthropic', 'openai']);
+export const ALLOWED_PROVIDERS = Object.freeze(['anthropic']);
 export const ALLOWED_MODELS = Object.freeze([
   'claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5',
-  'gpt-4o-mini', 'gpt-4.1-mini', 'gpt-4.1-mini-2025-04-14',
 ]);
 
 export function validateCostConfiguration({ provider, model, functionName, reason, maxOutputTokens, scheduleMinutes }) {
@@ -79,4 +78,3 @@ export function scheduleSlotKey({ accountUid, logicalInterventionId, timezone, o
   if (!accountUid || !logicalInterventionId || !timezone || !occurrenceDate || !slot) throw new Error('schedule_slot_invalid');
   return createHash('sha256').update(`${accountUid}:${logicalInterventionId}:${timezone}:${occurrenceDate}:${slot}`).digest('hex');
 }
-

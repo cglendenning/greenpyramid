@@ -88,16 +88,15 @@ void main() {
   });
 
   test(
-      'D-044: entitlement is never decided on-device — the only literal '
-      'entitlement value EntitlementService ever writes locally is '
-      "'subscribed', as an optimistic mirror right after a confirmed "
-      'purchase; every other value it writes is read from a server '
-      'response, never assigned as a client-side literal', () {
+      'D-044/D-172: entitlement is never granted on-device — the only '
+      'optimistic local grant is subscribed after a confirmed purchase; '
+      'a fresh negative RevenueCat revalidation may cache lapsed to close '
+      'a stale paid gate, while trialing remains server-sourced', () {
     final source =
         File('lib/services/entitlement_service.dart').readAsStringSync();
     expect(source, isNot(contains("entitlement: 'trialing'")));
-    expect(source, isNot(contains("entitlement: 'lapsed'")));
     expect(source, contains("entitlement: 'subscribed'"));
+    expect(source, contains("entitlement: 'lapsed'"));
   });
 
   test(

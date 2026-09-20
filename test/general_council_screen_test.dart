@@ -55,7 +55,10 @@ void main() {
     expect(source, contains('this.notificationTitle'));
     expect(source, contains('this.notificationBody'));
     expect(source, contains("Opened from your notification"));
-    expect(source, contains("where('messageKey', isEqualTo: key)"));
+    expect(source, contains('NotificationInboxService.instance'));
+    final inboxService =
+        File('lib/services/notification_inbox_service.dart').readAsStringSync();
+    expect(inboxService, contains("where('messageKey', isEqualTo: messageKey)"));
   });
 
   test(

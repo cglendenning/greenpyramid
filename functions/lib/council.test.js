@@ -81,6 +81,21 @@ test('D-145: the system prompt is identical across calls when sliderValue '
   assert.equal(first.systemText, second.systemText);
 });
 
+test('D-004-AC-03: advisor prompt history is capped at the R-PROMPT limit', () => {
+  const history = Array.from({ length: 20 }, (_, i) => ({
+    advisor: 'user',
+    text: `message-${i}`,
+  }));
+  const { userMessage } = buildAdvisorTurnPrompt({
+    advisorKey: 'mira',
+    categoryContext: { categoryName: 'Health' },
+    conversationHistory: history,
+  });
+  assert.doesNotMatch(userMessage, /message-0/);
+  assert.match(userMessage, /message-4/);
+  assert.match(userMessage, /message-19/);
+});
+
 test('user-supplied injection characters in category context cannot break '
   + 'out of the prompt framing', () => {
   const { userMessage } = buildAdvisorTurnPrompt({
