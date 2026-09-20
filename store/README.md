@@ -6,11 +6,11 @@ Release candidate: Green Pyramid 1.44.2 (build 64), bundle ID
 This package contains the reviewed listing copy, reviewer notes, privacy/data
 declaration working set, screenshot manifests and staged-release record.
 
-Submission gate still requiring owner input: replace
-`PUBLIC_PRIVACY_POLICY_URL_REQUIRED` with the final public HTTPS privacy-policy
-URL. The app currently provides sign-out but no in-app account-deletion flow;
-Google account-creation submission requirements therefore also need an owner
-decision before D-182/D-183 can honestly be marked Done.
+The public privacy policy is available at
+https://greenpyramid-privacy.cglendenning.chatgpt.site. The app provides an
+in-app account-deletion flow at Settings → Account → Delete account, including
+cloud account/data erasure, local cleanup and a subscription cancellation
+disclosure.
 
 The screenshot capture runner is `scripts/capture_store_screenshots.sh`.
 The latest physical-device attempt reached the paired iPhone but failed because

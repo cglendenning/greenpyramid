@@ -391,6 +391,10 @@ class LocalNotificationService {
   Future<void> cancelTestNotification() =>
       _localNotificationService.cancel(testNotificationId);
 
+  /// Account deletion must not leave reminders referring to erased habits.
+  Future<void> cancelAllPendingNotifications() =>
+      _localNotificationService.cancelAll();
+
   /// Returns true if the test notification is still scheduled (hasn't
   /// fired) — mirrors Kansei's identical `isTestNotificationPending`.
   Future<bool> isTestNotificationPending() async {
@@ -860,9 +864,7 @@ class LocalNotificationService {
     // D-179: slot 0 is the collapsed daily variant, 1..7 the per-weekday
     // ones. Cancelling every shape means switching between them — or
     // between two different sets of active days — leaves nothing behind.
-    for (var slot = habitReminderDailySlot;
-        slot <= DateTime.sunday;
-        slot++) {
+    for (var slot = habitReminderDailySlot; slot <= DateTime.sunday; slot++) {
       await _localNotificationService.cancel(habitReminderId(habitId, slot));
     }
   }
@@ -981,7 +983,8 @@ class LocalNotificationService {
           }
           final habits =
               (jsonDecode(habitsJson) as List).cast<Map<String, dynamic>>();
-          navigatorKey.currentState?.push(MaterialPageRoute(settings: const RouteSettings(name: 'BatchCheckinScreen'), 
+          navigatorKey.currentState?.push(MaterialPageRoute(
+              settings: const RouteSettings(name: 'BatchCheckinScreen'),
               builder: (_) => BatchCheckinScreen(habits: habits)));
         case 'tailored':
         case 'intervention':
@@ -994,7 +997,8 @@ class LocalNotificationService {
           // highlighting the exact item the notification was about.
           final dedupeKey = data['dedupeKey'] as String?;
           if (dedupeKey == null) return;
-          navigatorKey.currentState?.push(MaterialPageRoute(settings: const RouteSettings(name: 'NewsfeedScreen'), 
+          navigatorKey.currentState?.push(MaterialPageRoute(
+              settings: const RouteSettings(name: 'NewsfeedScreen'),
               builder: (_) => NewsfeedScreen(highlightDedupeKey: dedupeKey)));
       }
     } catch (e, st) {

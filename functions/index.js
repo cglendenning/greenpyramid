@@ -40,6 +40,7 @@ import { generateStockPyramid, evaluateDebuggerDay } from './lib/intervention_de
 import { generateLifetimeCode, redeemLifetimeCode, grantLifetimeAccess, revokeLifetimeAccess, LifetimeCodeError } from './lib/lifetime_codes.js';
 import { buildAdminUserSummary, buildAdminUserDetail } from './lib/admin_users.js';
 import { getPlatformHealth } from './lib/platform_health.js';
+import { deleteAccountTree } from './lib/account_deletion.js';
 
 // Stored in Firebase Secret Manager (firebase functions:secrets:set
 // ANTHROPIC_API_KEY), never in source. Anthropic backs the Council
@@ -478,6 +479,24 @@ app.post('/revenuecatWebhook', async (req, res) => {
 });
 
 app.use(requireAppCheck);
+
+// Store requirement: account creation is paired with an in-app, authenticated
+// deletion path. The uid comes only from the verified Firebase token; the
+// client cannot select another account. Store subscriptions are not cancelled
+// by Firebase account deletion, so the UI explicitly directs users to the
+// platform subscription controls before confirmation.
+app.post('/deleteAccount', requireFirebaseAuth, async (req, res) => {
+  if (req.body?.confirm !== true) {
+    return res.status(400).json({ error: 'confirmation_required' });
+  }
+  try {
+    ensureAdmin();
+    res.json(await deleteAccountTree(admin.firestore(), admin.auth(), req.uid));
+  } catch (e) {
+    console.error('deleteAccount error:', e.message);
+    res.status(503).json({ error: 'account_deletion_unavailable' });
+  }
+});
 
 // D-167: the consumer redeems a one-time gift through the same authenticated
 // cloud boundary used for every entitlement change. This grants the normal

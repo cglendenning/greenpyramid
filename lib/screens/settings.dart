@@ -10,6 +10,7 @@ import 'package:life_ops/screens/cancel_subscription_screen.dart';
 import 'package:life_ops/screens/paywall_screen.dart';
 import 'package:life_ops/screens/welcome_screen.dart';
 import 'package:life_ops/services/account_link_service.dart';
+import 'package:life_ops/services/account_deletion_service.dart';
 import 'package:life_ops/services/calendar_service.dart';
 import 'package:life_ops/services/billing_service.dart';
 import 'package:life_ops/services/entitlement_service.dart';
@@ -20,6 +21,9 @@ import 'package:life_ops/services/subscription_panel_logic.dart';
 import 'package:life_ops/services/subscription_service.dart';
 import 'package:life_ops/theme/app_colors.dart';
 import 'dart:io' show Platform;
+
+const String publicPrivacyPolicyUrl =
+    'https://greenpyramid-privacy.cglendenning.chatgpt.site';
 
 Future<void> showPreviewWarningDialog(BuildContext context) async {
   if (!Platform.isIOS) return; // Only show on iOS
@@ -241,7 +245,9 @@ class _SettingsState extends State<Settings> {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(settings: const RouteSettings(name: 'CouncilCategoryPicker'), 
+                          MaterialPageRoute(
+                              settings: const RouteSettings(
+                                  name: 'CouncilCategoryPicker'),
                               builder: (context) =>
                                   const CouncilCategoryPicker()),
                         );
@@ -275,6 +281,22 @@ class _SettingsState extends State<Settings> {
 
             _sectionLabel('ACCOUNT'),
             _card(child: const _AccountSection()),
+            const SizedBox(height: 28),
+
+            _sectionLabel('LEGAL'),
+            _card(
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                  onPressed: () => launchUrl(
+                    Uri.parse(publicPrivacyPolicyUrl),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                  child: const Text('Privacy Policy'),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -362,7 +384,8 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
   Future<void> _openPaywall() async {
     final result = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(settings: const RouteSettings(name: 'PaywallScreen'), 
+      MaterialPageRoute(
+        settings: const RouteSettings(name: 'PaywallScreen'),
         builder: (context) =>
             const PaywallScreen(reason: 'Subscribe to Green Pyramid'),
       ),
@@ -373,7 +396,9 @@ class _SubscriptionPanelState extends State<_SubscriptionPanel> {
   Future<void> _openManage() async {
     await Navigator.push(
       context,
-      MaterialPageRoute(settings: const RouteSettings(name: 'CancelSubscriptionScreen'), builder: (context) => const CancelSubscriptionScreen()),
+      MaterialPageRoute(
+          settings: const RouteSettings(name: 'CancelSubscriptionScreen'),
+          builder: (context) => const CancelSubscriptionScreen()),
     );
     _load();
   }
@@ -855,6 +880,7 @@ class _AccountSection extends StatefulWidget {
 
 class _AccountSectionState extends State<_AccountSection> {
   bool _signingOut = false;
+  bool _deleting = false;
 
   String? get _providerLabel {
     final providers =
@@ -891,9 +917,70 @@ class _AccountSectionState extends State<_AccountSection> {
     await AccountLinkService.instance.signOut();
     if (!mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(settings: const RouteSettings(name: 'WelcomeScreen'), builder: (_) => const WelcomeScreen()),
+      MaterialPageRoute(
+          settings: const RouteSettings(name: 'WelcomeScreen'),
+          builder: (_) => const WelcomeScreen()),
       (route) => false,
     );
+  }
+
+  Future<void> _confirmDeleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Delete account?',
+            style: TextStyle(color: AppColors.textPrimary)),
+        content: const Text(
+          'This permanently deletes your Green Pyramid account, cloud data, '
+          'saved history and this device\'s local data. It cannot be undone. '
+          'An Apple or Google subscription is managed by that store and is '
+          'not cancelled automatically; cancel it separately in store '
+          'settings if you do not want future renewals.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Keep account'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Delete permanently',
+                style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _deleting = true);
+    try {
+      await AccountDeletionService.instance.deleteAccount();
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          settings: const RouteSettings(name: 'WelcomeScreen'),
+          builder: (_) => const WelcomeScreen(),
+        ),
+        (route) => false,
+      );
+    } on AccountDeletionException catch (e) {
+      if (!mounted) return;
+      setState(() => _deleting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text('Account deletion could not finish: ${e.code}.')),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _deleting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content:
+                Text('Account deletion could not finish. Please try again.')),
+      );
+    }
   }
 
   @override
@@ -911,14 +998,25 @@ class _AccountSectionState extends State<_AccountSection> {
           alignment: Alignment.centerLeft,
           child: TextButton(
             style: TextButton.styleFrom(padding: EdgeInsets.zero),
-            onPressed: _signingOut ? null : _confirmSignOut,
-            child: _signingOut
+            onPressed: (_signingOut || _deleting) ? null : _confirmSignOut,
+            child: _signingOut || _deleting
                 ? const SizedBox(
                     height: 16,
                     width: 16,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Text('Sign out'),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            style: TextButton.styleFrom(padding: EdgeInsets.zero),
+            onPressed:
+                (_signingOut || _deleting) ? null : _confirmDeleteAccount,
+            child: const Text('Delete account',
+                style: TextStyle(color: Colors.redAccent)),
           ),
         ),
       ],

@@ -6,7 +6,7 @@
 - Build: `64`
 - iOS bundle ID: `com.cglendenning.lifeops`
 - Android application ID: `com.cglendenning.life_ops`
-- Privacy policy: `PUBLIC_PRIVACY_POLICY_URL_REQUIRED`
+- Privacy policy: https://greenpyramid-privacy.cglendenning.chatgpt.site
 
 ## Reproducible review path
 
@@ -28,6 +28,9 @@
    paid notification actions use the same entitlement gate.
 8. Turn off network access after entitlement is known and verify local tracking
    continues. A new entitlement is never fabricated while offline.
+9. Open Settings → Account → Delete account. Confirm the permanent-deletion
+   warning, then verify the app returns to the signed-out welcome screen. Store
+   subscriptions must be cancelled separately in Apple or Google settings.
 
 ## Data and feature disclosures
 
@@ -38,9 +41,3 @@
 - Saved tracker content and account-linked content are scoped to the account.
 - Billing authority and trial authority remain server/store-owned; clients do
   not grant entitlement from arbitrary local values.
-
-## Submission blocker
-
-The production submission must not use this file's placeholder privacy URL. A
-public HTTPS privacy policy and an approved account-deletion path are required
-before the reviewer package can be declared complete.

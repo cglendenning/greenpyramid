@@ -6,7 +6,7 @@
 - Short description: `Turn your values into calm, practical daily action.` (54/80 characters)
 - Category: Health & Fitness
 - Tags/content rating: complete the Play questionnaire from the final release behavior.
-- Privacy policy URL: `PUBLIC_PRIVACY_POLICY_URL_REQUIRED`
+- Privacy policy URL: https://greenpyramid-privacy.cglendenning.chatgpt.site
 
 ## Full description
 

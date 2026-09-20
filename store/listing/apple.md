@@ -7,7 +7,7 @@
 - Primary category: Health & Fitness
 - Secondary category: Lifestyle
 - Keywords: `values,habits,reflection,routine,goals,wellbeing,journaling`
-- Privacy policy URL: `PUBLIC_PRIVACY_POLICY_URL_REQUIRED`
+- Privacy policy URL: https://greenpyramid-privacy.cglendenning.chatgpt.site
 - Content rating: complete in App Store Connect from the final questionnaire; do not infer a rating from this file.
 
 ## Promotional copy

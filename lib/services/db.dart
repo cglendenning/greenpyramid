@@ -1974,6 +1974,52 @@ class DatabaseHelper {
     });
   }
 
+  /// Removes every user-owned local table after the server has deleted the
+  /// authenticated account. Unlike an account switch, setup drafts and demo
+  /// tables are not retained because the user explicitly requested erasure.
+  Future<void> clearLocalDataForAccountDeletion() async {
+    final db = await instance.database;
+    await db.transaction((txn) async {
+      for (final table in [
+        taskLogTable,
+        taskTable,
+        categoryEssenceTable,
+        categoryTable,
+        quoteTable,
+        chatTable,
+        visionStatementTable,
+        commentaryCountdownTable,
+        newsfeedItemTable,
+        demoTaskTable,
+        demoTaskLogTable,
+        demoCategoryTable,
+        demoQuoteTable,
+        demoChatTable,
+        'setup_drafts',
+      ]) {
+        await txn.delete(table);
+      }
+      await txn.update(
+        accountStateTable,
+        {
+          columnAccountUid: null,
+          columnEntitlement: 'pre_trial',
+          columnTrialStartedAt: null,
+          columnTrialExpiresAt: null,
+          columnAccountTimezone: null,
+          columnEntitlementSyncedAt: null,
+          columnLifetimeAccess: 0,
+          columnFirstName: null,
+          columnEmail: null,
+          columnPhone: null,
+          columnProfilePhotoPath: null,
+        },
+        where: '$columnAccountId = ?',
+        whereArgs: [1],
+      );
+    });
+  }
+
   Future<int> insertVisionStatement(String visionText) async {
     int id = 0;
     try {

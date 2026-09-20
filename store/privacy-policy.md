@@ -1,11 +1,13 @@
-# Green Pyramid privacy policy — publication draft
+# Green Pyramid privacy policy
 
 **Effective date:** 2026-09-20
 
+Public policy URL: https://greenpyramid-privacy.cglendenning.chatgpt.site
+
 Green Pyramid stores the information needed to provide its tracker, account
 linking, optional calendar context, notifications, subscriptions and optional
-AI-guided features. This document is a publication draft and is not yet the
-submitted public policy until it is hosted at a public HTTPS URL.
+AI-guided features. The public, current version of this policy is hosted at
+the URL above.
 
 ## Information used
 
@@ -37,5 +39,11 @@ provider; the client is not the authority for paid access.
 
 ## Contact and deletion
 
-Replace this section with the publisher's legal contact, public deletion
-instructions and applicable jurisdictional disclosures before publication.
+You can permanently delete your account in the app: Settings → Account →
+Delete account. The app deletes the Firebase account, account-scoped cloud
+records, local tracker data, the local profile photo and pending reminders.
+Deletion cannot be undone. Apple and Google subscriptions are managed by the
+store and are not cancelled by deleting an account; cancel them separately in
+the relevant store settings to prevent renewal. If you cannot open the app,
+contact the publisher through the support channel shown on the public policy
+page so the deletion request can be verified and processed.
