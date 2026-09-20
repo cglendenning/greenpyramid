@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'screen_label.dart';
+
 const apiBase = 'https://us-central1-life-ops.cloudfunctions.net/api';
 
 Future<void> main() async {
@@ -312,15 +314,7 @@ class Dashboard extends StatelessWidget {
                 ),
               )
             else
-              ...screens.map(
-                (s) => ListTile(
-                  title: Text(s['screenKey'] as String),
-                  subtitle: Text(
-                    '${s['opens']} opens · ${s['uniqueUsers']} users',
-                  ),
-                  trailing: const Icon(Icons.bar_chart),
-                ),
-              ),
+              ..._screenRows(context, screens),
             const SizedBox(height: 24),
             const Text('Top users by spend'),
             if ((data['topUsers'] as List).isEmpty)
@@ -375,6 +369,98 @@ class Dashboard extends StatelessWidget {
       ],
     ),
   );
+
+  /// D-180: the rows are ordered by traffic and share one scale, so the bars
+  /// compare against the busiest screen rather than against nothing.
+  List<Widget> _screenRows(
+      BuildContext context, List<Map<String, dynamic>> screens) {
+    final rows = [...screens]..sort(
+        (a, b) => ((b['opens'] as num)).compareTo(a['opens'] as num),
+      );
+    final busiest = rows
+        .map((s) => (s['opens'] as num).toDouble())
+        .fold<double>(1, (a, b) => a > b ? a : b);
+    return rows
+        .map((s) => _screenRow(context, s, busiest))
+        .toList(growable: false);
+  }
+
+  Widget _screenRow(
+      BuildContext context, Map<String, dynamic> screen, double busiest) {
+    final label = ScreenLabel.parse(screen['screenKey'] as String);
+    final opens = (screen['opens'] as num).toDouble();
+    final muted = Theme.of(context).textTheme.bodySmall?.color;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Expanded(
+                child: Text(
+                  label.name,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    // An unattributed row is real traffic that the telemetry
+                    // could not pin to a screen. Saying so quietly beats
+                    // presenting it with the same confidence as a named one.
+                    fontStyle: label.identifies
+                        ? FontStyle.normal
+                        : FontStyle.italic,
+                    color: label.identifies ? null : muted,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(
+                '${screen['opens']}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: (opens / busiest).clamp(0.0, 1.0),
+              minHeight: 4,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            [
+              if (label.kind.isNotEmpty) label.kind,
+              '${screen['uniqueUsers']} '
+                  '${screen['uniqueUsers'] == 1 ? 'user' : 'users'}',
+            ].join(' · '),
+            style: TextStyle(fontSize: 13, color: muted),
+          ),
+          // Several distinct keys can all reduce to "Unnamed page", so an
+          // unattributed row keeps its key visible — otherwise two rows
+          // would read identically and neither could be chased down.
+          if (!label.identifies) ...[
+            const SizedBox(height: 2),
+            Text(
+              label.raw,
+              style: TextStyle(
+                fontSize: 11,
+                color: muted,
+                fontFamily: 'monospace',
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 }
 
 class AdminFeedbackScreen extends StatefulWidget {
