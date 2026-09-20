@@ -43,6 +43,16 @@ const int habitReminderBaseId = 600000000;
 int habitReminderId(int habitId, int weekday) =>
     habitReminderBaseId + habitId * 10 + weekday;
 
+/// D-179: weekday slots occupy `1..7`, leaving `0` free for the single
+/// daily-repeating reminder a habit active every day collapses to.
+const int habitReminderDailySlot = 0;
+
+bool isHabitReminderId(int id) => id >= habitReminderBaseId;
+
+/// The habit a reminder id belongs to, so a reminder whose habit no longer
+/// exists can be recognised and cancelled.
+int habitIdFromReminderId(int id) => (id - habitReminderBaseId) ~/ 10;
+
 /// D-099 Phase 3: the fire time for each of a scheduled habit's
 /// "starting soon" reminders — [leadMinutes] before the habit's own
 /// time, on every day in [activeWeekdays] (`DateTime.monday..sunday`).
@@ -66,6 +76,28 @@ List<HabitReminderSlot> buildHabitReminderSlots({
 }) {
   final reference = now ?? DateTime.now();
   final slots = <HabitReminderSlot>[];
+
+  // D-179: iOS keeps at most 64 pending local notifications per app and
+  // silently drops the rest. One slot per active weekday meant a habit
+  // active every day — the shape most habits have — cost seven of them, so
+  // a full pyramid exhausted the budget. A habit active on all seven days
+  // is exactly a daily repeat, so it needs one.
+  if (activeWeekdays.toSet().length == 7) {
+    final habitTime =
+        DateTime(reference.year, reference.month, reference.day, hour, minute);
+    var fireTime = habitTime.subtract(Duration(minutes: leadMinutes));
+    if (!fireTime.isAfter(reference)) {
+      fireTime = fireTime.add(const Duration(days: 1));
+    }
+    return [
+      HabitReminderSlot(
+        notificationId: habitReminderId(habitId, habitReminderDailySlot),
+        weekday: habitReminderDailySlot,
+        fireTime: fireTime,
+      ),
+    ];
+  }
+
   for (final weekday in activeWeekdays) {
     final anchorDate = _nextOrSameWeekday(reference, weekday);
     final habitTime = DateTime(
@@ -102,6 +134,55 @@ class LocalNotificationService {
   // after its navigator and account gate are ready.
   static String? _pendingInitialPayload;
   String? _notificationArtworkPathCache;
+
+  /// D-179: iOS *moves* a notification attachment's file out of its original
+  /// location into the private attachment data store when it validates the
+  /// request, so one artwork file can back exactly one notification. Every
+  /// iOS attachment therefore gets its own disposable copy; the shared file
+  /// below is never handed to iOS directly, so it survives to be copied
+  /// again. Android is unaffected — its big-picture style reads the path
+  /// when the notification is *displayed*, so it needs the stable file.
+  ///
+  /// Returns null on any failure, which every caller already treats as
+  /// "send this notification without artwork" rather than not sending it.
+  Future<String?> _disposableIosArtworkPath() async {
+    if (!Platform.isIOS) return null;
+    final source = await _notificationArtworkPath();
+    if (source == null) return null;
+    try {
+      final directory = await getApplicationSupportDirectory();
+      final copies = Directory('${directory.path}/notification_artwork');
+      await copies.create(recursive: true);
+      await _pruneArtworkCopies(copies);
+      final copy = File('${copies.path}/'
+          '${DateTime.now().microsecondsSinceEpoch}_${_artworkCopySequence++}.jpg');
+      await File(source).copy(copy.path);
+      return copy.path;
+    } catch (e) {
+      debugPrint('Notification artwork copy unavailable: $e');
+      return null;
+    }
+  }
+
+  /// A copy iOS accepted is moved away by the OS; one it rejected is left
+  /// behind. Sweep the leftovers so a repeatedly failing attachment cannot
+  /// grow without bound.
+  Future<void> _pruneArtworkCopies(Directory copies) async {
+    try {
+      final cutoff = DateTime.now().subtract(const Duration(days: 1));
+      await for (final entity in copies.list()) {
+        if (entity is! File) continue;
+        final stat = await entity.stat();
+        if (stat.modified.isBefore(cutoff)) {
+          await entity.delete();
+        }
+      }
+    } catch (e) {
+      debugPrint('Notification artwork prune skipped: $e');
+    }
+  }
+
+  int _artworkCopySequence = 0;
 
   /// D-149: copy the app's scenic brand image to a file location accepted by
   /// iOS notification attachments and Android big-picture notifications.
@@ -561,15 +642,16 @@ class LocalNotificationService {
       // static pool) overrides the built-in generic message pool.
       String dynamicBody = body ?? _generateNotificationMessage(id);
       final artworkPath = await _notificationArtworkPath();
+      final iosArtworkPath = await _disposableIosArtworkPath();
       final DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
         sound: 'doublebeep.aiff',
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
-        attachments: artworkPath == null
+        attachments: iosArtworkPath == null
             ? null
             : <DarwinNotificationAttachment>[
-                DarwinNotificationAttachment(artworkPath),
+                DarwinNotificationAttachment(iosArtworkPath),
               ],
       );
       final AndroidNotificationDetails androidNotificationDetails =
@@ -686,17 +768,6 @@ class LocalNotificationService {
     );
 
     final artworkPath = await _notificationArtworkPath();
-    final iosDetails = DarwinNotificationDetails(
-      sound: 'doublebeep.aiff',
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: true,
-      attachments: artworkPath == null
-          ? null
-          : <DarwinNotificationAttachment>[
-              DarwinNotificationAttachment(artworkPath),
-            ],
-    );
     final androidDetails = AndroidNotificationDetails(
       'green_pyramid_channel',
       'Green Pyramid Notifications',
@@ -717,20 +788,48 @@ class LocalNotificationService {
               hideExpandedLargeIcon: true,
             ),
     );
-    final details =
-        NotificationDetails(android: androidDetails, iOS: iosDetails);
-
     for (final slot in slots) {
-      await _localNotificationService.zonedSchedule(
-        slot.notificationId,
-        'Keep showing up',
-        '$habitDescription — starts in $leadMinutes min.',
-        tz.TZDateTime.from(slot.fireTime, tz.local),
-        details,
-        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-        matchDateTimeComponents: DateTimeComponents.dayOfWeekAndTime,
-        payload: '/',
+      // D-179: a fresh attachment copy per request — iOS consumes the file
+      // it is given, so one shared path would schedule the first slot and
+      // reject the rest.
+      final iosArtworkPath = await _disposableIosArtworkPath();
+      final details = NotificationDetails(
+        android: androidDetails,
+        iOS: DarwinNotificationDetails(
+          sound: 'doublebeep.aiff',
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          attachments: iosArtworkPath == null
+              ? null
+              : <DarwinNotificationAttachment>[
+                  DarwinNotificationAttachment(iosArtworkPath),
+                ],
+        ),
       );
+      try {
+        await _localNotificationService.zonedSchedule(
+          slot.notificationId,
+          'Keep showing up',
+          '$habitDescription — starts in $leadMinutes min.',
+          tz.TZDateTime.from(slot.fireTime, tz.local),
+          details,
+          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          // D-179: the collapsed all-week slot repeats daily, not weekly.
+          matchDateTimeComponents: slot.weekday == habitReminderDailySlot
+              ? DateTimeComponents.time
+              : DateTimeComponents.dayOfWeekAndTime,
+          payload: '/',
+        );
+      } catch (e) {
+        // D-179: the native side rejects a request by returning an error,
+        // which the plugin raises as a PlatformException. Unhandled, it
+        // escaped this method and the scheduling screen's own handler, so
+        // the "reminder could not be scheduled" notice below was never
+        // reached and the failure was completely silent.
+        debugPrint(
+            'Habit reminder slot ${slot.notificationId} was rejected: $e');
+      }
     }
 
     // The plugin can acknowledge a request even when the native platform
@@ -758,10 +857,48 @@ class LocalNotificationService {
   /// [scheduleHabitReminders], so a changed set of active days never
   /// leaves a stale reminder for a day that's no longer active.
   Future<void> cancelHabitReminders(int habitId) async {
-    for (var weekday = DateTime.monday; weekday <= DateTime.sunday; weekday++) {
-      await _localNotificationService.cancel(habitReminderId(habitId, weekday));
+    // D-179: slot 0 is the collapsed daily variant, 1..7 the per-weekday
+    // ones. Cancelling every shape means switching between them — or
+    // between two different sets of active days — leaves nothing behind.
+    for (var slot = habitReminderDailySlot;
+        slot <= DateTime.sunday;
+        slot++) {
+      await _localNotificationService.cancel(habitReminderId(habitId, slot));
     }
   }
+
+  /// D-179: cancels habit reminders whose habit no longer exists.
+  ///
+  /// Wiping the pyramid (a rebuild, an account switch) deleted the habit
+  /// rows without cancelling their reminders, so every rebuild stranded up
+  /// to seven permanently pending notifications belonging to habit ids that
+  /// were gone. Nothing could ever cancel them again — no habit owns them
+  /// and no screen lists them — and they still counted against the 64
+  /// pending notifications iOS allows, eventually crowding out the live
+  /// reminders. Returns the ids it removed.
+  Future<List<int>> pruneOrphanHabitReminders(Set<int> liveHabitIds) async {
+    final pending =
+        await _localNotificationService.pendingNotificationRequests();
+    final orphans = pending
+        .map((request) => request.id)
+        .where(isHabitReminderId)
+        .where((id) => !liveHabitIds.contains(habitIdFromReminderId(id)))
+        .toList();
+    for (final id in orphans) {
+      await _localNotificationService.cancel(id);
+    }
+    if (orphans.isNotEmpty) {
+      debugPrint('Cancelled orphaned habit reminders: $orphans');
+    }
+    return orphans;
+  }
+
+  /// D-179: what the OS is actually holding. The plugin exposes no fire
+  /// time, so this reports identity only — enough to answer "was this
+  /// reminder ever really scheduled?", which is the question a silently
+  /// rejected request leaves open.
+  Future<List<PendingNotificationRequest>> pendingNotifications() =>
+      _localNotificationService.pendingNotificationRequests();
 
   /// D-149: a push arriving while the app is in the foreground is not
   /// auto-displayed by the OS on most platforms — this shows it
@@ -787,14 +924,15 @@ class LocalNotificationService {
               hideExpandedLargeIcon: true,
             ),
     );
+    final iosArtworkPath = await _disposableIosArtworkPath();
     final iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: true,
-      attachments: artworkPath == null
+      attachments: iosArtworkPath == null
           ? null
           : <DarwinNotificationAttachment>[
-              DarwinNotificationAttachment(artworkPath),
+              DarwinNotificationAttachment(iosArtworkPath),
             ],
     );
     await _localNotificationService.show(
