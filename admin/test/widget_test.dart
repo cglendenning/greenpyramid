@@ -20,6 +20,8 @@ void main() {
     expect(source, contains('FirebaseAuth.instance.signOut()'));
     expect(source, contains("/adminMetrics"));
     expect(source, contains('Product pulse'));
+    // D-165-AC-08 / D-165-AC-09 / D-165-AC-10: lifecycle, conversion timing,
+    // and billing-source labels are present in the admin reporting surface.
     expect(source, contains('Setup abandoned'));
     expect(source, contains('Free trial'));
     expect(source, contains('Lapsed'));

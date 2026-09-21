@@ -37,6 +37,8 @@ test('admin aggregate contains no raw profile or message content', () => {
   assert.equal(serialized.includes('message'), false);
 });
 
+// D-165-AC-08 / D-165-AC-09 / D-165-AC-10: lifecycle cohorts, conversion
+// timing, and the explicit ledger-versus-invoice billing boundary.
 test('admin metrics deduplicates lifecycle events and computes conversion timing', () => {
   const result = buildAdminMetrics({
     authUsers: [
