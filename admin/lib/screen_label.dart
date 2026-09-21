@@ -29,8 +29,9 @@ class ScreenLabel {
   final String kind;
 
   /// Whether [name] actually names a screen. False when the key resolves to
-  /// nothing more specific than "some page" — the caller should present the
-  /// row as unattributed rather than as a real screen.
+  /// nothing more specific than an unattributed historical route — the caller
+  /// should present the row as historical telemetry rather than as a mapped
+  /// product screen.
   final bool identifies;
 
   /// The original telemetry key, kept so a row stays diagnosable.
@@ -87,7 +88,7 @@ class ScreenLabel {
       }
       // A bare route type with no generic identifies nothing either.
       return ScreenLabel(
-        name: 'Unnamed ${routeKind.toLowerCase()}',
+        name: _unattributedName(routeKind),
         kind: routeKind,
         identifies: false,
         raw: raw,
@@ -103,7 +104,7 @@ class ScreenLabel {
 
     if (payload.isEmpty || _anonymousPayloads.contains(payload)) {
       return ScreenLabel(
-        name: 'Unnamed ${kind.toLowerCase()}',
+        name: _unattributedName(kind),
         kind: kind,
         identifies: false,
         raw: raw,
@@ -122,6 +123,10 @@ class ScreenLabel {
   /// (`_PopupMenuRoute`); it is an implementation detail, not information.
   static String _stripPrivate(String type) =>
       type.startsWith('_') ? type.substring(1) : type;
+
+  static String _unattributedName(String kind) => kind == 'Page'
+      ? 'Unattributed page (historical)'
+      : 'Historical non-screen route';
 
   /// `CategoryEditResult` -> `Category edit result`; a trailing `?` is
   /// nullability, which means nothing to a reader of this dashboard.
@@ -153,10 +158,8 @@ class ScreenLabel {
     if (text.isEmpty) return _stripPrivate(type);
 
     final words = text
-        .replaceAllMapped(
-            RegExp(r'(?<=[a-z0-9])(?=[A-Z])'), (_) => ' ')
-        .replaceAllMapped(
-            RegExp(r'(?<=[A-Z])(?=[A-Z][a-z])'), (_) => ' ')
+        .replaceAllMapped(RegExp(r'(?<=[a-z0-9])(?=[A-Z])'), (_) => ' ')
+        .replaceAllMapped(RegExp(r'(?<=[A-Z])(?=[A-Z][a-z])'), (_) => ' ')
         .split(' ')
         .where((word) => word.isNotEmpty)
         .toList();
@@ -166,17 +169,30 @@ class ScreenLabel {
     final head = first.toUpperCase() == first && first.length > 1
         ? first // an acronym stays as it is
         : '${first[0].toUpperCase()}${first.substring(1).toLowerCase()}';
-    final tail = words.skip(1).map((word) =>
-        word.toUpperCase() == word && word.length > 1 ? word : word.toLowerCase());
+    final tail = words
+        .skip(1)
+        .map(
+          (word) => word.toUpperCase() == word && word.length > 1
+              ? word
+              : word.toLowerCase(),
+        );
     return [head, ...tail].join(' ');
   }
 
   /// `/setup_habits` -> `Setup habits`; `/` -> `Home`.
   static String _humanizeRouteName(String name) {
     if (name == '/') return 'Home';
-    final cleaned = name.replaceAll(RegExp(r'^/+'), '').replaceAll(RegExp(r'[_/-]+'), ' ').trim();
+    final cleaned = name
+        .replaceAll(RegExp(r'^/+'), '')
+        .replaceAll(RegExp(r'[_/-]+'), ' ')
+        .trim();
     if (cleaned.isEmpty) return 'Home';
-    return _humanizeType(cleaned.replaceAll(' ', '_').split('_').map((w) =>
-        w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}').join());
+    return _humanizeType(
+      cleaned
+          .replaceAll(' ', '_')
+          .split('_')
+          .map((w) => w.isEmpty ? w : '${w[0].toUpperCase()}${w.substring(1)}')
+          .join(),
+    );
   }
 }

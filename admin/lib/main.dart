@@ -381,7 +381,15 @@ class Dashboard extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            const Text('Screen utilization'),
+            const Text(
+              'Screen utilization',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'These counts come from Firestore screen_open events. Named rows are current consumer route names; unattributed historical rows were recorded before route names were attached and cannot be mapped retroactively. Historical popup/dialog routes are not product screens.',
+            ),
+            const SizedBox(height: 10),
             if (screens.isEmpty)
               const Card(
                 child: Padding(

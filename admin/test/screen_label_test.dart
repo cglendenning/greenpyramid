@@ -4,33 +4,43 @@ import 'package:green_pyramid_admin/screen_label.dart';
 /// D-180: every key below was read off a live admin dashboard, so these are
 /// the actual shapes the telemetry produces, not invented ones.
 void main() {
-  group('D-180-AC-01: a route generic that names a screen becomes its title',
-      () {
-    test('MaterialPageRoute<SignInOutcome> reads as the sign-in screen', () {
-      final label = ScreenLabel.parse('MaterialPageRoute<SignInOutcome>');
-      expect(label.name, 'Sign in');
-      expect(label.kind, 'Page');
-      expect(label.identifies, isTrue);
-    });
+  group(
+    'D-180-AC-01: a route generic that names a screen becomes its title',
+    () {
+      test('MaterialPageRoute<SignInOutcome> reads as the sign-in screen', () {
+        final label = ScreenLabel.parse('MaterialPageRoute<SignInOutcome>');
+        expect(label.name, 'Sign in');
+        expect(label.kind, 'Page');
+        expect(label.identifies, isTrue);
+      });
 
-    test('ModalBottomSheetRoute<CategoryEditResult> reads as category edit',
+      test(
+        'ModalBottomSheetRoute<CategoryEditResult> reads as category edit',
         () {
-      final label =
-          ScreenLabel.parse('ModalBottomSheetRoute<CategoryEditResult>');
-      expect(label.name, 'Category edit');
-      expect(label.kind, 'Bottom sheet');
-      expect(label.identifies, isTrue);
-    });
+          final label = ScreenLabel.parse(
+            'ModalBottomSheetRoute<CategoryEditResult>',
+          );
+          expect(label.name, 'Category edit');
+          expect(label.kind, 'Bottom sheet');
+          expect(label.identifies, isTrue);
+        },
+      );
 
-    test('a private route type loses its leading underscore', () {
-      expect(ScreenLabel.parse('_PopupMenuRoute<String?>').kind, 'Popup menu');
-    });
+      test('a private route type loses its leading underscore', () {
+        expect(
+          ScreenLabel.parse('_PopupMenuRoute<String?>').kind,
+          'Popup menu',
+        );
+      });
 
-    test('an acronym in the payload is not lowercased', () {
-      expect(ScreenLabel.parse('MaterialPageRoute<OTAStatus>').name,
-          'OTA status');
-    });
-  });
+      test('an acronym in the payload is not lowercased', () {
+        expect(
+          ScreenLabel.parse('MaterialPageRoute<OTAStatus>').name,
+          'OTA status',
+        );
+      });
+    },
+  );
 
   group('D-181-AC-04: a route named after its widget reads as the screen', () {
     test('the names D-181 puts on the app\'s routes read as screens', () {
@@ -60,11 +70,10 @@ void main() {
     });
   });
 
-  group('D-180-AC-02: a generic that names nothing is marked unattributed',
-      () {
-    test('MaterialPageRoute<dynamic> does not pretend to name a screen', () {
+  group('D-180-AC-02: a generic that names nothing is marked unattributed', () {
+    test('MaterialPageRoute<dynamic> is clearly marked as historical', () {
       final label = ScreenLabel.parse('MaterialPageRoute<dynamic>');
-      expect(label.name, 'Unnamed page');
+      expect(label.name, 'Unattributed page (historical)');
       expect(label.identifies, isFalse);
     });
 
@@ -80,32 +89,39 @@ void main() {
     });
 
     test('the dialog and sheet kinds survive an anonymous payload', () {
-      expect(ScreenLabel.parse('DialogRoute<void>').name, 'Unnamed dialog');
-      expect(ScreenLabel.parse('_PopupMenuRoute<String?>').name,
-          'Unnamed popup menu');
+      expect(
+        ScreenLabel.parse('DialogRoute<void>').name,
+        'Historical non-screen route',
+      );
+      expect(
+        ScreenLabel.parse('_PopupMenuRoute<String?>').name,
+        'Historical non-screen route',
+      );
     });
 
     test('a bare route type with no generic names nothing either', () {
       final label = ScreenLabel.parse('MaterialPageRoute');
-      expect(label.name, 'Unnamed page');
+      expect(label.name, 'Unattributed page (historical)');
       expect(label.identifies, isFalse);
     });
   });
 
-  group('D-180-AC-03: an explicitly named route keeps the name it was given',
-      () {
-    test('the root route reads as Home', () {
-      final label = ScreenLabel.parse('/');
-      expect(label.name, 'Home');
-      expect(label.identifies, isTrue);
-      expect(label.kind, isEmpty);
-    });
+  group(
+    'D-180-AC-03: an explicitly named route keeps the name it was given',
+    () {
+      test('the root route reads as Home', () {
+        final label = ScreenLabel.parse('/');
+        expect(label.name, 'Home');
+        expect(label.identifies, isTrue);
+        expect(label.kind, isEmpty);
+      });
 
-    test('a slug becomes a sentence', () {
-      expect(ScreenLabel.parse('/setup_habits').name, 'Setup habits');
-      expect(ScreenLabel.parse('paywall').name, 'Paywall');
-    });
-  });
+      test('a slug becomes a sentence', () {
+        expect(ScreenLabel.parse('/setup_habits').name, 'Setup habits');
+        expect(ScreenLabel.parse('paywall').name, 'Paywall');
+      });
+    },
+  );
 
   group('D-180-AC-04: the raw key is never lost', () {
     test('every label carries the key it was parsed from', () {
