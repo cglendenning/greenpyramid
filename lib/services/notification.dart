@@ -382,7 +382,7 @@ class LocalNotificationService {
           'Council of Advisors looks like.',
       scheduledTime,
       details,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       payload: '/',
       matchDateTimeComponents: null,
     );
@@ -524,11 +524,6 @@ class LocalNotificationService {
         // Request battery optimization exemption (Android only)
         await _requestBatteryOptimizationExemption();
 
-        // USE_EXACT_ALARM is handled via manifest, no runtime request needed
-        if (kDebugMode) {
-          print('USE_EXACT_ALARM permission handled via manifest');
-        }
-
         return granted ?? false;
       } else if (Platform.isIOS) {
         // D-050: initialize() no longer requests permission (see
@@ -577,48 +572,11 @@ class LocalNotificationService {
     }
   }
 
-  Future<bool> _canScheduleExactAlarms() async {
-    try {
-      // Only check exact alarms on Android
-      if (Platform.isAndroid) {
-        // For Android 12+, we assume exact alarms are available if the permission is in manifest
-        // The system will handle the permission automatically
-        if (kDebugMode) {
-          print(
-              'Android: Assuming exact alarms are available (permission in manifest)');
-        }
-        return true;
-      } else {
-        // iOS doesn't have exact alarm restrictions like Android
-        return true;
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error checking exact alarm permission: $e');
-      }
-      return false;
-    }
-  }
-
   Future<AndroidScheduleMode> _getOptimalScheduleMode() async {
-    if (Platform.isAndroid) {
-      final canScheduleExact = await _canScheduleExactAlarms();
-      if (canScheduleExact) {
-        if (kDebugMode) {
-          print('Android: Using exactAllowWhileIdle scheduling mode');
-        }
-        return AndroidScheduleMode.exactAllowWhileIdle;
-      } else {
-        if (kDebugMode) {
-          print('Android: Using exact scheduling mode (fallback)');
-        }
-        return AndroidScheduleMode.exact;
-      }
-    } else {
-      // iOS doesn't use AndroidScheduleMode, but we need to return something
-      // This will be ignored for iOS scheduling
-      return AndroidScheduleMode.exact;
-    }
+    // Google Play does not permit exact-alarm access for Green Pyramid's
+    // core purpose. Inexact idle scheduling preserves local reminders and
+    // lets Android deliver them without a restricted alarm permission.
+    return AndroidScheduleMode.inexactAllowWhileIdle;
   }
 
   Future<void> scheduleDailyNotification(
@@ -818,7 +776,7 @@ class LocalNotificationService {
           '$habitDescription — starts in $leadMinutes min.',
           tz.TZDateTime.from(slot.fireTime, tz.local),
           details,
-          androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
           // D-179: the collapsed all-week slot repeats daily, not weekly.
           matchDateTimeComponents: slot.weekday == habitReminderDailySlot
               ? DateTimeComponents.time
@@ -1058,7 +1016,7 @@ class LocalNotificationService {
       body,
       scheduledTime,
       details,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       payload: jsonEncode({'type': 'newsfeed_item', 'dedupeKey': dedupeKey}),
       matchDateTimeComponents: null,
     );
