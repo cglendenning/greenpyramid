@@ -147,55 +147,8 @@ class _AdminGateState extends State<AdminGate> {
     if (r.statusCode != 200) {
       throw AdminMetricsException(r.statusCode);
     }
-    final metrics = jsonDecode(r.body) as Map<String, dynamic>;
-    // Keep the chart useful while an additive backend field is rolling out
-    // across Functions revisions. The existing adminUsers endpoint already
-    // exposes the same Firebase Auth creation timestamps, so this fallback
-    // still uses authoritative server data and never invents a date.
-    final series = metrics['usersCreatedByDay'];
-    if (series is! List || series.isEmpty) {
-      final usersResponse = await http.get(
-        Uri.parse('$apiBase/adminUsers'),
-        headers: headers,
-      );
-      if (usersResponse.statusCode == 200) {
-        final usersPayload = jsonDecode(usersResponse.body) as Map<String, dynamic>;
-        metrics['usersCreatedByDay'] = _creationSeriesFromAdminUsers(
-          usersPayload['users'],
-        );
-      }
-    }
-    return metrics;
+    return jsonDecode(r.body) as Map<String, dynamic>;
   }
-
-  List<Map<String, dynamic>> _creationSeriesFromAdminUsers(dynamic rawUsers) {
-    final now = DateTime.now().toUtc();
-    final today = DateTime.utc(now.year, now.month, now.day);
-    final days = List.generate(
-      30,
-      (index) => today.subtract(Duration(days: 29 - index)),
-    );
-    final counts = <String, int>{
-      for (final day in days) _dateKey(day): 0,
-    };
-    if (rawUsers is List) {
-      for (final rawUser in rawUsers) {
-        if (rawUser is! Map) continue;
-        final createdAt = DateTime.tryParse(rawUser['createdAt']?.toString() ?? '');
-        if (createdAt == null) continue;
-        final key = _dateKey(createdAt.toUtc());
-        if (counts.containsKey(key)) counts[key] = counts[key]! + 1;
-      }
-    }
-    return days
-        .map((day) => {'date': _dateKey(day), 'count': counts[_dateKey(day)]})
-        .toList(growable: false);
-  }
-
-  String _dateKey(DateTime date) =>
-      '${date.year.toString().padLeft(4, '0')}-'
-      '${date.month.toString().padLeft(2, '0')}-'
-      '${date.day.toString().padLeft(2, '0')}';
 }
 
 class AdminMetricsException implements Exception {
@@ -694,56 +647,64 @@ class _UsersCreatedChartState extends State<UsersCreatedChart> {
                   physics: const BouncingScrollPhysics(),
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
-                    children: widget.points.map((point) {
-                      final count = point['count'] is num
-                          ? (point['count'] as num).toInt()
-                          : 0;
-                      final barHeight = count == 0
-                          ? 0.0
-                          : 142 * count / maxCount;
-                      return SizedBox(
-                        width: 56,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            SizedBox(
-                              height: 22,
-                              child: Text(
-                                '$count',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  fontFeatures: [FontFeature.tabularFigures()],
-                                ),
-                              ),
-                            ),
-                            SizedBox(
-                              height: 142,
-                              child: Align(
-                                alignment: Alignment.bottomCenter,
-                                child: Container(
-                                  width: 26,
-                                  height: barHeight,
-                                  decoration: BoxDecoration(
-                                    color: color,
-                                    borderRadius: const BorderRadius.vertical(
-                                      top: Radius.circular(4),
+                    children: widget.points
+                        .map((point) {
+                          final count = point['count'] is num
+                              ? (point['count'] as num).toInt()
+                              : 0;
+                          final barHeight = count == 0
+                              ? 0.0
+                              : 142 * count / maxCount;
+                          return SizedBox(
+                            width: 56,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                SizedBox(
+                                  height: 22,
+                                  child: Text(
+                                    '$count',
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontFeatures: [
+                                        FontFeature.tabularFigures(),
+                                      ],
                                     ),
                                   ),
                                 ),
-                              ),
+                                SizedBox(
+                                  height: 142,
+                                  child: Align(
+                                    alignment: Alignment.bottomCenter,
+                                    child: Container(
+                                      width: 26,
+                                      height: barHeight,
+                                      decoration: BoxDecoration(
+                                        color: color,
+                                        borderRadius:
+                                            const BorderRadius.vertical(
+                                              top: Radius.circular(4),
+                                            ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                SizedBox(
+                                  height: 20,
+                                  child: Text(
+                                    _shortDate(point['date']?.toString()),
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: muted,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              height: 20,
-                              child: Text(
-                                _shortDate(point['date']?.toString()),
-                                style: TextStyle(fontSize: 11, color: muted),
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(growable: false),
+                          );
+                        })
+                        .toList(growable: false),
                   ),
                 ),
               ),
