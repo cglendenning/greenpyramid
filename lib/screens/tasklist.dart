@@ -450,7 +450,11 @@ class _TaskListState extends State<TaskList> {
     // insert one only if the day of week is not blacked out in task.
 
     if (taskLogCount.isEmpty) {
-      dbHelper.insertTaskLogForCategory(category, taskLogDate, todayFmt);
+      // Wait for the backfill before querying again. When a task is enabled
+      // for today's weekday in Edit Task Detail, this is the first place the
+      // new task-log row is created; the old fire-and-forget call raced the
+      // second query and left the task absent until a later rebuild.
+      await dbHelper.insertTaskLogForCategory(category, taskLogDate, todayFmt);
     }
 
     // second pull now that there are rows.

@@ -137,4 +137,13 @@ void main() {
       expect(source, contains('thumbVisibility: true'));
     });
   });
+
+  test('today\'s newly enabled task is backfilled before the task list '
+      'queries its rows again', () {
+    expect(
+      source,
+      contains(
+          'await dbHelper.insertTaskLogForCategory(category, taskLogDate, todayFmt);'),
+    );
+  });
 }
