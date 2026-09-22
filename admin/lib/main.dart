@@ -607,19 +607,6 @@ class _UsersCreatedChartState extends State<UsersCreatedChart> {
     }
   }
 
-  void _scrollBy(double amount) {
-    if (!_scrollController.hasClients) return;
-    final target = (_scrollController.offset + amount).clamp(
-      0.0,
-      _scrollController.position.maxScrollExtent,
-    );
-    _scrollController.animateTo(
-      target,
-      duration: const Duration(milliseconds: 220),
-      curve: Curves.easeOut,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final maxCount = widget.points.fold<int>(1, (current, point) {
@@ -639,25 +626,9 @@ class _UsersCreatedChartState extends State<UsersCreatedChart> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                const Expanded(
-                  child: Text(
-                    'User accounts created by day',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Older days',
-                  icon: const Icon(Icons.chevron_left),
-                  onPressed: () => _scrollBy(-240),
-                ),
-                IconButton(
-                  tooltip: 'Newer days',
-                  icon: const Icon(Icons.chevron_right),
-                  onPressed: () => _scrollBy(240),
-                ),
-              ],
+            const Text(
+              'User accounts created by day',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             Text(
               'Last 30 days · $total account(s). Includes anonymous Firebase Auth accounts; dates are UTC.',
@@ -730,7 +701,7 @@ class _UsersCreatedChartState extends State<UsersCreatedChart> {
               ),
             ),
             Text(
-              'Swipe or use the arrows to browse older and newer days.',
+              'Swipe left or right to browse the 30-day trend.',
               style: TextStyle(fontSize: 12, color: muted),
             ),
           ],
