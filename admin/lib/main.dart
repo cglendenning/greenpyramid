@@ -139,15 +139,63 @@ class _AdminGateState extends State<AdminGate> {
   Future<Map<String, dynamic>> _load() async {
     final user = FirebaseAuth.instance.currentUser!;
     final token = await user.getIdToken(true);
+    final headers = {'Authorization': 'Bearer $token'};
     final r = await http.get(
       Uri.parse('$apiBase/adminMetrics'),
-      headers: {'Authorization': 'Bearer $token'},
+      headers: headers,
     );
     if (r.statusCode != 200) {
       throw AdminMetricsException(r.statusCode);
     }
-    return jsonDecode(r.body) as Map<String, dynamic>;
+    final metrics = jsonDecode(r.body) as Map<String, dynamic>;
+    // Keep the chart useful while an additive backend field is rolling out
+    // across Functions revisions. The existing adminUsers endpoint already
+    // exposes the same Firebase Auth creation timestamps, so this fallback
+    // still uses authoritative server data and never invents a date.
+    final series = metrics['usersCreatedByDay'];
+    if (series is! List || series.isEmpty) {
+      final usersResponse = await http.get(
+        Uri.parse('$apiBase/adminUsers'),
+        headers: headers,
+      );
+      if (usersResponse.statusCode == 200) {
+        final usersPayload = jsonDecode(usersResponse.body) as Map<String, dynamic>;
+        metrics['usersCreatedByDay'] = _creationSeriesFromAdminUsers(
+          usersPayload['users'],
+        );
+      }
+    }
+    return metrics;
   }
+
+  List<Map<String, dynamic>> _creationSeriesFromAdminUsers(dynamic rawUsers) {
+    final now = DateTime.now().toUtc();
+    final today = DateTime.utc(now.year, now.month, now.day);
+    final days = List.generate(
+      30,
+      (index) => today.subtract(Duration(days: 29 - index)),
+    );
+    final counts = <String, int>{
+      for (final day in days) _dateKey(day): 0,
+    };
+    if (rawUsers is List) {
+      for (final rawUser in rawUsers) {
+        if (rawUser is! Map) continue;
+        final createdAt = DateTime.tryParse(rawUser['createdAt']?.toString() ?? '');
+        if (createdAt == null) continue;
+        final key = _dateKey(createdAt.toUtc());
+        if (counts.containsKey(key)) counts[key] = counts[key]! + 1;
+      }
+    }
+    return days
+        .map((day) => {'date': _dateKey(day), 'count': counts[_dateKey(day)]})
+        .toList(growable: false);
+  }
+
+  String _dateKey(DateTime date) =>
+      '${date.year.toString().padLeft(4, '0')}-'
+      '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
 }
 
 class AdminMetricsException implements Exception {
