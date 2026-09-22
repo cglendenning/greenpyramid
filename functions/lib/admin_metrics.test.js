@@ -24,6 +24,11 @@ test('admin metrics returns bounded funnel, screen usage, and top five users', (
   assert.equal(result.funnel.completionRate, 1);
   assert.equal(result.funnel.subscriptionRate, 1);
   assert.equal(result.cost.month, '2026-09');
+  assert.equal(result.usersCreatedByDay.length, 30);
+  assert.deepEqual(
+    result.usersCreatedByDay.find((day) => day.date === '2026-09-15'),
+    { date: '2026-09-15', count: 0 },
+  );
 });
 
 test('admin aggregate contains no raw profile or message content', () => {
@@ -82,4 +87,8 @@ test('admin metrics deduplicates lifecycle events and computes conversion timing
   assert.equal(result.conversion.meanDownloadToSubscriptionDays, 2);
   assert.equal(result.cost.claude.allTimeUsd, 1.25);
   assert.equal(result.cost.allServices.state, 'incomplete');
+  assert.deepEqual(
+    result.usersCreatedByDay.find((day) => day.date === '2026-09-01'),
+    { date: '2026-09-01', count: 3 },
+  );
 });

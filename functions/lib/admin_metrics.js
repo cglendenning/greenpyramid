@@ -114,6 +114,21 @@ function mean(values) {
   return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : null;
 }
 
+function usersCreatedByDay(users, now) {
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const days = Array.from({ length: 30 }, (_, index) => {
+    const date = new Date(today - (29 - index) * 86_400_000);
+    return date.toISOString().slice(0, 10);
+  });
+  const counts = new Map(days.map((day) => [day, 0]));
+  for (const user of users) {
+    if (user.createdAtMs == null) continue;
+    const day = new Date(user.createdAtMs).toISOString().slice(0, 10);
+    if (counts.has(day)) counts.set(day, counts.get(day) + 1);
+  }
+  return days.map((date) => ({ date, count: counts.get(date) }));
+}
+
 export function buildAdminMetrics({
   profiles = [],
   accounts = [],
@@ -225,6 +240,7 @@ export function buildAdminMetrics({
       downloadToSubscriptionSample: downloadToSubscriptionDays.length,
       trialToSubscriptionSample: trialToSubscriptionDays.length,
     },
+    usersCreatedByDay: usersCreatedByDay(allUsers, now),
     screenUsage: screenKeys,
     cost: {
       month: currentMonth,

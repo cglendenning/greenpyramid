@@ -176,6 +176,10 @@ class Dashboard extends StatelessWidget {
     final firebase = _map(c['firebase']);
     final allServices = _map(c['allServices']);
     final screens = (data['screenUsage'] as List).cast<Map<String, dynamic>>();
+    final usersCreatedByDay = (data['usersCreatedByDay'] as List? ?? const [])
+        .whereType<Map>()
+        .map((point) => point.cast<String, dynamic>())
+        .toList(growable: false);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Green Pyramid Admin'),
@@ -312,6 +316,8 @@ class Dashboard extends StatelessWidget {
                 _metric('Subscribed', '${cohorts['subscribedUsers'] ?? 0}'),
               ],
             ),
+            const SizedBox(height: 24),
+            UsersCreatedChart(points: usersCreatedByDay),
             const SizedBox(height: 24),
             const Text(
               'Conversion',
@@ -560,6 +566,182 @@ class Dashboard extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+class UsersCreatedChart extends StatefulWidget {
+  const UsersCreatedChart({super.key, required this.points});
+  final List<Map<String, dynamic>> points;
+
+  @override
+  State<UsersCreatedChart> createState() => _UsersCreatedChartState();
+}
+
+class _UsersCreatedChartState extends State<UsersCreatedChart> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _showLatest());
+  }
+
+  @override
+  void didUpdateWidget(covariant UsersCreatedChart oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.points != widget.points) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _showLatest());
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _showLatest() {
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(_scrollController.position.maxScrollExtent);
+    }
+  }
+
+  void _scrollBy(double amount) {
+    if (!_scrollController.hasClients) return;
+    final target = (_scrollController.offset + amount).clamp(
+      0.0,
+      _scrollController.position.maxScrollExtent,
+    );
+    _scrollController.animateTo(
+      target,
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOut,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final maxCount = widget.points.fold<int>(1, (current, point) {
+      final count = point['count'];
+      return count is num && count > current ? count.toInt() : current;
+    });
+    final total = widget.points.fold<int>(0, (sum, point) {
+      final count = point['count'];
+      return sum + (count is num ? count.toInt() : 0);
+    });
+    final color = Theme.of(context).colorScheme.primary;
+    final muted = Theme.of(context).textTheme.bodySmall?.color;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    'User accounts created by day',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  tooltip: 'Older days',
+                  icon: const Icon(Icons.chevron_left),
+                  onPressed: () => _scrollBy(-240),
+                ),
+                IconButton(
+                  tooltip: 'Newer days',
+                  icon: const Icon(Icons.chevron_right),
+                  onPressed: () => _scrollBy(240),
+                ),
+              ],
+            ),
+            Text(
+              'Last 30 days · $total account(s). Includes anonymous Firebase Auth accounts; dates are UTC.',
+              style: TextStyle(color: muted),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 196,
+              child: Scrollbar(
+                controller: _scrollController,
+                thumbVisibility: true,
+                child: SingleChildScrollView(
+                  controller: _scrollController,
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: widget.points.map((point) {
+                      final count = point['count'] is num
+                          ? (point['count'] as num).toInt()
+                          : 0;
+                      final barHeight = count == 0
+                          ? 0.0
+                          : 142 * count / maxCount;
+                      return SizedBox(
+                        width: 56,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            SizedBox(
+                              height: 22,
+                              child: Text(
+                                '$count',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontFeatures: [FontFeature.tabularFigures()],
+                                ),
+                              ),
+                            ),
+                            SizedBox(
+                              height: 142,
+                              child: Align(
+                                alignment: Alignment.bottomCenter,
+                                child: Container(
+                                  width: 26,
+                                  height: barHeight,
+                                  decoration: BoxDecoration(
+                                    color: color,
+                                    borderRadius: const BorderRadius.vertical(
+                                      top: Radius.circular(4),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: 20,
+                              child: Text(
+                                _shortDate(point['date']?.toString()),
+                                style: TextStyle(fontSize: 11, color: muted),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(growable: false),
+                  ),
+                ),
+              ),
+            ),
+            Text(
+              'Swipe or use the arrows to browse older and newer days.',
+              style: TextStyle(fontSize: 12, color: muted),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _shortDate(String? value) {
+    final date = value == null ? null : DateTime.tryParse(value);
+    return date == null ? '—' : '${date.month}/${date.day}';
   }
 }
 
