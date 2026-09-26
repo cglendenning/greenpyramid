@@ -442,6 +442,10 @@ class _TaskListState extends State<TaskList> {
   }
 
   Future<List<TaskLog>> getTaskLog() async {
+    final formatter = DateFormat('yyyy-MM-dd');
+    final isCurrentDay =
+        taskLogDate == formatter.format(DateTime.now()).toString();
+
     // Is there a row for this category and date in tasklog?
     final List<Map<String, dynamic>> taskLogCount =
         await dbHelper.queryTaskLogByCategory(category, taskLogDate);
@@ -449,7 +453,7 @@ class _TaskListState extends State<TaskList> {
     // if there is no row for this category and date in tasklog,
     // insert one only if the day of week is not blacked out in task.
 
-    if (taskLogCount.isEmpty) {
+    if (taskLogCount.isEmpty || isCurrentDay) {
       // Wait for the backfill before querying again. When a task is enabled
       // for today's weekday in Edit Task Detail, this is the first place the
       // new task-log row is created; the old fire-and-forget call raced the
@@ -458,8 +462,10 @@ class _TaskListState extends State<TaskList> {
     }
 
     // second pull now that there are rows.
-    final List<Map<String, dynamic>> maps =
-        await dbHelper.queryTaskLogByCategory(category, taskLogDate);
+    final List<Map<String, dynamic>> maps = isCurrentDay
+        ? await dbHelper.queryScheduledTaskLogByCategory(
+            category, taskLogDate, todayFmt)
+        : await dbHelper.queryTaskLogByCategory(category, taskLogDate);
 
     // Convert the List<Map<String, dynamic> into a List<Task>.
     return List.generate(maps.length, (i) {

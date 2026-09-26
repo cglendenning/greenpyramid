@@ -183,9 +183,9 @@ class _EditTaskListState extends State<EditTaskList> {
     );
     Widget continueButton = TextButton(
       child: const Text("Add Task"),
-      onPressed: () {
-        setState(() {});
-        insertTaskAndTaskLog(taskDescriptionText.text);
+      onPressed: () async {
+        await insertTaskAndTaskLog(taskDescriptionText.text);
+        if (mounted) setState(() {});
         taskDescriptionText.clear();
         Navigator.pop(context);
       },
@@ -219,7 +219,7 @@ class _EditTaskListState extends State<EditTaskList> {
     );
   }
 
-  void insertTaskAndTaskLog(String desc) async {
+  Future<void> insertTaskAndTaskLog(String desc) async {
     final intl.DateFormat formatter = intl.DateFormat('yyyy-MM-dd');
 
     // row to insert

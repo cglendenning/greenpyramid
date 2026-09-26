@@ -57,101 +57,38 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
                         CheckboxListTile(
                             title: const Text('Sunday'),
                             value: toBoolean(snapshot.data[0].sunday),
-                            onChanged: (bool? value) {
-                              setState(() {
-                                dbHelper.setTaskDayFlag(
-                                  category: snapshot.data[0].category,
-                                  taskDescription:
-                                      snapshot.data[0].taskdescription,
-                                  day: 'sunday',
-                                  value: value ?? false,
-                                );
-                              });
-                            }),
+                            onChanged: (bool? value) => _setTaskDayFlag(
+                                snapshot.data[0], 'sunday', value ?? false)),
                         CheckboxListTile(
                             title: const Text('Monday'),
                             value: toBoolean(snapshot.data[0].monday),
-                            onChanged: (bool? value) {
-                              setState(() {
-                                dbHelper.setTaskDayFlag(
-                                  category: snapshot.data[0].category,
-                                  taskDescription:
-                                      snapshot.data[0].taskdescription,
-                                  day: 'monday',
-                                  value: value ?? false,
-                                );
-                              });
-                            }),
+                            onChanged: (bool? value) => _setTaskDayFlag(
+                                snapshot.data[0], 'monday', value ?? false)),
                         CheckboxListTile(
                             title: const Text('Tuesday'),
                             value: toBoolean(snapshot.data[0].tuesday),
-                            onChanged: (bool? value) {
-                              setState(() {
-                                dbHelper.setTaskDayFlag(
-                                  category: snapshot.data[0].category,
-                                  taskDescription:
-                                      snapshot.data[0].taskdescription,
-                                  day: 'tuesday',
-                                  value: value ?? false,
-                                );
-                              });
-                            }),
+                            onChanged: (bool? value) => _setTaskDayFlag(
+                                snapshot.data[0], 'tuesday', value ?? false)),
                         CheckboxListTile(
                             title: const Text('Wednesday'),
                             value: toBoolean(snapshot.data[0].wednesday),
-                            onChanged: (bool? value) {
-                              setState(() {
-                                dbHelper.setTaskDayFlag(
-                                  category: snapshot.data[0].category,
-                                  taskDescription:
-                                      snapshot.data[0].taskdescription,
-                                  day: 'wednesday',
-                                  value: value ?? false,
-                                );
-                              });
-                            }),
+                            onChanged: (bool? value) => _setTaskDayFlag(
+                                snapshot.data[0], 'wednesday', value ?? false)),
                         CheckboxListTile(
                             title: const Text('Thursday'),
                             value: toBoolean(snapshot.data[0].thursday),
-                            onChanged: (bool? value) {
-                              setState(() {
-                                dbHelper.setTaskDayFlag(
-                                  category: snapshot.data[0].category,
-                                  taskDescription:
-                                      snapshot.data[0].taskdescription,
-                                  day: 'thursday',
-                                  value: value ?? false,
-                                );
-                              });
-                            }),
+                            onChanged: (bool? value) => _setTaskDayFlag(
+                                snapshot.data[0], 'thursday', value ?? false)),
                         CheckboxListTile(
                             title: const Text('Friday'),
                             value: toBoolean(snapshot.data[0].friday),
-                            onChanged: (bool? value) {
-                              setState(() {
-                                dbHelper.setTaskDayFlag(
-                                  category: snapshot.data[0].category,
-                                  taskDescription:
-                                      snapshot.data[0].taskdescription,
-                                  day: 'friday',
-                                  value: value ?? false,
-                                );
-                              });
-                            }),
+                            onChanged: (bool? value) => _setTaskDayFlag(
+                                snapshot.data[0], 'friday', value ?? false)),
                         CheckboxListTile(
                             title: const Text('Saturday'),
                             value: toBoolean(snapshot.data[0].saturday),
-                            onChanged: (bool? value) {
-                              setState(() {
-                                dbHelper.setTaskDayFlag(
-                                  category: snapshot.data[0].category,
-                                  taskDescription:
-                                      snapshot.data[0].taskdescription,
-                                  day: 'saturday',
-                                  value: value ?? false,
-                                );
-                              });
-                            }),
+                            onChanged: (bool? value) => _setTaskDayFlag(
+                                snapshot.data[0], 'saturday', value ?? false)),
                       ]);
                     }
                   }),
@@ -176,6 +113,16 @@ class _EditTaskDetailState extends State<EditTaskDetail> {
           friday: maps[i]['friday'],
           saturday: maps[i]['saturday']);
     });
+  }
+
+  Future<void> _setTaskDayFlag(Task task, String day, bool value) async {
+    await dbHelper.setTaskDayFlag(
+      category: task.category,
+      taskDescription: task.taskdescription,
+      day: day,
+      value: value,
+    );
+    if (mounted) setState(() {});
   }
 
   showEditDialog(BuildContext context, Task task) {

@@ -1425,6 +1425,44 @@ class DatabaseHelper {
     return ret;
   }
 
+  /// Returns only task-log rows whose task is scheduled for [dow].
+  ///
+  /// A task log is an occurrence for a particular date, so it can already
+  /// exist when the task's weekday configuration is edited later that day.
+  /// The current-day task list must therefore apply the task definition's
+  /// weekday flag instead of treating every existing occurrence as due.
+  Future<List<Map<String, dynamic>>> queryScheduledTaskLogByCategory(
+      String cat, String logDate, String dow) async {
+    final day = dow.toLowerCase();
+    if (!dayColumns.contains(day)) {
+      throw ArgumentError.value(dow, 'dow', 'not a day-of-week column');
+    }
+
+    final logs = await queryTaskLogByCategory(cat, logDate);
+    if (logs.isEmpty) return logs;
+
+    final tasks = await queryTasksByCategory(cat);
+    final scheduledDescriptions = tasks
+        .where((task) => _isEnabledTaskDay(task[day]))
+        .map((task) => task[columnTaskDescription])
+        .whereType<String>()
+        .toSet();
+
+    return logs
+        .where((log) =>
+            scheduledDescriptions.contains(log[columnTLTaskDescription]))
+        .toList();
+  }
+
+  static bool _isEnabledTaskDay(dynamic value) {
+    return value != null &&
+        value != false &&
+        value != 0 &&
+        value != 'false' &&
+        value != '0' &&
+        value != '';
+  }
+
   Future<List<Map<String, dynamic>>> queryAllTasks() async {
     late List<Map<String, dynamic>> ret;
     try {
@@ -1546,17 +1584,22 @@ class DatabaseHelper {
     return ret;
   }
 
-  insertTaskLogForCategory(String cat, String logDate, String dow) async {
+  Future<void> insertTaskLogForCategory(
+      String cat, String logDate, String dow) async {
     Database db = await instance.database;
 
     // consider the task's day of week blackouts when deciding to
     // insert into tasklog.
     try {
-      String query = "insert into tasklog "
+      final day = dow.toLowerCase();
+      if (!dayColumns.contains(day)) {
+        throw ArgumentError.value(dow, 'dow', 'not a day-of-week column');
+      }
+      String query = "insert or ignore into ${getTaskLogTable()} "
           "(category, taskdescription, checked, taskdate) "
-          "select category, taskdescription, 'false', '$logDate' "
-          "from task where category = '$cat' and $dow = 'true'";
-      await db.execute(query);
+          "select category, taskdescription, 'false', ? "
+          "from ${getTaskTable()} where category = ? and $day = 'true'";
+      await db.rawInsert(query, [logDate, cat]);
     } catch (e, s) {
       print(e);
       print(s);
@@ -1614,6 +1657,12 @@ class DatabaseHelper {
   /// against a fixed allowlist so it can never carry injected SQL, and the
   /// user-entered category and description are bound, never interpolated.
   ///
+  /// If the edited day is today, keep today's materialized task-log row in
+  /// sync with the weekday selection. The task editor creates a row for a
+  /// newly-created task before the user has finished narrowing its weekday
+  /// selection, so disabling today must remove only that one current-day
+  /// occurrence. Re-enabling today recreates it when missing.
+  ///
   /// D-024: extracted from lib/screens/edittaskdetail.dart, which built this
   /// statement by string interpolation of user input.
   static const Set<String> dayColumns = {
@@ -1636,12 +1685,45 @@ class DatabaseHelper {
       throw ArgumentError.value(day, 'day', 'not a day-of-week column');
     }
     final db = await instance.database;
-    return db.update(
-      getTaskTable(),
-      {day: value.toString()},
-      where: '$columnCategory = ? AND $columnTaskDescription = ?',
-      whereArgs: [category, taskDescription],
-    );
+    final today = DateTime.now();
+    final todayDay = intl.DateFormat('EEEE').format(today).toLowerCase();
+    final todayDate = intl.DateFormat('yyyy-MM-dd').format(today);
+
+    return db.transaction((txn) async {
+      final updated = await txn.update(
+        getTaskTable(),
+        {day: value.toString()},
+        where: '$columnCategory = ? AND $columnTaskDescription = ?',
+        whereArgs: [category, taskDescription],
+      );
+
+      if (day == todayDay) {
+        final logWhere = '$columnTLCategory = ? AND '
+            '$columnTLTaskDescription = ? AND $columnTLTaskDate = ?';
+        final logArgs = [category, taskDescription, todayDate];
+
+        if (value) {
+          await txn.insert(
+            getTaskLogTable(),
+            {
+              columnTLCategory: category,
+              columnTLTaskDescription: taskDescription,
+              columnTLChecked: 'false',
+              columnTLTaskDate: todayDate,
+            },
+            conflictAlgorithm: ConflictAlgorithm.ignore,
+          );
+        } else {
+          await txn.delete(
+            getTaskLogTable(),
+            where: logWhere,
+            whereArgs: logArgs,
+          );
+        }
+      }
+
+      return updated;
+    });
   }
 
   /// Renames a task within a category. Parameterized.
