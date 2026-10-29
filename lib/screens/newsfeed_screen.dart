@@ -153,6 +153,7 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
       Future.delayed(const Duration(seconds: 3), () {
         if (mounted) setState(() => _highlighted = null);
       });
+      unawaited(_restoreArticleHistoryInBackground());
     } else {
       // D-122: the AI-written daily article is generated in the
       // background, never blocking the instant, on-device feed above —
@@ -163,7 +164,39 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
     }
   }
 
+  /// D-122-AC-05: the account's persisted article history is pulled into
+  /// the local cache off the critical path; when anything arrives the
+  /// visible window is reloaded, since restored articles also remove the
+  /// sample cards already on screen.
+  Future<void> _restoreArticleHistoryInBackground() async {
+    final restored = await _service.restoreArticleHistory();
+    if (restored == 0 || !mounted) return;
+    await _reloadVisibleFeed();
+  }
+
+  /// D-122: replaces the visible window from the cache. Used whenever the
+  /// cache changed underneath already-rendered cards — a real article
+  /// arriving deletes the samples, so they must leave the screen too.
+  Future<void> _reloadVisibleFeed() async {
+    final limit = _items.length > _pageSize ? _items.length : _pageSize;
+    final page = await _service.getFeed(limit: limit, offset: 0);
+    if (!mounted) return;
+    setState(() {
+      _items
+        ..clear()
+        ..addAll(page);
+      _itemKeys.clear();
+      for (final item in page) {
+        _itemKeys[item['dedupekey'] as String] = GlobalKey();
+      }
+      _hasMore = page.length == limit;
+    });
+  }
+
   Future<void> _generateArticleInBackground() async {
+    // Restore first, so a device that just got history back does not pay
+    // for a generation against a stale, sample-only cache.
+    await _restoreArticleHistoryInBackground();
     await _service.generateArticleIfDue();
     if (!mounted) return;
     final latest = await _service.getFeed(limit: 1, offset: 0);
@@ -171,6 +204,10 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
     final newest = latest.first;
     final key = newest['dedupekey'] as String;
     if (_items.any((i) => i['dedupekey'] == key)) return;
+    if (_items.any((i) => i['type'] == 'sample')) {
+      await _reloadVisibleFeed();
+      return;
+    }
     setState(() {
       _items.insert(0, newest);
       _itemKeys[key] = GlobalKey();
@@ -202,7 +239,9 @@ class _NewsfeedScreenState extends State<NewsfeedScreen> {
         if (latest.isNotEmpty && mounted) {
           final newest = latest.first;
           final key = newest['dedupekey'] as String;
-          if (!_items.any((i) => i['dedupekey'] == key)) {
+          if (_items.any((i) => i['type'] == 'sample')) {
+            await _reloadVisibleFeed();
+          } else if (!_items.any((i) => i['dedupekey'] == key)) {
             setState(() {
               _items.insert(0, newest);
               _itemKeys[key] = GlobalKey();

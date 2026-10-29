@@ -380,6 +380,8 @@ class CouncilClient {
     final data = await _post('deriveNewsfeedArticle', {
       'categories': categories,
       if (firstName != null && firstName.isNotEmpty) 'firstName': firstName,
+      // D-122-AC-05: the persisted inbox record carries the account-local day.
+      'localDate': DateTime.now().toIso8601String().substring(0, 10),
     });
     return (
       headline: (data['headline'] as String? ?? '').trim(),

@@ -2417,6 +2417,25 @@ class DatabaseHelper {
     return rows.isNotEmpty;
   }
 
+  /// D-122-AC-05: whether this cache already holds an article with exactly
+  /// this headline and body — how a restored inbox record is matched to the
+  /// row this device generated itself under its own day-based dedupe key.
+  Future<bool> newsfeedArticleExists({
+    required String title,
+    required String body,
+  }) async {
+    final db = await database;
+    final rows = await db.query(
+      newsfeedItemTable,
+      columns: [columnNewsfeedId],
+      where: '$columnNewsfeedType = ? AND $columnNewsfeedTitle = ? AND '
+          '$columnNewsfeedBody = ?',
+      whereArgs: ['article', title, body],
+      limit: 1,
+    );
+    return rows.isNotEmpty;
+  }
+
   /// D-122: removes placeholder cards after the first real article exists.
   Future<int> deleteNewsfeedItemsByType(String type) async {
     final db = await database;

@@ -19,7 +19,7 @@ import { getCouncilModel, getNotificationModel } from './lib/model_config.js';
 import { guardAndCountSetupCall, SetupCallLimitError } from './lib/setup_guard.js';
 import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, CATEGORIES_TOOL, habitsTool } from './lib/setup_derivation.js';
 import { buildProgressAnalysisPrompt } from './lib/progress_analysis.js';
-import { buildNewsfeedAnalysisPrompt, parseArticleReply } from './lib/newsfeed_analysis.js';
+import { buildNewsfeedAnalysisPrompt, parseArticleReply, persistNewsfeedArticle } from './lib/newsfeed_analysis.js';
 import { isEligibleForTailoredNotification } from './lib/notification_schedule.js';
 import { batchCheckinOccurrence, localDateParts, shouldSendBatchCheckin } from './lib/batch_checkin_schedule.js';
 import { buildNotificationPrompt, normalizeNotificationPreview, NOTIFICATION_TOOL } from './lib/notification_derivation.js';
@@ -1153,7 +1153,12 @@ app.post('/deriveNewsfeedArticle', requireFirebaseAuth, async (req, res) => {
     await settleReservedCost(req, model, msg.usage);
     const raw = extractReplyText(msg.content);
     if (!raw) return res.status(502).json({ error: 'empty_reply' });
-    res.json(parseArticleReply(raw));
+    const article = parseArticleReply(raw);
+    // D-122-AC-05: a persist failure must not cost the user the article
+    // they were already charged for; it is logged and the reply still sent.
+    await persistNewsfeedArticle(admin.firestore(), req.uid, article, req.body?.localDate)
+      .catch((e) => console.error('deriveNewsfeedArticle persist error:', e.message));
+    res.json(article);
   } catch (e) {
     if (isConfirmedPreBillingRejection(e)) {
       await releaseReservedCost(req).catch(() => {});

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show debugPrint;
 import 'ai_guard.dart';
 import 'council_client.dart';
 import 'db.dart';
+import 'notification_inbox_service.dart';
 
 /// D-122: see [NewsfeedService.generateArticleOnDemand].
 enum OnDemandArticleOutcome { generated, notEntitled, dailyCapReached, failed }
@@ -22,14 +23,21 @@ enum OnDemandArticleOutcome { generated, notEntitled, dailyCapReached, failed }
 /// deleted outright, not left dormant — nothing calls them and nothing
 /// should.
 class NewsfeedService {
-  NewsfeedService({DatabaseHelper? db, CouncilClient? client})
-      : _db = db ?? DatabaseHelper.instance,
-        _client = client ?? CouncilClient.instance;
+  NewsfeedService({
+    DatabaseHelper? db,
+    CouncilClient? client,
+    NotificationInboxService? inbox,
+  })  : _db = db ?? DatabaseHelper.instance,
+        _client = client ?? CouncilClient.instance,
+        _inbox = inbox;
 
   static final NewsfeedService instance = NewsfeedService();
 
   final DatabaseHelper _db;
   final CouncilClient _client;
+  // Resolved on first use so constructing the service never touches
+  // Firebase — only restoreArticleHistory needs the account inbox.
+  final NotificationInboxService? _inbox;
 
   // D-122: five fixed, hand-written cards seeded exactly once, the very
   // first time the newsfeed has nothing else in it yet — replaces
@@ -106,6 +114,44 @@ class NewsfeedService {
     if (!await _db.newsfeedItemExists('sample-1')) {
       await _seedSampleCards();
     }
+  }
+
+  /// D-122-AC-05: copies the account's persisted articles into this cache,
+  /// so a reinstall or a new device shows the real history instead of
+  /// samples. An article this device already generated itself is matched
+  /// by headline and body and never duplicated. Placeholders are deleted
+  /// once any real article lands. Returns how many articles were restored;
+  /// a cloud failure is logged and restores nothing, leaving the cache as
+  /// it was.
+  Future<int> restoreArticleHistory() async {
+    final List<Map<String, dynamic>>? articles;
+    try {
+      articles = await (_inbox ?? NotificationInboxService.instance)
+          .fetchArticles();
+    } catch (e) {
+      debugPrint('NewsfeedService: article history restore skipped: $e');
+      return 0;
+    }
+    if (articles == null) return 0;
+
+    var restored = 0;
+    for (final article in articles) {
+      final key = article['messageKey'] as String?;
+      final title = (article['title'] as String? ?? '').trim();
+      final body = (article['body'] as String? ?? '').trim();
+      if (key == null || title.isEmpty || body.isEmpty) continue;
+      if (await _db.newsfeedArticleExists(title: title, body: body)) continue;
+      final inserted = await _db.insertNewsfeedItem(
+        type: 'article',
+        title: title,
+        body: body,
+        dedupeKey: key,
+        createdAt: article['createdAt'] as DateTime?,
+      );
+      if (inserted) restored++;
+    }
+    if (restored > 0) await _db.deleteNewsfeedItemsByType('sample');
+    return restored;
   }
 
   // D-122: unlike D-122's welcome cards, these are seeded at "now" with

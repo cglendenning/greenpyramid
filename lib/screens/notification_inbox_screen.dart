@@ -113,7 +113,10 @@ class _NotificationInboxScreenState extends State<NotificationInboxScreen> {
               if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
               }
-              final docs = snapshot.data!.docs;
+              final docs = snapshot.data!.docs
+                  .where((doc) =>
+                      NotificationInboxService.isNotification(doc.data()))
+                  .toList();
               if (docs.isEmpty) {
                 return const Center(child: Text('No notifications yet.'));
               }

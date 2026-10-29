@@ -37,6 +37,34 @@ class NotificationInboxService {
     return inbox?.orderBy('createdAt', descending: true).snapshots();
   }
 
+  /// D-122-AC-05: real newsfeed articles share the account inbox as their
+  /// durable record but are read in the newsfeed, never listed as
+  /// notifications.
+  static bool isNotification(Map<String, dynamic> item) =>
+      item['type'] != 'article';
+
+  /// D-122-AC-05: the account's persisted newsfeed articles, each with its
+  /// `createdAt` converted to a [DateTime] so callers never handle
+  /// Firestore types. A null result means authentication could not be
+  /// established; no cloud query is attempted in that case.
+  Future<List<Map<String, dynamic>>?> fetchArticles() async {
+    final inbox = await _inbox();
+    if (inbox == null) return null;
+    final snapshot = await inbox.where('type', isEqualTo: 'article').get();
+    return snapshot.docs.map((doc) {
+      final data = doc.data();
+      final created = data['createdAt'];
+      return {
+        ...data,
+        'createdAt': created is Timestamp
+            ? created.toDate()
+            : created is DateTime
+                ? created
+                : null,
+      };
+    }).toList();
+  }
+
   /// Loads the durable notification context for one account-bound message.
   Future<Map<String, dynamic>?> findByMessageKey(String messageKey) async {
     if (messageKey.isEmpty) return null;

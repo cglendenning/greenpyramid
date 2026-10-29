@@ -5,7 +5,12 @@
 // differ in scope (whole-pyramid comparison here vs. a single 30-day log
 // review there) and in requiring strict JSON back, since this needs a
 // separate headline and body rather than one paragraph.
+import { createHash } from 'node:crypto';
+
 import { sanitize } from './council.js';
+import { upsertInboxItem } from './notification_delivery.js';
+
+const LOCAL_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 // D-138: [firstName], when present, replaces the old impersonal "one
 // person's"/"their" framing that produced generic "this person"-style
@@ -91,4 +96,29 @@ export function parseArticleReply(raw) {
     // failing the request outright over a formatting slip.
     return { headline: 'Your Pyramid, Analyzed', body: jsonText };
   }
+}
+
+// D-122-AC-05: an article's inbox key is derived from its own text, so a
+// retried persist of the same article is idempotent and a device can tell
+// a restored record apart from one it already holds locally.
+export function articleMessageKey({ headline, body }) {
+  return `article:${createHash('sha256').update(`${headline}\n${body}`).digest('hex')}`;
+}
+
+// D-122-AC-05: real articles persist as account inbox records so a
+// reinstall or a new device restores the history instead of reseeding
+// samples. [localDate] is the client's account-local day; anything not
+// shaped like YYYY-MM-DD falls back to the server's UTC day.
+export async function persistNewsfeedArticle(store, uid, article, localDate, now = new Date()) {
+  if (!article?.headline || !article?.body) return { created: false };
+  const occurrenceDate = LOCAL_DATE.test(localDate ?? '')
+    ? localDate
+    : now.toISOString().slice(0, 10);
+  return upsertInboxItem(store, uid, {
+    messageKey: articleMessageKey(article),
+    type: 'article',
+    occurrenceDate,
+    title: article.headline,
+    body: article.body,
+  }, now);
 }
