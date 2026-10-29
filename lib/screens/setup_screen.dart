@@ -151,6 +151,18 @@ class _SetupScreenState extends State<SetupScreen> {
   // generated — null while _buildOpeningVision is still waiting on it.
   String? _visionStatement;
 
+  // D-093: the one steering turn on the vision screen. [_visionSteering]
+  // is true from "Change this statement" until the regenerated statement
+  // arrives; the question is null while Mira is still forming it, and the
+  // reply is set once the person has answered.
+  bool _visionSteering = false;
+  String? _visionSteeringQuestion;
+  String? _visionSteeringReply;
+
+  // D-042: distinct vision statements so far, current first; "Previous
+  // statements" appears once there is more than one to choose from.
+  List<String> _visionHistory = const [];
+
   /// The categories to treat as "already proposed" for this turn — only
   /// meaningful while [_refining], and read before any re-derivation
   /// overwrites [_categories] with the refined result.
@@ -383,6 +395,7 @@ class _SetupScreenState extends State<SetupScreen> {
           (_phase == _Phase.categories && _categories.isEmpty)) {
         _error = 'Setup was interrupted. Retry to continue.';
       }
+      if (_phase == _Phase.openingVision) await _refreshVisionHistory();
       if (_phase == _Phase.reveal || _phase == _Phase.permission) {
         await _showCompletion();
         return;
@@ -592,11 +605,134 @@ class _SetupScreenState extends State<SetupScreen> {
   Future<void> _deriveOpeningVisionStatement() async {
     final session = _session;
     if (session == null) return;
-    setState(() => _busy = true);
-    try {
+    await _runVisionCall(() async {
       final vision = await _setup.deriveOpeningVisionStatement(session);
       if (!mounted || _manual) return;
       setState(() => _visionStatement = vision);
+      await _refreshVisionHistory();
+    });
+  }
+
+  Future<void> _refreshVisionHistory() async {
+    final history = await _setup.visionStatementHistory();
+    if (mounted) setState(() => _visionHistory = history);
+  }
+
+  // D-042: lists every statement written so far; choosing an earlier one
+  // makes it the active statement again.
+  Future<void> _showVisionHistory() async {
+    final chosen = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      builder: (sheetContext) => SafeArea(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(sheetContext).size.height * 0.7),
+          child: ListView.separated(
+            shrinkWrap: true,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            itemCount: _visionHistory.length + 1,
+            separatorBuilder: (_, i) => i == 0
+                ? const SizedBox.shrink()
+                : Divider(
+                    height: 1, color: Colors.white.withValues(alpha: 0.08)),
+            itemBuilder: (_, i) {
+              if (i == 0) {
+                return const Padding(
+                  padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
+                  child: Text('Previous statements',
+                      style: OnboardingStyles.headline),
+                );
+              }
+              final text = _visionHistory[i - 1];
+              final isCurrent = text == _visionStatement;
+              return ListTile(
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                title: Text(text,
+                    style: const TextStyle(color: AppColors.textPrimary)),
+                subtitle: isCurrent
+                    ? const Text('Current',
+                        style: TextStyle(color: AppColors.brandGreen))
+                    : null,
+                onTap: isCurrent ? null : () => Navigator.of(sheetContext).pop(text),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    if (chosen == null || !mounted) return;
+    await _setup.restoreVisionStatement(chosen);
+    if (!mounted) return;
+    setState(() => _visionStatement = chosen);
+    await _refreshVisionHistory();
+    await _saveDraft();
+  }
+
+  // D-093: "Change this statement" — asks the one steering question, which
+  // names specific claims from the current statement.
+  Future<void> _startVisionSteering() async {
+    final session = _session;
+    final vision = _visionStatement;
+    if (session == null || vision == null) return;
+    setState(() {
+      _visionSteering = true;
+      _visionSteeringQuestion = null;
+      _visionSteeringReply = null;
+    });
+    await _runVisionCall(() async {
+      final question = await _setup.deriveVisionSteeringQuestion(session, vision);
+      if (mounted) setState(() => _visionSteeringQuestion = question);
+    });
+  }
+
+  void _sendVisionSteeringReply() {
+    final reply = _textController.text.trim();
+    if (reply.isEmpty || _visionSteeringQuestion == null) return;
+    _textController.clear();
+    setState(() => _visionSteeringReply = reply);
+    _regenerateSteeredVision();
+  }
+
+  // D-093: exactly one steering turn — the answer goes straight into a
+  // regenerated statement, which replaces the one shown and ends steering.
+  Future<void> _regenerateSteeredVision() async {
+    final session = _session;
+    final previous = _visionStatement;
+    final question = _visionSteeringQuestion;
+    final reply = _visionSteeringReply;
+    if (session == null || previous == null || question == null || reply == null) {
+      return;
+    }
+    await _runVisionCall(() async {
+      final vision = await _setup.regenerateOpeningVisionStatement(session,
+          previousVision: previous, question: question, feedback: reply);
+      if (!mounted) return;
+      setState(() {
+        _visionStatement = vision;
+        _visionSteering = false;
+        _visionSteeringQuestion = null;
+        _visionSteeringReply = null;
+      });
+      await _refreshVisionHistory();
+    });
+  }
+
+  void _cancelVisionSteering() => setState(() {
+        _visionSteering = false;
+        _visionSteeringQuestion = null;
+        _visionSteeringReply = null;
+        _error = null;
+      });
+
+  /// One vision-phase AI call with this screen's standard busy state and
+  /// error surfacing; the draft is saved afterwards either way.
+  Future<void> _runVisionCall(Future<void> Function() call) async {
+    setState(() => _busy = true);
+    try {
+      await call();
     } on AiBudgetException catch (e) {
       setState(() => _error = e.message);
     } on SpendLimitException catch (e) {
@@ -1253,7 +1389,8 @@ class _SetupScreenState extends State<SetupScreen> {
                   if (_phase == _Phase.opening ||
                       _phase == _Phase.openingRound ||
                       _phase == _Phase.refining ||
-                      _phase == _Phase.essences)
+                      _phase == _Phase.essences ||
+                      _awaitingVisionSteeringReply)
                     _buildTextInput(),
                 ],
               ),
@@ -1301,7 +1438,13 @@ class _SetupScreenState extends State<SetupScreen> {
     setState(() => _error = null);
     switch (_phase) {
       case _Phase.openingVision:
-        await _deriveOpeningVisionStatement();
+        if (_visionSteering && _visionSteeringQuestion == null) {
+          await _startVisionSteering();
+        } else if (_visionSteering && _visionSteeringReply != null) {
+          await _regenerateSteeredVision();
+        } else if (!_visionSteering) {
+          await _deriveOpeningVisionStatement();
+        }
         break;
       case _Phase.categories:
         await _loadCategories(existingCategories: _refinementContext);
@@ -1535,6 +1678,7 @@ class _SetupScreenState extends State<SetupScreen> {
                 onPressed: _proceedFromOpeningVision,
                 child: const Text('Next')),
           ]));
+    if (_visionSteering) return _buildVisionSteering();
     if (_visionStatement == null) {
       return const Padding(
         padding: EdgeInsets.symmetric(horizontal: 28),
@@ -1573,8 +1717,59 @@ class _SetupScreenState extends State<SetupScreen> {
               ),
             ),
           ),
+          // D-093: steer the statement without redoing the interview.
+          Padding(
+            padding: const EdgeInsets.only(bottom: 28),
+            child: SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: OutlinedButton(
+                onPressed: _busy ? null : _startVisionSteering,
+                child: const Text('Change this statement'),
+              ),
+            ),
+          ),
+          // D-042: return to an earlier statement after steering.
+          if (_visionHistory.length > 1)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 28),
+              child: TextButton(
+                onPressed: _busy ? null : _showVisionHistory,
+                child: const Text('Previous statements'),
+              ),
+            ),
         ],
       ),
+    );
+  }
+
+  // D-093: the single steering turn — Mira's question (typing indicator
+  // while she forms it), the person's answer, then the typing indicator
+  // again while the statement is rewritten.
+  Widget _buildVisionSteering() {
+    final now = DateTime.now();
+    return Column(
+      children: [
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton(
+            onPressed: _busy ? null : _cancelVisionSteering,
+            child: const Text('Keep the current statement'),
+          ),
+        ),
+        Expanded(
+          child: _buildTranscript([
+            if (_visionSteeringQuestion != null)
+              BoardMessage(
+                  advisorKey: 'mira',
+                  text: _visionSteeringQuestion!,
+                  timestamp: now),
+            if (_visionSteeringReply != null)
+              BoardMessage(
+                  advisorKey: 'user', text: _visionSteeringReply!, timestamp: now),
+          ], typingAdvisorKey: _busy ? 'mira' : null),
+        ),
+      ],
     );
   }
 
@@ -2093,8 +2288,18 @@ class _SetupScreenState extends State<SetupScreen> {
       _sendOpeningReply();
     } else if (_phase == _Phase.essences) {
       _sendEssenceReply();
+    } else if (_awaitingVisionSteeringReply) {
+      _sendVisionSteeringReply();
     }
   }
+
+  // D-093: the reply box shows only for the single steering answer — once
+  // it is sent, the regenerated statement replaces the chat.
+  bool get _awaitingVisionSteeringReply =>
+      _phase == _Phase.openingVision &&
+      _visionSteering &&
+      _visionSteeringQuestion != null &&
+      _visionSteeringReply == null;
 }
 
 extension _FirstOrNull<T> on Iterable<T> {

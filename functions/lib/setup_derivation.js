@@ -188,7 +188,7 @@ export function buildDeriveHabitsPrompt({ categoryName, essence, existingHabits 
 // empty, the user message says so plainly rather than rendering an empty
 // "REFERENCE" section with nothing after the colon — the same explicit-
 // framing discipline D-073 established for an empty conversationHistory.
-export function buildVisionStatementPrompt({ essences, transcript }) {
+export function buildVisionStatementPrompt({ essences, transcript, steering }) {
   const essenceLines = (essences || [])
     .map((e) => `- ${sanitize(e.categoryName, 60)}: "${sanitize(e.essence, 400)}"`)
     .join('\n');
@@ -213,9 +213,49 @@ export function buildVisionStatementPrompt({ essences, transcript }) {
     ? `REFERENCE — THE CONVERSATION (for context only; do not continue or reply to it):\n${transcriptText(transcript)}\n\n`
     : 'REFERENCE — THE CONVERSATION: none — this is a regeneration from their current pyramid, not ' +
       'written during a live conversation. Draw only on their essences above.\n\n';
+  // D-093: one steering round before the initial vision is accepted. The
+  // person's own correction outranks the conversation wherever they
+  // disagree; anything they did not object to is kept.
+  const steeringSection = steering?.feedback
+    ? 'REFERENCE — THEIR CORRECTION (this outranks the conversation wherever they disagree):\n' +
+      `Previous statement: "${sanitize(steering.previousVision, 4000)}"\n` +
+      `They were asked: "${sanitize(steering.question, 600)}"\n` +
+      `They answered: "${sanitize(steering.feedback, 1000)}"\n` +
+      'Rewrite the statement so it no longer says what they rejected and reflects what they said ' +
+      'instead. Keep whatever they did not object to.\n\n'
+    : '';
   const user =
     essenceSection +
     transcriptSection +
+    steeringSection +
     'Now write THE OUTPUT: their vision statement, and only that.';
+  return { system, user };
+}
+
+// D-093-AC-03 (R-VISION.ai_opener): every AI vision-generation caller
+// validates the required opener. A typographic apostrophe from the model
+// is accepted as the same opener.
+export const VISION_OPENER = "I'm the kind of person that";
+
+export function hasVisionOpener(vision) {
+  return typeof vision === 'string' &&
+    vision.trim().replace(/’/g, "'").startsWith(VISION_OPENER);
+}
+
+// D-093: the single steering question shown when the person says the
+// initial vision did not land. It engages with the statement itself —
+// naming one or two of its concrete claims as possibilities — rather than
+// asking a generic "what's wrong?", and always leaves room for something
+// else.
+export function buildVisionSteeringQuestionPrompt({ vision }) {
+  const system =
+    'You are Mira, guiding someone through setting up their life pyramid. They just read the vision ' +
+    'statement below, written from what they told you, and said it does not feel right. Write exactly ' +
+    'one short question, one or two sentences, that helps them say what did not land. Name one or two ' +
+    'specific claims the statement makes about them as concrete possibilities, in plain words — for ' +
+    'example "Was it the part about working out every day, or something else?" — and always leave ' +
+    'room for something else. Warm and direct, never apologetic, no emoji. Your entire response is the ' +
+    'question and nothing else — no preamble, no quotation marks.';
+  const user = `THE STATEMENT:\n"${sanitize(vision, 4000)}"\n\nNow write the question, and only that.`;
   return { system, user };
 }

@@ -175,13 +175,71 @@ class SetupService {
       sessionId: session.sessionId,
       isSetup: true,
       essences: const [],
-      transcript: session.messages
-          .map((m) => {'advisor': m.advisorKey, 'text': m.text})
-          .toList(),
+      transcript: _transcriptOf(session),
     );
     await _db.insertVisionStatement(vision);
     return vision;
   }
+
+  /// D-093: the one steering question for a vision that did not land.
+  /// An empty reply is surfaced as an error rather than shown as a blank
+  /// chat bubble.
+  Future<String> deriveVisionSteeringQuestion(
+      BoardSession session, String vision) async {
+    await AiGuard.instance.acquire();
+    final question = await _client.deriveVisionSteeringQuestion(
+        sessionId: session.sessionId, vision: vision);
+    if (question.isEmpty) {
+      throw CouncilClientException(
+          'Mira could not form a question just now. Try again.');
+    }
+    return question;
+  }
+
+  /// D-093: regenerates the initial vision from one steering answer,
+  /// before acceptance. Persisted with the same latest-wins semantics as
+  /// the first generation, so at most one initial vision is ever accepted.
+  Future<String> regenerateOpeningVisionStatement(
+    BoardSession session, {
+    required String previousVision,
+    required String question,
+    required String feedback,
+  }) async {
+    await AiGuard.instance.acquire();
+    final vision = await _client.regenerateVisionStatement(
+      sessionId: session.sessionId,
+      transcript: _transcriptOf(session),
+      previousVision: previousVision,
+      question: question,
+      feedback: AiGuard.sanitizeField(feedback, maxChars: 1000),
+    );
+    await _db.insertVisionStatement(vision);
+    return vision;
+  }
+
+  /// D-042: the distinct vision statements written so far, most recently
+  /// active first — the first entry is the current one. A statement that
+  /// was restored appears once, at its most recent position.
+  Future<List<String>> visionStatementHistory() async {
+    final seen = <String>{};
+    final history = <String>[];
+    for (final text in await _db.queryVisionStatementHistory()) {
+      if (seen.add(text)) history.add(text);
+    }
+    return history;
+  }
+
+  /// D-042: makes an earlier vision statement active again by recording it
+  /// as the newest version, so history is kept and latest-wins still holds.
+  Future<String> restoreVisionStatement(String vision) async {
+    await _db.insertVisionStatement(vision);
+    return vision;
+  }
+
+  List<Map<String, String>> _transcriptOf(BoardSession session) => session
+      .messages
+      .map((m) => {'advisor': m.advisorKey, 'text': m.text})
+      .toList();
 
   /// D-038: commits the derived pyramid — category id and position both
   /// equal the proposal's position (1-6), matching the app's existing

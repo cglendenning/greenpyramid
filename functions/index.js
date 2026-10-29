@@ -17,7 +17,7 @@ import { checkSpendLimit, recordCost, reserveCost, settleCost, releaseCost, Spen
 import { guardCallFrequency, RateLimitError } from './lib/rate_limit.js';
 import { getCouncilModel, getNotificationModel } from './lib/model_config.js';
 import { guardAndCountSetupCall, SetupCallLimitError } from './lib/setup_guard.js';
-import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, CATEGORIES_TOOL, habitsTool } from './lib/setup_derivation.js';
+import { buildDeriveCategoriesPrompt, buildDeriveHabitsPrompt, buildVisionStatementPrompt, buildVisionSteeringQuestionPrompt, CATEGORIES_TOOL, habitsTool, hasVisionOpener } from './lib/setup_derivation.js';
 import { buildProgressAnalysisPrompt } from './lib/progress_analysis.js';
 import { buildNewsfeedAnalysisPrompt, parseArticleReply, persistNewsfeedArticle } from './lib/newsfeed_analysis.js';
 import { isEligibleForTailoredNotification } from './lib/notification_schedule.js';
@@ -1073,10 +1073,10 @@ app.post('/deriveHabits', requireFirebaseAuth, setupIdempotency(() => admin.fire
 // every other non-setup AI surface. sessionId/transcript are optional —
 // a regeneration has neither, only the pyramid's current essences.
 app.post('/deriveVisionStatement', requireFirebaseAuth, (req, res, next) => req.body?.isSetup ? setupIdempotency(() => admin.firestore())(req, res, next) : next(), async (req, res) => {
-  const { sessionId, essences, transcript, isSetup } = req.body || {};
+  const { sessionId, essences, transcript, isSetup, steering } = req.body || {};
   if (!(await guardCouncilCall(req, res, { isSetup: !!isSetup, sessionId }))) return;
 
-  const { system, user } = buildVisionStatementPrompt({ essences, transcript });
+  const { system, user } = buildVisionStatementPrompt({ essences, transcript, steering });
   const model = await getCouncilModel();
   try {
     const msg = await claude().messages.create({
@@ -1091,12 +1091,43 @@ app.post('/deriveVisionStatement', requireFirebaseAuth, (req, res, next) => req.
     }
     const vision = extractReplyText(msg.content);
     if (!vision) return res.status(502).json({ error: 'empty_reply' });
+    if (!hasVisionOpener(vision)) {
+      console.error('deriveVisionStatement error: vision_opener_missing');
+      return res.status(502).json({ error: 'vision_opener_missing' });
+    }
     res.json({ vision });
   } catch (e) {
     if (!isSetup && isConfirmedPreBillingRejection(e)) {
       await releaseReservedCost(req).catch(() => {});
     }
     console.error('deriveVisionStatement error:', e.message);
+    res.status(502).json({ error: e.message });
+  }
+});
+
+// D-093: the one steering question asked when the initial vision does not
+// land — setup-only and free like the vision itself, so it shares the
+// setup idempotency and per-session call guard.
+app.post('/deriveVisionSteeringQuestion', requireFirebaseAuth, setupIdempotency(() => admin.firestore()), async (req, res) => {
+  const { sessionId, vision } = req.body || {};
+  if (!vision) return res.status(400).json({ error: 'vision_required' });
+  if (!(await guardCouncilCall(req, res, { isSetup: true, sessionId }))) return;
+
+  const { system, user } = buildVisionSteeringQuestionPrompt({ vision });
+  const model = await getCouncilModel();
+  try {
+    const msg = await claude().messages.create({
+      model,
+      max_tokens: 150,
+      thinking: { type: 'disabled' },
+      system: [{ type: 'text', text: system }],
+      messages: [{ role: 'user', content: user }],
+    });
+    const question = extractReplyText(msg.content);
+    if (!question) return res.status(502).json({ error: 'empty_reply' });
+    res.json({ question });
+  } catch (e) {
+    console.error('deriveVisionSteeringQuestion error:', e.message);
     res.status(502).json({ error: e.message });
   }
 });

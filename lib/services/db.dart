@@ -2121,6 +2121,19 @@ class DatabaseHelper {
     return id;
   }
 
+  /// D-042: every stored vision statement, newest first. Rows are never
+  /// overwritten, so this is the full local history; the first entry is
+  /// the active statement (latest-wins).
+  Future<List<String>> queryVisionStatementHistory() async {
+    final db = await instance.database;
+    final rows = await db.query(
+      visionStatementTable,
+      columns: [columnVisionText],
+      orderBy: '$columnVisionCreated DESC, $columnVisionId DESC',
+    );
+    return rows.map((r) => r[columnVisionText] as String).toList();
+  }
+
   Future<String?> getLatestVisionStatement() async {
     try {
       Database db = await instance.database;

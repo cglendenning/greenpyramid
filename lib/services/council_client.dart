@@ -357,6 +357,44 @@ class CouncilClient {
     return (data['vision'] as String? ?? '').trim();
   }
 
+  /// D-093: the one steering question asked when the initial vision does
+  /// not land — it names specific claims from [vision] so the person can
+  /// point at what is wrong. Setup-only and free.
+  Future<String> deriveVisionSteeringQuestion({
+    required String sessionId,
+    required String vision,
+  }) async {
+    final data = await _post('deriveVisionSteeringQuestion', {
+      'sessionId': sessionId,
+      'vision': vision,
+    });
+    return (data['question'] as String? ?? '').trim();
+  }
+
+  /// D-093: rewrites the initial vision from the opening [transcript] plus
+  /// the person's one steering answer, before it is accepted. Setup-only
+  /// and free, like the first generation.
+  Future<String> regenerateVisionStatement({
+    required String sessionId,
+    required List<Map<String, String>> transcript,
+    required String previousVision,
+    required String question,
+    required String feedback,
+  }) async {
+    final data = await _post('deriveVisionStatement', {
+      'sessionId': sessionId,
+      'essences': const <Map<String, String>>[],
+      'transcript': transcript,
+      'isSetup': true,
+      'steering': {
+        'previousVision': previousVision,
+        'question': question,
+        'feedback': feedback,
+      },
+    });
+    return (data['vision'] as String? ?? '').trim();
+  }
+
   /// D-089: the profile screen's 30-day progress analysis — never free,
   /// gated by D-014 like every other non-setup AI surface.
   Future<String> deriveProgressAnalysis({
