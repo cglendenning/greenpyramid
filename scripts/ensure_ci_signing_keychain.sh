@@ -52,6 +52,30 @@ security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 security import "$KEY_FILE" -k "$KEYCHAIN_PATH" -A
 security import "$CERT_FILE" -k "$KEYCHAIN_PATH" -A
 
+# build-ota.sh narrows the search list to this keychain alone, which hides
+# the login keychain's copy of the issuing intermediate. Without it codesign
+# cannot build a chain to Apple's root and fails with errSecInternalComponent,
+# so copy the WWDR G3 intermediate (public, no key) in, selected by SHA-1.
+WWDR_G3_SHA1="06EC06599F4ED0027CC58956B4D3AC1255114F35"
+WWDR_PEM=$(mktemp)
+security find-certificate -a -Z -p \
+  -c "Apple Worldwide Developer Relations Certification Authority" \
+  | awk -v sha="$WWDR_G3_SHA1" '
+      /^SHA-1 hash:/ { keep = ($3 == sha) }
+      keep && /BEGIN CERTIFICATE/ { p = 1 }
+      p { print }
+      /END CERTIFICATE/ { p = 0 }' > "$WWDR_PEM"
+WWDR_FOUND_SHA1=$(openssl x509 -in "$WWDR_PEM" -noout -fingerprint -sha1 2>/dev/null \
+  | sed 's/.*=//; s/://g')
+if [ "$WWDR_FOUND_SHA1" != "$WWDR_G3_SHA1" ]; then
+  echo "ERROR: Apple WWDR G3 intermediate ($WWDR_G3_SHA1) not found in any" >&2
+  echo "keychain. Install AppleWWDRCAG3.cer from https://www.apple.com/certificateauthority/" >&2
+  rm -f "$WWDR_PEM"
+  exit 1
+fi
+security import "$WWDR_PEM" -k "$KEYCHAIN_PATH" -A
+rm -f "$WWDR_PEM"
+
 # This is the step that actually replaces the interactive "Always Allow"
 # dialog: without it, codesign/xcodebuild fail with errSecInternalComponent
 # in any session that isn't attached to a Window Server that can show that

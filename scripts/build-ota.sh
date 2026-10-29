@@ -22,13 +22,26 @@ case "$MODE" in
     while IFS= read -r keychain; do
       ORIGINAL_KEYCHAINS+=("$keychain")
     done < <(security list-keychains -d user | sed 's/^ *"//; s/"$//')
+    # The Runner Release config signs automatically for App Store archives.
+    # An OTA build instead needs manual ad-hoc signing pinned to the CI
+    # keychain's distribution cert by SHA-1 (same-named certs exist), so it
+    # is supplied through an optional xcconfig that exists only for this run.
+    OTA_SIGNING_XCCONFIG="ios/Flutter/OTASigning.xcconfig"
     restore_keychains() {
+      rm -f "$OTA_SIGNING_XCCONFIG"
       if [ "${#ORIGINAL_KEYCHAINS[@]}" -gt 0 ]; then
         security list-keychains -d user -s "${ORIGINAL_KEYCHAINS[@]}" >/dev/null 2>&1 || true
       fi
     }
     trap restore_keychains EXIT INT TERM
     bash scripts/ensure_ci_signing_keychain.sh
+    cat > "$OTA_SIGNING_XCCONFIG" <<EOF
+GP_OTA_CODE_SIGN_STYLE = Manual
+CODE_SIGN_IDENTITY = 66F1F59CE546829AA563FE01BF325E9BC197584A
+CODE_SIGN_IDENTITY[sdk=iphoneos*] = 66F1F59CE546829AA563FE01BF325E9BC197584A
+PROVISIONING_PROFILE_SPECIFIER = Green Pyramid Consumer Ad Hoc CI
+OTHER_CODE_SIGN_FLAGS = --keychain $CI_KEYCHAIN_PATH
+EOF
     security list-keychains -d user -s "$CI_KEYCHAIN_PATH"
     export OTHER_CODE_SIGN_FLAGS="--keychain $CI_KEYCHAIN_PATH"
     flutter build ipa --release \
