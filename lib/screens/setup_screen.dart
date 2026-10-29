@@ -107,8 +107,11 @@ class _SetupScreenState extends State<SetupScreen> {
   // read as jarring, a hard cut from "you typed something" straight to
   // "here's a button," with nothing in between confirming what was said
   // actually landed.
+  // Names the two real choices on this screen: the save button, by its
+  // exact label, or one more fixed question to keep going deeper.
   static const _essenceAcknowledgment =
-      'Thanks — edit this, accept it provisionally, or leave it empty.';
+      'If that captures it, tap "That\'s it — save this." Or, to go deeper: '
+      'what would change for you day to day if you lived this fully?';
 
   // D-038: the pyramid is fixed at 3/2/1 — shared by _buildCategories'
   // tier headers and _changeTier's tier-choice sheet, so the two never
@@ -605,7 +608,7 @@ class _SetupScreenState extends State<SetupScreen> {
   Future<void> _deriveOpeningVisionStatement() async {
     final session = _session;
     if (session == null) return;
-    await _runVisionCall(() async {
+    await _runAiCall(() async {
       final vision = await _setup.deriveOpeningVisionStatement(session);
       if (!mounted || _manual) return;
       setState(() => _visionStatement = vision);
@@ -682,7 +685,7 @@ class _SetupScreenState extends State<SetupScreen> {
       _visionSteeringQuestion = null;
       _visionSteeringReply = null;
     });
-    await _runVisionCall(() async {
+    await _runAiCall(() async {
       final question = await _setup.deriveVisionSteeringQuestion(session, vision);
       if (mounted) setState(() => _visionSteeringQuestion = question);
     });
@@ -706,7 +709,7 @@ class _SetupScreenState extends State<SetupScreen> {
     if (session == null || previous == null || question == null || reply == null) {
       return;
     }
-    await _runVisionCall(() async {
+    await _runAiCall(() async {
       final vision = await _setup.regenerateOpeningVisionStatement(session,
           previousVision: previous, question: question, feedback: reply);
       if (!mounted) return;
@@ -727,9 +730,10 @@ class _SetupScreenState extends State<SetupScreen> {
         _error = null;
       });
 
-  /// One vision-phase AI call with this screen's standard busy state and
-  /// error surfacing; the draft is saved afterwards either way.
-  Future<void> _runVisionCall(Future<void> Function() call) async {
+  /// One AI call with this screen's standard busy state and error
+  /// surfacing (vision and explanation exchanges); the draft is saved
+  /// afterwards either way.
+  Future<void> _runAiCall(Future<void> Function() call) async {
     setState(() => _busy = true);
     try {
       await call();
@@ -1096,11 +1100,47 @@ class _SetupScreenState extends State<SetupScreen> {
     }
   }
 
+  // D-070/D-073: this category's own exchange — everything from the moment
+  // its question was asked, so neither the view nor a reply sees earlier
+  // categories or the opening conversation.
+  List<BoardMessage> get _currentExchangeMessages {
+    final session = _session;
+    final start = _essenceStepStartIndex;
+    if (session == null || start == null) return const <BoardMessage>[];
+    return session.messages.sublist(start.clamp(0, session.messages.length));
+  }
+
+  // D-007: every message in an explanation exchange gets a response. The
+  // first qualifying one gets D-085's fixed acknowledgment; every other one
+  // gets a real turn from this category's advisor, scoped to this exchange.
+  Future<void> _replyInCurrentFoundational() async {
+    final session = _session;
+    if (session == null) return;
+    final step = _foundational[_essenceIndex];
+    await _runAiCall(() async {
+      await _setup.council.runAdvisorTurn(
+        session: session,
+        advisorKey:
+            session.rotationOrder[_essenceIndex % session.rotationOrder.length],
+        categoryName: step.categoryName,
+        conversationHistoryOverride: _currentExchangeMessages
+            .map((m) => {'advisor': m.advisorKey, 'text': m.text})
+            .toList(),
+      );
+      final refreshed =
+          await _setup.council.getActiveSession(type: BoardSessionType.setup);
+      if (!mounted) return;
+      setState(() => _session = refreshed ?? session);
+      _scrollToBottom();
+    });
+  }
+
   Future<void> _sendEssenceReply() async {
     final text = _textController.text.trim();
     final session = _session;
     if (text.isEmpty || session == null || _busy) return;
     _textController.clear();
+    var needsAdvisorReply = false;
     setState(() => _busy = true);
     try {
       await _setup.council.appendUserMessage(session.sessionId, text);
@@ -1117,6 +1157,8 @@ class _SetupScreenState extends State<SetupScreen> {
           session.rotationOrder[_essenceIndex % session.rotationOrder.length],
           _essenceAcknowledgment,
         );
+      } else {
+        needsAdvisorReply = true;
       }
       final refreshed =
           await _setup.council.getActiveSession(type: BoardSessionType.setup);
@@ -1131,6 +1173,7 @@ class _SetupScreenState extends State<SetupScreen> {
         await _saveDraft();
       }
     }
+    if (needsAdvisorReply && mounted) await _replyInCurrentFoundational();
   }
 
   // ── Habits (D-039/D-041/D-068) ──────────────────────────────────────────
@@ -1450,7 +1493,14 @@ class _SetupScreenState extends State<SetupScreen> {
         await _loadCategories(existingCategories: _refinementContext);
         break;
       case _Phase.essences:
-        await _askAboutCurrentFoundational();
+        // A failed reply to the person's own message is retried as that
+        // reply; otherwise the category's opening question is.
+        final exchange = _currentExchangeMessages;
+        if (exchange.isNotEmpty && exchange.last.advisorKey == 'user') {
+          await _replyInCurrentFoundational();
+        } else {
+          await _askAboutCurrentFoundational();
+        }
         break;
       case _Phase.habits:
         setState(() => _habitProposalBlocked = false);
@@ -2035,10 +2085,7 @@ class _SetupScreenState extends State<SetupScreen> {
     // _essenceStepStartIndex, captured right before this category's
     // question is asked (_askAboutCurrentFoundational), scopes the view
     // to just this category's own Q&A.
-    final stepMessages = (_session != null && _essenceStepStartIndex != null)
-        ? _session!.messages.sublist(
-            _essenceStepStartIndex!.clamp(0, _session!.messages.length))
-        : const <BoardMessage>[];
+    final stepMessages = _currentExchangeMessages;
     // D-070: gated on the same resonance bar _acceptEssence itself
     // enforces (ResonanceService.qualifies), not merely "any reply
     // exists" — found live, the button used to appear the instant any

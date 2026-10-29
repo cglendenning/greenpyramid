@@ -33,7 +33,9 @@ void main() {
         source.indexOf('Future<void> _askAboutCurrentFoundational', start);
     expect(source.substring(start, end),
         isNot(contains('ResonanceService.qualifies')));
-    expect(source, contains('accept it provisionally, or leave it empty'));
+    expect(source, contains('If that captures it, tap "That\\\'s it — save this."'));
+    expect(source,
+        contains('what would change for you day to day if you lived this fully?'));
   });
 
   test(
