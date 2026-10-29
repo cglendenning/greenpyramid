@@ -6,7 +6,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 // its local request budget. The message is user-presentable.
 class AiBudgetException implements Exception {
   final String message;
-  AiBudgetException(this.message);
+  // True for the per-minute burst limit, which clears on its own within a
+  // minute; false for the daily cap.
+  final bool perMinute;
+  AiBudgetException(this.message, {this.perMinute = false});
 
   @override
   String toString() => message;
@@ -68,7 +71,8 @@ class AiGuard {
       debugPrint('AiGuard: refused call, per-minute budget reached');
       throw AiBudgetException(
           'You are sending requests too quickly. Give it a minute and try'
-          ' again.');
+          ' again.',
+          perMinute: true);
     }
 
     final prefs = await SharedPreferences.getInstance();

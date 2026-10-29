@@ -1182,6 +1182,43 @@ class _SetupScreenState extends State<SetupScreen> {
   // habits across the whole pyramid, regardless of category count.
   static const _maxTotalHabits = 10;
 
+  // D-146: R-SPEND's per-minute limit applies to setup too, and six
+  // categories proposed back to back can exceed it. A per-minute refusal —
+  // from the server or the local guard — waits out the window once, with
+  // visible status, rather than blocking the whole proposal.
+  static const _rateLimitWindow = Duration(seconds: 61);
+  bool _habitPacing = false;
+
+  Future<List<String>> _proposeHabitsPaced({
+    required BoardSession session,
+    required String categoryName,
+    String? essence,
+    required int maxAllowed,
+  }) async {
+    Future<List<String>> propose() => _setup.proposeHabits(
+          session: session,
+          categoryName: categoryName,
+          essence: essence,
+          maxAllowed: maxAllowed,
+        );
+    try {
+      return await propose();
+    } catch (e) {
+      final perMinute = (e is RateLimitedException && e.scope == 'minute') ||
+          (e is AiBudgetException && e.perMinute);
+      if (!perMinute || !mounted) rethrow;
+      debugPrint('SetupScreen: habit proposal for "$categoryName" hit the '
+          'per-minute limit; retrying after the window resets');
+      setState(() => _habitPacing = true);
+      try {
+        await Future<void>.delayed(_rateLimitWindow);
+      } finally {
+        if (mounted) setState(() => _habitPacing = false);
+      }
+      return propose();
+    }
+  }
+
   Future<void> _loadAllHabits() async {
     final session = _session;
     if (session == null) return;
@@ -1208,7 +1245,7 @@ class _SetupScreenState extends State<SetupScreen> {
       final maxAllowed =
           (_maxTotalHabits - totalCommitted - remainingAfterThis).clamp(1, 2);
       try {
-        final habits = await _setup.proposeHabits(
+        final habits = await _proposeHabitsPaced(
           session: session,
           categoryName: c.name,
           essence: essence,
@@ -2216,14 +2253,32 @@ class _SetupScreenState extends State<SetupScreen> {
 
   Widget _buildHabits() {
     if (_habitProposalBlocked) {
-      return const Padding(
-        padding: EdgeInsets.all(24),
+      // D-148: rate limits and AI failures offer retry, not only
+      // start-over. Retry keeps every habit already proposed and asks only
+      // for the categories still missing.
+      return Padding(
+        padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Setup could not finish the habit proposal.'),
-            SizedBox(height: 8),
-            Text('Retry the proposal or discard this setup and start again.'),
+            const Text('Setup could not finish the habit proposal.'),
+            const SizedBox(height: 8),
+            const Text('Retry the proposal or discard this setup and start again.'),
+            const SizedBox(height: 8),
+            const Text(
+                'Everything you have done so far is saved. Retry asks only '
+                'for the categories that are still missing habits.',
+                style: TextStyle(color: AppColors.textSecondary)),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: _busy ? null : _retryCurrentPhase,
+                style: OnboardingStyles.primaryButton,
+                child: const Text('Retry', style: OnboardingStyles.buttonLabel),
+              ),
+            ),
           ],
         ),
       );
@@ -2233,6 +2288,14 @@ class _SetupScreenState extends State<SetupScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (_habitPacing)
+            const Padding(
+              padding: EdgeInsets.only(bottom: 16),
+              child: Text(
+                  'Pausing about a minute to stay within request limits, '
+                  'then finishing the rest of your habits.',
+                  style: TextStyle(color: AppColors.textSecondary)),
+            ),
           // D-069: explicit, not implicit — the chips below are editable
           // right here, but nothing said so in words, and nothing said
           // these default to a daily schedule (D-041) or that either fact

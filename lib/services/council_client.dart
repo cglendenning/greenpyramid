@@ -19,6 +19,18 @@ class CouncilClientException implements Exception {
   String toString() => message;
 }
 
+/// D-146: the server's R-SPEND call-frequency limit (which applies to setup
+/// too) refused this call. Still a [CouncilClientException], so existing
+/// handlers show its message; [scope] ('minute' or 'day') lets a caller wait
+/// out a per-minute window instead of failing.
+class RateLimitedException extends CouncilClientException {
+  final String scope;
+  RateLimitedException(this.scope)
+      : super(scope == 'minute'
+            ? 'Too many requests at once. Give it a minute and try again.'
+            : "You have reached today's request limit. It resets tomorrow.");
+}
+
 /// D-061: thrown when the account has reached its spend cap. Distinct from
 /// [CouncilClientException] so the screen can present "you've reached your
 /// limit" rather than a generic failure.
@@ -193,6 +205,17 @@ class CouncilClient {
       final data = jsonDecode(resp.body) as Map<String, dynamic>;
       throw SetupCallLimitException(
           count: (data['count'] as num?)?.toInt() ?? 0);
+    }
+    if (resp.statusCode == 429) {
+      debugPrint('CouncilClient: $path rate limited: ${resp.body}');
+      String scope = 'minute';
+      try {
+        final data = jsonDecode(resp.body) as Map<String, dynamic>;
+        scope = data['scope'] as String? ?? scope;
+      } catch (e) {
+        debugPrint('CouncilClient: $path unreadable 429 body: $e');
+      }
+      throw RateLimitedException(scope);
     }
     if (resp.statusCode != 200) {
       debugPrint(
