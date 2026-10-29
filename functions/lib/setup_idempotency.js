@@ -1,5 +1,13 @@
 import { createHash } from 'node:crypto';
 
+// Only a successful (2xx) result is replayed. Clients derive requestId from
+// the request body, so a cached refusal or failure (rate limit, setup
+// allowance, provider error) would be replayed to every identical retry
+// forever; those records are reclaimable instead.
+function isReplayable(data) {
+  return data.state === 'completed' && data.status >= 200 && data.status < 300;
+}
+
 // An unresolved dispatch never expires into a second potentially billable call.
 export async function claimSetupRequest(store, uid, key, path, body) {
   if (!/^[0-9a-f-]{36}$/i.test(key ?? '')) throw new Error('request_id_required');
@@ -10,7 +18,7 @@ export async function claimSetupRequest(store, uid, key, path, body) {
     if (snap.exists) {
       const data = snap.data();
       if (data.fingerprint !== fingerprint) throw new Error('request_id_payload_conflict');
-      return { ref, ...data };
+      if (data.state === 'pending' || isReplayable(data)) return { ref, ...data };
     }
     tx.set(ref, { fingerprint, state: 'pending' });
     return { ref, fingerprint, state: 'claimed' };
@@ -29,6 +37,16 @@ export function setupIdempotency(getStore) {
     const original = res.json.bind(res);
     res.json = async value => {
       const status = res.statusCode;
+      if (status < 200 || status >= 300) {
+        // Release the claim so the identical request can be retried; the
+        // setup call allowance still bounds how many real calls happen.
+        try {
+          await claim.ref.delete();
+        } catch (e) {
+          console.error('setupIdempotency: releasing failed claim:', e.message);
+        }
+        return original(value);
+      }
       try {
         await claim.ref.set({ fingerprint: claim.fingerprint, state: 'completed', status, response: value });
         return original(value);
