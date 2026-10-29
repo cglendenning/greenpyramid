@@ -885,7 +885,9 @@ class _ScheduleHabitsScreenState extends State<ScheduleHabitsScreen> {
 
   Widget _tray() {
     return Container(
-      height: 60,
+      // Fits the two-line chip (title + duration hint, 6px vertical padding
+      // and a 1px border) inside the ListView's 6px vertical padding.
+      height: 68,
       decoration: BoxDecoration(
         color: const Color(0xFF111111),
         border: Border(top: BorderSide(color: _washiCream.withOpacity(0.08))),

@@ -87,11 +87,22 @@ class _TaskListState extends State<TaskList> {
 
   late Future<(int?, String?)> _essenceContext;
 
+  // D-126: an always-visible Scrollbar thumb needs an explicit controller
+  // shared with the list it tracks; there is no PrimaryScrollController
+  // to fall back on inside this card.
+  final ScrollController _taskScrollController = ScrollController();
+
   @override
   void initState() {
     todayFmt = dowFmt.format(DateTime.now()).toString();
     _essenceContext = _loadEssenceContext();
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    _taskScrollController.dispose();
+    super.dispose();
   }
 
   // D-035: the category name and its full essence, in that order, above
@@ -247,9 +258,20 @@ class _TaskListState extends State<TaskList> {
                               // screen." Scrollbar never draws a thumb at
                               // all when the content already fits, so
                               // this is a no-op for a short task list.
-                              child: Scrollbar(
+                              // The card's colored DecoratedBox would hide
+                              // the checkbox rows' ink splashes, which paint
+                              // on the nearest Material; this transparent
+                              // one sits above the color, clipped to the
+                              // card's rounded corners.
+                              child: Material(
+                                type: MaterialType.transparency,
+                                borderRadius: BorderRadius.circular(16),
+                                clipBehavior: Clip.antiAlias,
+                                child: Scrollbar(
+                                  controller: _taskScrollController,
                                   thumbVisibility: true,
                                   child: ListView.separated(
+                                      controller: _taskScrollController,
                                       padding: const EdgeInsets.symmetric(vertical: 4),
                                       itemCount: snapshot.data.length,
                                       separatorBuilder: (context, index) => Divider(
@@ -302,6 +324,7 @@ class _TaskListState extends State<TaskList> {
                                               }
                                             });
                                       })),
+                              ),
                             ),
                           );
                         }
